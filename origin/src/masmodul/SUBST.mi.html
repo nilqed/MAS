@@ -1,0 +1,386 @@
+
+<html>
+<head>
+<title>./masmodul/SUBST.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T15:57:36+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SUBST.mi,v 1.1 1995/11/05 15:57:36 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SUBST.mi,v $
+ * Revision 1.1  1995/11/05 15:57:36  pesch
+ * Diplomarbeit Manfred Goebel, Reduktion G-symmetrischer Polynome fuer
+ * beliebige Permutationsgruppen G, slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SUBST;
+<font color="#B22222">(* Substitution Group Polynomial System Implementation Module. *)</font>
+
+FROM MASELEM	IMPORT	GAMMAINT;
+
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, SIL;
+
+FROM MASBIOS	IMPORT	BLINES, SWRITE;
+
+FROM SACLIST	IMPORT	EQUAL, LELT, MEMBER, OWRITE;
+
+FROM SACRN	IMPORT	RNINT;
+
+FROM LINALGRN	IMPORT	RNMDET, RNMPROD, RNMREAD; 
+
+FROM DIPRN	IMPORT	DIRPDF, DIRPEX, DIRPPR, DIRPRP, DIRPRQ, DIRPSM;
+
+FROM DIPC	IMPORT	DIPFMO, DIPMAD, EVCADD, EVDEL, EVTDEG;
+
+FROM GSYMFUIN	IMPORT	GSYSPG;
+
+FROM GSYMFURN	IMPORT	GRNCHKBAS;
+
+FROM NOETHER	IMPORT	MERGE, NOEL32, NOEPIP, NOEPPR, NOEPRM, NOEPSM,
+			NOESRT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SUBST.mi,v 1.1 1995/11/05 15:57:36 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE SUBINF</font></strong>();
+<strong><font color="#4169E1">BEGIN</font></strong>
+BLINES(1);
+SWRITE("Substitution Group Polynomial System Package:");
+BLINES(0);
+SWRITE("---------------------------------------------");
+BLINES(1);
+SWRITE("               SG := SUBSGR(Number_of_Variables).");
+BLINES(0);
+SWRITE("            Order := SUBORD(SG).");
+BLINES(0);
+SWRITE("            Orbit := SUBORP(SG, Polynom).");
+BLINES(0);
+SWRITE("           0_or_1 := SUBSYM(SG, Polynom).");
+BLINES(0); 
+SWRITE("       Orbit_List := SUBOPL(SG, Monom_List).");
+BLINES(0);
+SWRITE("          Polynom := SUBCHK(SG, Base, Base_Polynom).");
+BLINES(0); 
+SWRITE("     SK_Power_Sum := SUBPOW(SG, Degree).");
+BLINES(1);
+SWRITE("SUBRED(SG, Polynom, Base, Base_Polynom, Remainder_Polynom).");
+BLINES(0);
+SWRITE("SUBINF().");	
+BLINES(0);
+SWRITE("SUBSGW(SG).");
+<strong><font color="#4169E1">END</font></strong> SUBINF;
+
+<strong><font color="#4169E1">PROCEDURE SUBSGR</font></strong>(N: GAMMAINT): LIST;
+<strong><font color="#228B22">VAR</font></strong> SG, NSG, XSG, YSG, XX, YY, VEC, T: LIST;
+    I, K, N: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+SG := SIL;
+NSG := SIL;
+XSG := SIL;
+XX := RNMREAD();
+<font color="#4169E1">WHILE</font> XX # SIL <font color="#4169E1">DO</font>
+     <font color="#4169E1">IF</font> LENGTH(XX) # N <font color="#4169E1">THEN</font> SWRITE("Length error, try again! ");
+     <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> MEMBER(XX, XSG) = 0 <font color="#4169E1">THEN</font> I := 1;
+               YY := XX;
+               LOOP <font color="#4169E1">IF</font> YY = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                    ADV(YY, VEC, YY);
+                    <font color="#4169E1">IF</font> LENGTH(VEC) # N <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                    I := I + 1;
+                    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+               <font color="#4169E1">IF</font> (I &gt;= N) <font color="#4169E1">AND</font> (RNMDET(XX) # 0) <font color="#4169E1">THEN</font> XSG := COMP(XX, XSG);
+               <font color="#4169E1">ELSE</font> SWRITE("No substitution, try again! "); <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+          <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+     XX := RNMREAD();
+     <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+SG := XSG;
+K := 0;
+BLINES(0); 
+<font color="#4169E1">REPEAT</font>
+    K := K + 1;
+    NSG := SG; 
+    N := LENGTH(SG);
+    <font color="#4169E1">WHILE</font> NSG # SIL <font color="#4169E1">DO</font>
+         ADV(NSG, XX, NSG);
+         YSG := XSG;
+         <font color="#4169E1">WHILE</font> YSG # SIL <font color="#4169E1">DO</font>
+              ADV(YSG, YY, YSG);
+              T := RNMPROD(XX, YY);
+              <font color="#4169E1">IF</font> (MEMBER(T, SG) = 0) <font color="#4169E1">THEN</font> 
+                   SG := COMP(T, SG); 
+                   OWRITE(K); SWRITE(" "); 
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<font color="#4169E1">UNTIL</font> (LENGTH(SG) = N) <font color="#4169E1">OR</font> (K &gt; 50); <font color="#B22222">(* of repeat *)</font>
+RETURN(SG);
+<strong><font color="#4169E1">END</font></strong> SUBSGR;
+
+<strong><font color="#4169E1">PROCEDURE SUBSGW</font></strong>(SG: LIST);
+<strong><font color="#228B22">VAR</font></strong> PI: LIST;
+    I: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+I := 0;
+<font color="#4169E1">WHILE</font> SG # SIL <font color="#4169E1">DO</font>
+    ADV(SG, PI, SG);
+    I := I + 1;
+    BLINES(1); OWRITE(I); SWRITE(")  "); OWRITE(PI);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>;    
+<strong><font color="#4169E1">END</font></strong> SUBSGW;
+
+<strong><font color="#4169E1">PROCEDURE SUBORD</font></strong>(SG: LIST): GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RETURN(LENGTH(SG));
+<strong><font color="#4169E1">END</font></strong> SUBORD;
+
+<strong><font color="#4169E1">PROCEDURE PERM</font></strong>(PI, POL: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> RES, FF, XX, SUM, VEC, HK, HT, NFF, PROD: LIST;
+    I, J, N: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := 0;
+<font color="#4169E1">IF</font> (PI = SIL) <font color="#4169E1">OR</font> (POL = 0) <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(FIRST(PI));
+FF := SIL;
+<font color="#4169E1">WHILE</font> PI # SIL <font color="#4169E1">DO</font>
+    ADV(PI, VEC, PI);
+    SUM := 0;
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+         <font color="#4169E1">IF</font> LELT(VEC, I) # 0 <font color="#4169E1">THEN</font>
+              XX := SIL;
+              <font color="#4169E1">FOR</font> J := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+                   <font color="#4169E1">IF</font> I = J <font color="#4169E1">THEN</font> XX := COMP(1, XX); 
+                   <font color="#4169E1">ELSE</font> XX := COMP(0, XX); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+              SUM := DIRPSM(SUM, DIPFMO(LELT(VEC, I), XX));  
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    FF := COMP(SUM, FF);	
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<font color="#4169E1">WHILE</font> POL # SIL <font color="#4169E1">DO</font>
+    DIPMAD(POL, HK, HT, POL);
+    PROD := DIRPEX(DIPFMO(HK, HT), 0);
+    NFF := FF;
+    <font color="#4169E1">WHILE</font> HT # SIL <font color="#4169E1">DO</font>
+         ADV(HT, XX, HT);
+         ADV(NFF, SUM, NFF);
+         PROD := DIRPPR(PROD, DIRPEX(SUM, XX));
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+    RES := DIRPSM(RES, DIRPRP(PROD, HK));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(RES);
+<strong><font color="#4169E1">END</font></strong> PERM;
+
+<strong><font color="#4169E1">PROCEDURE SUBORP</font></strong>(SG, POL: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> RES, PI: LIST;
+    ORDER: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := 0;
+<font color="#4169E1">IF</font> (SG = SIL) <font color="#4169E1">OR</font> (POL = 0) <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+ORDER :=SUBORD(SG);
+<font color="#4169E1">WHILE</font> SG # SIL <font color="#4169E1">DO</font>
+    ADV(SG, PI, SG);
+    RES := DIRPSM(RES, PERM(PI, POL));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RES := DIRPRQ(RES, RNINT(ORDER));
+RETURN(RES);
+<strong><font color="#4169E1">END</font></strong> SUBORP;
+
+<strong><font color="#4169E1">PROCEDURE SUBSYM</font></strong>(SG, POL: LIST): GAMMAINT;
+<strong><font color="#228B22">VAR</font></strong> PI: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#4169E1">WHILE</font> SG # SIL <font color="#4169E1">DO</font>
+    ADV(SG, PI, SG);
+    <font color="#4169E1">IF</font> DIRPDF(POL, PERM(PI, POL)) # 0 <font color="#4169E1">THEN</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(1);
+<strong><font color="#4169E1">END</font></strong> SUBSYM;
+
+<strong><font color="#4169E1">PROCEDURE SUBOPL</font></strong>(SG, ML: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> HM, RES: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := SIL;
+<font color="#4169E1">WHILE</font> ML # SIL <font color="#4169E1">DO</font>
+    ADV(ML, HM, ML);
+    RES := COMP(SUBORP(SG, HM), RES);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(INV(RES));
+<strong><font color="#4169E1">END</font></strong> SUBOPL;
+
+<strong><font color="#4169E1">PROCEDURE SUBCHK</font></strong>(SG, BASE, POL: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> RES, HK, HT, BASEORBIT, PROD: LIST;
+    I, N: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := 0;
+<font color="#4169E1">IF</font> POL = 0 <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(BASE);
+<font color="#4169E1">IF</font> N = 0 <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+BASEORBIT := SUBOPL(SG, BASE);
+<font color="#4169E1">WHILE</font> POL # 0 <font color="#4169E1">DO</font>
+    DIPMAD(POL, HK, HT, POL);
+    <font color="#4169E1">IF</font> POL = SIL <font color="#4169E1">THEN</font> POL := 0; <strong><font color="#4169E1">END</font></strong>;
+    PROD := DIRPEX(LELT(BASEORBIT, 1), 0);
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+         PROD := DIRPPR(PROD, DIRPEX(LELT(BASEORBIT, I), LELT(HT, I)));
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    RES := DIRPSM(RES, DIRPRP(PROD, HK));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(RES);
+<strong><font color="#4169E1">END</font></strong> SUBCHK;
+
+<strong><font color="#4169E1">PROCEDURE SUBPOW</font></strong>(SG: LIST; K: GAMMAINT): LIST;
+<strong><font color="#228B22">VAR</font></strong> POL, XPOL, HKPOL, HKBASE, XHK, HK, HT, XX: LIST;
+    I, J, N, ORDER: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+POL := 0;
+<font color="#4169E1">IF</font> SG = SIL <font color="#4169E1">THEN</font> RETURN(POL); <strong><font color="#4169E1">END</font></strong>;
+XPOL := 0;
+N := LENGTH(FIRST(FIRST(SG)));
+ORDER := SUBORD(SG);
+<font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+    HT := SIL;
+    <font color="#4169E1">FOR</font> J := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+         <font color="#4169E1">IF</font> I = J <font color="#4169E1">THEN</font> HT := COMP(1, HT);
+              <font color="#4169E1">ELSE</font> HT := COMP(0, HT); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    XPOL := DIRPSM(XPOL, DIPFMO(RNINT(1), HT));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+XPOL := DIRPEX(XPOL, K);
+POL := SIL;
+<font color="#4169E1">WHILE</font> XPOL # SIL <font color="#4169E1">DO</font>
+    DIPMAD(XPOL, HK, HT, XPOL);
+    XX := DIPFMO(RNINT(1), HT);
+    <font color="#4169E1">IF</font> SUBORP(SG, XX) # 0 <font color="#4169E1">THEN</font> 
+         HKPOL := DIRPRP(DIPFMO(RNINT(ORDER), LIST1(1)), HK);
+         HKBASE := LIST1(XX);
+         XHK := SIL;
+         XHK := COMP(HKPOL, COMP(HKBASE, XHK));
+         POL := COMP(HT, COMP(XHK, POL));
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+POL := NOESRT(POL);
+RETURN(POL);
+<strong><font color="#4169E1">END</font></strong> SUBPOW;
+
+<strong><font color="#4169E1">PROCEDURE COMPARE</font></strong>(SG, SKL, SKP, TERM: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<strong><font color="#228B22">VAR</font></strong> HK, HT, XHK, XHT, XX, YY, PROD, RES, NSKL, DUMMY: LIST;
+    I, J, N, ORDER: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BASE := SIL; POL := 0;
+<font color="#4169E1">IF</font> SG = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+YY := SUBORP(SG, DIPFMO(RNINT(1), TERM));
+<font color="#4169E1">IF</font> YY = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+ORDER := SUBORD(SG);
+<font color="#4169E1">IF</font> SKP = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(SKL);
+<font color="#4169E1">IF</font> N = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+NSKL := SIL;
+<font color="#4169E1">FOR</font> I := N <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> NSKL := COMP(NOEPRM(LELT(SKL, I), TERM), NSKL); <strong><font color="#4169E1">END</font></strong>;
+RES := SIL;
+BLINES(0); SWRITE("SKP "); OWRITE(SKP);
+<font color="#4169E1">WHILE</font> SKP # SIL <font color="#4169E1">DO</font>
+    DIPMAD(SKP, HK, HT, SKP);
+    BLINES(0); SWRITE("HT = "); OWRITE(HT);
+    PROD := SIL;
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+         <font color="#4169E1">FOR</font> J := 1 <font color="#4169E1">TO</font> LELT(HT, I) <font color="#4169E1">DO</font>
+              PROD := NOEPPR(PROD, LELT(NSKL, I), TERM); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    RES := NOEPSM(RES, NOEPIP(PROD, HK));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+LOOP <font color="#4169E1">IF</font> RES = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+    DIPMAD(RES, XHK, XHT, RES);
+    <font color="#4169E1">IF</font> EQUAL(XHT, TERM) = 1 <font color="#4169E1">THEN</font>
+         DIPMAD(XHK, BASE, POL, DUMMY);
+         EXIT;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+XX := SUBCHK(SG, BASE, POL);
+<font color="#4169E1">IF</font> XX = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+DIPMAD(XX, HK, HT, DUMMY);
+POL := DIRPRQ(POL, HK);
+DIPMAD(YY, HK, HT, DUMMY);
+POL := DIRPRP(POL, HK);
+<strong><font color="#4169E1">END</font></strong> COMPARE;
+
+<strong><font color="#4169E1">PROCEDURE SUBBRM</font></strong>(SG: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<strong><font color="#228B22">VAR</font></strong> XBASE, NBASE, NPOL, NHT, HT, HK, XX, YY, EL, DUMMY: LIST;
+    I, K, N: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#4169E1">IF</font> POL = 0 <font color="#4169E1">THEN</font> BASE := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> BASE = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+NBASE := BASE; 
+BASE := SIL;
+N := 0;
+<font color="#4169E1">WHILE</font> NBASE # SIL <font color="#4169E1">DO</font>
+    ADV(NBASE, XX, NBASE);
+    BASE := COMP(XX, BASE);
+    N := N + 1;	
+    XBASE := SIL;
+    K := 0;
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(NBASE) <font color="#4169E1">DO</font>	
+         YY := LELT(NBASE, I);	
+         <font color="#4169E1">IF</font> (DIRPDF(SUBORP(SG, XX), SUBORP(SG, YY)) = 0) <font color="#4169E1">THEN</font>
+              NPOL := POL;
+              POL := 0;
+              <font color="#4169E1">WHILE</font> NPOL # SIL <font color="#4169E1">DO</font>
+                   DIPMAD(NPOL, HK, HT, NPOL);
+                   EVDEL(HT, N+I-K, NHT, EL);
+                   EVCADD(NHT, N, EL, HT, DUMMY);
+                   POL := DIRPSM(POL, DIPFMO(HK, HT));
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+              K := K + 1;
+         <font color="#4169E1">ELSE</font> XBASE := COMP(YY, XBASE); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    NBASE := INV(XBASE);              
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+BASE := INV(BASE);
+<strong><font color="#4169E1">END</font></strong> SUBBRM;
+
+<strong><font color="#4169E1">PROCEDURE SUBRED</font></strong>(SG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, BASEPOL, REMPOL: LIST);
+<strong><font color="#228B22">VAR</font></strong> HK, HT, SKL, SKP, PSM, BASE1, BASEPOL1, XX, DUMMY: LIST;
+    ORDER, DEGREE, KK, I: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BASE := SIL;
+BASEPOL := SIL;
+REMPOL := 0;
+<font color="#4169E1">IF</font> (POL = 0) <font color="#4169E1">OR</font> (SG = SIL) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+ORDER := LENGTH(SG);
+<font color="#4169E1">IF</font> (SUBSYM(SG, POL) # 1) <font color="#4169E1">THEN</font> REMPOL := POL; 
+<font color="#4169E1">ELSE</font> SKL := SIL;
+     <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> ORDER <font color="#4169E1">DO</font> SKL := COMP(SUBPOW(SG, I), SKL); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">WHILE</font> POL # SIL <font color="#4169E1">DO</font>
+          DIPMAD(POL, HK, HT, POL);
+          DEGREE := EVTDEG(HT);
+          <font color="#4169E1">IF</font> DEGREE &lt;= ORDER <font color="#4169E1">THEN</font>
+               BASE1 := LIST1(DIPFMO(RNINT(1), HT));
+               BASEPOL1 := DIPFMO(HK, LIST1(1));
+          <font color="#4169E1">ELSE</font> SKP := NOEL32(ORDER, DEGREE);
+               COMPARE(SG, SKL, SKP, HT, BASE1, BASEPOL1);
+               BASEPOL1 := DIRPRP(BASEPOL1, HK);
+               <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+          MERGE(TRUE, BASE1, BASEPOL1, BASE, BASEPOL);
+          <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+     <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+SUBBRM(SG, BASE, BASEPOL);
+GRNCHKBAS(BASE, BASEPOL);
+BLINES(1); SWRITE("SUBRED exit (BASE): "); OWRITE(BASE);
+BLINES(0); SWRITE("SUBRED exit (BASEPOL): "); OWRITE(BASEPOL);
+BLINES(0); SWRITE("SUBRED exit (REMPOL): "); OWRITE(REMPOL);
+<strong><font color="#4169E1">END</font></strong> SUBRED;
+
+<strong><font color="#4169E1">END</font></strong> SUBST.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

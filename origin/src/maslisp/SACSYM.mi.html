@@ -1,0 +1,551 @@
+
+<html>
+<head>
+<title>./maslisp/SACSYM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:08+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACSYM.mi,v 1.3 1992/10/15 16:27:55 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACSYM.mi,v $
+ * Revision 1.3  1992/10/15  16:27:55  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:35  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:32  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACSYM;
+
+<font color="#B22222">(* SAC Symbol System Implementation module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT GAMMAINT, MASEXP, MASQREM, MASREM;
+
+FROM MASSTOR IMPORT BETA, SIL, LIST, LISTVAR, 
+                    LENGTH, SFIRST, SRED,
+                    LIST1, INV, ADV, FIRST, RED, COMP;
+
+FROM MASBIOS IMPORT BLINES, CREAD, CWRITE, CREADB,
+                    DIGIT, LETTER, LISTS,
+                    MASORD, GWRITE, DIBUFF,
+                    CHI, BKSP, SWRITE, TAB;
+
+FROM SACLIST IMPORT CLOUT, ADV2, CONC, COMP2, EQUAL, 
+                    SECOND, RED2, AWRITE, AREAD;
+
+
+<strong><font color="#228B22">CONST</font></strong> ICOUNT = 1; <font color="#B22222">(* ? *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> NAM, SBASE: GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACSYM.mi,v 1.3 1992/10/15 16:27:55 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ACOMP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Alphabetic comparison. A and B are symbols. t=+1,0,-1 according
+to whether A preceds, is equal, or follows B alphabetically.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> TL:=ACOMP1(NAME(A),NAME(B));
+<font color="#B22222">(*4*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> ACOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE ACOMP1</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Alphabetic comparison, 1. subalgorithm. A and B are packed strings.
+s=-1,0,1 according to whether a preceds, is equal, or succeeds B
+alphabetically.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> AP:=A; BP:=B; SL:=0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compare.*)</font>
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); ADV(BP, BL,BP);
+             <font color="#4169E1">IF</font> AL &gt; BL <font color="#4169E1">THEN</font> SL:=1; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> AL &lt; BL <font color="#4169E1">THEN</font> SL:=-1; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*end.*)</font>
+      <font color="#4169E1">IF</font> BP &lt;&gt; SIL <font color="#4169E1">THEN</font> SL:=-1; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AP &lt;&gt; SIL <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(SL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ACOMP1;
+
+
+<strong><font color="#4169E1">PROCEDURE ASSOC</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Associate. L=(a1 b1, a2 b2, ...,a sub n b sub n), n ge 0,
+a is an object. If there is an i such that a=a sub i then
+P=(b sub i, ...,a sub n b sub n), otherwise P=().*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> P:=L;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search.*)</font>
+      <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P, ALP,P);
+            <font color="#4169E1">IF</font> AL = ALP <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>;
+            ADV(P, ALP,P); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(P); <strong><font color="#4169E1">END</font></strong> ASSOC;
+
+
+<strong><font color="#4169E1">PROCEDURE ASSOCQ</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Associate equal. L=(a1 b1, a2 b2, ...,a sub n b sub n), n ge 0,
+a is an object. If there is an i such that a is equal to a sub i then
+P=(b sub i, ...,a sub n b sub n), otherwise P=().*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> P:=L;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search.*)</font>
+      <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P, ALP,P);
+            <font color="#4169E1">IF</font> EQUAL(AL,ALP) = 1 <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>;
+            ADV(P, ALP,P); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(P); <strong><font color="#4169E1">END</font></strong> ASSOCQ;
+
+
+<strong><font color="#4169E1">PROCEDURE ATTRIB</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Attribute. L is a symbol. Returns the attributes of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> LP:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*symbol.*)</font> <font color="#4169E1">IF</font> SYMBOL(L) <font color="#4169E1">THEN</font> LP:=RED2(L) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(LP); <strong><font color="#4169E1">END</font></strong> ATTRIB;
+
+
+<strong><font color="#4169E1">PROCEDURE BEGINU</font></strong>();
+<font color="#B22222">(*Begin, universal. The symbolic system is initialized without
+initializing any subsystems. It is assumed, that at least BEGIN1
+was called previously.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, NL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize symbolic globals.*)</font> SYMTB:=SIL; 
+      NL:=0; CL:=CHI+1; TL:=BETA DIV CL;
+      <font color="#4169E1">REPEAT</font> TL:=TL DIV CL; NL:=NL+1;
+             <font color="#4169E1">UNTIL</font> TL = 0;
+      SBASE:=MASEXP(CL,NL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*translator options.*)</font> TRMAX:=10; COUNT:=0; NAM:=0;
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> BEGINU;
+
+
+<strong><font color="#4169E1">PROCEDURE EXPLOD</font></strong>(S: LIST): LIST;
+<font color="#B22222">(*Explode symbol. S is a symbol, L its character list.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AP, CL, DL, J1Y, L, LP, Q: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get packed character list.*)</font> LP:=NAME(S); L:=SIL; CL:=CHI+1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*unpack characters.*)</font>
+      <font color="#4169E1">REPEAT</font> DL:=SBASE DIV CL; ADV(LP, A,LP);
+             <font color="#4169E1">REPEAT</font> MASQREM(A,DL, Q,AP); A:=AP; J1Y:=Q-1; 
+                    L:=COMP(J1Y,L); DL:=DL DIV CL;
+                    <font color="#4169E1">UNTIL</font> A = 0;
+             <font color="#4169E1">UNTIL</font> LP = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*exit*)</font> L:=INV(L);
+<font color="#B22222">(*6*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> EXPLOD;
+
+
+<strong><font color="#4169E1">PROCEDURE ENTER</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Enter into symbol table. L is a character list, S the pointer
+to the corresponding symbol. If the symbol is not yet in the
+symbol table SYMTB, then a new node is created.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=PACK(L); S:=STINS(J1Y);
+<font color="#B22222">(*4*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> ENTER;
+
+
+<strong><font color="#4169E1">PROCEDURE GENSYM</font></strong>(): LIST;
+<font color="#B22222">(*Generate symbol. S is a newly generated symbol. NAM is advanced.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, Q, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*increase counter.*)</font> NAM:=NAM+1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*create character list.*)</font> S:=LIST1(MASORD("Y")); Q:=NAM;
+      <font color="#4169E1">REPEAT</font> J1Y:=MASREM(Q,10); S:=COMP(J1Y,S); Q:=Q DIV 10;
+             <font color="#4169E1">UNTIL</font> Q = 0;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*enter in symbol table.*)</font> J1Y:=COMP(MASORD("J"),S);
+      S:=ENTER(J1Y);
+<font color="#B22222">(*6*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> GENSYM;
+
+
+<strong><font color="#4169E1">PROCEDURE GET</font></strong>(S,AL: LIST): LIST;
+<font color="#B22222">(*Get property. The property list of the symbol S is searched
+under indicator a. A is the property under a, if any, otherwise
+A is set to beta.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=ASSOC(AL,ATTRIB(S));
+      <font color="#4169E1">IF</font> A &lt;&gt; SIL <font color="#4169E1">THEN</font> A:=FIRST(A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN(A); <strong><font color="#4169E1">END</font></strong> GET;
+
+
+<strong><font color="#4169E1">PROCEDURE NAME</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Name. L is a symbol. Returns the name of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> LP:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*symbol.*)</font> <font color="#4169E1">IF</font> SYMBOL(L) <font color="#4169E1">THEN</font> LP:=SECOND(L) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(LP); <strong><font color="#4169E1">END</font></strong> NAME;
+
+
+<strong><font color="#4169E1">PROCEDURE PACK</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Pack character list. L is a non-empty character list. B is the
+packed list.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, BL, CL, DL, J1Y, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> LP:=L; B:=SIL; BL:=CHI+1; A:=0; DL:=1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*process characters.*)</font>
+      <font color="#4169E1">REPEAT</font> ADV(LP, CL,LP);
+             <font color="#4169E1">IF</font> DL = SBASE <font color="#4169E1">THEN</font> B:=COMP(A,B); A:=0; DL:=1; <strong><font color="#4169E1">END</font></strong>;
+             DL:=DL*BL; J1Y:=A*BL; J1Y:=J1Y+CL; A:=J1Y+1;
+             <font color="#4169E1">UNTIL</font> LP = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*shift left and invert.*)</font>
+      <font color="#4169E1">WHILE</font> DL &lt; SBASE <font color="#4169E1">DO</font> DL:=DL*BL; A:=A*BL; <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=COMP(A,B); B:=INV(J1Y);
+<font color="#B22222">(*6*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> PACK;
+
+
+<strong><font color="#4169E1">PROCEDURE PUT</font></strong>(S,AL,A: LIST);
+<font color="#B22222">(*Put. The property A is stored on the property list of
+the symbol S under the indicator a.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*already there.*)</font> L:=ASSOC(AL,ATTRIB(S));
+      <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> SFIRST(L,A); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*new entry.*)</font> SRED(RED(S),COMP2(AL,A,ATTRIB(S)));
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> PUT;
+
+
+<strong><font color="#4169E1">PROCEDURE REMPRP</font></strong>(S,AL: LIST);
+<font color="#B22222">(*Remove property. Under indicator a on the property list of
+symbol S the property is removed.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, L, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> L:=RED(S); LP:=RED(L);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search and remove.*)</font>
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, BL,LP);
+            <font color="#4169E1">IF</font> AL = BL <font color="#4169E1">THEN</font> SRED(L,RED(LP)); RETURN; <strong><font color="#4169E1">END</font></strong>;
+            L:=LP; LP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> REMPRP;
+
+
+<strong><font color="#4169E1">PROCEDURE SMEMB</font></strong>(S,L: LIST): LIST;
+<font color="#B22222">(*Symbol membership. S is a symbol, L a list containing possibly
+also symbols. b=1 if S or a copy of S occurs in L, b=0 otherwise.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, LP, SP, SS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initilize.*)</font> LP:=L; BL:=1; SP:=SECOND(S);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search.*)</font>
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, SS,LP); 
+            <font color="#4169E1">IF</font> SYMBOL(SS) <font color="#4169E1">AND</font> (ACOMP1(NAME(SS),SP) = 0)
+               <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*exit.*)</font> BL:=0;
+<font color="#B22222">(*6*)</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong> SMEMB;
+
+
+<strong><font color="#4169E1">PROCEDURE SREAD</font></strong>(): LIST;
+<font color="#B22222">(*Symbol read. The next symbol is read from input. S is the symbol in
+the symbol table SYMTB.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=SREAD1(); S:=ENTER(J1Y);
+<font color="#B22222">(*4*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> SREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE SREAD1</font></strong>(): LIST;
+<font color="#B22222">(*Symbol read, 1. The first non-alphanumeric character of the
+input stream terminates the symbol.  L is the character list of 
+the symbol, which is not entered in the symbol table.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*skip leading blanks.*)</font> L:=SIL; C:=CREADB();
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> LETTER(C) <font color="#4169E1">THEN</font> SWRITE("NO SYMBOL FOUND BY SREAD1");
+         DIBUFF; L:=LISTS("???"); RETURN(L) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*collect characters.*)</font> 
+      <font color="#4169E1">REPEAT</font> L:=COMP(C,L); C:=CREAD();
+             <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font> DIGIT(C) <font color="#4169E1">AND</font> <font color="#4169E1">NOT</font> LETTER(C);
+      BKSP; L:=INV(L);
+<font color="#B22222">(*5*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> SREAD1;
+
+
+<strong><font color="#4169E1">PROCEDURE STCNT</font></strong>(T: LIST;    <strong><font color="#228B22">VAR</font></strong> S,P: LIST);
+<font color="#B22222">(*Symbol table tree count. T is a symbol tree, S is the number
+of symbols in T, P the number of properties of all symbols of the tree.
+Since every symbol has a name property, P ge S.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, K, L, PP, R, SP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*basis.*)</font>
+      <font color="#4169E1">IF</font> T = SIL <font color="#4169E1">THEN</font> S:=0; P:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*left branch.*)</font> ADV2(T, L,K,R); STCNT(L, S,P);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*process symbol.*)</font> S:=S+1; J1Y:=LENGTH(K); J1Y:=J1Y DIV 2;
+      P:=P+J1Y;
+      <font color="#4169E1">IF</font> (COUNT &gt;= 1) <font color="#4169E1">AND</font> (GET(K,ICOUNT) &lt;&gt; SIL) <font color="#4169E1">THEN</font> UWRIT1(K);
+         TAB(8); UWRITE(GET(K,ICOUNT)); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*right branch.*)</font> STCNT(R, SP,PP); S:=S+SP; P:=P+PP;
+<font color="#B22222">(*7*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> STCNT;
+
+
+<strong><font color="#4169E1">PROCEDURE STINS</font></strong>(B: LIST): LIST;
+<font color="#B22222">(*Symbol tree insertion. B is a packed list of characters. S is a
+pointer to the corresponding symbol in the symbol table. If
+it is not yet in, a new node is created.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  L, N, R, S, SP, T, TP: LIST;
+     s: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*symbol table.*)</font> T:=SYMTB;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*binary search.*)</font>
+      <font color="#4169E1">WHILE</font> T &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(T, L,SP,R); s:=INTEGER(ACOMP1(NAME(SP),B));
+            <font color="#4169E1">CASE</font> s <font color="#4169E1">OF</font>
+                 -1 : TP:=T; T:=R; |
+                 0 : S:=SP; RETURN(S); |
+                 1 : TP:=T; T:=L; <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*insert new node.*)</font> S:=SYNEW(B); N:=STNEW(S);
+      <font color="#4169E1">IF</font> SYMTB = SIL <font color="#4169E1">THEN</font> SYMTB:=N; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> s = -1 <font color="#4169E1">THEN</font> SRED(RED(TP),N); <font color="#4169E1">ELSE</font> SFIRST(TP,N); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> STINS;
+
+
+<strong><font color="#4169E1">PROCEDURE STLST</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*Symbol tree list. T is a symbol tree, L is the list of its symbols
+in alphabetic order.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L, LL, RL, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*basis.*)</font>
+      <font color="#4169E1">IF</font> T = SIL <font color="#4169E1">THEN</font> L:=SIL; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> ADV2(T, LL,SL,RL);
+      <font color="#4169E1">IF</font> LL &lt;&gt; SIL <font color="#4169E1">THEN</font> LL:=STLST(LL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RL &lt;&gt; SIL <font color="#4169E1">THEN</font> RL:=STLST(RL); <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=COMP(SL,RL); L:=CONC(LL,J1Y);
+<font color="#B22222">(*5*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> STLST;
+
+
+<strong><font color="#4169E1">PROCEDURE STLSTI</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*Symbol tree list, in-order. T is a binary tree of symbols, L is a
+list of its symbols, with the root symbol appearing first.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L, LL, RL, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*basis.*)</font>
+      <font color="#4169E1">IF</font> T = SIL <font color="#4169E1">THEN</font> L:=SIL; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> ADV2(T, LL,SL,RL);
+      <font color="#4169E1">IF</font> LL &lt;&gt; SIL <font color="#4169E1">THEN</font> LL:=STLSTI(LL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RL &lt;&gt; SIL <font color="#4169E1">THEN</font> RL:=STLSTI(RL); <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=CONC(LL,RL); L:=COMP(SL,J1Y);
+<font color="#B22222">(*5*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> STLSTI;
+
+
+<strong><font color="#4169E1">PROCEDURE STNEW</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Symbol tree new. L is symbol.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> S:=COMP(SIL,COMP(L,SIL));
+<font color="#B22222">(*4*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> STNEW;
+
+
+<strong><font color="#4169E1">PROCEDURE STSRCH</font></strong>(T,AP: LIST): LIST;
+<font color="#B22222">(*Symbol tree search. T is a binary tree of symbols, AP is a packed
+list of characters. If the symbol with the name AP occurs already
+in the symbol table T then S=() and otherwise S points to the entry.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  K, L, R, S, TP, TPP: LIST;
+     s: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> S:=SIL; TPP:=T;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*binary search.*)</font>
+      <font color="#4169E1">IF</font> TPP &lt;&gt; SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">REPEAT</font> TP:=TPP; ADV2(TP, L,K,R); 
+                s:=INTEGER(ACOMP1(NAME(K),AP));
+                <font color="#4169E1">CASE</font> s <font color="#4169E1">OF</font>
+                     -1 : TPP:=R; |
+                     0 : S:=K; RETURN(S); |
+                     1 : TPP:=L; | <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">UNTIL</font> TPP = SIL;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> STSRCH;
+
+
+<strong><font color="#4169E1">PROCEDURE STWRT</font></strong>(T: LIST);
+<font color="#B22222">(*Symbol tree write. T is a binary tree of symbols. The symbols
+followed by their properties are printed in alphabetic order.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  K, L, M, ML, R, TP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> TP:=T;
+      <font color="#4169E1">WHILE</font> TP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(TP, L,K,R); STWRT(L); 
+            UWRIT1(K); SWRITE(": ");
+            M:=ATTRIB(K);
+            <font color="#4169E1">WHILE</font> M &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(M, ML,M); 
+                  UWRIT1(ML); SWRITE(" ") <strong><font color="#4169E1">END</font></strong>;
+            BLINES(0); TP:=R; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> STWRT;
+
+
+<strong><font color="#4169E1">PROCEDURE SYMBOL</font></strong>(AP: LIST): BOOLEAN;
+<font color="#B22222">(*Symbol. AP is an object. Returns true if it is a symbol and 
+false else.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BL:=FALSE;
+      <font color="#4169E1">IF</font> AP &gt; BETA <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> FIRST(AP) = -BETA <font color="#4169E1">THEN</font> BL:=TRUE <strong><font color="#4169E1">END</font></strong> 
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong> SYMBOL;
+
+
+<strong><font color="#4169E1">PROCEDURE SYNEW</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Symbol new. L is a packed character list.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> S:=COMP(-BETA,COMP(L,SIL));
+<font color="#B22222">(*4*)</font> RETURN(S); <strong><font color="#4169E1">END</font></strong> SYNEW;
+
+
+<strong><font color="#4169E1">PROCEDURE SymSummary</font></strong>();
+<font color="#B22222">(*Summary of symbol system. The number of symbols in SYMTB and
+the number of their properties is written.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  P, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*count symbols and their properties.*)</font> BLINES(2); 
+      STCNT(SYMTB,S,P); 
+      AWRITE(S); SWRITE(" SYMBOLS <font color="#4169E1">AND</font> "); 
+      AWRITE(P); SWRITE(" PROPERTIES."); BLINES(1);
+      <font color="#B22222">(*debug*)</font> 
+      STWRT(SYMTB);
+      <font color="#B22222">(*gubed*)</font>
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> SymSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE SYWRIT</font></strong>(S: LIST);
+<font color="#B22222">(*Symbol write. The symbol S is written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  N, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get unpacked name.*)</font> N:=EXPLOD(S); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*transmit.*)</font> CLOUT(N);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> SYWRIT;
+
+
+<strong><font color="#4169E1">PROCEDURE SUBLIS</font></strong>(L,A: LIST): LIST;
+<font color="#B22222">(*Substitution with list. L=(x1 e1, ...,x sub n e sub n),
+a and e sub i are objects. The x sub i are beta-digits
+or pointers to uniquely stored lists like symbols. B is A
+with the x sub i substituted by the e sub i.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C1, C2, J1Y, J2Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*basis.*)</font> B:=ASSOC(A,L);
+      <font color="#4169E1">IF</font> B &lt;&gt; SIL <font color="#4169E1">THEN</font> B:=FIRST(B); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (A &lt;= BETA) <font color="#4169E1">OR</font> SYMBOL(A) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> ADV(A, C1,C2); J1Y:=SUBLIS(L,C1);
+      J2Y:=SUBLIS(L,C2); B:=COMP(J1Y,J2Y);
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> SUBLIS;
+
+
+<strong><font color="#4169E1">PROCEDURE UREAD</font></strong>(): LIST;
+<font color="#B22222">(*Universal read. The next atom, symbol or list over atoms
+and symbols is read and stored under L. Blanks may occur anywhere,
+elements of a list may or may not be separated by a comma.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, J1Y, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*branch on c.*)</font> L:=SIL; C:=CREADB();
+      <font color="#4169E1">IF</font> DIGIT(C) <font color="#4169E1">OR</font> (C = MASORD("-")) <font color="#4169E1">OR</font> (C = MASORD("+")) <font color="#4169E1">THEN</font> 
+         BKSP; L:=AREAD(); RETURN(L) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> LETTER(C) <font color="#4169E1">THEN</font> BKSP; L:=SREAD(); RETURN(L) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font>
+         SWRITE("ATOMS, SYMBOLS, <font color="#4169E1">OR</font> LISTS EXPECTED BY UREAD, ");
+         CWRITE(C); SWRITE(" FOUND"); DIBUFF; RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read list.*)</font> C:=CREADB();
+      <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+      BKSP;
+      LOOP J1Y:=UREAD(); L:=COMP(J1Y,L); C:=CREADB();
+           <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> L:=INV(L); RETURN(L) <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> C &lt;&gt; MASORD(",") <font color="#4169E1">THEN</font> BKSP; <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> UREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE UWRITE</font></strong>(L: LIST);
+<font color="#B22222">(*Universal write. L is an atom, symbol or a list over
+atoms and symbols. L is written in the output stream,
+followed by BLINES(0). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UWRIT1(L); BLINES(0);
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> UWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE UWRIT1</font></strong>(L: LIST);
+<font color="#B22222">(*Universal write, 1. subalgorithm. L is an atom, a symbol
+or a list over atoms or symbols. L is written in the output
+stream followed by a blank character, but not by BLINES. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*atom or symbol.*)</font>
+      <font color="#4169E1">IF</font> L &lt; BETA <font color="#4169E1">THEN</font> AWRITE(L); RETURN <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> SYMBOL(L) <font color="#4169E1">THEN</font> SYWRIT(L); RETURN <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*list.*)</font> SWRITE("("); LP:=L;
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, AL,LP); UWRIT1(AL); 
+            <font color="#4169E1">IF</font> LP &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(" ") <strong><font color="#4169E1">END</font></strong> 
+            <strong><font color="#4169E1">END</font></strong>;
+      SWRITE(")"); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> UWRIT1;
+
+
+<strong><font color="#4169E1">PROCEDURE TRC</font></strong>(<strong><font color="#228B22">VAR</font></strong> SP: ARRAY <font color="#4169E1">OF</font> CHAR; 
+          AL1,AL2,AL3,AL4,AL5,AL6,AL7,AL8,AL9,AL10,AL11,AL12,AL13: LIST);
+<font color="#B22222">(*Trace input or output. The first argument is the characters of an
+algorithm name, followed by +i for input tracing and by -i for
+output tracing. The following arguments are input or output parameters.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A: ARRAY[1..13] <font color="#4169E1">OF</font> LIST;
+<strong><font color="#228B22">VAR</font></strong>  BL, CL, J1Y, JL, S: LIST;
+     IL: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*load.*)</font> A[1]:=AL1; A[2]:=AL2; A[3]:=AL3; A[4]:=AL4; A[5]:=AL5;
+      A[6]:=AL6; A[7]:=AL7; A[8]:=AL8; A[9]:=AL9; A[10]:=AL10;
+      A[11]:=AL11; A[12]:=AL12; A[13]:=AL13;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*form algorithm name.*)</font> S:=ENTER(LISTS(SP));
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*count.*)</font> CL:=GET(S,ICOUNT);
+      <font color="#4169E1">IF</font> CL = SIL <font color="#4169E1">THEN</font> CL:=0; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A[1] &lt; 0 <font color="#4169E1">THEN</font> CL:=CL+1; PUT(S,ICOUNT,CL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (CL &gt; TRMAX) <font color="#4169E1">OR</font> (COUNT &gt;= 1) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*input.*)</font>
+      <font color="#4169E1">IF</font> A[1] &lt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*indent*)</font>
+         SWRITE("+"); UWRIT1(S);
+         <font color="#4169E1">FOR</font> IL:=2 <font color="#4169E1">TO</font> INTEGER(A[1]) <font color="#4169E1">DO</font> GWRITE(GAMMAINT(IL-1)); SWRITE(".");
+             UWRIT1(A[IL]); <strong><font color="#4169E1">END</font></strong>;
+         BLINES(0); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*output trace.*)</font> 
+      SWRITE("-"); UWRIT1(S);
+      <font color="#4169E1">FOR</font> IL:=2 <font color="#4169E1">TO</font> INTEGER(-A[1]) <font color="#4169E1">DO</font> GWRITE(GAMMAINT(IL-1)); SWRITE(".");
+          UWRIT1(A[IL]); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> CL &gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*undent*)</font> <strong><font color="#4169E1">END</font></strong>;
+      BLINES(0);
+<font color="#B22222">(*8*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> TRC;
+
+
+<font color="#B22222">(* Initialization. *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+
+LISTVAR(SYMTB);
+
+BEGINU; 
+
+<strong><font color="#4169E1">END</font></strong> SACSYM.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

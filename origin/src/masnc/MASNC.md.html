@@ -1,0 +1,103 @@
+
+<html>
+<head>
+<title>./masnc/MASNC.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:27+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASNC.md,v 1.3 1992/10/16 14:07:55 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASNC.md,v $
+ * Revision 1.3  1992/10/16  14:07:55  kredel
+ * Cosmetic
+ *
+ * Revision 1.2  1992/02/12  17:33:29  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:13  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASNC;
+
+<font color="#B22222">(* MAS Non-commutative Product Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASNC.md,v 1.3 1992/10/16 14:07:55 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DINPPR</font></strong>(T,A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial non-commutative product.
+A and B are distributive polynomials. T is a table
+of distributive polynomials specifying the non-commutative
+relations. C=A*B, the non-commutative product of A and B.
+The table T may be modified. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINPTL</font></strong>(T,EL,FL: LIST;  <strong><font color="#228B22">VAR</font></strong> C,EP,FP: LIST); 
+<font color="#B22222">(*Distributive polynomial non-commutative product table lookup.
+e and f are exponent vectors. T is a table
+of distributive polynomials specifying the non-commutative
+relations. C is the non-commutative product of x**es and x**fs.
+ep and fp are exponent vectors with es+ep=e and fs+fp=f.
+If e=es or f=fs then ep=() or fp=(). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINPTU</font></strong>(T,EL,FL,C: LIST); 
+<font color="#B22222">(*Distributive polynomial non-commutative product table update.
+e and f are exponent vectors. T is a table
+of distributive polynomials specifying the non-commutative
+relations. C is a distributive rational polynomial. The relation
+e * f = C is added to T. T is modified. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINPEX</font></strong>(T,A,NL: LIST): LIST; 
+<font color="#B22222">(*Distributive non-commutative polynomial exponentiation. A is a
+distributive rational polynomial, n is a non-negative beta-
+integer. T is a table of non-commutative relations.
+B=A**n. 0**0 is by definition a polynomial in zero variables. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINLRD</font></strong>(V,T: LIST): LIST; 
+<font color="#B22222">(*Distributive non-commutative polynomial list read. V is a
+variable list. T is a table of non-commutative relations.
+A list of distributive non-commutative polynomials
+in r variables, where r=length(V), r ge 0, is read from
+the input stream. Any blanks preceding A are skipped. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINPRD</font></strong>(V,T: LIST): LIST; 
+<font color="#B22222">(*Distributive non-commutative polynomial read. V is a variable list.
+T is a table on non-commutative relations.
+A distributive rational polynomial A in r variables, where
+r=length(V), r ge 0, is read from the input stream. Any
+blanks preceding A are skipped. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVZERO</font></strong>(RL: LIST): LIST; 
+<font color="#B22222">(*Exponent vector zero. U is an exponent vector of length r,
+r ge 0 with all components zero. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASNC.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

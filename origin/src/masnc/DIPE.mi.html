@@ -1,0 +1,893 @@
+
+<html>
+<head>
+<title>./masnc/DIPE.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:26+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPE.mi,v 1.3 1992/10/15 16:29:45 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPE.mi,v $
+ * Revision 1.3  1992/10/15  16:29:45  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:27  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:19  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPE;
+
+<font color="#B22222">(* DIP Exterior Algebra Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASREM, MASODD;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, LENGTH, SRED, SFIRST,
+                    FIRST, RED, COMP, INV, ADV, LIST1;
+
+FROM MASERR IMPORT severe, ERROR;
+
+FROM SACLIST IMPORT LIST4, LIST2, COMP2, ADV2, FIRST2, 
+                    LWRITE, LIST3, AWRITE, CINV, RED2, SECOND, EQUAL;
+
+FROM MASBIOS IMPORT CREAD, CREADB, CWRITE, 
+                    SOLINE, LETTER, DIGIT, 
+                    MASORD, BKSP, BLINES, SWRITE;
+
+FROM SACD IMPORT DQR, DRANN;
+
+FROM SACI IMPORT IDPR, IWRITE, IREAD, IRAND, IMAX, IABSF, 
+                 IEXP, IDIF, IGCD, ISIGNF, ILCM, 
+                 IDP2, IREM, IORD2, ISUM, INEG, IQ, IQR;
+FROM SACM IMPORT MDHOM;
+
+FROM SACPRIM IMPORT IFACT;
+
+FROM MASI IMPORT IPROD;
+
+FROM SACPOL IMPORT PBIN, PDEG;
+
+FROM SACIPOL IMPORT IPPROD, IPQ;
+ 
+FROM DIPI IMPORT DIIPIP;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPE.mi,v 1.3 1992/10/15 16:29:45 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE COPYOB</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Copy object. A is an object. B is the copy of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a emty or atom. *)</font> 
+      <font color="#4169E1">IF</font> A &lt;= BETA <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*copy.*)</font> AP:=A; B:=SIL; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); BL:=COPYOB(AL); B:=COMP(BL,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> COPYOB; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIMWRT</font></strong>(A: LIST); 
+<font color="#B22222">(*Exterior integral matrix write. A is an exterior
+integral matrix. A is written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*write.*)</font> SWRITE("("); AS:=A; 
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AS, AL,AS); SWRITE(" "); EIVWRT(AL); 
+            <font color="#4169E1">IF</font> AS &lt;&gt; SIL <font color="#4169E1">THEN</font> BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE(" )"); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> EIMWRT; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVABS</font></strong>(U: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector absolute value. U is an
+exterior integral vector. V is the absolute value of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  SL, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get sign of u.*)</font> SL:=EIVSIG(U); 
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> V:=EIVNEG(U); <font color="#4169E1">ELSE</font> V:=U; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(V); <strong><font color="#4169E1">END</font></strong> EIVABS; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVAPP</font></strong>(U: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector absolute primitive part. U is an
+exterior integral vector. V is the absolute primitive part of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  V, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call eivcpp and eivabs.*)</font> EIVCPP(U, V,VL); V:=EIVABS(V); 
+<font color="#B22222">(*4*)</font> RETURN(V); <strong><font color="#4169E1">END</font></strong> EIVAPP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVCPP</font></strong>(U: LIST;  <strong><font color="#228B22">VAR</font></strong> V,VL: LIST); 
+<font color="#B22222">(*Exterior integral vector content and primitive part.
+U is an exterior integral vector. v is the content and
+V is the primitive part of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, UL, US: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u emty.*)</font> 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> V:=SIL; VL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute gct.*)</font> ADV2(U, VL,IL,US); 
+      <font color="#4169E1">WHILE</font> (US &lt;&gt; SIL) <font color="#4169E1">AND</font> (VL &lt;&gt; 1) <font color="#4169E1">DO</font> ADV2(US, UL,IL,US); 
+            VL:=IGCD(UL,VL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*divide.*)</font> 
+      <font color="#4169E1">IF</font> VL = 1 <font color="#4169E1">THEN</font> V:=U; <font color="#4169E1">ELSE</font> V:=EIVIQ(U,VL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> EIVCPP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVEPR</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector exterior product. U and V are exterior
+integral vectors. W is the exterior product of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, JL, KL, LL, ML, NL, SL, US, VP, VS, W, W1, WL1, WL2, WP, WPP,
+     WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emty.*)</font> 
+      <font color="#4169E1">IF</font> (U = SIL) <font color="#4169E1">OR</font> (V = SIL) <font color="#4169E1">THEN</font> W:=SIL; RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> US:=CINV(U); VS:=CINV(V); W:=SIL; 
+      <font color="#4169E1">REPEAT</font> ADV2(US, IL,KL,US); VP:=VS; W1:=SIL; 
+             <font color="#4169E1">REPEAT</font> ADV2(VP,JL,ML,VP); ILEXPR(IL,JL, LL,SL); 
+                    <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font>
+                       <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> ML:=INEG(ML); <strong><font color="#4169E1">END</font></strong>; 
+                       NL:=IPROD(KL,ML); W1:=COMP2(NL,LL,W1); <strong><font color="#4169E1">END</font></strong>; 
+                    <font color="#4169E1">UNTIL</font> VP = SIL; 
+             <font color="#4169E1">IF</font> W1 &lt;&gt; SIL <font color="#4169E1">THEN</font> W:=COMP(W1,W); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> US = SIL; 
+      <font color="#4169E1">IF</font> W = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summarize.*)</font> 
+      <font color="#4169E1">REPEAT</font> WP:=SIL; 
+             <font color="#4169E1">WHILE</font> (W &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(W) &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV2(W,
+                   WL1,WL2,W); WS:=EIVSUM(WL1,WL2); WP:=COMP(WS,WP); 
+             <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> WP &lt;&gt; SIL <font color="#4169E1">THEN</font> WPP:=INV(WP); SRED(WP,W); W:=WPP; 
+             <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> RED(W) = SIL; 
+      W:=FIRST(W); 
+<font color="#B22222">(*6*)</font> RETURN(W); <strong><font color="#4169E1">END</font></strong> EIVEPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVFUP</font></strong>(A,PL: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector from univariate integral polynomial
+with multiplication by power of main variable. A is an
+univariate integral polynomial. p is a beta-integer. B is the
+exterior integral vector from A(x)*(x**p). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, EL, FL, GL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0. *)</font> B:=SIL; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply terms and convert.*)</font> AS:=A; 
+      <font color="#4169E1">REPEAT</font> ADV2(AS, EL,AL,AS); FL:=EL+PL; GL:=LIST1(FL); 
+             B:=COMP2(AL,GL,B); 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EIVFUP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVILP</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector inner left product. U and V are
+exterior integral vectors. W is the inner left
+product of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, JL, KL, LL, ML, NL, SL, US, VP, VS, W, W1, WL1, WL2, WP, WPP,
+     WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emty.*)</font> 
+      <font color="#4169E1">IF</font> (U = SIL) <font color="#4169E1">OR</font> (V = SIL) <font color="#4169E1">THEN</font> W:=SIL; RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> US:=U; VS:=V; W:=SIL; 
+      <font color="#4169E1">REPEAT</font> ADV2(US, KL,IL,US); VP:=VS; W1:=SIL; 
+             <font color="#4169E1">REPEAT</font> ADV2(VP,ML,JL,VP); ILINPR(IL,JL, LL,SL); 
+                    <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font>
+                       <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> ML:=INEG(ML); <strong><font color="#4169E1">END</font></strong>; 
+                       NL:=IPROD(KL,ML); W1:=COMP2(NL,LL,W1); <strong><font color="#4169E1">END</font></strong>; 
+                    <font color="#4169E1">UNTIL</font> VP = SIL; 
+             <font color="#4169E1">IF</font> W1 &lt;&gt; SIL <font color="#4169E1">THEN</font> W:=COMP(W1,W); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> US = SIL; 
+      <font color="#4169E1">IF</font> W = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summarize.*)</font> 
+      <font color="#4169E1">REPEAT</font> WP:=SIL; 
+             <font color="#4169E1">WHILE</font> (W &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(W) &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV2(W,
+                   WL1,WL2,W); WS:=EIVSUM(WL1,WL2); WP:=COMP(WS,WP); 
+             <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> WP &lt;&gt; SIL <font color="#4169E1">THEN</font> WPP:=INV(WP); SRED(WP,W); W:=WPP; 
+             <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> RED(W) = SIL; 
+      W:=FIRST(W); 
+<font color="#B22222">(*6*)</font> RETURN(W); <strong><font color="#4169E1">END</font></strong> EIVILP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVIP</font></strong>(A,BL: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector integer product. A is an
+exterior integral vector, b is an integer, C=A*b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, EL, PL, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a emty.*)</font> C:=SIL; 
+      <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (BL = 0) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply.*)</font> AP:=A; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, AL,EL,AP); PL:=IPROD(AL,BL); C:=COMP2(EL,PL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EIVIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVIQ</font></strong>(A,BL: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector integer quotient. A is an
+exterior integral vector, b is a nonzero integer,
+and b divides any coefficient of A. C=A/b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, EL, QL, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a emty.*)</font> C:=SIL; 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*divide.*)</font> AP:=A; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, AL,EL,AP); IQR(AL,BL, QL,RL); C:=COMP2(EL,QL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EIVIQ; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVIRP</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector inner right product. U and V are
+exterior integral vectors. W is the inner right
+product of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, JL, KL, LL, ML, NL, SL, US, VP, VS, W, W1, WL1, WL2, WP, WPP,
+     WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emty.*)</font> 
+      <font color="#4169E1">IF</font> (U = SIL) <font color="#4169E1">OR</font> (V = SIL) <font color="#4169E1">THEN</font> W:=SIL; RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> US:=U; VS:=V; W:=SIL; 
+      <font color="#4169E1">REPEAT</font> ADV2(US, KL,IL,US); VP:=VS; W1:=SIL; 
+             <font color="#4169E1">REPEAT</font> ADV2(VP,ML,JL,VP); ILINPR(JL,IL, LL,SL); 
+                    <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font>
+                       <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> ML:=INEG(ML); <strong><font color="#4169E1">END</font></strong>; 
+                       NL:=IPROD(KL,ML); W1:=COMP2(NL,LL,W1); <strong><font color="#4169E1">END</font></strong>; 
+                    <font color="#4169E1">UNTIL</font> VP = SIL; 
+             <font color="#4169E1">IF</font> W1 &lt;&gt; SIL <font color="#4169E1">THEN</font> W:=COMP(W1,W); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> US = SIL; 
+      <font color="#4169E1">IF</font> W = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summarize.*)</font> 
+      <font color="#4169E1">REPEAT</font> WP:=SIL; 
+             <font color="#4169E1">WHILE</font> (W &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(W) &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV2(W,
+                   WL1,WL2,W); WS:=EIVSUM(WL1,WL2); WP:=COMP(WS,WP); 
+             <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> WP &lt;&gt; SIL <font color="#4169E1">THEN</font> WPP:=INV(WP); SRED(WP,W); W:=WPP; 
+             <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> RED(W) = SIL; 
+      W:=FIRST(W); 
+<font color="#B22222">(*6*)</font> RETURN(W); <strong><font color="#4169E1">END</font></strong> EIVIRP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVNEG</font></strong>(U: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector negative. U is an exterior
+integral vector. V is the negative of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, IL, US, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u emty.*)</font> V:=SIL; 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(V); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*negate.*)</font> US:=U; 
+      <font color="#4169E1">REPEAT</font> ADV2(US, AL,IL,US); BL:=INEG(AL); V:=COMP2(IL,BL,V); 
+             <font color="#4169E1">UNTIL</font> US = SIL; 
+      V:=INV(V); 
+<font color="#B22222">(*5*)</font> RETURN(V); <strong><font color="#4169E1">END</font></strong> EIVNEG; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVPP</font></strong>(U: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector primitive part. U is an
+exterior integral vector. V is the primitive part of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  V, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call eivcpp.*)</font> EIVCPP(U, V,VL); 
+<font color="#B22222">(*4*)</font> RETURN(V); <strong><font color="#4169E1">END</font></strong> EIVPP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVSIG</font></strong>(U: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector sign. U is an exterior
+integral vector. s is the sign of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> SL:=0; <font color="#4169E1">ELSE</font> J1Y:=FIRST(U); SL:=ISIGNF(J1Y); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> EIVSIG; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVSUM</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Exterior integral vector sum. U and V are exterior
+integral vectors. W is the sum of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, FL, SL, UL, UP, VL, VP, W, WL, WP, WPP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emty.*)</font> 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> W:=V; RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> W:=U; RETURN(W); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*match coefficients.*)</font> UP:=U; VP:=V; WP:=SIL; 
+      <font color="#4169E1">REPEAT</font> EL:=SECOND(UP); FL:=SECOND(VP); SL:=ILWCMP(EL,FL); 
+             <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> ADV2(UP, UL,EL,UP); 
+                WP:=COMP2(EL,UL,WP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> SL = -1 <font color="#4169E1">THEN</font> ADV2(VP, VL,FL,VP); 
+                   WP:=COMP2(FL,VL,WP); <font color="#4169E1">ELSE</font> ADV2(UP, UL,EL,UP); 
+                   ADV2(VP, VL,FL,VP); WL:=ISUM(UL,VL); 
+                   <font color="#4169E1">IF</font> WL &lt;&gt; 0 <font color="#4169E1">THEN</font> WP:=COMP2(EL,WL,WP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (UP = SIL) <font color="#4169E1">OR</font> (VP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> UP = SIL <font color="#4169E1">THEN</font> UP:=VP; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> WP = SIL <font color="#4169E1">THEN</font> W:=UP; <font color="#4169E1">ELSE</font> WPP:=WP; W:=INV(WP); 
+         SRED(WPP,UP); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(W); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EIVSUM; 
+
+
+<strong><font color="#4169E1">PROCEDURE EIVWRT</font></strong>(A: LIST); 
+<font color="#B22222">(*Exterior integral vector write. A is an exterior
+integral vector. A is written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, IL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*write.*)</font> SWRITE("("); AS:=A; 
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AS, AL,IL,AS); SWRITE(" "); 
+            <font color="#4169E1">IF</font> ISIGNF(AL) = 1 <font color="#4169E1">THEN</font> SWRITE("+"); <strong><font color="#4169E1">END</font></strong>; 
+            IWRITE(AL); INLWRT(IL); <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE(" )"); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> EIVWRT; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXIDET</font></strong>(M: LIST): LIST; 
+<font color="#B22222">(*Exterior integral matrix determinant. M is an exterior integral
+matrix. d is the determinant of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D, DL, EL, ML, MP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*apply exterior multiplication to the rows of m.*)</font> ADV(M, D,MP); 
+      <font color="#4169E1">WHILE</font> (MP &lt;&gt; SIL) <font color="#4169E1">AND</font> (D &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV(MP, ML,MP); 
+            D:=EIVEPR(D,ML); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> DL:=0; RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+      ADV2(D, DL,EL,D); 
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*error.*)</font> ERROR(severe,"IN EXIDET."); 
+<font color="#B22222">(*6*)</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong> EXIDET; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXIDT2</font></strong>(M: LIST): LIST; 
+<font color="#B22222">(*Exterior integral matrix determinant 2. M is an exterior integral
+matrix. d is the determinant of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D, DL, EL, ML1, ML2, MP, MPP, MPS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*m=(). *)</font> DL:=0; 
+      <font color="#4169E1">IF</font> M = SIL <font color="#4169E1">THEN</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply exterior multiplication to the rows of m.*)</font> MP:=M; 
+      <font color="#4169E1">REPEAT</font> MPS:=SIL; 
+             <font color="#4169E1">WHILE</font> (MP &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(MP) &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV2(MP,
+                   ML1,ML2,MP); D:=EIVEPR(ML1,ML2); 
+                   <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+                   MPS:=COMP(D,MPS); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> MPS &lt;&gt; SIL <font color="#4169E1">THEN</font> MPP:=INV(MPS); SRED(MPS,MP); 
+                MP:=MPP; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> RED(MP) = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> ADV(MP, D,MP); 
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+      ADV2(D, DL,EL,D); 
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*error.*)</font> ERROR(severe,"IN EXIDT2."); 
+<font color="#B22222">(*7*)</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong> EXIDT2; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXMHOM</font></strong>(M: LIST): LIST; 
+<font color="#B22222">(*Exterior matrix homomorphism. M=(m1,... ,mn) is a
+vector of integral vectors mi, 0 le i le n. MS is a
+vector of exterior integral vectors, MS=(ms1,... ,msn).
+were msi=EXVHOM(mi). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  MP, MS, UL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call exvhom.*)</font> MS:=SIL; MP:=M; 
+      <font color="#4169E1">WHILE</font> MP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(MP, UL,MP); VL:=EXVHOM(UL,1); 
+            MS:=COMP(VL,MS); <strong><font color="#4169E1">END</font></strong>; 
+      MS:=INV(MS); RETURN(MS); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EXMHOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXVHOM</font></strong>(U,SL: LIST): LIST; 
+<font color="#B22222">(*Exterior vector homomorphism. U=(u1,... ,un) is an
+integral vector of n components, 0 le n. s is the
+starting index for the exterior index list.
+V=(u1,(s),... ,un,(s+n)).  *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, NL, UL, US, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*buildt lists.*)</font> V:=SIL; US:=U; NL:=SL-1; 
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> NL:=NL+1; ADV(US, UL,US); 
+            <font color="#4169E1">IF</font> UL &lt;&gt; 0 <font color="#4169E1">THEN</font> EL:=LIST1(NL); V:=COMP2(EL,UL,V); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      V:=INV(V); RETURN(V); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EXVHOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE ITD</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integer trailing digit. A is an integer,
+A = b mod beta.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A &gt; BETA <font color="#4169E1">THEN</font> BL:=FIRST(A); <font color="#4169E1">ELSE</font> BL:=A; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ITD; 
+
+
+<strong><font color="#4169E1">PROCEDURE IJACS</font></strong>(X,Y: LIST): LIST; 
+<font color="#B22222">(*Integer Jacobi symbol algorithm. Y is an odd
+positive integer, X is an integer relatively prime
+to Y. s=(X/Y). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, BL0, EL, J1Y, ML, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise.*)</font> A:=X; B:=Y; SL:=1; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a lt 0.*)</font> 
+      <font color="#4169E1">IF</font> ISIGNF(A) &lt; 0 <font color="#4169E1">THEN</font> A:=INEG(A); 
+         <font color="#4169E1">IF</font> MASREM(ITD(B),4) &lt;&gt; 1 <font color="#4169E1">THEN</font> SL:=-1; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*jacobian sequence.*)</font> 
+      <font color="#4169E1">WHILE</font> B &lt;&gt; 1 <font color="#4169E1">DO</font> A:=IREM(A,B); EL:=IORD2(A); 
+            <font color="#4169E1">IF</font> EL &gt; 0 <font color="#4169E1">THEN</font> A:=IDP2(A,EL); 
+               <font color="#4169E1">IF</font> MASODD(EL) <font color="#4169E1">THEN</font> J1Y:=ITD(B); BL0:=MASREM(J1Y,16); 
+                  <font color="#4169E1">IF</font> MASREM(BL0*BL0,16) &lt;&gt; 1 <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            ML:=A; A:=B; B:=ML; 
+            <font color="#4169E1">IF</font> (MASREM(ITD(A),4) &lt;&gt; 1) <font color="#4169E1">AND</font> (MASREM(ITD(B),4) &lt;&gt; 1)
+               <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> IJACS; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILADDC</font></strong>(U,CL: LIST): LIST; 
+<font color="#B22222">(*Index list addition of constant. U is an index list, c is
+a beta-integer. V=(u1+c, ...,un+c) where U=(u1, ...,un). 
+n ge 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, V, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() or cl=0.*)</font> 
+      <font color="#4169E1">IF</font> (U = SIL) <font color="#4169E1">OR</font> (CL = 0) <font color="#4169E1">THEN</font> V:=U; RETURN(V); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*add in every component.*)</font> V:=SIL; US:=U; 
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); VL:=UL+CL; V:=COMP(VL,V); 
+             <font color="#4169E1">UNTIL</font> US = SIL; 
+      V:=INV(V); RETURN(V); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> ILADDC; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILEXPR</font></strong>(U,V: LIST;  <strong><font color="#228B22">VAR</font></strong> W,SL: LIST); 
+<font color="#B22222">(*Index list exterior product. U, V and W are index lists.
+W is the exterior product of U and V. s is the sign
+of the exterior product. If s = 0 then W = ().  *)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, ML, NL, UL, US, VL, VS, WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emty.*)</font> SL:=1; 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> W:=V; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> W:=U; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      US:=U; VS:=V; W:=SIL; ML:=0; NL:=0; WS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*merge and upsate sign.*)</font> 
+      <font color="#4169E1">REPEAT</font> UL:=FIRST(US); VL:=FIRST(VS); 
+             <font color="#4169E1">IF</font> UL = VL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> WS:=COMP(UL,WS); ML:=ML+1; 
+                US:=RED(US); <font color="#4169E1">ELSE</font> WS:=COMP(VL,WS); VS:=RED(VS); 
+                NL:=NL+1; 
+                <font color="#4169E1">IF</font> MASODD(ML) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (US = SIL) <font color="#4169E1">OR</font> (VS = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> US:=VS; <font color="#4169E1">ELSE</font> J1Y:=LENGTH(US); ML:=ML+J1Y; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> MASODD(ML) <font color="#4169E1">AND</font> MASODD(NL) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+      W:=INV(WS); SRED(WS,US); RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ILEXPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILILPR</font></strong>(U,V: LIST;  <strong><font color="#228B22">VAR</font></strong> W,SL: LIST); 
+<font color="#B22222">(*Index list inner left product. U, V and W are index lists.
+W is the inner left product of U and V. s is the sign
+of the inner left product. If s = 0 then W = ().  *)</font>
+<strong><font color="#228B22">VAR</font></strong>  ML, UL, US, VL, VS, WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emmty.*)</font> SL:=1; 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> W:=V; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      W:=SIL; 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      US:=V; VS:=U; ML:=0; WS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*complement and update sign.*)</font> 
+      <font color="#4169E1">REPEAT</font> UL:=FIRST(US); VL:=FIRST(VS); 
+             <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> UL = VL <font color="#4169E1">THEN</font> US:=RED(US); VS:=RED(VS); 
+                <font color="#4169E1">IF</font> MASODD(ML) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> WS:=COMP(VL,WS); VS:=RED(VS); ML:=ML+1; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (US = SIL) <font color="#4169E1">OR</font> (VS = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> US &lt;&gt; SIL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> WS = SIL <font color="#4169E1">THEN</font> W:=VS; <font color="#4169E1">ELSE</font> W:=INV(WS); SRED(WS,VS); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ILILPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILINPR</font></strong>(U,V: LIST;  <strong><font color="#228B22">VAR</font></strong> W,SL: LIST); 
+<font color="#B22222">(*Index list inner product. U, V and W are index lists. W
+is the inner product of U and V, i.e. if U is contained
+in V then W is the complement of U in V, otherwise the sign
+of the inner product is set to zero. s is the sign of
+the inner product. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  ML, UL, US, VL, VS, WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emty.*)</font> SL:=1; 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> W:=V; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      W:=SIL; 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      US:=U; VS:=V; ML:=0; WS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*complement and update sign.*)</font> 
+      <font color="#4169E1">REPEAT</font> UL:=FIRST(US); VL:=FIRST(VS); 
+             <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> UL = VL <font color="#4169E1">THEN</font> US:=RED(US); VS:=RED(VS); 
+                <font color="#4169E1">IF</font> MASODD(ML) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> WS:=COMP(VL,WS); VS:=RED(VS); ML:=ML+1; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (US = SIL) <font color="#4169E1">OR</font> (VS = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> US &lt;&gt; SIL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> WS = SIL <font color="#4169E1">THEN</font> W:=VS; <font color="#4169E1">ELSE</font> W:=INV(WS); SRED(WS,VS); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ILINPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILIRPR</font></strong>(U,V: LIST;  <strong><font color="#228B22">VAR</font></strong> W,SL: LIST); 
+<font color="#B22222">(*Index list inner right product. U, V and W are index lists.
+W is the inner right product of U and V. s is the sign
+of the inner right product. if s = 0 then W = ().  *)</font>
+<strong><font color="#228B22">VAR</font></strong>  ML, UL, US, VL, VS, WS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u or v emmty.*)</font> SL:=1; 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> W:=V; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      W:=SIL; 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      US:=U; VS:=V; ML:=0; WS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*complement and update sign.*)</font> 
+      <font color="#4169E1">REPEAT</font> UL:=FIRST(US); VL:=FIRST(VS); 
+             <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> UL = VL <font color="#4169E1">THEN</font> US:=RED(US); VS:=RED(VS); 
+                <font color="#4169E1">IF</font> MASODD(ML) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> WS:=COMP(VL,WS); VS:=RED(VS); ML:=ML+1; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (US = SIL) <font color="#4169E1">OR</font> (VS = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> US &lt;&gt; SIL <font color="#4169E1">THEN</font> SL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> WS = SIL <font color="#4169E1">THEN</font> W:=VS; <font color="#4169E1">ELSE</font> W:=INV(WS); SRED(WS,VS); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ILIRPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILSCMP</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Index list strong compare. U=(u1,... ,un), V=(v1,... vm)
+are index lists with length n and m. t=1 if n gt m,
+t=-1 if n lt m. If n=m then t=0 if U=V,
+t=1 if U gt V, t=-1 if U lt V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ML, NL, TL, UL, US, VL, VS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise and compare.*)</font> TL:=0; US:=U; VS:=V; 
+      <font color="#4169E1">WHILE</font> (US &lt;&gt; SIL) <font color="#4169E1">AND</font> (VS &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font> 
+            ADV(US, UL,US); ADV(VS, VL,VS); 
+            <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=1; <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=-1; <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*u or v emty.*)</font> 
+      <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> (US = SIL) <font color="#4169E1">AND</font> (VS = SIL) <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font> TL:=-1; <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(TL) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compare length.*)</font> ML:=LENGTH(US); NL:=LENGTH(VS); 
+      <font color="#4169E1">IF</font> ML = NL <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> ML &lt; NL <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font> TL:=-1; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(TL); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ILSCMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE ILWCMP</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Index list week compare. U=(u1,... ,un), V=(v1,... vm) are
+index lists. t=0 if U=V, t=1 if U gt V, t=-1 if U lt V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, US, VL, VS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise and compare.*)</font> TL:=0; US:=U; VS:=V; 
+      <font color="#4169E1">WHILE</font> (US &lt;&gt; SIL) <font color="#4169E1">AND</font> (VS &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV(US, UL,US); 
+            ADV(VS, VL,VS); 
+            <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*u or v emty.*)</font> 
+      <font color="#4169E1">IF</font> (US = SIL) <font color="#4169E1">AND</font> (VS = SIL) <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font> TL:=-1; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(TL); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ILWCMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE INDLST</font></strong>(RL,SL: LIST): LIST; 
+<font color="#B22222">(*Index list. Starting with r and ending with s.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, IL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl gt sl.*)</font> EL:=SIL; 
+      <font color="#4169E1">IF</font> RL &gt; SL <font color="#4169E1">THEN</font> RETURN(EL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*create list.*)</font> 
+      <font color="#4169E1">FOR</font> IL:=SL <font color="#4169E1">TO</font> RL BY -1 <font color="#4169E1">DO</font> EL:=COMP(IL,EL); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(EL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> INDLST; 
+
+
+<strong><font color="#4169E1">PROCEDURE INLWRT</font></strong>(U: LIST); 
+<font color="#B22222">(*Index list write. U is an exterior index list.
+U is written in the output stream.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*write.*)</font> SWRITE(" E"); LWRITE(U); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> INLWRT; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPSR</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial specified roots. R is a list of integers.
+A is an integral univariate polynomial with roots from R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, FL, J1Y, RS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> R = SIL <font color="#4169E1">THEN</font> A:=0; RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply factors.*)</font> ADV(R, FL,RS); J1Y:=-FL; 
+      A:=PBIN(1,1,J1Y,0); 
+      <font color="#4169E1">WHILE</font> RS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(RS, FL,RS); J1Y:=-FL; 
+            B:=PBIN(1,1,J1Y,0); A:=IPPROD(1,A,B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(A); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPSR; 
+
+
+<strong><font color="#4169E1">PROCEDURE IVHOM</font></strong>(U,IL,JL: LIST): LIST; 
+<font color="#B22222">(*Integer vector homomorphism. U=(u1,(s),... ,un,(r))
+is an exterior integral vector. i is the starting index
+for the integral vector and j is its ending index.
+V=(vi,... ,vj). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, KL, NL, SL, UL, US, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read index lists and skip zeros.*)</font> V:=SIL; US:=U; NL:=IL; 
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(US, AL,UL,US); SL:=FIRST(UL); 
+            <font color="#4169E1">FOR</font> KL:=NL <font color="#4169E1">TO</font> SL-1 <font color="#4169E1">DO</font> V:=COMP(0,V); <strong><font color="#4169E1">END</font></strong>; 
+            V:=COMP(AL,V); NL:=KL+2; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> KL:=NL <font color="#4169E1">TO</font> JL <font color="#4169E1">DO</font> V:=COMP(0,V); <strong><font color="#4169E1">END</font></strong>; 
+      V:=INV(V); RETURN(V); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IVHOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE IVRAND</font></strong>(KL,QL,NL: LIST): LIST; 
+<font color="#B22222">(*Integer vector random. U is an random integer vector with
+n components, 0 le n, and the absolut value of each
+component is lt 2**k. q is a rational number qd/qn,
+with 0 lt qd le qn lt beta. So q is the propability
+that any particular component of V is not zero.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, I, QLD, QLN, QLS, TL, V, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute qls=int(ql*beta).*)</font> FIRST2(QL, QLD,QLN); 
+      DQR(QLD,0,QLN, QLS,TL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*randomize.*)</font> V:=SIL; 
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> DL:=DRANN(); 
+          <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> VL:=IRAND(KL); <font color="#4169E1">ELSE</font> VL:=0; <strong><font color="#4169E1">END</font></strong>; 
+          V:=COMP(VL,V); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(V); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IVRAND; 
+
+
+<strong><font color="#4169E1">PROCEDURE KREISP</font></strong>(NL: LIST): LIST; 
+<font color="#B22222">(*Kreisteilungs polynom. n is a beta-integer gt 1.
+A is an univariate integral polynomial. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, IL, J1Y, NP, PL, PS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=1 and prepare.*)</font> 
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> J1Y:=-1; A:=LIST4(1,1,0,J1Y); RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      NP:=IFACT(NL); A:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*nl prime.*)</font> 
+      <font color="#4169E1">IF</font> RED(NP) = SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> A:=COMP2(IL,1,A); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*nl power of one prime.*)</font> ADV(NP, PL,NP); PS:=1; 
+      <font color="#4169E1">WHILE</font> (NP &lt;&gt; SIL) <font color="#4169E1">AND</font> (PL = FIRST(NP)) <font color="#4169E1">DO</font> NP:=RED(NP); 
+            PS:=PS*PL; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> NP = SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> PL-1 <font color="#4169E1">DO</font> J1Y:=IL*PS; A:=COMP2(J1Y,1,A); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*nl composite.*)</font> J1Y:=-1; A:=LIST4(NL,1,0,J1Y); IL:=1; 
+      <font color="#4169E1">WHILE</font> IL &lt; NL <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> MASREM(NL,IL) = 0 <font color="#4169E1">THEN</font> B:=KREISP(IL); A:=IPQ(1,A,B); 
+               <strong><font color="#4169E1">END</font></strong>; 
+            IL:=IL+1; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(A); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> KREISP; 
+
+
+<strong><font color="#4169E1">PROCEDURE MDVHOM</font></strong>(ML,U: LIST): LIST; 
+<font color="#B22222">(*Modular vector homomorphism. U is an integral vector.
+V is a modular vector. m is a beta-integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, V, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*map components.*)</font> US:=U; V:=SIL; 
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, UL,US); VL:=MDHOM(ML,UL); 
+            V:=COMP(VL,V); <strong><font color="#4169E1">END</font></strong>; 
+      V:=INV(V); RETURN(V); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MDVHOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE MIRAND</font></strong>(KL,QL,NL,ML: LIST): LIST; 
+<font color="#B22222">(*Matrix random. M is an integral matrix with n rows generated 
+by IVRAND(k,q,m). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, M, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call ivrand.*)</font> M:=SIL; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> V:=IVRAND(KL,QL,ML); M:=COMP(V,M); <strong><font color="#4169E1">END</font></strong>; 
+      M:=INV(M); RETURN(M); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MIRAND; 
+
+
+<strong><font color="#4169E1">PROCEDURE POWSEV</font></strong>(PL,A: LIST): LIST; 
+<font color="#B22222">(*Power of variable symmetric product with exterior vector.
+p is a beta-integer. A is an exterior vector. B is the
+symmetric product of x**p and A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, IL, JL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=() or pl=0.*)</font> 
+      <font color="#4169E1">IF</font> (PL = 0) <font color="#4169E1">OR</font> (A = SIL) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply.*)</font> B:=SIL; AS:=A; 
+      <font color="#4169E1">REPEAT</font> ADV2(AS, AL,IL,AS); JL:=ILADDC(IL,PL); B:=COMP2(JL,AL,B); 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> POWSEV; 
+
+
+<strong><font color="#4169E1">PROCEDURE UIPRES</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> CL,KL: LIST); 
+<font color="#B22222">(*Univariate integral polynomials resultant. A and B are
+univariate integral polynomials. c is the resultant of
+A and B. k is the degree of the common factor. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, AS, BP, BS, C, D, DP, EL, IL, J1Y, LL, ML, NL, SL, TL:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> CL:=0; 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare.*)</font> NL:=PDEG(A); ML:=PDEG(B); 
+      <font color="#4169E1">IF</font> NL &gt;= ML <font color="#4169E1">THEN</font> AP:=A; BP:=B; <font color="#4169E1">ELSE</font> AP:=B; BP:=A; TL:=NL; 
+         NL:=ML; ML:=TL; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*initialise.*)</font> LL:=NL-ML; KL:=ML; 
+      <font color="#4169E1">IF</font> LL = 0 <font color="#4169E1">THEN</font> C:=LIST2(1,SIL); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> LL = 1 <font color="#4169E1">THEN</font> C:=EIVFUP(BP,0); <font color="#4169E1">ELSE</font> J1Y:=LL-1; 
+            EL:=INDLST(0,J1Y); C:=UIPSIL(BP,EL); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      AS:=EIVFUP(AP,0); BS:=EIVFUP(BP,LL); D:=EIVEPR(AS,BS); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*exterior multiplication loop.*)</font> C:=EIVEPR(C,D); 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ML-1 <font color="#4169E1">DO</font> DP:=POWSEV(IL,D); C:=EIVEPR(C,DP); KL:=KL-1; 
+          <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*resultant not zero.*)</font> CL:=FIRST(C); KL:=0; 
+      <font color="#4169E1">IF</font> MASODD(LL*ML+ML-1*ML DIV 2) <font color="#4169E1">THEN</font> CL:=INEG(CL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*8*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> UIPRES; 
+
+<font color="#B22222">(*
+PROCEDURE UIPRES(A,B: LIST;  VAR CL,KL: LIST); 
+(*Univariate integral polynomials resultant. A and B are
+univariate integral polynomials. c is the resultant of
+A and B. k is the degree of the common factor. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, AS, BP, BS, C, CP, D, DP, EL, IL, J1Y, LL, ML, NL, SL, TL:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> CL:=0; 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare.*)</font> NL:=PDEG(A); ML:=PDEG(B); 
+      <font color="#4169E1">IF</font> NL &gt;= ML <font color="#4169E1">THEN</font> AP:=A; BP:=B; <font color="#4169E1">ELSE</font> AP:=B; BP:=A; TL:=NL; 
+         NL:=ML; ML:=TL; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*initialise.*)</font> LL:=NL-ML; SL:=1; KL:=ML; 
+      <font color="#4169E1">IF</font> LL = 0 <font color="#4169E1">THEN</font> C:=LIST2(1,SIL); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> LL = 1 <font color="#4169E1">THEN</font> C:=EIVFUP(BP,0); <font color="#4169E1">ELSE</font> J1Y:=LL-1; 
+            EL:=INDLST(0,J1Y); C:=UIPSIL(BP,EL); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      AS:=EIVFUP(AP,0); BS:=EIVFUP(BP,LL); D:=EIVEPR(AS,BS); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*exterior multiplication loop.*)</font> CP:=C; C:=EIVEPR(C,D); 
+      <font color="#4169E1">IF</font> MASODD(LL) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 5; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ML-1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> MASODD(IL+LL) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+          KL:=KL-1; CP:=C; DP:=POWSEV(IL,D); C:=EIVEPR(C,DP); 
+          <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 5; <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> C &lt;&gt; SIL <font color="#4169E1">THEN</font> CL:=FIRST(C); KL:=0; 
+         <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> CL:=INEG(CL); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> UIPRES; 
+*)
+<font color="#B22222">(*
+PROCEDURE UIPRES(A,B: LIST;  VAR CL,KL: LIST); 
+(*Univariate integral polynomials resultant. A and B are
+univariate integral polynomials. c is the resultant of
+A and B. k is the degree of the common factor. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BP, C, C1, C2, CP, EL, IL, J1Y, LL, ML, NL, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> CL:=0; 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare.*)</font> NL:=PDEG(A); ML:=PDEG(B); 
+      <font color="#4169E1">IF</font> NL &gt;= ML <font color="#4169E1">THEN</font> AP:=A; BP:=B; <font color="#4169E1">ELSE</font> AP:=B; BP:=A; TL:=NL; 
+         NL:=ML; ML:=TL; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*initialise.*)</font> LL:=NL-ML; SL:=1; KL:=ML+1; 
+      <font color="#4169E1">IF</font> LL = 0 <font color="#4169E1">THEN</font> C:=LIST2(1,SIL); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> LL = 1 <font color="#4169E1">THEN</font> C:=EIVFUP(BP,0); <font color="#4169E1">ELSE</font> J1Y:=LL-1; 
+            EL:=INDLST(0,J1Y); C:=UIPSIL(BP,EL); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*exterior multiplication loop.*)</font> 
+      <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> ML-1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> MASODD(IL) <font color="#4169E1">THEN</font> SL:=-SL; <strong><font color="#4169E1">END</font></strong>; 
+          KL:=KL-1; CP:=C; C1:=EIVFUP(AP,IL); J1Y:=IL+LL; 
+          C2:=EIVFUP(BP,J1Y); C:=EIVEPR(C1,C); C:=EIVEPR(C,C2); 
+          <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 5; <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> C &lt;&gt; SIL <font color="#4169E1">THEN</font> CL:=FIRST(C); 
+         <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> CL:=INEG(CL); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> UIPRES; 
+*)
+
+<strong><font color="#4169E1">PROCEDURE UIPRS1</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Univariate integral polynomials resultant 1. A and B are
+univariate integral polynomials. c is the resultant of
+A and B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, C1, C2, CL, EM, EN, J1Y, ML, NL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> CL:=0; 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(CL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*call exterior algorithms.*)</font> ML:=PDEG(B); NL:=PDEG(A); 
+      J1Y:=ML-1; EM:=INDLST(0,J1Y); J1Y:=NL-1; EN:=INDLST(0,J1Y); 
+      C1:=UIPSIL(A,EM); C2:=UIPSIL(B,EN); C:=EIVEPR(C1,C2); 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> RETURN(CL); <strong><font color="#4169E1">END</font></strong>; 
+      ADV(C, CL,C); RETURN(CL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> UIPRS1; 
+
+
+<strong><font color="#4169E1">PROCEDURE UIPSIL</font></strong>(A,EL: LIST): LIST; 
+<font color="#B22222">(*Univariate integral polynomial symmetric product with exterior index list. 
+A is an univariate integral polynomial. e is an exterior index 
+list. B is the symmetric product of A and e.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BP, FL, PL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or el=(). *)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (EL = SIL) <font color="#4169E1">THEN</font> B:=SIL; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*symmetic and antisymmetric multiplication.*)</font> ADV(EL, PL,FL); 
+      B:=EIVFUP(A,PL); 
+      <font color="#4169E1">WHILE</font> FL &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(FL, PL,FL); BP:=EIVFUP(A,PL); 
+            B:=EIVEPR(B,BP); 
+            <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> UIPSIL; 
+
+
+<strong><font color="#4169E1">PROCEDURE UIPSIV</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Univariate integral polynomial symmetric product with exterior integral vector. 
+A is an univariate integral polynomial. B is an exterior integral 
+vector. C is the symmetric product of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BS, C, C1, EL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=().*)</font> C:=SIL; 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = SIL) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply.*)</font> BS:=B; 
+      <font color="#4169E1">REPEAT</font> ADV2(BS, AL,EL,BS); C1:=UIPSIL(A,EL); 
+             <font color="#4169E1">IF</font> C1 &lt;&gt; SIL <font color="#4169E1">THEN</font> C1:=DIIPIP(C1,AL); C:=EIVSUM(C,C1); 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> BS = SIL; 
+      RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> UIPSIV; 
+
+
+<strong><font color="#4169E1">END</font></strong> DIPE.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

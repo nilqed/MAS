@@ -1,0 +1,304 @@
+
+<html>
+<head>
+<title>./sacring/SACUPFAC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACUPFAC.mi,v 1.3 1992/10/15 16:29:08 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACUPFAC.mi,v $
+ * Revision 1.3  1992/10/15  16:29:08  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:35:07  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:16:17  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACUPFAC;
+
+<font color="#B22222">(* SAC Univariate Polynomial Factorization Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASMAX;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    LIST1, SFIRST, SRED, LENGTH, INV, 
+                    FIRST, RED, COMP, ADV;
+
+FROM MASERR IMPORT ERROR, fatal; 
+
+FROM SACLIST IMPORT LIST3, CONC, CINV, ADV2, COMP2, FIRST2, 
+                    EQUAL, RED2, SECOND, LIST2;
+
+FROM SACI IMPORT IODD, IREM, IDP2, ICOMP, IPROD, IQ, 
+                 IDREM, IDPR, IDIF, IMP2, INEG;
+
+FROM SACM IMPORT MDDIF, MIHOM, MIPROD, SMFMI;
+
+FROM SACPRIM IMPORT SMPRM;
+
+FROM SACCOMB IMPORT CSFPAR, CSINT, CSUN, LEXNEX, LPERM, PERMR;
+
+FROM SACPOL IMPORT PRIME, PFDP, PDPV, PDEG, PLDCF, PTBCF, PDEGV, PINV;
+
+FROM SACIPOL IMPORT IPSIGN, IPABS, IPDMV, IPEMV, 
+                    IPSUM, IPDIF, IPIP, IPIQ, IPTRAN, 
+                    IUPTPR, IPSUMN, IPQR, IPPROD, IPQ, IPEVAL;
+
+FROM SACMPOL IMPORT VMPIP, MIPPR, MPQ, MPHOM, MPMON, MUPDER,
+                    MPSUM, MPDIF, MIUPQR, SMFMIP, MIPDIF, 
+                    MIPHOM, MIPIPR, MIPSUM;
+
+FROM SACDPOL IMPORT DPFP, DMPPRD, DMUPNR;
+
+FROM SACPGCD IMPORT IPSF, IPSCPP, IPPP, IPCPP, IPGCDC, 
+                    MUPEGC, MUPGCD;
+
+FROM SACMUFAC IMPORT MCPMV, MIUPSE, MUPBQP, MUPDDF, MUPFBL, MUPFS;
+
+
+<strong><font color="#228B22">VAR</font></strong> NPFDS: LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACUPFAC.mi,v 1.3 1992/10/15 16:29:08 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE BEGIN4</font></strong>(); 
+<font color="#B22222">(*Begin 4.  Begin4 calls Begin3, then initializes the global
+variable NPFDS.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*begin3;*)</font> NPFDS:=10; RETURN; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> BEGIN4; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPFLC</font></strong>(RL,M,I,A,L,D: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial factor list combine.  A is a non-constant
+primitive r-variate integral polynomial.  M is a positive integer.
+I is a list (d sub 1, ...,d sub r - 1) of non-negative beta-digits.
+L is a list of monic factors of A modulo M, ((x sub 1)**(d sub 1), ...
+,(x sub rl- 1)**(d sub r - 1)) such that if B is an integral factor
+of A, then H sub M,I (B) is an associate of some product of elements
+of L.  D is either 0, or a characteristic set for the possible degrees
+of integral factors of A.  LP is a list of the primitive irreducible
+integral factors of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALS, AS, BS, C, CL, CLB, CLS, CS, DL, DLS, IL, 
+     J1Y, KL, LB, LP, LS, P, PL, RLP, RS, S, SL, SS, XL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> DL:=1; C:=A; KL:=LENGTH(L); P:=PERMR(KL); 
+      LB:=LPERM(L,P); LP:=BETA; RLP:=RL-1; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare polynomial.*)</font> CL:=PLDCF(C); CLS:=PTBCF(RLP,CL); 
+      CL:=LIST2(0,CL); CS:=IPPROD(RL,CL,C); CLB:=PTBCF(RL,CS); 
+      CLS:=MIHOM(M,CLS); 
+
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*done.*)</font> 
+      <font color="#4169E1">IF</font> DL &gt; KL DIV 2 <font color="#4169E1">THEN</font> LP:=COMP(C,LP); RETURN(LP); <strong><font color="#4169E1">END</font></strong>; 
+      LS:=LB; S:=BETA; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> DL <font color="#4169E1">DO</font> S:=COMP(LS,S); LS:=RED(LS); <strong><font color="#4169E1">END</font></strong>; 
+
+<font color="#4169E1">REPEAT</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*see if s is a factor.*)</font> SS:=S; ALS:=CLS; DLS:=0; 
+      <font color="#4169E1">WHILE</font> SS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(SS, SL,SS); PL:=FIRST(SL); 
+            J1Y:=PDEG(PL); DLS:=DLS+J1Y; J1Y:=PTBCF(RL,PL); 
+            ALS:=MIPROD(M,ALS,J1Y); <strong><font color="#4169E1">END</font></strong>; 
+      ALS:=SMFMI(M,ALS); 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ((ALS = 0) <font color="#4169E1">AND</font> (CLB &lt;&gt; 0)) <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 5;*)</font> 
+         <font color="#4169E1">IF</font> ((D = 0) <font color="#4169E1">OR</font> (IODD(IDP2(D,DLS)) <font color="#B22222">(*= 1*)</font> )) 
+                    <font color="#4169E1">AND</font> ((CLB = 0) <font color="#4169E1">OR</font> (IREM(CLB,ALS) = 0)) 
+            <font color="#4169E1">THEN</font> SS:=S; AS:=CL; 
+            <font color="#4169E1">WHILE</font> SS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(SS, SL,SS); PL:=FIRST(SL); 
+                  AS:=MIPIPR(RL,M,I,AS,PL); <strong><font color="#4169E1">END</font></strong>; 
+            AS:=SMFMIP(RL,M,AS); IPQR(RL,CS,AS, BS,RS); 
+            <font color="#4169E1">IF</font> RS = 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 6;*)</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*goto*)</font>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*advance to next set.*)</font> S:=LEXNEX(S); 
+      <font color="#4169E1">UNTIL</font> S = SIL; <font color="#B22222">(*then go to 4; end;*)</font> 
+      DL:=DL+1; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 3;*)</font> 
+
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*remove a factor.*)</font> AS:=IPPP(RL,AS); LP:=COMP(AS,LP); 
+      J1Y:=PLDCF(AS); J1Y:=LIST2(0,J1Y); C:=IPQ(RL,BS,J1Y); KL:=KL-DL; 
+      <font color="#4169E1">REPEAT</font> ADV(S, SL,S); 
+             <font color="#4169E1">IF</font> SL = LB <font color="#4169E1">THEN</font> LB:=RED(LB); <font color="#4169E1">ELSE</font> XL:=RED(SL); 
+                LB:=INV(LB); SL:=RED(SL); LB:=INV(LB); SRED(SL,XL); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> S = SIL; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+<font color="#B22222">(*9*)</font> RETURN(LP); <strong><font color="#4169E1">END</font></strong> IPFLC; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPFAC</font></strong>(A: LIST;  <strong><font color="#228B22">VAR</font></strong> SL,CL,L: LIST); 
+<font color="#B22222">(*Integral univariate polynomial factorization.  A is a non-zero
+integral univariate polynomial.  s=sign(A), c=cont(A).  L is
+a list ((e1,A1), ...,(ek,Ak)), k ge 0, where each ei is a
+positive integer, e1 le e2 le  ... le ek, each A i is an ir-
+reducible positive integral univariate polynomial, and A = s * c *
+the product of A i ** ei, 1 le i le k.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AB, EL1, J1Y, L1, P, S: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute sign, content and primitive part.*)</font> 
+      IPSCPP(1,A,SL,CL,AB); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*degree zero.*)</font> 
+      <font color="#4169E1">IF</font> PDEG(A) = 0 <font color="#4169E1">THEN</font> L:=BETA; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute squarefree factorization.*)</font> S:=IPSF(1,AB); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*factor squarefree factors*)</font> S:=INV(S); L:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(S, P,S); FIRST2(P, EL1,A1); L1:=IUSFPF(A1); 
+             <font color="#4169E1">REPEAT</font> ADV(L1, A1,L1); J1Y:=LIST2(EL1,A1); L:=COMP(J1Y,L); 
+                    <font color="#4169E1">UNTIL</font> L1 = SIL; 
+             <font color="#4169E1">UNTIL</font> S = SIL; 
+      RETURN; 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IUPFAC; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPFDS</font></strong>(A: LIST;  <strong><font color="#228B22">VAR</font></strong> PL,F,C: LIST); 
+<font color="#B22222">(*Integral univariate polynomial factor degree set.  A is a non-zero
+square-free integral polynomial.  C is the intersection of
+the degree sets of factorizations over Z sub p for as many as NPFDS
+primes p (fewer only if SMPRM is exhausted or A is proved irredu-
+cible). C is represented as a characteristic set.  p is
+the least examined prime in P which gave the smallest number of
+factors, and F is the distinct degree factorization of A over Z sub p,
+unless A is shown to be irreducible, in which case p=0, F=().*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, BL, BP, CL, D, FL, G, H, HL, I, IL, J, J1Y,
+     JL, KL, L, NL, P, RL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> PL:=0; P:=SMPRM; NL:=PDEG(A); 
+      AL:=PLDCF(A); IL:=0; J:=LIST2(0,1); J1Y:=IMP2(1,NL); 
+      I:=CSUN(J1Y,1); NL:=NL+1; J1Y:=IMP2(1,NL); C:=IDIF(J1Y,1); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*try primes.*)</font> 
+      <font color="#4169E1">WHILE</font> (EQUAL(C,I) = 0) <font color="#4169E1">AND</font> (IL &lt; NPFDS) <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> PL &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+               ERROR(fatal,"prime list exhausted in IUPFDS."); 
+               RETURN; <strong><font color="#4169E1">END</font></strong>; 
+            ADV(P, RL,P); 
+            <font color="#4169E1">IF</font> IDREM(AL,RL) &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=MPHOM(1,RL,A); 
+               BP:=MUPDER(RL,B); 
+               <font color="#4169E1">IF</font> EQUAL(MUPGCD(RL,B,BP),J) = 1 <font color="#4169E1">THEN</font>
+                  BP:=MPMON(1,RL,B); G:=MUPDDF(RL,BP); H:=G; L:=BETA; 
+                  KL:=0; 
+                  <font color="#4169E1">REPEAT</font> ADV(H, HL,H); FIRST2(HL, FL,BL); CL:=PDEG(BL); 
+                         JL:=CL DIV FL; KL:=KL+JL; 
+                         <font color="#4169E1">FOR</font> SL:=1 <font color="#4169E1">TO</font> JL <font color="#4169E1">DO</font> L:=COMP(FL,L); <strong><font color="#4169E1">END</font></strong>; 
+                         <font color="#4169E1">UNTIL</font> H = SIL; 
+                  <font color="#4169E1">IF</font> KL &lt; NL <font color="#4169E1">THEN</font> PL:=RL; NL:=KL; F:=G; <strong><font color="#4169E1">END</font></strong>; 
+                  D:=CSFPAR(L); C:=CSINT(C,D); IL:=IL+1; <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*clean up.*)</font> 
+      <font color="#4169E1">IF</font> EQUAL(C,I) = 1 <font color="#4169E1">THEN</font> PL:=0; F:=BETA; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IUPFDS; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPQH</font></strong>(PL,AB,BB,SB,TB,M,C: LIST;  <strong><font color="#228B22">VAR</font></strong> A,B: LIST); 
+<font color="#B22222">(*Integral univariate polynomial quadratic Hensel lemma.  AB, BB, SB, TB
+are univariate polynomials over Z sub p, p a prime beta-integer, with
+AB*SB+BB*TB=1, and deg(TB) lt deg(AB).  C is a univariate integral
+polynomial with H sub p of C=AB*BB.  M, a positive integer, is equal
+to p**j for some positive integer j.  A and B are univariate
+polynomials over Z sub M, with H sub p of A=AB, H sub p of B=BB,
+ldcf(A)=ldcf(AB),deg(A)=deg(AB), and H sub M of C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AS, AT, BS, BT, CL, I, QL, QLS, QLT, R, RP, S, SS, ST, T, TS, TT,
+     U, U1, Y, Y1, Z, Z1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> QL:=PL; A:=AB; B:=BB; S:=SB; T:=TB; 
+      I:=LIST2(0,1); 
+      <font color="#4169E1">IF</font> QL = M <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute y,z.*)</font> R:=IPPROD(1,A,B); R:=IPDIF(1,C,R); 
+      U:=IPIQ(1,R,QL); QLS:=IPROD(QL,QL); CL:=ICOMP(QLS,M); 
+      <font color="#4169E1">IF</font> CL &gt; 0 <font color="#4169E1">THEN</font> QLT:=IQ(M,QL); AT:=MIPHOM(1,QLT,A); 
+         BT:=MIPHOM(1,QLT,B); ST:=MIPHOM(1,QLT,S); TT:=MIPHOM(1,QLT,T); 
+         <font color="#4169E1">ELSE</font> QLT:=QL; AT:=A; BT:=B; ST:=S; TT:=T; <strong><font color="#4169E1">END</font></strong>; 
+      MIUPSE(QLT,AT,BT,ST,TT,U, Y,Z); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute as,bs and check for end.*)</font> R:=IPIP(1,QL,Z); 
+      AS:=IPSUM(1,A,R); R:=IPIP(1,QL,Y); BS:=IPSUM(1,B,R); 
+      <font color="#4169E1">IF</font> CL &gt;= 0 <font color="#4169E1">THEN</font> A:=AS; B:=BS; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute y1,z1.*)</font> R:=IPPROD(1,AS,S); RP:=IPPROD(1,BS,T); 
+      R:=IPSUM(1,R,RP); R:=IPDIF(1,R,I); U1:=IPIQ(1,R,QL); 
+      MIUPSE(QL,A,B,S,T,U1, Y1,Z1); 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*compute ss,ts.*)</font> R:=IPIP(1,QL,Y1); SS:=MIPDIF(1,QLS,S,R); 
+      R:=IPIP(1,QL,Z1); TS:=MIPDIF(1,QLS,T,R); 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*advance.*)</font> QL:=QLS; A:=AS; B:=BS; S:=SS; T:=TS; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+<font color="#B22222">(*9*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> IUPQH; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPQHL</font></strong>(PL,F,M,C: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial quadratic Hensel lemma, list.  C is an
+integral univariate polynomial.  F is a list (f sub 1, ...,f sub r)
+of monic polynomials in Z sub p (x) with H sub p of C similar to the
+product of the f sub i, and gcd(f sub i,f sub j)=1 for 1 le i
+lt j le r, p a beta-prime not dividing ldcf(C).  M is a positive
+power of p.  FP is a list (fp sub 1, ...,fp sub r) of monic
+polynomials in Z sub M (x) with H sub M of C similar to the product of
+the fp sub i, H sub p of fp sub i=f sub i and deg(fp sub
+i)=deg(f sub i), for 1 le i le r.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AB, B, BB, CB, CP, FP, FS, Q, R, SB, TB:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> FP:=BETA; FS:=F; CP:=MIPHOM(1,M,C); B:=CP; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*lift factors.*)</font> 
+      <font color="#4169E1">WHILE</font> RED(FS) &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(FS, AB,FS); CB:=MIPHOM(1,PL,CP); 
+            BB:=MPQ(1,PL,CB,AB); MUPEGC(PL,AB,BB, R,SB,TB); 
+            IUPQH(PL,AB,BB,SB,TB,M,CP, A,B); FP:=COMP(A,FP); 
+            <font color="#4169E1">IF</font> RED(FS) &lt;&gt; SIL <font color="#4169E1">THEN</font> MIUPQR(M,CP,A, CP,R); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      MIUPQR(M,B,LIST2(0,PLDCF(B)), Q,R); FP:=COMP(Q,FP); FP:=INV(FP); 
+      RETURN(FP); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IUPQHL; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUSFPF</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral univariate squarefree polynomial factorization.  A is
+an integral univariate squarefree polynomial which is positive,
+primitive and of positive degree.  L is a list (A1, ...,Ak) of the
+positive irreducible factors of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL, BL, C, F, G, G1, GS, HL, L, M, ML1, NL, NL1, P,
+     PL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute distinct degree factorization f for suitable prime
+            pl, and a factor degree set c.*)</font> IUPFDS(A, PL,F,C); 
+      <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> L:=LIST1(A); RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*factor distinct degree factors.*)</font> G:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(F, P,F); FIRST2(P, NL1,A1); ML1:=PDEG(A1); 
+             <font color="#4169E1">IF</font> NL1 = ML1 <font color="#4169E1">THEN</font> G:=COMP(A1,G); <font color="#4169E1">ELSE</font>
+                G1:=MUPFBL(PL,A1); G:=CONC(G1,G); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> F = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute coefficient bound.*)</font> AL:=PLDCF(A); HL:=IPSUMN(1,A); 
+      NL:=PDEG(A); BL:=IPROD(AL,HL); BL:=IMP2(BL,NL); M:=PL; 
+      <font color="#4169E1">WHILE</font> ICOMP(M,BL) &lt;= 0 <font color="#4169E1">DO</font> M:=IDPR(M,PL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*apply Hensel construction.*)</font> GS:=IUPQHL(PL,G,M,A); 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*combine lifted factors.*)</font> L:=IPFLC(1,M,BETA,A,GS,C); RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IUSFPF; 
+
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+
+BEGIN4;
+
+<strong><font color="#4169E1">END</font></strong> SACUPFAC.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

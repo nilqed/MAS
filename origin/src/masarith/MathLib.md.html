@@ -1,0 +1,86 @@
+
+<html>
+<head>
+<title>./masarith/MathLib.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MathLib.md,v 1.2 1993/03/22 10:17:06 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) GMD 
+ * ----------------------------------------------------------------------------
+ * $Log: MathLib.md,v $
+ * Revision 1.2  1993/03/22  10:17:06  kredel
+ * This file is not part of MAS
+ *
+ * Revision 1.1  1992/01/22  15:08:08  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+DEFINITION MODULE MathLib;
+
+<font color="#B22222">(* GMD Mocka MathLIb. *)</font>
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MathLib.md,v 1.2 1993/03/22 10:17:06 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) GMD";
+
+
+  
+   <strong><font color="#4169E1">PROCEDURE sqrt</font></strong> (x : REAL) : REAL;
+      <font color="#B22222">(* calculates the square root of 'x' *)</font>
+   
+   <strong><font color="#4169E1">PROCEDURE sqrtL</font></strong> (x : LONGREAL) : LONGREAL;
+      <font color="#B22222">(* calculates the square root of 'x' *)</font>
+   
+   <strong><font color="#4169E1">PROCEDURE exp</font></strong> (x : REAL) : REAL;
+      <font color="#B22222">(* calculates 'e' to the power of 'x', 'e' Euler's number *)</font>
+  
+   <strong><font color="#4169E1">PROCEDURE expL</font></strong> (x : LONGREAL) : LONGREAL;
+      <font color="#B22222">(* calculates 'e' to the power of 'x', 'e' Euler's number *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE ln</font></strong> (x : REAL) : REAL;
+      <font color="#B22222">(* calculates natural logarithm of 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE lnL</font></strong> (x : LONGREAL) : LONGREAL;
+      <font color="#B22222">(* calculates natural logarithm of 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE sin</font></strong> (x : REAL) : REAL;
+      <font color="#B22222">(* calculates sine of 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE sinL</font></strong> (x : LONGREAL) : LONGREAL;
+      <font color="#B22222">(* calculates sine of 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE cos</font></strong> (x : REAL) : REAL;
+      <font color="#B22222">(* calculates cosine of 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE cosL</font></strong> (x : LONGREAL) : LONGREAL;
+      <font color="#B22222">(* calculates cosine of 'x' *)</font>
+  
+   <strong><font color="#4169E1">PROCEDURE arctan</font></strong> (x : REAL) : REAL;
+      <font color="#B22222">(* calculates arc tangent of 'x' *)</font>
+  
+   <strong><font color="#4169E1">PROCEDURE arctanL</font></strong> (x : LONGREAL) : LONGREAL;
+      <font color="#B22222">(* calculates arc tangent of 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE real</font></strong> (x : INTEGER) : REAL;
+      <font color="#B22222">(* converts 'x' to type 'REAL' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE realL</font></strong> (x : INTEGER) : LONGREAL;
+      <font color="#B22222">(* converts 'x' to type 'LONGREAL' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE entier</font></strong> (x : REAL) : INTEGER;
+      <font color="#B22222">(* calculates the largest integer &lt;= 'x' *)</font>
+
+   <strong><font color="#4169E1">PROCEDURE entierL</font></strong> (x : LONGREAL) : INTEGER;
+      <font color="#B22222">(* calculates the largest long integer &lt;= 'x' *)</font>
+  
+<strong><font color="#4169E1">END</font></strong> MathLib.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

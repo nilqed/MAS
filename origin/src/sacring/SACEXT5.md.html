@@ -1,0 +1,112 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT5.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT5.md,v 1.2 1992/02/12 17:34:50 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT5.md,v $
+ * Revision 1.2  1992/02/12  17:34:50  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:31  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACEXT5;
+
+<font color="#B22222">(* SAC Extensions 5 Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACEXT5.md,v 1.2 1992/02/12 17:34:50 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IPCSFB</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial coarsest squarefree basis.  A eq (A sub 1
+, ..., A sub n ), n ge 0, is a list of positive primitive integral
+polynomials in r variables, r ge 1, each of which is of positive
+degree in its main variable.  B is a coarsest squarefree basis
+for A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPDSCR</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial discriminant.  A is an integral polynomial
+in r variables, r ge 1, of degree greater than or equal to two in
+its main variable.  B is the discriminant of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPLCPP</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> C,P: LIST); 
+<font color="#B22222">(*Integral polynomial list of contents and primitive parts.
+A eq (A sub 1 , ..., A sub n ), n ge 0, is a list of integral
+polynomials in r variables, r ge 1.  C eq (C sub 1 , ..., C sub s ),
+0 le s le n, is a list such that for 1 le i le n, content(a sub i ) eq
+c sub j for some j, 1 le j le s, if and only if content(a sub i )
+has positive degree in some variable.
+P eq (P sub 1 , ..., P sub m ), 0 le m le n, is a list such that
+for 1 le i le n, PP(A sub i ) eq P sub j for some j, 1 le j le m,
+if and only if PP(a sub i ) has positive degree in its main
+variable.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPPSC</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial principal subresultant coefficients.  A and B
+are integral polynomials in r variables, r ge 1, of positive degree
+in the main variable.  P is a list of the principal subresultant
+coefficients of the second kind of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPSFBA</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial squarefree basis augmentation.  A is a
+primitive positive squarefree integral polynomial in r variables,
+r ge 1, of positive degree in its main variable.
+B eq (B sub 1 , ..., B sub s ), s ge 0, is a squarefree integral
+polynomial basis in r variables.  BS is a coarsest squarefree
+basis for (A,B sub 1 , ..., B sub s ).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ISPSFB</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral squarefree polynomial squarefree basis.  A eq (A sub 1
+, ..., A sub n ), n ge 0, is a list of positive primitive squarefree
+integral polynomials in r variables,r ge 1, each of which is of
+positive degree in its main variable.  B is a coarsest squarefree
+basis for A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IUPRC</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,R: LIST); 
+<font color="#B22222">(*Integral univariate polynomial resultant and cofactor.  A and B are
+univariate integral polynomials of positive degree.  R is the
+resultant of A and B.  C is a univariate integral polynomial such
+that for some univariate integral polynomial D, AD+BC eq R.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MUPRC</font></strong>(PL,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,RL: LIST); 
+<font color="#B22222">(*Modular univariate polynomial resultant and cofactor.  p is a
+prime beta-digit.  A and B are univariate polynomials over
+Z sub p of positive degree.  R is the resultant of A and B,
+an element of Z sub p.  C is a univariate polynomial over
+Z sub p such that for some univariate polynomial D over
+Z sub p, AD+BC eq R.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT5.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

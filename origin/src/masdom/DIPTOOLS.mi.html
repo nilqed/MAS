@@ -1,0 +1,1016 @@
+
+<html>
+<head>
+<title>./masdom/DIPTOOLS.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-04T17:59:58+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPTOOLS.mi,v 1.5 1995/11/04 17:59:58 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPTOOLS.mi,v $
+ * Revision 1.5  1995/11/04 17:59:58  pesch
+ * Changed comments violating documentation rules. Should be rewritten.
+ *
+ * Revision 1.4  1994/11/28  20:49:06  dolzmann
+ * New conversion procedures, partial derivation w.r.t. to a main variable,
+ * computation of content and primitive part ...
+ *
+ * Revision 1.3  1994/06/02  10:37:26  dolzmann
+ * New procedures DILMOC and ADPFDIP.
+ *
+ * Revision 1.2  1994/04/30  12:31:01  dolzmann
+ * Procedures PushEvord, PopEvord, PushValis, PopValis have been renamed to
+ * EvordPush, EvordPop, ValisPush, ValisPop.
+ * New procedures ADDNFDIP, ADDNFDIPD, ADDNFDIL, ADDNFDILD.
+ *
+ * Revision 1.1  1994/04/14  18:01:59  dolzmann
+ * Introduced new modules ADTOOLS and DIPTOOLS.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPTOOLS;
+
+<font color="#B22222">(* Distributive Polynomials Tools Implementation Module *)</font>
+
+FROM ADTOOLS	IMPORT	ADCAST, ADRMDD, INTDDCMP, IPDDADV;
+FROM DIPADOM	IMPORT	DILWR, DIPMOC, DIPNEG, DIPROD, DIPSUM, DIREAD,
+			DIWRIT;
+FROM DIPC	IMPORT	DILBSO, DIPBSO, DIPFMO, DIPFP, DIPINV, DIPLPM,
+			DIPMAD, DIPMCP, DIPNOV, EVORD, EVSIGN, GRLEX, IGRLEX,
+			INVLEX, LEX, PFDIP, REVILEX, REVITDG, REVLEX,
+			REVTDEG, VALIS;
+FROM MASADOM	IMPORT	ADCONV, ADDDREAD, ADDDWRIT, ADFI, ADPROD,
+			SetConvFunc, ADSIGN, ADQUOT, ADONE, ADGCD, ADNEG;
+FROM MASBIOS	IMPORT	BLINES, LISTS, SWRITE;
+FROM MASBIOSU	IMPORT	CLTIS;
+FROM MASELEM	IMPORT	GAMMAINT;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, LISTVAR,
+			RED, SFIRST, SIL, SRED;
+FROM MASERR	IMPORT	ERROR, confusion, fatal, harmless, severe, spotless;
+FROM MASSYM	IMPORT	ATOM, MEMQ;
+FROM MASSYM2	IMPORT	UWRITE;
+FROM SACLIST	IMPORT	ADV2, ADV3, ADV4, AWRITE, CCONC, CINV, CLOUT, COMP2,
+			CONC, EQUAL, FIRST3, FOURTH, LELT, LIST10, LIST2,
+			LIST3, LIST4, LIST5, MEMBER, RED2, SECOND, SLELT,
+			THIRD;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPTOOLS.mi,v 1.5 1995/11/04 17:59:58 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1994 Universitaet Passau";
+
+<strong><font color="#228B22">VAR</font></strong> EvordStack: LIST;	<font color="#B22222">(* stack to store different values of the global
+			   variable EVORD from module DIPC. *)</font>
+<strong><font color="#228B22">VAR</font></strong> ValisStack: LIST;	<font color="#B22222">(* stack to store different values of the global
+			   variable VALIS from module DIPC. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                        D A T A   S T R U C T U R E S                        *
+******************************************************************************)</font>
+
+<font color="#B22222">(* VARIABLE VECTOR.
+   A variable vector determines a subset of the variables of a
+   distributive polynomial.
+   A variable vector (w.r.t. VALIS) is a list with length n:=LENGTH(VALIS)
+   and elements in \{0,1\}. Iff the i-th element on an variable vector v is 1,
+   then the variable of position n-i+1 of VALIS is contains in the set
+   determined by v. Note that the i-th element of a variable vector
+   corresponds to the i-th element of an exponent vector.
+*)</font>
+
+
+<font color="#B22222">(******************************************************************************
+*                       V A R I A B L E   V E C T O R S                       *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE VVECFVLIST</font></strong>(v1,v2:LIST):LIST;
+<font color="#B22222">(* variable vector from variable lists.
+v1,v2 are variable lists, such that v1 is contained in v2.
+A variable vector representing v1 w.r.t. v2 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> v,r: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	r:=SIL;
+	<font color="#4169E1">WHILE</font> v2&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(v2,  v,v2);
+		<font color="#4169E1">IF</font> MEMBER(v,v1)=1 <font color="#4169E1">THEN</font>
+			r:=COMP(1,r);
+		<font color="#4169E1">ELSE</font>
+			r:=COMP(0,r);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN r;
+<strong><font color="#4169E1">END</font></strong> VVECFVLIST;
+
+<strong><font color="#4169E1">PROCEDURE VVECC</font></strong>(v:LIST):LIST;
+<font color="#B22222">(* variable vector complement.
+v is a variable vector.
+The complement of v is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> u,r: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	r:=SIL;
+	<font color="#4169E1">WHILE</font> v&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(v,  u,v);
+		<font color="#4169E1">IF</font> u=1 <font color="#4169E1">THEN</font>
+			r:=COMP(0,r);
+		<font color="#4169E1">ELSE</font>
+			r:=COMP(1,r);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(r);
+<strong><font color="#4169E1">END</font></strong> VVECC;
+
+
+<font color="#B22222">(******************************************************************************
+*                    S P E C I A L   P O L Y N O M I A L S                    *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPONE</font></strong>(d:LIST):LIST;
+<font color="#B22222">(* distributive polynomial arbitrary domain one.
+The polynomial 1 in the actual polynomial ring is returned.
+The polynomial ring is determined by the global variable VALIS and the
+domain element d. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> i: INTEGER;
+	<strong><font color="#228B22">VAR</font></strong> zev: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	zev:=SIL;
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> LENGTH(VALIS) <font color="#4169E1">DO</font> zev:=COMP(0,zev); <strong><font color="#4169E1">END</font></strong>;
+	RETURN DIPFMO(ADFI(d,1),zev);
+<strong><font color="#4169E1">END</font></strong> DIPONE;
+
+
+<font color="#B22222">(******************************************************************************
+*     D O M A I N   D E S C R I P T O R   F R O M   P O L Y N O M I A L S     *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADDDFDIP</font></strong>(p:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain descriptor from distributive polynomial.
+p is a polynomial over an arbitrary domain polynomial ring.
+The domain descriptor of the arbitrary domain is returned.
+If p=0, then 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN ADFI(coefficient,0);
+<strong><font color="#4169E1">END</font></strong> ADDDFDIP;
+
+<strong><font color="#4169E1">PROCEDURE ADDDFDIPD</font></strong>(p,d:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain descriptor from distributive polynomial or default.
+p is a polynomial over an arbitrary domain polynomial ring,
+d is a domain descriptor.
+The domain descriptor of the arbitrary domain is returned.
+If p is the zero polynomial, then the default value d is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN d; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN ADFI(coefficient,0);
+<strong><font color="#4169E1">END</font></strong> ADDDFDIPD;
+
+<strong><font color="#4169E1">PROCEDURE ADDDFDIL</font></strong>(l:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain descriptor from distributive polynomial list.
+l is a list of polynomials over an arbitrary domain polynomial ring.
+The domain descriptor of the arbitrary domain is returned.
+If l is the empty list or all polynomials in l are equal to zero,
+then 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p, coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> l=SIL <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		ADV(l,p,l);
+	<font color="#4169E1">UNTIL</font> (l=SIL) <font color="#4169E1">OR</font> (p&lt;&gt;0);
+	<font color="#4169E1">IF</font> p=SIL <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN ADFI(coefficient,0);
+<strong><font color="#4169E1">END</font></strong> ADDDFDIL;
+
+<strong><font color="#4169E1">PROCEDURE ADDDFDILD</font></strong>(l,d:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain descriptor from distributive polynomial list
+or default.
+l is a list of polynomials over an arbitrary domain polynomial ring,
+d is a domain descriptor.
+The domain descriptor of the arbitrary domain is returned.
+If l is the empty list or all polynomials in l are equal to zero,
+then 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p, coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> l=SIL <font color="#4169E1">THEN</font> RETURN d; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		ADV(l,p,l);
+	<font color="#4169E1">UNTIL</font> (l=SIL) <font color="#4169E1">OR</font> (p&lt;&gt;0);
+	<font color="#4169E1">IF</font> p=SIL <font color="#4169E1">THEN</font> RETURN d; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN ADFI(coefficient,0);
+<strong><font color="#4169E1">END</font></strong> ADDDFDILD;
+
+
+<font color="#B22222">(******************************************************************************
+*        D O M A I N   N U M B E R S   F R O M   P O L Y N O M I A L S        *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADDNFDIP</font></strong>(p:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain number from distributive polynomial.
+p is a polynomial over an arbitrary domain polynomial ring.
+The domain number of the arbitrary domain is returned.
+If p is the zero polynomial, then 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN FIRST(coefficient);
+<strong><font color="#4169E1">END</font></strong> ADDNFDIP;
+
+<strong><font color="#4169E1">PROCEDURE ADDNFDIPD</font></strong>(p,d:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain number from distributive polynomial or default.
+p is a polynomial over an arbitrary domain polynomial ring,
+d is a domain number.
+The domain number of the arbitrary domain is returned.
+If p is the zero polynomial, then the default value d is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN d; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN FIRST(coefficient);
+<strong><font color="#4169E1">END</font></strong> ADDNFDIPD;
+
+<strong><font color="#4169E1">PROCEDURE ADDNFDIL</font></strong>(l:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain number from distributive polynomial list.
+l is a list of polynomials over an arbitrary domain polynomial ring.
+The domain number of the arbitrary domain is returned.
+If l is the empty list or all polynomials in l are equal to zero,
+then 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p, coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> l=SIL <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		ADV(l,p,l);
+	<font color="#4169E1">UNTIL</font> (l=SIL) <font color="#4169E1">OR</font> (p&lt;&gt;0);
+	<font color="#4169E1">IF</font> p=SIL <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN FIRST(coefficient);
+<strong><font color="#4169E1">END</font></strong> ADDNFDIL;
+
+<strong><font color="#4169E1">PROCEDURE ADDNFDILD</font></strong>(l,d:LIST):LIST;
+<font color="#B22222">(* arbitrary domain domain number from distributive polynomial list
+or default.
+l is a list of polynomials over an arbitrary domain polynomial ring,
+d is a domain number.
+The domain number of the arbitrary domain is returned.
+If l is the empty list or all polynomials in l are equal to zero,
+then 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p, coefficient, ev, dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> l=SIL <font color="#4169E1">THEN</font> RETURN d; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		ADV(l,p,l);
+	<font color="#4169E1">UNTIL</font> (l=SIL) <font color="#4169E1">OR</font> (p&lt;&gt;0);
+	<font color="#4169E1">IF</font> p=SIL <font color="#4169E1">THEN</font> RETURN d; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,coefficient,ev,dummy);
+	RETURN FIRST(coefficient);
+<strong><font color="#4169E1">END</font></strong> ADDNFDILD;
+
+
+<font color="#B22222">(******************************************************************************
+*                  P O L Y N O M I A L   A R I T H M E T I C                  *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPPOWER</font></strong>(p,n:LIST):LIST;
+<font color="#B22222">(* distributive polynomial power. p is a distributive polynomial over an
+arbitrary domain, n is an integer. The polynomial p**n is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, d:LIST;
+	<strong><font color="#228B22">VAR</font></strong> domain: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	domain:=ADDDFDIP(p);
+	result:=DIPONE(domain);
+	d:=p;
+	<font color="#4169E1">WHILE</font> n&gt;0 <font color="#4169E1">DO</font>
+		<font color="#4169E1">WHILE</font> (n MOD 2) = 0 <font color="#4169E1">DO</font>
+			d:=DIPROD(d,d);
+			n:= n DIV 2;
+		<strong><font color="#4169E1">END</font></strong>;
+		result:=DIPROD(result,d);
+		n:=n-1;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> DIPPOWER;
+
+<strong><font color="#4169E1">PROCEDURE DILPROD</font></strong>(L:LIST;domain:LIST):LIST;
+<font color="#B22222">(* distributive polynomial list product.
+L is a list of distributive polynomials over an arbitrary domain.
+The product of all polynomials in L is returned.
+The variable domain specifies the domain of the polynomial ring.
+This is necessary to form the polynomial 1, if the list L is empty. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p,result:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> L=SIL <font color="#4169E1">THEN</font> RETURN DIPONE(domain) <strong><font color="#4169E1">END</font></strong>;
+	ADV(L,result,L);
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(L,p,L);
+		<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+		result:=DIPROD(result,p);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> DILPROD;
+
+<strong><font color="#4169E1">PROCEDURE DIPDEGI</font></strong>(p,i:LIST):LIST;
+<font color="#B22222">(* distributive polynomial degree of i-th main variable.
+p is a distributive polynomial in r variables. 0&lt;i&lt;=r is an atom.
+The degree of the i-th variable is returned. The variable are numbered
+accordingly to their occurrence in VALIS. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, c,e,md,pos,dummy:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> (p=0) <font color="#4169E1">OR</font> (p=SIL) <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	DIPMAD(p,  c,e,p);
+	pos:=LENGTH(e)-i+1;	<font color="#B22222">(* position of the exponent *)</font>
+	result:=LELT(e,pos);
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  c,e,p);
+		md:=LELT(e,pos);
+		<font color="#4169E1">IF</font> md&gt;result <font color="#4169E1">THEN</font> result:=md; <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> DIPDEGI;
+
+<strong><font color="#4169E1">PROCEDURE DILMOC</font></strong>(L:LIST):LIST;
+<font color="#B22222">(* distributive polynomial monic.
+L is a list of distributive polynomials over an arbitrary domain.
+Each polynomial is normalized in such a way, that its highest
+coefficient is 1. Note, the inverses of the highest coefficients
+must exist. Identical polynomials are deleted. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p,r: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	r:=SIL;
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(L,p,L);
+		p:=DIPMOC(p);
+		<font color="#4169E1">IF</font> MEMBER(p,r)=0 <font color="#4169E1">THEN</font>
+			r:=COMP(DIPMOC(p),r);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(r);
+<strong><font color="#4169E1">END</font></strong> DILMOC;
+
+<strong><font color="#4169E1">PROCEDURE DIPPAD</font></strong>(p,i: LIST):LIST;
+<font color="#B22222">(* distributive polynomial partial derivation.
+p is a distributive polynomial in r variables.
+0&lt;i&lt;=r is an atom.
+$\frac{\partial p}{\partial X_i}$ is returned.
+$X_i$ is the i-th element in the variable list VALIS *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c,ev,m,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  c,ev,p);
+		m:=DIMPAD(c,ev,i);
+		<font color="#4169E1">IF</font> m&lt;&gt;0 <font color="#4169E1">THEN</font>
+			result:=DIPMCP(SECOND(m),FIRST(m),result);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN DIPIMO(result);
+<strong><font color="#4169E1">END</font></strong> DIPPAD;
+
+<strong><font color="#4169E1">PROCEDURE DIMPAD</font></strong>(c,ev,i:LIST):LIST;
+<font color="#B22222">(* distributive monomial partial derivation.
+c is a arbitrary domain element.
+e is an exponent vector with r elements.
+0&lt;i&lt;=r is an atom.
+$\frac{\partial c X^{ev} }{\partial X_i}$ is returned.
+$X_i$ is the i-th element in the variable list VALIS
+The result is returned as an distributive polynomial. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> e,ep,cp,j: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ep:=SIL;
+		<font color="#B22222">(* The ordering of VALIS is inverted to the ordering in
+		   the exponent vector *)</font>
+		ev:=CINV(ev);
+		<font color="#4169E1">FOR</font> j:=1 <font color="#4169E1">TO</font> i-1 <font color="#4169E1">DO</font>
+			ADV(ev, e,ev);
+			ep:=COMP(e,ep);
+		<strong><font color="#4169E1">END</font></strong>;
+		ADV(ev, e,ev);
+		<font color="#4169E1">IF</font> e&gt;0 <font color="#4169E1">THEN</font>
+			cp:=ADPROD(c,ADFI(c,e));
+			ep:=COMP(e-1,ep);
+		<font color="#4169E1">ELSE</font>
+			RETURN 0;
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">WHILE</font> ev&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(ev, e,ev);
+			ep:=COMP(e,ep);
+		<strong><font color="#4169E1">END</font></strong>;
+	RETURN LIST2(ep,cp);
+<strong><font color="#4169E1">END</font></strong> DIMPAD;
+
+<strong><font color="#4169E1">PROCEDURE DIPCPP</font></strong>(p:LIST; <strong><font color="#228B22">VAR</font></strong> content,ppt: LIST);
+<font color="#B22222">(* distributive polynomial content and primitive part. 
+P is a distributive polynomial over an arbitrary domain.
+The following domain functions must be set:
+ADSIGN, ADONE, ADNEG, ADQUOT, ADGCD. 
+The content of p is stored in content and 
+the primitive part of P is stored in ppt. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> pp, q, c, e, revert, hcsign: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(*special case *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> content:=0; ppt:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	pp:=p;	
+	DIPMAD(pp,  content,e,pp);
+	hcsign:=ADSIGN(content);	<font color="#B22222">(* sign(HC(p)) *)</font>
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* compute content *)</font>
+	<font color="#4169E1">WHILE</font> (pp&lt;&gt;SIL) <font color="#4169E1">AND</font> (ADONE(content)&lt;&gt;1) <font color="#4169E1">DO</font>
+		DIPMAD(pp,  c,e,pp);
+		content:=ADGCD(content,c);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* choose sign of content *)</font>  
+	<font color="#4169E1">IF</font> ADSIGN(content)&lt;&gt;hcsign <font color="#4169E1">THEN</font> content:=ADNEG(content); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* compute primitive part. *)</font>
+	<font color="#4169E1">IF</font> ADONE(content)=1 <font color="#4169E1">THEN</font> ppt:=p; RETURN; <strong><font color="#4169E1">END</font></strong>;
+	pp:=p;
+	q:=SIL;
+	<font color="#4169E1">WHILE</font> pp&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(pp,  c,e,pp);
+		c:=ADQUOT(c,content);
+		q:=DIPMCP(c,e,q);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* reorder the result and return it *)</font>
+	ppt:=DIPIMO(q);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> DIPCPP;
+
+<strong><font color="#4169E1">PROCEDURE DIPPCPP</font></strong>(p:LIST; <strong><font color="#228B22">VAR</font></strong> content,ppt: LIST);
+<font color="#B22222">(* distributive polynomial pseudo content and primitive part. 
+P is a distributive polynomial over an arbitrary domain.
+The following domain functions must be set:
+ADONE, ADNEG, ADQUOT.  
+ppt is a monic polynomial, such that P=content * ppt.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> pp, q, c, e, revert, hcsign: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(*special case *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> content:=0; ppt:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	pp:=p;	
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* compute pseudo content. *)</font>
+	DIPMAD(pp,  content,e,pp);
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* compute primitive part. *)</font>
+	<font color="#4169E1">IF</font> ADONE(content)=1 <font color="#4169E1">THEN</font> ppt:=p; RETURN; <strong><font color="#4169E1">END</font></strong>;
+	pp:=p;
+	q:=SIL;
+	<font color="#4169E1">WHILE</font> pp&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(pp,  c,e,pp);
+		c:=ADQUOT(c,content);
+		q:=DIPMCP(c,e,q);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* reorder the result and return it *)</font>
+	ppt:=DIPIMO(q);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> DIPPCPP;
+
+<font color="#B22222">(******************************************************************************
+*                         T E S T   F U N C T I O N S                         *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPCNST</font></strong>(dip:LIST): BOOLEAN;
+<font color="#B22222">(* distributive polynomial is constant.
+dip is a distributive polynomial.
+True is returned iff the polynomial is constant, i.e.
+there is only one monomial and the exponent vector of the monomial
+is a tuple containing only zeroes.. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> e,c,r: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> dip=0 <font color="#4169E1">THEN</font> RETURN TRUE; <strong><font color="#4169E1">END</font></strong>;
+	ADV2(dip,e,c,r);
+	<font color="#4169E1">IF</font> r&lt;&gt;SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> EVSIGN(e)=0 <font color="#4169E1">THEN</font> RETURN TRUE; <strong><font color="#4169E1">END</font></strong>;
+	RETURN FALSE;
+<strong><font color="#4169E1">END</font></strong> DIPCNST;
+
+<strong><font color="#4169E1">PROCEDURE DIPCNSTR</font></strong>(p,v: LIST):BOOLEAN;
+<font color="#B22222">(* distributive polynomial constant relative to variables.
+p is a distributive polynomial in n variables.
+v is a variable vector.
+True is returned, iff p is constant w.r.t. to the variables in v. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c,e,f,ei,vi,vp: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN TRUE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  c,e,p);
+		vp:=v;
+		<font color="#4169E1">WHILE</font> e&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(e,  ei,e);
+			ADV(vp,  vi,vp);
+			<font color="#4169E1">IF</font> (vi=1) <font color="#4169E1">AND</font> (ei&lt;&gt;0) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN TRUE;
+<strong><font color="#4169E1">END</font></strong> DIPCNSTR;
+
+<strong><font color="#4169E1">PROCEDURE EVCNSTR</font></strong>(ev,mvars:LIST):BOOLEAN;
+<font color="#B22222">(*exponent vector constant relatively.
+ev is a exponent vector of length r.
+mvars is a variable vector of length r.
+True is returned, iff ev is constant relatively to mvars. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> e,m: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">WHILE</font> ev&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(ev,  e,ev);
+		ADV(mvars,  m,mvars);
+		<font color="#4169E1">IF</font> (mvars=1) <font color="#4169E1">AND</font> (e&lt;&gt;0) <font color="#4169E1">THEN</font>
+			RETURN FALSE;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN TRUE;
+<strong><font color="#4169E1">END</font></strong> EVCNSTR;
+
+
+<font color="#B22222">(******************************************************************************
+*                    E V O R D   /   V A L I S   S T A C K                    *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE EvordPush</font></strong>(evord: LIST);
+<font color="#B22222">(* evord push.
+evord is a value for the global variable EVORD of the module DIPC.
+The variable EVORD is set to evord.
+The old value of EVORD is stored on the to of the evord stack.
+It can be restored with the command PopEvord. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	EvordStack:=COMP(EVORD,EvordStack);
+	EVORD:=evord;
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> EvordPush;
+
+<strong><font color="#4169E1">PROCEDURE EvordPop</font></strong>();
+<font color="#B22222">(* evord pop.
+The global variable EVORD is set to the top element of the evord stack.
+The top element is deleted. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> EvordStack=SIL <font color="#4169E1">THEN</font>
+		ERROR(severe,"EvordPop: pop <font color="#4169E1">to</font> empty stack");
+	<font color="#4169E1">ELSE</font>
+		ADV(EvordStack,EVORD,EvordStack);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> EvordPop;
+
+<strong><font color="#4169E1">PROCEDURE ValisPush</font></strong>(valis: LIST);
+<font color="#B22222">(* valis push.
+valis is a value for the global variable VALIS of the module DIPC.
+The variable VALIS is set to valis.
+The old value of VALIS is stored on the to of the valis stack.
+It can be restored with the command PopValis. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ValisStack:=COMP(VALIS,ValisStack);
+	VALIS:=valis;
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> ValisPush;
+
+<strong><font color="#4169E1">PROCEDURE ValisPop</font></strong>();
+<font color="#B22222">(* valis pop.
+The global variable VALIS is set to the top element of the valis stack.
+The top element is deleted. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> ValisStack=SIL <font color="#4169E1">THEN</font>
+		ERROR(severe,"ValisPop: pop <font color="#4169E1">to</font> empty stack");
+	<font color="#4169E1">ELSE</font>
+		ADV(ValisStack,VALIS,ValisStack);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ValisPop;
+
+<font color="#B22222">(******************************************************************************
+*                    C O N V E R S I O N   R O U T I N E S                    *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILINV</font></strong>(dil,j,k:LIST):LIST;
+<font color="#B22222">(* distributive polynomial list introduce new variable. dil is a list
+of polynomials in a polynomial ring R(X1,...,Xr), 0&lt;=j&lt;r, k&gt;0. The polynomials
+are transfered into the polynomial ring R(X1,...,Xj,Y1,...,Yk,Xj+1,...,Xr).
+Be carefully, the EV of the original polynomials is (Xr,...,X1) and
+the EV of the new polynomials is (Xr,...,Xj+1,Yk,...,Y1,Xj,...,X1).
+So j+1,... are the positions of the new variables in
+VALIS but not in the exponent vectors of the polynomials. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dip,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> dil&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(dil,dip,dil);
+		result:=COMP(DIPINV(dip,j,k),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> DILINV;
+
+<strong><font color="#4169E1">PROCEDURE DIPFDIPP</font></strong>(p,NewDd:LIST;  <strong><font color="#228B22">VAR</font></strong> q, vlist: LIST);
+<font color="#B22222">(* distributive polynomial from distributive polynomial over polynomial ring.
+p is a distributive polynomial over an arbitrary domain d, which is a
+(represented recursively) polynomial ring R[U] (or more exactly R[U1][U2]...).
+A distributive polynomial over the domain with the domain descriptor
+NewDd is returned in the variable q, the varlist for q in vlist.
+It is supposed that the coefficients of the polynomial p have the
+form (id,pp,r,valis) where id is the domain identifier, pp is the
+polynomial, r is the number of variables and valis is the variable
+list for pp. No adaption to the domain elements are done.
+The global variable VALIS must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coeff, exp, dummy, pp,r,result: LIST;
+	<strong><font color="#228B22">VAR</font></strong> c,e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* special case *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> q:=0; vlist:=SIL; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* determine the variable list and the number of variables of the
+	   coefficients. *)</font>
+	DIPMAD(p,coeff,exp,dummy);
+	vlist:=FOURTH(coeff);
+	vlist:=CCONC(vlist,INV(CINV(VALIS)));
+	r:=THIRD(coeff);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* transform each monomial into a polynomial and form the result *)</font>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,coeff,exp,p);
+		<font color="#B22222">(* coeff is a recursive polynomial *)</font>
+		coeff:=DIPFP(r,ADRMDD(coeff));
+		DIPBSO(coeff);
+		<font color="#B22222">(* now coeff is in distributive representation *)</font>
+		<font color="#B22222">(* multiply the coefficient polynomial with the polynomial
+		*  (term) which is given by the exponent vector exp *)</font>
+		pp:=EVEXT(coeff,exp);
+		<font color="#B22222">(* note: each created term is unique in all terms, because
+		*  each monomial created from one recursive polynomial is
+		*  unique and the monomials of the recursive polynomials
+		*  are multiplied with a unique term, so you can use
+		*  DIPMCP and DIPBSO to construct the result. *)</font>
+		<font color="#4169E1">WHILE</font> pp&lt;&gt;SIL <font color="#4169E1">DO</font>
+			DIPMAD(pp,c,e,pp);
+			result:=DIPMCP(c,e,result);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* reorder the result and return it *)</font>
+	result:=ADPFDIP(result,NewDd);
+	DIPBSO(result);
+	q:=result;
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> DIPFDIPP;
+
+<strong><font color="#4169E1">PROCEDURE EVEXT</font></strong>(p,evx:LIST):LIST;
+<font color="#B22222">(* exponent vector extension.
+p is distributive polynomial not equal to zero.
+exv is an exponent vector.
+All exponent vectors of monomials of p are extended with evx, i.e. each
+exponent vector ev is replaced with CONC(evx,ev). *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coeff, ev, result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	result:=SIL;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* process each monomial of p *)</font>
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font> 	<font color="#B22222">(* p &lt;&gt; 0 ! *)</font>
+		DIPMAD(p,coeff,ev,p);
+		result:=DIPMCP(coeff,CCONC(evx,ev),result);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* sort the result and return it *)</font>
+	DIPBSO(result);
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> EVEXT;
+
+<strong><font color="#4169E1">PROCEDURE ADPFDIP</font></strong>(p, dd: LIST): LIST;
+<font color="#B22222">(* arbitrary domain polynomial from distributive polynomial.
+p is a distributive polynomial.
+dd is an arbitrary domain descriptor.
+All coefficients of p are casted to the domain dd. The result is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, coeff, ev: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* special case *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	result:=SIL;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* process each monomial of p *)</font>
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,coeff,ev,p);
+		result:=DIPMCP(ADCAST(coeff,dd),ev,result);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* reorder the result. *)</font>
+	<font color="#B22222">(* only the order of monomials must be inverted. But INV is not
+	admissible *)</font>
+	RETURN DIPIMO(result);
+<strong><font color="#4169E1">END</font></strong> ADPFDIP;
+
+<strong><font color="#4169E1">PROCEDURE DIPPFDIP</font></strong>(p,r,NewDd:LIST;<strong><font color="#228B22">VAR</font></strong> q,vlist: LIST);
+<font color="#B22222">(* distributive polynomial over polynomial ring from distributive polynomial.
+p is distributive polynomial over an arbitrary domain R. 0&lt;r&lt;DIPNOV(p) is a
+number of variables. NewDd is a domain descriptor. The representation of the
+polynomial p is changed. Let p in R[U1,...,Ur,X1,...Xn]. The polynomial
+p is represented as an element in the polynomial ring R[U1,...,Um][X1,...,Xn].
+NewDd must be the domain descriptor of the Ring R[U1,...,Um].
+Polynomials in the ring R[U1,...,Um] must be represented recursively.
+The new representation of the polynomial p is returned in q. The new
+list of main variables is returned in vlist. The global variable VALIS
+must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result,cvlist,v,coeff,ev,RCpol,NewEv: LIST;
+	<strong><font color="#228B22">VAR</font></strong> i:INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* special case *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> q:=0; vlist:=SIL; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* determine the variable lists. *)</font>
+	vlist:=INV(CINV(VALIS));
+	cvlist:=SIL;
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> r <font color="#4169E1">DO</font>
+		ADV(vlist,v,vlist);
+		cvlist:=COMP(v,cvlist);
+	<strong><font color="#4169E1">END</font></strong>;
+	cvlist:=INV(cvlist);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* determine the number of variables of the coefficient polynomials *)</font>
+	r:=LENGTH(cvlist);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* convert each monomial *)</font>
+	result:=SIL;
+	q:=0;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,coeff,ev,p);
+		MPPFMP(ADRMDD(coeff),ev,r,RCpol,NewEv);
+		RCpol:=ADCAST(RCpol,NewDd);
+		result:=SIL;
+		<font color="#B22222">(* form the result. *)</font>
+		<font color="#B22222">(* note: there are possibly equal terms, so DIPMCP is not
+		*  sufficient to form the result. *)</font>
+		q:=DIPSUM(q,DIPMCP(RCpol,NewEv,SIL));
+
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* sort the result polynomial according to the actual term order *)</font>
+	DIPBSO(q);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> DIPPFDIP;
+
+<strong><font color="#4169E1">PROCEDURE MPPFMP</font></strong>(Coeff,Ev,r:LIST;<strong><font color="#228B22">VAR</font></strong> RCpol,NewEv: LIST);
+<font color="#B22222">(* monomial of polynomial ring over polynomial ring from monomial of
+polynomial ring.
+Coeff is the coefficient of the monomial,
+Ev describes the term of the monomial.
+r is the number of variables, which are shifted into the coefficient ring.
+RCpol is set to the recursive represented coefficient polynomial.
+NewEv is the term of the new monomial. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> CoeffEv,dummy,Cpol,e: LIST;
+	<strong><font color="#228B22">VAR</font></strong> i: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* determine the exponent vector of coefficient and monomial. *)</font>
+	NewEv:=CINV(Ev);
+	CoeffEv:=SIL;
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> r <font color="#4169E1">DO</font>
+		ADV(NewEv,e,NewEv);
+		CoeffEv:=COMP(e,CoeffEv);
+	<strong><font color="#4169E1">END</font></strong>;
+	NewEv:=INV(NewEv);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* construct the coefficient polynomial *)</font>
+	Cpol:=SIL;
+	Cpol:=DIPMCP(Coeff,CoeffEv,Cpol);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* convert the coefficient polynomial into recursive representation. *)</font>
+	EvordPush(INVLEX);
+	PFDIP(Cpol,dummy,RCpol);
+	EvordPop();
+<font color="#B22222">(*9*)</font>	RETURN;
+<strong><font color="#4169E1">END</font></strong> MPPFMP;
+
+<strong><font color="#4169E1">PROCEDURE DIPCONV</font></strong>(p,E: LIST):LIST;
+<font color="#B22222">(* distributive polynomial conversion.
+p is a distributive polynomial over an arbitrary domain D.
+All coefficients of p are converted to the domain E.
+It is necessary, that the conversion function from the domain D to the
+domain E is available. (Set this function with SetConvFunc(D,E,f1)) *)</font>
+	<strong><font color="#228B22">VAR</font></strong> coeff,exp,result:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,coeff,exp,p);
+		coeff:=ADCONV(E,coeff);
+		result:=DIPMCP(coeff,exp,result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN DIPIMO(result);
+<strong><font color="#4169E1">END</font></strong> DIPCONV;
+
+<strong><font color="#4169E1">PROCEDURE DILCONV</font></strong>(P,E: LIST):LIST;
+<font color="#B22222">(* distributive polynomial list conversion.
+P is a list of distributive polynomials p.
+Each p is a distributive polynomial over an arbitrary domain D.
+All coefficients of p are converted to the domain E. It is necessary, that the
+ conversion function from the domain D to the domain E is available.
+(Set this function with SetConvFunc(D,E,f1)) *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p,r:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	r:=SIL;
+	<font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(P,p,P);
+		r:=COMP(DIPCONV(p,E),r);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(r);
+<strong><font color="#4169E1">END</font></strong> DILCONV;
+
+<strong><font color="#4169E1">PROCEDURE DIPFADIP</font></strong>(p: LIST):LIST;
+<font color="#B22222">(* distributive polynomial from arbitrary domain integral polynomial.
+p is an element of the arbitrary domain IP (u_1,...,u_r).
+The polynomial p is returned represented as an distributive polynomial
+over the arbitrary domain INT.*)</font>
+	<strong><font color="#228B22">VAR</font></strong> d, q, qp, r, m, e, vl: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	IPDDADV(p,  q,r,vl);
+	RETURN DIPFIP(q,r);
+<strong><font color="#4169E1">END</font></strong> DIPFADIP;
+
+<strong><font color="#4169E1">PROCEDURE DIPFIP</font></strong>(p,r: LIST):LIST;
+<font color="#B22222">(* distributive polynomial from integral polynomial.
+p is an integral polynomial, r is the number of variables of p.
+The polynomial p is returned represented as an distributive polynomial
+over the arbitrary domain INT.*)</font>
+	<strong><font color="#228B22">VAR</font></strong> d, qp, m, e, vl: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	p:=DIPFP(r,p);
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	qp:=SIL;
+	d:=INTDDCMP();
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  m,e,p);
+		qp:=DIPMCP(ADFI(d,m),e,qp);
+	<strong><font color="#4169E1">END</font></strong>;
+	DIPBSO(qp);
+	RETURN qp;
+<strong><font color="#4169E1">END</font></strong> DIPFIP;
+
+<strong><font color="#4169E1">PROCEDURE DILPFDIL</font></strong>(L,r,newdd:LIST):LIST;
+<font color="#B22222">(* distributive polynomials over polynomial ring list from distributive
+polynomial list.
+L is a list of distributive polynomials,
+r is the number of variables that are shifted in the coefficient ring,
+newdd is the domain descriptor for the new coefficient.
+For each polynomial in l the first r variables of the polynomial ring are
+shifted in the coefficient ring. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p, vl,res: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	res:=SIL;
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(L,  p,L);
+		DIPPFDIP(p,r,newdd,  p,vl);
+		res:=COMP(p,res);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(res);
+<strong><font color="#4169E1">END</font></strong> DILPFDIL;
+
+<strong><font color="#4169E1">PROCEDURE DILFDILP</font></strong>(L,NewDd:LIST):LIST;
+<font color="#B22222">(* distributive polynomial list from distributive polynomial list over
+polynomial ring list.
+L is a list of distributive polynomials over an polynomial ring.
+NewDd is a domain descriptor.
+All variables of the coefficient ring are shifted to the main variables.
+NewDd is the domain descriptor for the new coefficient ring. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> vl, q, p, result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(L,  p,L);
+		DIPFDIPP(p,NewDd,  q,vl);
+		result:=COMP(q,result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> DILFDILP;
+
+<strong><font color="#4169E1">PROCEDURE DIPCT</font></strong>(p: LIST): LIST;
+<font color="#B22222">(* distributive polynomial coefficient tuple.
+p is a univariate distributive polynomial over an arbitrary domain.
+The coefficient tuple (a_0,...,a_d) of p is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> A,i,j,coeff,exp,dummy,deg,perm,zero: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Special case. *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* determine the degree of p *)</font>
+	DIPMAD(p,  coeff,exp,dummy);
+	deg:=FIRST(exp);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Initialization. *)</font>
+	zero:=ADFI(coeff,0);
+	A:=SIL;
+	i:=deg;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* Insert each coefficient of p in the coefficient tuple. *)</font>
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  coeff,exp,p);
+		exp:=FIRST(exp);
+<font color="#B22222">(*4*)</font>		<font color="#B22222">(* Insert 0 if coefficient is omitted. *)</font>
+		<font color="#4169E1">WHILE</font> exp&lt;i <font color="#4169E1">DO</font>
+			i:=i-1;
+			A:=COMP(zero,A);
+		<strong><font color="#4169E1">END</font></strong>;
+		A:=COMP(coeff,A);
+		i:=i-1;
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font>	<font color="#B22222">(* Insert trailing zeroes. *)</font>
+	<font color="#4169E1">FOR</font> j:=i <font color="#4169E1">TO</font> 0 BY -1 <font color="#4169E1">DO</font>
+		A:=COMP(zero,A);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* Return the result. *)</font>
+	RETURN A;
+<strong><font color="#4169E1">END</font></strong> DIPCT;
+
+
+<font color="#B22222">(******************************************************************************
+*                                S O R T I N G                                *
+******************************************************************************)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIMO</font></strong>(p:LIST):LIST;
+<font color="#B22222">(* distributive polynomial inverse monomial order.
+p is a distributive polynomial.
+The order of the monomials in the polynomials p is inverted.
+The polynomial p is modified. The result is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> r,h:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	r:=SIL;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		h:=RED2(p);
+		SRED(RED(p),r);
+		r:=p;
+		p:=h;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN r;
+<strong><font color="#4169E1">END</font></strong> DIPIMO;
+
+<strong><font color="#4169E1">PROCEDURE DILIMO</font></strong>(P:LIST):LIST;
+<font color="#B22222">(* distributive polynomial list inverse monomial order.
+P is a list of distributive polynomials p.
+The order of the monomials in each p is inverted. Each p is modified to obtain
+the result. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p,r:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	r:=SIL;
+	<font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(P,p,P);
+		r:=COMP(p,r);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(r);
+<strong><font color="#4169E1">END</font></strong> DILIMO;
+
+<font color="#B22222">(******************************************************************************
+*                            M I S C E L L A N E A                            *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPXCM</font></strong>(p,mvars: LIST):LIST;
+<font color="#B22222">(* distributive polynomial extract constant monomials.
+p is a distributive polynomial in r variables.
+mvars is a variable vector.
+A polynomial is returned. This polynomial contains all
+monomials of p which are constant w.r.t. mvars. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result,c,e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  c,e,p);
+		<font color="#4169E1">IF</font> EVCNSTR(e,mvars) <font color="#4169E1">THEN</font>
+			result:=DIPMCP(result,c,e);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN DIPIMO(result);
+<strong><font color="#4169E1">END</font></strong> DIPXCM;
+
+<strong><font color="#4169E1">PROCEDURE DIPMVV</font></strong>(p: LIST):LIST;
+<font color="#B22222">(* distributive polynomial minimal variable vector.
+p is a distributive polynomial.
+A variable vector containing all variables occuring in p is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c,e,ev,v,vv,i,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> DIPNOV(p) <font color="#4169E1">DO</font>
+		result:=COMP(0,result);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  c,ev,p);
+		i:=0;
+		vv:=result;
+		<font color="#4169E1">WHILE</font> ev&lt;&gt;SIL <font color="#4169E1">DO</font>
+			i:=i+1;
+			ADV(vv,  v,vv);
+			ADV(ev,  e,ev);
+			<font color="#4169E1">IF</font> (e&lt;&gt;0) <font color="#4169E1">AND</font> (v&lt;&gt;1) <font color="#4169E1">THEN</font>
+				SLELT(result,i,1);
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> DIPMVV;
+
+<font color="#B22222">(******************************************************************************
+*                                   M A I N                                   *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+	LISTVAR(ValisStack);
+	ValisStack:=SIL;
+	LISTVAR(EvordStack);
+	EvordStack:=SIL;
+<strong><font color="#4169E1">END</font></strong> DIPTOOLS.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

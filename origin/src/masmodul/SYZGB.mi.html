@@ -1,0 +1,514 @@
+
+<html>
+<head>
+<title>./masmodul/SYZGB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-03-11T15:45:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYZGB.mi,v 1.4 1994/03/11 15:45:19 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SYZGB.mi,v $
+ * Revision 1.4  1994/03/11  15:45:19  pesch
+ * Minor changes.
+ *
+ * Revision 1.3  1992/10/15  16:29:21  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:17  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:59  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SYZGB;
+
+<font color="#B22222">(* Syzygy Groebner Base Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Author: J. Philipp, Uni Passau, 1991. *)</font>
+
+
+FROM DIPC    IMPORT DIPEVL, DIPLPM, EVLCM, VALIS, STVL, DIPNOV;
+
+FROM DIPRN   IMPORT DIRPMC, DIRPON, DIRPWR;
+
+FROM DIPRNGB IMPORT DILCPL, DILUPL, DIRLIS, DIRPNF, DIRPSP, 
+                    DIGBMI, DIGBC3, DIGBC4;
+
+FROM MASBIOS IMPORT BLINES, SWRITE;
+
+FROM MASNC   IMPORT DINPPR;
+
+FROM MASNCGB IMPORT DINLIS, DINLNF, DINLSP;
+
+FROM MASSTOR IMPORT ADV, FIRST, INV, LENGTH, LIST, LIST1, RED, SIL, 
+                    SFIRST, SRED, COMP, TIME;
+
+FROM SACLIST IMPORT AWRITE, CCONC, LWRITE, OWRITE, FIRST3, LAST;
+
+FROM SYZFUNC IMPORT BGFUP, NLBGFUP, NLSPC, NLRCSPR, RCSPR, SPC;
+
+FROM SYZHLP  IMPORT ALFA, ALFRA, EVT, NEXTPAIR,
+                    MTPLV, NORMF, PLVTM, TA, TR, WRS1, WRS2;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SYZGB.mi,v 1.4 1994/03/11 15:45:19 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE MGB</font></strong>(PM, SANZ : LIST): LIST;
+<font color="#B22222">(* Modul Groebner Base. Berechnet wird die Modul Groebner Basis fuer die
+Polynommatrix PM. Das Bit SANZ steuert die Anzeigeart. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L, PL, GB : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> LENGTH(PM) = 1 <font color="#4169E1">THEN</font> RETURN(PM); <strong><font color="#4169E1">END</font></strong>;
+    L := LENGTH(FIRST(PM));
+    PL := MTPLV(PM, L);
+    <font color="#4169E1">IF</font> LENGTH(PL) = 1 <font color="#4169E1">THEN</font>
+      PM := PLVTM(PL, L);
+      RETURN(PM);
+    <strong><font color="#4169E1">END</font></strong>;
+    ALFA(L);
+    GB := GBE(PL, SANZ, L);
+    ALFRA(L);
+    PM := PLVTM(GB, L);
+    RETURN(PM);
+<strong><font color="#4169E1">END</font></strong> MGB;
+
+
+<strong><font color="#4169E1">PROCEDURE NLMGB</font></strong>(PM, SANZ : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Modul Groebner Base. Berechnet wird die Modul Groebner 
+Basis fuer die Polynommatrix PM. Das Bit SANZ steuert die Anzeigeart. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L, PL, GB : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> LENGTH(PM) = 1 <font color="#4169E1">THEN</font> RETURN(PM); <strong><font color="#4169E1">END</font></strong>;
+    L := LENGTH(FIRST(PM));
+    PL := MTPLV(PM, L);
+    <font color="#4169E1">IF</font> LENGTH(PL) = 1 <font color="#4169E1">THEN</font>
+      PM := PLVTM(PL, L);
+      RETURN(PM);
+    <strong><font color="#4169E1">END</font></strong>;
+    ALFA(L);
+    T := TA(L, T);
+    GB := NLGBE(PL, SANZ, L, T);
+    T := TR(L, T);
+    ALFRA(L);
+    PM := PLVTM(GB, L);
+    RETURN(PM);
+<strong><font color="#4169E1">END</font></strong> NLMGB;
+
+
+<strong><font color="#4169E1">PROCEDURE GBE</font></strong>(P, TF, L : LIST): LIST;
+<font color="#B22222">(* Groebner Base with Exponent Vector Check. Berechnung der Groebner Basis 
+von P unter Beruecksichtigung des Exponentenvektors der Hoechsten Terme.
+S-Polynome werden nur bei solchen Polynomen gebildet, deren HT-Exponen-
+tenvektor in den ersten L Stellen uebereinstimmt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C, CPI, CPJ, CPP, CR, D, DL, EL, ELI, ELJ, H, IL,
+     J1Y, K, PLI, PLIP, PLJ, PP, PPP, PPR, PS, Q, QP, RL, S,
+     VL, RL1, SL, T, TR, X3, X4, XC, XH, XS, XT, YD, ZD: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare input. *)</font>  
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> PP:=P; RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      PS:=P; PPR:=SIL; 
+      <font color="#4169E1">WHILE</font> PS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PS, PLI,PS); 
+            <font color="#4169E1">IF</font> PLI &lt;&gt; 0 <font color="#4169E1">THEN</font> PLIP:=DIRPMC(PLI); SL:=DIRPON(PLIP); 
+               <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> PP:=LIST1(PLIP); RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+               PPR:=COMP(PLIP,PPR); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      PP:=INV(PPR); 
+      <font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      VL:=VALIS; 
+      <font color="#4169E1">IF</font> VL = SIL <font color="#4169E1">THEN</font> TF:=0; 
+         <font color="#4169E1">ELSE</font> RL:=DIPNOV(FIRST(PP)); RL1:=LENGTH(VL); 
+              <font color="#4169E1">IF</font> RL1 &lt; RL <font color="#4169E1">THEN</font> VL:=INV(STVL(RL-RL1)); 
+                 VL:=CCONC(VALIS,VL); <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+      T:=TIME(); XH:=0; XS:=0; X3:=0; X4:=0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct b and d. *)</font> 
+      PPR:=DIPLPM(PP); PP:=INV(PPR); 
+      DILCPL(PP, D,B); YD:=LENGTH(D); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop until no more pairs left. *)</font> 
+LOOP
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      YD:=YD-1; ADV(D, DL,D); 
+      FIRST3(DL, EL,CPI,CPJ); ADV(CPI, QP,C); 
+      PLI:=FIRST(QP); J1Y:=RED(CPJ); PLJ:=FIRST(J1Y); J1Y:=RED(CPJ); 
+      CPP:=RED(J1Y); SRED(CPJ,CPP); 
+      <font color="#4169E1">IF</font> CPP = SIL <font color="#4169E1">THEN</font> Q:=LAST(QP); SFIRST(C,Q); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*use criterions to chek if the reduction is necessary. *)</font> 
+      LOOP
+      <font color="#4169E1">IF</font> EVT(PLI, PLJ, L) &lt;&gt; 1 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      X3:=X3+1; SL:=DIGBC3(B,PLI,PLJ,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      X4:=X4+1; SL:=DIGBC4(PLI,PLJ,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*reduction step. *)</font> 
+      XS:=XS+1; S:=DIRPSP(PLI,PLJ); 
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      XH:=XH+1; H:=DIRPNF(PP,S); 
+      <font color="#4169E1">IF</font> H = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      H:=DIRPMC(H); SL:=DIRPON(H);
+      <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> PP:=LIST1(H); RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> 
+         AWRITE(TIME()-T); SWRITE(" S, "); 
+         AWRITE(XH); SWRITE(" H-POLYNOMIALS, "); 
+         AWRITE(YD); SWRITE(" PAIRS LEFT."); BLINES(0); 
+         SWRITE("H="); DIRPWR(H,VL,-1); BLINES(0); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> 
+         AWRITE(X3); SWRITE(" CRIT3,  "); 
+         AWRITE(X4); SWRITE(" CRIT4,  "); 
+         AWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1);  
+         <strong><font color="#4169E1">END</font></strong>; 
+      D:=DILUPL(H,PP,D,B); YD:=LENGTH(D);
+      EXIT <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*finish. *)</font> 
+      <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> 
+         AWRITE(TIME()-T); SWRITE(" S, "); 
+         AWRITE(XH); SWRITE(" H-POLYNOMIALS, "); 
+         AWRITE(YD); SWRITE(" PAIRS LEFT."); BLINES(0); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> 
+         AWRITE(X3); SWRITE(" CRIT3,  "); 
+         AWRITE(X4); SWRITE(" CRIT4,  "); 
+         AWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      PP:=DIGBMI(PP); 
+<font color="#B22222">(*9*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> GBE;
+
+<font color="#B22222">(* 
+PROCEDURE GBE(PL, SANZ, L : LIST): LIST;
+(* Groebner Base with Exponent Vector Check. Berechnung der Groebner Basis 
+von PL unter Beruecksichtigung des Exponentenvektors der Hoechsten Terme.
+S-Polynome werden nur bei solchen Polynomen gebildet, deren HT-Exponen-
+tenvektor in den ersten L Stellen uebereinstimmt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   SL, EL, P1, P2, PPL, B, SP, SPN, TW1, TW2, TW3, SZ, C1, C2, C3 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    DILCPL(PL, PPL, B);
+    C3 := LENGTH(PPL); SZ := TIME(); C2 := 0; C1 := 0;
+    LOOP
+      <font color="#4169E1">IF</font> PPL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+      C3 := C3 - 1;
+      NEXTPAIR(P1, P2, PPL);
+      LOOP
+        <font color="#4169E1">IF</font> EVT(P1, P2, L) &lt;&gt; 1 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+
+        <font color="#B22222">(* versuchsweise *)</font> 
+      EL:=EVLCM(DIPEVL(P1),DIPEVL(P2));
+      SL:=DIGBC3(B,P1,P2,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      SL:=DIGBC4(P1,P2,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#B22222">(* versuchs ende *)</font> 
+
+        C2 := C2 + 1;
+        SP := DIRPSP(P1, P2);
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                           SWRITE(<font color="#666666">' sec.  0-MGB '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        C1 := C1 + 1;
+        TW1 := DIRPNF(PL, SP);
+        <font color="#4169E1">IF</font> TW1 = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                           SWRITE(<font color="#666666">' sec.  0-RedMGB '</font>);
+                           BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#B22222">(* SPN := DIRPMC(SP); fehler ??????????????? *)</font>
+        SPN := DIRPMC(TW1);
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> SWRITE("GBE, NF: "); OWRITE(SPN); BLINES(1); <strong><font color="#4169E1">END</font></strong>;
+        TW2 := DIRPON(SPN);
+        <font color="#4169E1">IF</font> TW2 = 1 <font color="#4169E1">THEN</font>
+          PL := CCONC(PL, LIST1(SPN)); <font color="#B22222">(* ??????????? *)</font>
+          RETURN(PL);
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec.  Neu-MGB '</font>);
+                         BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+        PPL := DILUPL(SPN, PL, PPL, B ); C3 := LENGTH(PPL);
+        EXIT;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#B22222">(* PL := DIRLIS(PL); *)</font>
+    PL:=DIGBMI(PL);
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> GBE;
+*) 
+
+<strong><font color="#4169E1">PROCEDURE GBF</font></strong>(PL, SANZ: LIST; <strong><font color="#228B22">VAR</font></strong> GBTM : LIST): LIST;
+<font color="#B22222">(* Groebner Base with Factors. Groebner Basis Berechnung mit Faktoren.
+Waehrend des Programmdurchlaufs wird die ''Entstehungsgeschichte'' der
+Groebner Basis von PL dokumentiert, d.h. jedes neu hinzugenommene
+Basispolynom wird dargestellt durch Faktoren GBTM bezogen auf die
+Ausgangspolynome. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P1, P2, PPL, B, SP, SP1, SPAK, SPN, SPFL, SZ, C1, C2, C3, TW2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    NORMF(PL, GBTM);
+    DILCPL(PL, PPL, B);
+    C3 := LENGTH(PPL); SZ := TIME(); C2 := 0; C1 := 0;
+    LOOP
+      <font color="#4169E1">IF</font> PPL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+      C3 := C3 - 1;
+      NEXTPAIR(P1, P2, PPL);
+      LOOP
+        C2 := C2 + 1;
+        SPC(P1, P2, SPFL, SP);
+        SP1 := SP;
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+             SWRITE(<font color="#666666">' sec.  0 '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        C1 := C1 + 1;
+        SPAK := RCSPR(PL, SP);
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+             SWRITE(<font color="#666666">' sec.  0-Red '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPN := DIRPMC(SP);
+        TW2 := DIRPON(SPN);
+        GBTM := BGFUP(P1, P2, SP, SPN, SPFL, PL, SPAK, GBTM);
+        <font color="#4169E1">IF</font> TW2 = 1 <font color="#4169E1">THEN</font>
+          PL := CCONC(PL, LIST1(SPN));
+          RETURN(PL);
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec.  Neu '</font>); 
+                         BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+        PPL := DILUPL(SPN, PL, PPL, B ); C3 := LENGTH(PPL);
+        EXIT;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> GBF;
+
+
+<strong><font color="#4169E1">PROCEDURE GBEF</font></strong>(PL, SANZ, L : LIST; <strong><font color="#228B22">VAR</font></strong> GBTM : LIST): LIST;
+<font color="#B22222">(* Groebner Base with Exponent Vector Check and Factors. Kombination der
+Eigenschaften der Funktionen GBE und GBF. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P1, P2, PPL, B, SPFL, SP, SP1, SZ, C1, C2, C3, SPN, SPAK, 
+      TW2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    NORMF(PL, GBTM);
+    DILCPL(PL, PPL, B);
+    C3 := LENGTH(PPL); SZ := TIME(); C2 := 0; C1 := 0;
+    LOOP
+      <font color="#4169E1">IF</font> PPL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+      C3 := C3 - 1;
+      NEXTPAIR(P1, P2, PPL);
+      LOOP
+        <font color="#4169E1">IF</font> EVT(P1, P2, L) &lt;&gt; 1 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+        C2 := C2 + 1;
+        SPC(P1, P2, SPFL, SP);
+        SP1 := SP;
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec.  0 '</font>); 
+                           BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        C1 := C1 + 1;
+        SPAK := RCSPR(PL, SP);
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec.  0-Red '</font>);
+                           BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPN := DIRPMC(SP);
+        TW2 := DIRPON(SPN);
+        GBTM := BGFUP(P1, P2, SP, SPN, SPFL, PL, SPAK, GBTM);
+        <font color="#4169E1">IF</font> TW2 = 1 <font color="#4169E1">THEN</font>
+          PL := CCONC(PL, LIST1(SPN));
+          RETURN(PL);
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec.  Neu '</font>); 
+                         BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+        PPL := DILUPL(SPN, PL, PPL, B ); C3 := LENGTH(PPL);
+        EXIT;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> GBEF;
+
+
+<strong><font color="#4169E1">PROCEDURE NLGBE</font></strong>(PL, SANZ, L : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Groebner Base with Exponent Vector Check. Berechnung der
+Groebner Basis von PL unter Beruecksichtigung des Exponentenvektors der
+Hoechsten Terme. S-Polynome werden nur bei solchen Polynomen gebildet, deren
+HT-Exponentenvektor in den ersten L Stellen uebereinstimmt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P1, P2, PPL, B, SP, SPN, SZ, C1, C2, C3, TW1, TW2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    DILCPL(PL, PPL, B);
+    C3 := LENGTH(PPL); SZ := TIME(); C2 := 0; C1 := 0;
+    LOOP
+      <font color="#4169E1">IF</font> PPL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+      C3 := C3 - 1;
+      NEXTPAIR(P1, P2, PPL);
+      LOOP
+        <font color="#4169E1">IF</font> EVT(P1, P2, L) &lt;&gt; 1 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+        C2 := C2 + 1;
+        SP := DINLSP(T, P1, P2);
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                           SWRITE(<font color="#666666">' sec.  0-MGB '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        C1 := C1 + 1;
+        SPN := DINLNF(T, PL, SP);
+        <font color="#4169E1">IF</font> SPN = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                           SWRITE(<font color="#666666">' sec.  0-RedMGB '</font>);
+                           BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPN := DIRPMC(SPN);
+        TW2 := DIRPON(SPN);
+        <font color="#4169E1">IF</font> TW2 = 1 <font color="#4169E1">THEN</font>
+          PL := CCONC(PL, LIST1(SPN));
+          RETURN(PL);
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                         SWRITE(<font color="#666666">' sec.  Neu-MGB '</font>);
+                         BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+        PPL := DILUPL(SPN,PL,PPL,B); C3 := LENGTH(PPL);
+        EXIT;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+    PL := DINLIS(T, PL);
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> NLGBE;
+
+
+<strong><font color="#4169E1">PROCEDURE NLGBF</font></strong>(PL, SANZ: LIST; <strong><font color="#228B22">VAR</font></strong> GBTM, T: LIST): LIST;
+<font color="#B22222">(* Non-Commutative Groebner Base with Factors. Groebner Basis Berechnung mit
+Faktoren. W"ahrend des Programmdurchlaufs wird die ''Entstehungsgeschichte''
+der Groebner Basis von PL dokumentiert, d.h. jedes neu hinzugenommene
+Basispolynom wird dargestellt durch Faktoren GBTM bezogen auf die
+Ausgangspolynome. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P1, P2, PPL, B, SPFL, SP, SP1, SPN, SZ, C1, C2, C3, TW1, 
+      TW2, SPAK : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    NORMF(PL, GBTM);
+    DILCPL(PL, PPL, B);
+    C3 := LENGTH(PPL); SZ := TIME(); C2 := 0; C1 := 0;
+    LOOP
+      <font color="#4169E1">IF</font> PPL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+      C3 := C3 - 1;
+      NEXTPAIR(P1, P2, PPL);
+      LOOP
+        C2 := C2 + 1;
+        NLSPC(P1, P2, SPFL, SP, T);
+        SP1 := SP;
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+             SWRITE(<font color="#666666">' sec.  0 '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        C1 := C1 + 1;
+        SPAK := NLRCSPR(PL, SP, T);
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                           SWRITE(<font color="#666666">' sec.  0-Red '</font>);
+                           BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPN := DIRPMC(SP);
+        TW2 := DIRPON(SPN);
+        GBTM := NLBGFUP(P1, P2, SP, SPN, SPFL, PL, SPAK, GBTM, T);
+        <font color="#4169E1">IF</font> TW2 = 1 <font color="#4169E1">THEN</font>
+          PL := CCONC(PL, LIST1(SPN));
+          RETURN(PL);
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+                         SWRITE(<font color="#666666">' sec.  Neu '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+        PPL := DILUPL(SPN,PL,PPL,B); C3 := LENGTH(PPL);
+        EXIT;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> NLGBF;
+
+
+<strong><font color="#4169E1">PROCEDURE NLGBEF</font></strong>(PL, SANZ, L : LIST; <strong><font color="#228B22">VAR</font></strong> GBTM, T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Groebner Base with Exponent Vector Check and Factors.
+Kombination der Eigenschaften der Funktionen NGBE und NGBF. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P1, P2, PPL, B, SPFL, SP, SP1, SPN,SZ, C1, C2, C3, TW2, SPAK : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    NORMF(PL, GBTM);
+    DILCPL(PL, PPL, B);
+    C3 := LENGTH(PPL); SZ := TIME(); C2 := 0; C1 := 0;
+    LOOP
+      <font color="#4169E1">IF</font> PPL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+      C3 := C3 - 1;
+      NEXTPAIR(P1, P2, PPL);
+      LOOP
+        <font color="#4169E1">IF</font> EVT(P1, P2, L) &lt;&gt; 1 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+        C2 := C2 + 1;
+        NLSPC(P1, P2, SPFL, SP, T);
+        SP1 := SP;
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+             SWRITE(<font color="#666666">' sec.  0 '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        C1 := C1 + 1;
+        SPAK := NLRCSPR(PL, SP, T);
+        <font color="#4169E1">IF</font> SP = 0 <font color="#4169E1">THEN</font>
+          <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+             SWRITE(<font color="#666666">' sec.  0-Red '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPN := DIRPMC(SP);
+        TW2 := DIRPON(SPN);
+        GBTM := NLBGFUP(P1, P2, SP, SPN, SPFL, PL, SPAK, GBTM, T);
+        <font color="#4169E1">IF</font> TW2 = 1 <font color="#4169E1">THEN</font>
+          PL := CCONC(PL, LIST1(SPN));
+          RETURN(PL);
+        <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 1 <font color="#4169E1">THEN</font> AWRITE(TIME() - SZ); 
+           SWRITE(<font color="#666666">' sec.  Neu '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+        <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+        PPL := DILUPL(SPN,PL,PPL,B); C3 := LENGTH(PPL);
+        EXIT;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 2 <font color="#4169E1">THEN</font> WRS1(SZ, C1, C2, C3); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> SANZ = 3 <font color="#4169E1">THEN</font> WRS2(SZ, C1, SPN, C2, SP1, C3); <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> NLGBEF;
+
+
+<strong><font color="#4169E1">END</font></strong> SYZGB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

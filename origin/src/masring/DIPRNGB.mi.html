@@ -1,0 +1,508 @@
+
+<html>
+<head>
+<title>./masring/DIPRNGB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPRNGB.mi,v 1.3 1992/10/15 16:29:39 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPRNGB.mi,v $
+ * Revision 1.3  1992/10/15  16:29:39  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:23  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:00  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPRNGB;
+
+<font color="#B22222">(* DIP Rational Groebner Bases Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, LENGTH, SFIRST, SRED,
+                    CELLS, TIME, 
+                    FIRST, RED, COMP, INV, ADV, LIST1;
+
+FROM SACLIST IMPORT FIRST3, LIST3, LIST2, COMP2, ADV2, OWRITE, 
+                    CONC, LAST, AWRITE, CINV, RED2, SECOND, EQUAL;
+
+FROM MASBIOS IMPORT BLINES, SWRITE;
+
+FROM SACRN IMPORT RNQ, RNPROD, RNINV, RNRED, RNSUM, RNABS, RNNEG;
+
+FROM DIPC IMPORT DIPFMO, DIPMCP, DIPMAD, DIPEVL, DIPNOV, 
+                 VALIS, DIPLPM, 
+                 EVCOMP, EVDIF, EVSIGN, EVLCM, EVMT, EVSUM;
+
+FROM DIPRN IMPORT DIRPDF, DIRPWR, DIRPON, DIRPMC, DIRPPR, DIRPSM;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPRNGB.mi,v 1.3 1992/10/15 16:29:39 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIGBC3</font></strong>(B,PLI,PLJ,EL: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial groebner basis criterion 3.
+B is a non empty list of reduction sets. pi and pj are
+distributive polynomials. e is the least common multiple
+of the leading exponent vectors of pi and pj. s=1 if the
+reduction of pi and pj is necessary s=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  BP, EP, PL, PP, PPI, PPJ, PS, Q, QL, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check polynomials before pli. *)</font> BP:=B; 
+      <font color="#4169E1">REPEAT</font> ADV2(BP, PS,Q,BP); ADV(PS, PL,PS); 
+             <font color="#4169E1">IF</font> PL &lt;&gt; PLI <font color="#4169E1">THEN</font> EP:=DIPEVL(PL); TL:=EVMT(EL,EP); 
+                <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> SL:=0; PP:=PS; 
+                   <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QL,PP); 
+                         <font color="#4169E1">IF</font> (QL = PLI) <font color="#4169E1">OR</font> (QL = PLJ) <font color="#4169E1">THEN</font>
+                            SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                         <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> PL = PLI; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*check polynomials between pli and plj. *)</font> PPI:=PS; 
+      <font color="#4169E1">REPEAT</font> ADV2(BP, PS,Q,BP); ADV(PS, PL,PS); 
+             <font color="#4169E1">IF</font> PL &lt;&gt; PLJ <font color="#4169E1">THEN</font> EP:=DIPEVL(PL); TL:=EVMT(EL,EP); 
+                <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> SL:=0; PP:=PPI; 
+                   <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QL,PP); 
+                         <font color="#4169E1">IF</font> QL = PL <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                         <strong><font color="#4169E1">END</font></strong>; 
+                   PP:=PS; 
+                   <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QL,PP); 
+                         <font color="#4169E1">IF</font> QL = PLJ <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                         <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> PL = PLJ; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*check polynomials after plj. *)</font> PPJ:=PS; 
+      <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(BP, PS,Q,BP); ADV(PS, PL,PS); 
+            EP:=DIPEVL(PL); TL:=EVMT(EL,EP); 
+            <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> SL:=0; PP:=PPI; 
+               <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QL,PP); 
+                     <font color="#4169E1">IF</font> QL = PL <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               PP:=PPJ; 
+               <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QL,PP); 
+                     <font color="#4169E1">IF</font> QL = PL <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      SL:=1; 
+<font color="#B22222">(*6*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> DIGBC3; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIGBC4</font></strong>(PLI,PLJ,EL: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial groebner basis criterion 4.
+pi and pj are polynomials in distributive representation.
+e is the least common multiple of the leading exponent vectors
+of pi and pj. s=1 if the reduction of pi and pj is necessary
+s=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EI, EJ, EP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compare least common multiple with product. *)</font> EI:=DIPEVL(PLI); 
+      EJ:=DIPEVL(PLJ); EP:=EVSUM(EI,EJ); SL:=EQUAL(EL,EP); SL:=1-SL; 
+<font color="#B22222">(*4*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> DIGBC4; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIGBMI</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Distributive minimal ordered groebner basis. P is a list of
+non zero rational polynomials in distributive representation
+in r variables. PP is the minimal normed and ordered
+groebner basis. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, EI, EJ, EL, PB, PI, PIP, PJ, PP, PS, QP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*length p le 1. *)</font> PP:=P; 
+      <font color="#4169E1">IF</font> (P = SIL) <font color="#4169E1">OR</font> (RED(P) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search for exponent vector .*)</font> PS:=PP; QP:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(PS, PI,PS); PB:=PS; EI:=DIPEVL(PI); TL:=0; 
+             <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font> ADV(PB, PJ,PB); 
+                   EJ:=DIPEVL(PJ); TL:=EVMT(EI,EJ); <strong><font color="#4169E1">END</font></strong>; 
+             PB:=QP; 
+             <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font> ADV(PB, PJ,PB); 
+                   EJ:=DIPEVL(PJ); TL:=EVMT(EI,EJ); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> QP:=COMP(PI,QP); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> PS = SIL; 
+      PP:=INV(QP); 
+      <font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*call dirpnf. *)</font> PS:=PP; QP:=PP; PP:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(PS, PI,PS); DIPMAD(PI, AL,EL,PIP); 
+             <font color="#4169E1">IF</font> PIP &lt;&gt; SIL <font color="#4169E1">THEN</font> PIP:=DIRPNF(QP,PIP); 
+                <font color="#4169E1">IF</font> PIP &lt;&gt; 0 <font color="#4169E1">THEN</font> PI:=DIPMCP(AL,EL,PIP); <font color="#4169E1">ELSE</font>
+                   PI:=DIPFMO(AL,EL); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             PP:=COMP(PI,PP); 
+             <font color="#4169E1">UNTIL</font> PS = SIL; 
+      PP:=INV(PP); 
+      <font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*sort. *)</font> PP:=DIPLPM(PP); 
+<font color="#B22222">(*7*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> DIGBMI; 
+
+
+<strong><font color="#4169E1">PROCEDURE DILCPL</font></strong>(P: LIST;  <strong><font color="#228B22">VAR</font></strong> D,B: LIST); 
+<font color="#B22222">(*Distributive polynomial list construct pair list.
+P is list of polynomials in distributive representation
+in r variables. B is the polynomials pairs list and
+D is the pairs list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  BP, BR, DL, EL, ELI, ELJ, PI, PJ, PP, PSS, Q, QP, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare input. *)</font> D:=BETA; B:=BETA; 
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      PP:=P; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct b and d. *)</font> BR:=BETA; PSS:=PP; 
+      <font color="#4169E1">REPEAT</font> ADV(PSS, PI,QP); Q:=LIST1(PI); BP:=COMP(0,BR); 
+             ELI:=DIPEVL(PI); 
+             <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, PJ,QP); ELJ:=DIPEVL(PJ); 
+                   EL:=EVLCM(ELI,ELJ); DL:=LIST3(EL,BP,Q); 
+                   D:=COMP(DL,D); Q:=COMP(PJ,Q); <strong><font color="#4169E1">END</font></strong>; 
+             QP:=INV(Q); SFIRST(BP,QP); BR:=COMP(Q,BP); PSS:=RED(PSS); 
+             <font color="#4169E1">UNTIL</font> PSS = SIL; 
+      D:=EVPLSO(D); B:=INV(BR); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DILCPL; 
+
+
+<strong><font color="#4169E1">PROCEDURE DILUPL</font></strong>(PL,P,D,B: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial list update pair list.
+P is list of polynomials in distributive representation
+in r variables. B is the polynomials pairs list and
+D is the pairs list. p is a non zero polynomial in
+distributive representation. D, P and B are modified.
+DP is the updated pairs list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  BP, BPP, BPPP, BR, DL, DP, EL, ELI, ELJ, H, PB, PLI, PLJ, PP, PPP,
+     PPR, PS, Q, QS, SL, T, TF, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare input, update p. *)</font> BP:=B; DP:=BETA; PP:=P; H:=PL; 
+      PS:=LIST1(H); PPR:=LAST(PP); SRED(PPR,PS); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*update b and d. *)</font> ELJ:=DIPEVL(H); 
+      <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BP, QS,BPP); ADV(BPP, Q,BPPP); 
+            PLI:=FIRST(QS); ELI:=DIPEVL(PLI); EL:=EVLCM(ELI,ELJ); 
+            DL:=LIST3(EL,BP,Q); DP:=COMP(DL,DP); PS:=LIST1(H); 
+            SRED(Q,PS); SFIRST(BPP,PS); BP:=BPPP; <strong><font color="#4169E1">END</font></strong>; 
+      DP:=EVPLSO(DP); DP:=EVPLM(D,DP); PS:=LIST1(H); PB:=LIST2(PS,PS); 
+      BR:=LAST(B); SRED(BR,PB); 
+<font color="#B22222">(*6*)</font> RETURN(DP); <strong><font color="#4169E1">END</font></strong> DILUPL; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRGBA</font></strong>(PL,P,TF: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial groebner basis augmentation.
+P is a groebner basis of polynomials in distributive
+representation in r variables. p is a polynomial. PP is the
+groebner basis of (P,p). t is the trace flag.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C, CPI, CPJ, CPP, D, DL, EL, ELI, ELJ, H, J1Y, K, PLI,
+     PLJ, PLS, PP, PSS, Q, QL, QLS, QP, RL, S, SL, T, X3, X4,
+     XC, XD, XH, XS, XT, YD: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare input. *)</font> T:=TIME(); XH:=0; PLS:=DIRPMC(PL); 
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> PP:=LIST1(PLS); RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      PLS:=DIRPNF(P,PLS); J1Y:=CINV(P); PP:=INV(J1Y); 
+      <font color="#4169E1">IF</font> PLS = 0 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      PLS:=DIRPMC(PLS); 
+      <font color="#4169E1">IF</font> VALIS = SIL <font color="#4169E1">THEN</font> TF:=0 <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct b and d. *)</font> D:=BETA; B:=BETA; PSS:=PP; 
+      <font color="#4169E1">WHILE</font> PSS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PSS, QL,PSS); QLS:=LIST1(QL); 
+            B:=COMP2(QLS,QLS,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=INV(B); D:=DILUPL(PLS,PP,D,B); XD:=LENGTH(D); YD:=XD; X3:=0; 
+      X4:=0; XS:=0; XH:=0; XT:=TIME(); XC:=CELLS(); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop. *)</font> 
+LOOP
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      YD:=YD-1; ADV(D, DL,D); FIRST3(DL, EL,CPI,CPJ); ADV(CPI, QP,C); 
+      PLI:=FIRST(QP); J1Y:=RED(CPJ); PLJ:=FIRST(J1Y); J1Y:=RED(CPJ); 
+      CPP:=RED(J1Y); SRED(CPJ,CPP); 
+      <font color="#4169E1">IF</font> CPP = SIL <font color="#4169E1">THEN</font> Q:=LAST(QP); SFIRST(C,Q); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*use criterions to chek if the reduction is necessary. *)</font> 
+LOOP
+      X3:=X3+1; SL:=DIGBC3(B,PLI,PLJ,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      X4:=X4+1; SL:=DIGBC4(PLI,PLJ,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*reduction step. *)</font> XS:=XS+1; S:=DIRPSP(PLI,PLJ); 
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      XH:=XH+1; H:=DIRPNF(PP,S); 
+      <font color="#4169E1">IF</font> H = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      H:=DIRPMC(H); 
+      <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> 
+         AWRITE(TIME()-T); SWRITE(" S, "); 
+         AWRITE(XH); SWRITE(" H-POLYNOMIALS, "); 
+         AWRITE(LENGTH(D)); SWRITE(" PAIRS LEFT."); BLINES(0); 
+         SWRITE("H="); DIRPWR(H,VALIS,-1); BLINES(0); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> 
+         AWRITE(X3); SWRITE(" CRIT3,  "); 
+         AWRITE(X4); SWRITE(" CRIT4,  "); 
+         AWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      D:=DILUPL(H,PP,D,B); XD:=LENGTH(D);  
+EXIT; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*finish. *)</font> 
+      <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> 
+         AWRITE(TIME()-T); SWRITE(" S, "); 
+         AWRITE(XH); SWRITE(" H-POLYNOMIALS, "); 
+         AWRITE(LENGTH(D)); SWRITE(" PAIRS LEFT."); BLINES(0);
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> 
+         AWRITE(X3); SWRITE(" CRIT3,  "); 
+         AWRITE(X4); SWRITE(" CRIT4,  "); 
+         AWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      PP:=DIGBMI(PP); 
+<font color="#B22222">(*9*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> DIRGBA; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRGBR</font></strong>(P,TF: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial groebner basis recursion.
+P is a list of rational polynomials in distributive representation
+in r variables. PP is the groebner basis of P. t is the
+trace flag.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  PL, PP, PS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call dirgba. *)</font> PP:=BETA; PS:=P; 
+      <font color="#4169E1">WHILE</font> PS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PS, PL,PS); 
+            PP:=DIRGBA(PL,PP,TF); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> DIRGBR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLIS</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial list irreducible set.
+P is a list of distributive rational polynomials,
+PP is the result of reducing each p element of P modulo P-(p)
+until no further reductions are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, FL, IRR, LL, PL, PP, PS, RL, RP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> PP:=P; PS:=BETA; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); PL:=DIRPMC(PL); 
+            <font color="#4169E1">IF</font> PL &lt;&gt; 0 <font color="#4169E1">THEN</font> PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RP:=PS; PP:=INV(PS); LL:=LENGTH(PP); IRR:=0; 
+      <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE("***NF IRR= "); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*reduce until all polynomials are irreducible. *)</font> 
+      LOOP ADV(PP, PL,PP); EL:=DIPEVL(PL); PL:=DIRPNF(PP,PL); 
+           AWRITE(IRR); SWRITE(", "); 
+           <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> LL:=LL-1; 
+              <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">ELSE</font> FL:=DIPEVL(PL); SL:=EVSIGN(FL); 
+              <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> PP:=LIST1(PL); EXIT <strong><font color="#4169E1">END</font></strong>; 
+              SL:=EQUAL(EL,FL); 
+              <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> IRR:=IRR+1; <font color="#4169E1">ELSE</font> IRR:=0; 
+                 PL:=DIRPMC(PL); <strong><font color="#4169E1">END</font></strong>; 
+              PS:=LIST1(PL); SRED(RP,PS); RP:=PS; <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> IRR = LL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> BLINES(0); 
+<font color="#B22222">(*6*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> DIRLIS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPGB</font></strong>(P,TF: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomials groebner basis.
+P is a list of rational polynomials in distributive representation
+in r variables. PP is the groebner basis of P. t is the
+trace flag.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C, CPI, CPJ, CPP, CR, D, DL, EL, ELI, ELJ, H, IL,
+     J1Y, K, PLI, PLIP, PLJ, PP, PPP, PPR, PS, Q, QP, RL, S,
+     SL, T, TR, X3, X4, XC, XH, XS, XT, YD, ZD: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare input. *)</font>  
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> PP:=P; RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      PS:=P; PPR:=BETA; 
+      <font color="#4169E1">WHILE</font> PS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PS, PLI,PS); 
+            <font color="#4169E1">IF</font> PLI &lt;&gt; 0 <font color="#4169E1">THEN</font> PLIP:=DIRPMC(PLI); SL:=DIRPON(PLIP); 
+               <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> PP:=LIST1(PLIP); RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+               PPR:=COMP(PLIP,PPR); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      PP:=INV(PPR); 
+      <font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> VALIS = SIL <font color="#4169E1">THEN</font> TF:=0 <strong><font color="#4169E1">END</font></strong>;
+      T:=TIME(); XH:=0; XS:=0; X3:=0; X4:=0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*get irreducible basis. construct b and d. *)</font> 
+      <font color="#4169E1">IF</font> TF &lt; 0 <font color="#4169E1">THEN</font> TF:=-TF; TR:=TIME(); CR:=CELLS(); 
+         PP:=DIRLIS(PP); 
+         SWRITE("***IRR TIME="); AWRITE(TIME()-TR); 
+         SWRITE(", CELLS="); AWRITE(CELLS()-CR); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+      PPR:=DIPLPM(PP); PP:=INV(PPR); 
+      DILCPL(PP, D,B); YD:=LENGTH(D); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop until no more pairs left. *)</font> 
+LOOP
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      YD:=YD-1; ADV(D, DL,D); 
+      FIRST3(DL, EL,CPI,CPJ); ADV(CPI, QP,C); 
+      PLI:=FIRST(QP); J1Y:=RED(CPJ); PLJ:=FIRST(J1Y); J1Y:=RED(CPJ); 
+      CPP:=RED(J1Y); SRED(CPJ,CPP); 
+      <font color="#4169E1">IF</font> CPP = SIL <font color="#4169E1">THEN</font> Q:=LAST(QP); SFIRST(C,Q); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*use criterions to chek if the reduction is necessary. *)</font> 
+      LOOP
+      X3:=X3+1; SL:=DIGBC3(B,PLI,PLJ,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      X4:=X4+1; SL:=DIGBC4(PLI,PLJ,EL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*reduction step. *)</font> 
+      XS:=XS+1; S:=DIRPSP(PLI,PLJ); 
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      XH:=XH+1; H:=DIRPNF(PP,S); 
+      <font color="#4169E1">IF</font> H = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      H:=DIRPMC(H); SL:=DIRPON(H);
+      <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> PP:=LIST1(H); RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> 
+         AWRITE(TIME()-T); SWRITE(" S, "); 
+         AWRITE(XH); SWRITE(" H-POLYNOMIALS, "); 
+         AWRITE(YD); SWRITE(" PAIRS LEFT."); BLINES(0); 
+         SWRITE("H="); DIRPWR(H,VALIS,-1); BLINES(0); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> 
+         AWRITE(X3); SWRITE(" CRIT3,  "); 
+         AWRITE(X4); SWRITE(" CRIT4,  "); 
+         AWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1);  
+         <strong><font color="#4169E1">END</font></strong>; 
+      D:=DILUPL(H,PP,D,B); YD:=LENGTH(D);
+      EXIT <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*finish. *)</font> 
+      <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> 
+         AWRITE(TIME()-T); SWRITE(" S, "); 
+         AWRITE(XH); SWRITE(" H-POLYNOMIALS, "); 
+         AWRITE(YD); SWRITE(" PAIRS LEFT."); BLINES(0); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> 
+         AWRITE(X3); SWRITE(" CRIT3,  "); 
+         AWRITE(X4); SWRITE(" CRIT4,  "); 
+         AWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      PP:=DIGBMI(PP); 
+<font color="#B22222">(*9*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> DIRPGB; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPNF</font></strong>(P,S: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial normal form. P is a list
+of non zero polynomials in distributive rational
+representation in r variables. S is a distributive rational
+polynomial. R is a polynomial such that S is reducible to R
+modulo P and R is in normalform with respect to P. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, BL, FL, PP, Q, QA, QE, QP, R, SL, SP, TA, TE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*s=0. *)</font> 
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> R:=S; RETURN(R); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*reduction step.*)</font> R:=SIL; SP:=S; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE,SP); 
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); DIPMAD(Q, QA,QE,QP); SL:=EVMT(TE,QE); 
+                    <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> R:=DIPMCP(TE,TA,R); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); BL:=RNQ(TA,QA); 
+                   AP:=DIPFMO(BL,FL); APP:=DIRPPR(QP,AP); 
+                   SP:=DIRPDF(SP,APP); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> SP = 0; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> R = SIL <font color="#4169E1">THEN</font> R:=0; <font color="#4169E1">ELSE</font> R:=INV(R); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(R); <strong><font color="#4169E1">END</font></strong> DIRPNF; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSP</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial S polynomial. A and B are
+rational polynomials in distributive representation. C is
+the S polynomial of A and B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, APP, BL, BP, BPP, C, CL, EL, EL1, FL, FL1, GL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0. *)</font> C:=0; 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      DIPMAD(A, AL,EL,AP); DIPMAD(B, BL,FL,BP); 
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*reduction. *)</font> GL:=EVLCM(EL,FL); 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> FL1:=EVDIF(GL,FL); CL:=RNNEG(AL); 
+         BPP:=DIPFMO(CL,FL1); C:=DIRPPR(BP,BPP); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> BP = SIL <font color="#4169E1">THEN</font> EL1:=EVDIF(GL,EL); APP:=DIPFMO(BL,EL1); 
+         C:=DIRPPR(AP,APP); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case. *)</font> EL1:=EVDIF(GL,EL); FL1:=EVDIF(GL,FL); 
+      APP:=DIPFMO(BL,EL1); BPP:=DIPFMO(AL,FL1); 
+      APP:=DIRPPR(AP,APP); BPP:=DIRPPR(BP,BPP); 
+      C:=DIRPDF(APP,BPP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DIRPSP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVPLM</font></strong>(L1,L2: LIST): LIST; 
+<font color="#B22222">(*Exponent vector pair-list merge.  L1 and L2 are pair-lists
+of exponent vectors in non decreasing order.  L is the merge 
+of L1 and L2. L1 and L2 are modified to produce L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, EL1, EL2, L, LP, LP1, LP2, TL: LIST; 
+     eoz: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*l1 or l2 null.*)</font> 
+      <font color="#4169E1">IF</font> L1 = SIL <font color="#4169E1">THEN</font> L:=L2; RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> L2 = SIL <font color="#4169E1">THEN</font> L:=L1; RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> LP1:=L1; LP2:=L2; AL1:=FIRST(L1); AL2:=FIRST(L2); 
+      EL1:=FIRST(AL1); EL2:=FIRST(AL2); TL:=EVCOMP(EL1,EL2); 
+      <font color="#4169E1">IF</font> TL &gt; 0 <font color="#4169E1">THEN</font> L:=L2; LP:=L2; LP2:=RED(L2); eoz:=FALSE
+         <font color="#4169E1">ELSE</font> L:=L1; LP:=L1; LP1:=RED(L1); eoz:=TRUE <strong><font color="#4169E1">END</font></strong>; 
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*last element from l1.*)</font> 
+<font color="#4169E1">IF</font> eoz <font color="#4169E1">THEN</font> 
+      <font color="#4169E1">IF</font> LP1 = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      AL1:=FIRST(LP1); EL1:=FIRST(AL1); TL:=EVCOMP(EL1,EL2); 
+      <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> LP:=LP1; LP1:=RED(LP1); eoz:=TRUE 
+         <font color="#4169E1">ELSE</font> SRED(LP,LP2); LP:=LP2; LP2:=RED(LP2); eoz:=FALSE <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*last element from l2.*)</font> 
+<font color="#4169E1">ELSE</font>
+      <font color="#4169E1">IF</font> LP2 = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      AL2:=FIRST(LP2); EL2:=FIRST(AL2); TL:=EVCOMP(EL1,EL2); 
+      <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> SRED(LP,LP1); LP:=LP1; LP1:=RED(LP1); eoz:=TRUE 
+         <font color="#4169E1">ELSE</font> LP:=LP2; LP2:=RED(LP2); eoz:=FALSE <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*left over.*)</font> 
+      <font color="#4169E1">IF</font> LP1 = SIL <font color="#4169E1">THEN</font> SRED(LP,LP2); <font color="#4169E1">ELSE</font> SRED(LP,LP1); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> EVPLM; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVPLSO</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Exponent vector pair-list sort. A is a list of pair-lists. B is 
+the result of sorting A into non-decreasing order. Pairs of
+elements of A are merged. The list A is modified to produce B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, AP, APP, APPP, B, BP, BPP, C, CP, CPP, CS, EL1, EL2,
+     TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nothing to do. *)</font> 
+      <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (RED(A) = SIL) <font color="#4169E1">THEN</font> B:=A; RETURN(B); 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct pairs. *)</font> C:=LIST1(0); CS:=C; AP:=A; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL1,APP); 
+             <font color="#4169E1">IF</font> APP = SIL <font color="#4169E1">THEN</font> BP:=AP; <font color="#4169E1">ELSE</font> ADV(APP, AL2,APPP); 
+                EL1:=FIRST(AL1); EL2:=FIRST(AL2); TL:=EVCOMP(EL1,EL2); 
+                <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> BP:=AP; SRED(APP,SIL); <font color="#4169E1">ELSE</font> BP:=APP; 
+                   SRED(APP,AP); SRED(AP,SIL); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             C:=COMP(BP,C); AP:=APPP; 
+             <font color="#4169E1">UNTIL</font> (APP = SIL) <font color="#4169E1">OR</font> (AP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*circle and merge. *)</font> ADV(C, BP,C); SFIRST(CS,BP); SRED(CS,C); 
+      ADV(C, B,CP); 
+      <font color="#4169E1">WHILE</font> C &lt;&gt; CP <font color="#4169E1">DO</font> ADV(CP, BP,CPP); BPP:=EVPLM(B,BP); 
+            SFIRST(C,BPP); SRED(C,CPP); C:=CPP; ADV(C, B,CP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> EVPLSO; 
+
+
+<strong><font color="#4169E1">END</font></strong> DIPRNGB.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

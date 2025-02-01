@@ -1,0 +1,986 @@
+
+<html>
+<head>
+<title>./maslog/PQBASE.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T14:36:48+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: PQBASE.mi,v 1.2 1996/05/19 07:53:50 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: PQBASE.mi,v $
+ * Revision 1.2  1996/05/19 07:53:50  dolzmann
+ * Bug fixed in pqsimplifyaf.
+ *
+ * Revision 1.1  1994/11/28  21:10:04  dolzmann
+ * New modules PQBASE.md and PQBASE.mi:
+ *   Procedures for the manipulating first oder formulas over the language of
+ *   ordered rings.
+ * New modules RQEPRRC.md and RQEPRRC.mi:
+ *   Procedures for the real quantifier elimination.
+ * New modules TFORM.md and TFORM.mi:
+ *   Procedures for the computation of type formulas.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE PQBASE;
+<font color="#B22222">(* Polynomial Equation Base Definition Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			     P Q B A S E				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Abstract: Implementation of the language of ordered fields. The             *
+*           implementation use distributive polynomials over an arbitrary     *
+*           domain for the representation of terms.                           *
+******************************************************************************)</font>
+
+FROM DIPADOM	IMPORT	DILWR, DIPNEG, DIPROD, DIPSUM, DIREAD, DIWRIT;
+FROM DIPC	IMPORT	DILBSO, DIPBSO, DIPERM, DIPFMO, DIPINV, DIPLPM,
+			DIPMAD, DIPMCP, DIPNOV, EVORD, EVSIGN, GRLEX,
+			IGRLEX, INVLEX, LEX, REVILEX, REVITDG, REVLEX,
+			REVTDEG, VALIS, DIPLBC;
+FROM DIPTOOLS	IMPORT	DIPCNST, DIPIMO, DIPMVV;
+FROM DOMRN	IMPORT	DOMRND; 
+FROM LISTTOOLS	IMPORT	LSRCHQ; 
+FROM MASADOM	IMPORT	ADDDREAD, ADDDWRIT, ADFI, ADGCD, ADNEG, ADONE,
+			ADQUOT, ADSIGN, ADWRIT,ADPCPP;
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, CWRITE, DIBUFF, DIGIT,
+			LETTER, LISTS, MASORD, SWRITE;
+FROM MASELEM	IMPORT	GAMMAINT;
+FROM MASERR	IMPORT	ERROR, confusion, fatal, harmless, severe, spotless;
+FROM MASLISPU	IMPORT	Declare, PROCF1, PROCF2; 
+FROM MASLOG	IMPORT	FORAPPLYAT, FORELIMXOPS, FORMKCNF, FORMKDNF,
+			FORMKPOS, FORMKPRENEX, FORMKPRENEX1, FORMKVD,
+			FORREPAFS, FORSIMPLIFY, FORSIMPLIFYP, FORSMPL;
+FROM MASSET	IMPORT	SetUnion; 
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, LISTVAR,
+			RED, SFIRST, SIL, SRED;
+FROM MASSYM	IMPORT	ATOM, MEMQ;
+FROM MASSYM2	IMPORT	ASSOC, ASSOCQ, EXPLOD, SREAD1, SYMBOL, UREAD, UWRIT1,
+			UWRITE;			
+FROM MLOGBASE	IMPORT	ANY, EQUIV, ET, EXIST, FALSUM, FORALL, FORGARGS,
+			FORGLVAR, FORGOP, FORMKBINOP, FORMKFOR, FORMKLVAR,
+			FORMKUNOP, FORMKVAR, FORPARGS, FORPBINOP, FORPFOR,
+			FORPQUANT, FORPUNOP, FORPUNOPA, FORPVAR, FORVTENTER,
+			FORVTGET, IMP, NON, REP, TVAR, VEL, VERUM, XOR; 
+FROM MLOGIO	IMPORT	FORIREAD, FORPPRT, FORPREAD, FORTEXW, KEYREAD;
+FROM SACLIST	IMPORT	ADV2, ADV3, ADV4, AWRITE, CCONC, CINV, CLOUT, COMP2,
+			CONC, EQUAL, FIRST2, LIST10, LIST2, LIST3, LIST4,
+			LIST5, MEMBER, SECOND, SLELT, SUFFIX, THIRD;
+FROM SACPOL	IMPORT	VLREAD, VLWRIT; 
+FROM SACSET	IMPORT	LBIBMS;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: PQBASE.mi,v 1.2 1996/05/19 07:53:50 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong> BbfParserSyms: LIST;<font color="#B22222">(* The symbol table for the symbols of atomic
+				   formulas. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> NewVariables: INTEGER;
+<font color="#B22222">(******************************************************************************
+*                        A T O M I C   F O R M U L A S                        *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqmkaf</font></strong>(rel:LIST;pol:LIST):LIST;
+<font color="#B22222">(* polynomial equation make atomic formula.
+rel is a relation, pol is a
+polynomial, the atomic formula (rel,id) is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST2(rel,pol);
+<strong><font color="#4169E1">END</font></strong> pqmkaf;
+
+<strong><font color="#4169E1">PROCEDURE pqpaf</font></strong>(af:LIST; <strong><font color="#228B22">VAR</font></strong> rel,pol:LIST);
+<font color="#B22222">(* polynomial equation parse atomic formula. af is an atomic
+formula; the relation symbol of af is in rel returned; the polynomial of af
+is in id returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FIRST2(af,rel,pol);
+<strong><font color="#4169E1">END</font></strong> pqpaf;
+
+<strong><font color="#4169E1">PROCEDURE pqgrel</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation get relation symbol. af is an atomic formula. The 
+relation symbol of af is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FIRST(af);
+<strong><font color="#4169E1">END</font></strong> pqgrel;
+
+<strong><font color="#4169E1">PROCEDURE pqgpol</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation get relation symbol. af is an atomic formula. The 
+polynomial of af is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN SECOND(af);
+<strong><font color="#4169E1">END</font></strong> pqgpol;
+
+<strong><font color="#4169E1">PROCEDURE pqatom</font></strong>(phi:LIST):BOOLEAN;
+<font color="#B22222">(* polynomial equation atomic formula. pqatom returns true
+iff phi has the structure of an atomic formula, i.e. phi is a list 
+with two elements, and the first element of the list is an valid
+relation symbol. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel,id: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> (phi=SIL) <font color="#4169E1">OR</font> ATOM(phi) <font color="#4169E1">OR</font> SYMBOL(phi) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	ADV(phi,rel,phi);
+	<font color="#4169E1">IF</font> (phi=SIL) <font color="#4169E1">OR</font> (RED(phi)&lt;&gt;SIL) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;	
+	RETURN 	(rel=EQU) <font color="#4169E1">OR</font> (rel=NEQ) <font color="#4169E1">OR</font> (rel=LES) <font color="#4169E1">OR</font> (rel=GRE) <font color="#4169E1">OR</font> 
+		(rel=GRQ) <font color="#4169E1">OR</font> (rel=LSQ);
+<strong><font color="#4169E1">END</font></strong> pqatom;
+
+<strong><font color="#4169E1">PROCEDURE pqprtaf</font></strong>(af: LIST);
+<font color="#B22222">(* polynomial equation print atomic formula. The atomic formula
+af is printed.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel,pol:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(af,rel,pol,af);
+	SWRITE("[");
+	DIWRIT(pol,VALIS);
+	<font color="#4169E1">IF</font>	rel=EQU <font color="#4169E1">THEN</font> SWRITE(" = 0]");
+	ELSIF	rel=NEQ <font color="#4169E1">THEN</font> SWRITE(" &lt;&gt; 0]");
+	ELSIF	rel=LES <font color="#4169E1">THEN</font> SWRITE(" &lt; 0]");
+	ELSIF	rel=GRE <font color="#4169E1">THEN</font> SWRITE(" &gt; 0]");
+	ELSIF	rel=LSQ	<font color="#4169E1">THEN</font> SWRITE(" &lt;= 0]");
+	ELSIF	rel=GRQ	<font color="#4169E1">THEN</font> SWRITE(" &gt;= 0]");
+	<font color="#4169E1">ELSE</font> 	ERROR(severe,"pqprtaf: unknown relation symbol");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pqprtaf ;
+
+<strong><font color="#4169E1">PROCEDURE pqtexwaf</font></strong>(af: LIST);
+<font color="#B22222">(* polynomia equation tex write atomic formula. The atomic formula af 
+is written to the output stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel,pol:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(af,rel,pol,af);
+	BLINES(0);
+	DITEX(pol,VALIS);
+	<font color="#4169E1">IF</font>	rel=EQU <font color="#4169E1">THEN</font> SWRITE("=0");
+	ELSIF	rel=NEQ <font color="#4169E1">THEN</font> SWRITE("\neq 0");
+	ELSIF	rel=LES <font color="#4169E1">THEN</font> SWRITE("&lt;0");
+	ELSIF	rel=GRE	<font color="#4169E1">THEN</font> SWRITE("&gt;0");
+	ELSIF	rel=LSQ <font color="#4169E1">THEN</font> SWRITE("\leq 0");
+	ELSIF	rel=GRQ <font color="#4169E1">THEN</font> SWRITE("\geq 0");
+	<font color="#4169E1">ELSE</font>	ERROR(severe,"pqtexwaf: unknown relation symbol");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pqtexwaf ;
+
+<strong><font color="#4169E1">PROCEDURE DITEX</font></strong>(A,V: LIST); 
+<font color="#B22222">(*Distributive polynomial write. A is a distributive
+polynomial in r variables, r ge 0. V is a variable list
+for A. A is written in the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AS, E, EL, FL, ES, LL, RL, SL, TL, VL, VS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AWRITE(A); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      RL:=DIPNOV(A); 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> ADWRIT(DIPLBC(A)); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; FL:=0; <font color="#B22222">(* LL:=DIPNBC(A); 
+      IF LL &gt; 1 THEN SWRITE("("); END;  *)</font>
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,E,AS); SWRITE(" "); SL:=ADSIGN(AL); 
+             <font color="#4169E1">IF</font> FL &lt;&gt; 0 <font color="#4169E1">THEN</font> 
+                <font color="#4169E1">IF</font> SL &gt; 0 <font color="#4169E1">THEN</font> SWRITE("+"); <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> SWRITE("-"); AL:=ADNEG(AL); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>;
+             FL:=1; TL:=EVSIGN(E); 
+             <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> ADWRIT(AL); 
+                <font color="#4169E1">ELSE</font> SL:=ADONE(AL); 
+                <font color="#4169E1">IF</font> SL &lt;&gt; 1 <font color="#4169E1">THEN</font> ADWRIT(AL); <strong><font color="#4169E1">END</font></strong>; 
+                ES:=CINV(E); VS:=V; 
+                <font color="#4169E1">REPEAT</font> ADV(ES, EL,ES); ADV(VS, VL,VS); 
+                       <font color="#4169E1">IF</font> EL &gt; 0 <font color="#4169E1">THEN</font> SWRITE(" "); CLOUT(VL); 
+                          <font color="#4169E1">IF</font> EL &gt; 1 <font color="#4169E1">THEN</font> SWRITE("^<font color="#B22222">{"); 
+                             AWRITE(EL); SWRITE("}</font>"); <strong><font color="#4169E1">END</font></strong>; 
+                          <strong><font color="#4169E1">END</font></strong>; 
+                       <font color="#4169E1">UNTIL</font> ES = SIL; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      SWRITE(" "); 
+<font color="#B22222">(*      IF LL &gt; 1 THEN SWRITE(")"); END;  *)</font>
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DITEX; 
+
+<strong><font color="#4169E1">PROCEDURE pqnegaf</font></strong>(af: LIST):LIST;
+<font color="#B22222">(* negate atomic formula. af is a atomic formula. The negation of af is
+returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel, pol: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	pqpaf(af,rel,pol);
+	<font color="#4169E1">IF</font>    rel=EQU <font color="#4169E1">THEN</font> RETURN pqmkaf(NEQ,pol);
+	ELSIF rel=NEQ <font color="#4169E1">THEN</font> RETURN pqmkaf(EQU,pol);
+	ELSIF rel=GRE <font color="#4169E1">THEN</font> RETURN pqmkaf(LSQ,pol);
+	ELSIF rel=LES <font color="#4169E1">THEN</font> RETURN pqmkaf(GRQ,pol);
+	ELSIF rel=GRQ <font color="#4169E1">THEN</font> RETURN pqmkaf(LES,pol);
+	ELSIF rel=LSQ <font color="#4169E1">THEN</font> RETURN pqmkaf(GRE,pol);
+	<font color="#4169E1">ELSE</font> ERROR(severe,"pqneqaf: unknown relation symbol in atomic formula.");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pqnegaf;
+
+<strong><font color="#4169E1">PROCEDURE pqsimplifyaf</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify atomic formula. af is an atomic formula. 
+af is simplified and af the result is returned. Only the relations between 
+a constant polynomial (and zero) are evaluated. Be careful: Use only
+polynomials over an domain with a proper ADSIGN function. 
+(For example: RN, but not RF.) *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel, lhs, cnst,z,sgn,dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	pqpaf(af,rel,lhs);
+	<font color="#4169E1">IF</font> (lhs=0) <font color="#4169E1">AND</font> ( (rel=EQU) <font color="#4169E1">OR</font> (rel=LSQ) <font color="#4169E1">OR</font> (rel=GRQ) ) <font color="#4169E1">THEN</font>
+		RETURN VERUM;
+	ELSIF (lhs=0) <font color="#4169E1">AND</font> ( (rel=NEQ) <font color="#4169E1">OR</font> (rel=LES) <font color="#4169E1">OR</font> (rel=GRE) ) <font color="#4169E1">THEN</font>
+		RETURN FALSUM;
+	ELSIF DIPCNST(lhs) <font color="#4169E1">THEN</font> 
+		DIPMAD(lhs,cnst,z,dummy);
+		sgn:=ADSIGN(cnst);
+		<font color="#4169E1">IF</font> sgn=-1 <font color="#4169E1">THEN</font> 
+			<font color="#4169E1">IF</font> (rel=LES) <font color="#4169E1">OR</font> (rel=LSQ) <font color="#4169E1">OR</font> (rel=NEQ) <font color="#4169E1">THEN</font>
+				RETURN VERUM;
+			<font color="#4169E1">ELSE</font>
+				RETURN FALSUM;
+			<strong><font color="#4169E1">END</font></strong>;
+		ELSIF sgn=0 <font color="#4169E1">THEN</font> 
+			<font color="#4169E1">IF</font> (rel=EQU) <font color="#4169E1">OR</font> (rel=LSQ) <font color="#4169E1">OR</font> (rel=GRQ) <font color="#4169E1">THEN</font>
+				RETURN VERUM;
+			<font color="#4169E1">ELSE</font>
+				RETURN FALSUM;
+			<strong><font color="#4169E1">END</font></strong>;
+		ELSIF sgn=1 <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> (rel=GRE) <font color="#4169E1">OR</font> (rel=GRQ) <font color="#4169E1">OR</font> (rel=NEQ) <font color="#4169E1">THEN</font>
+				RETURN VERUM;
+			<font color="#4169E1">ELSE</font>
+				RETURN FALSUM;
+			<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">ELSE</font>
+			ERROR(severe,"pqsimplifyaf: unknown ADSIGN value");
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font>
+		lhs:=DIPINORM(lhs,rel);
+		RETURN pqmkaf(rel,lhs);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pqsimplifyaf;
+
+<strong><font color="#4169E1">PROCEDURE DIPINORM</font></strong>(p: LIST; <strong><font color="#228B22">VAR</font></strong> rel:LIST):LIST;
+<font color="#B22222">(* distributive polynomial over integers normalize.
+p is a distributive polynomial over domain DOMI.
+The coefficients of the polynomial
+are divided by the content of the polyomial p. The highest coefficient 
+is normalized to an positive number. The relation rel is adapted.*)</font>
+	<strong><font color="#228B22">VAR</font></strong> content,ppt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADPCPP(p,content,ppt);
+	<font color="#4169E1">IF</font> ADSIGN(content)=-1 <font color="#4169E1">THEN</font> rel:=negrel(rel); <strong><font color="#4169E1">END</font></strong>;
+	RETURN ppt; 
+<strong><font color="#4169E1">END</font></strong> DIPINORM;
+
+<strong><font color="#4169E1">PROCEDURE negrel</font></strong>(rel: LIST):LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font>    rel=EQU <font color="#4169E1">THEN</font> RETURN EQU;
+	ELSIF rel=NEQ <font color="#4169E1">THEN</font> RETURN NEQ;
+	ELSIF rel=GRE <font color="#4169E1">THEN</font> RETURN LES;
+	ELSIF rel=LES <font color="#4169E1">THEN</font> RETURN GRE;
+	ELSIF rel=GRQ <font color="#4169E1">THEN</font> RETURN LSQ;
+	ELSIF rel=LSQ <font color="#4169E1">THEN</font> RETURN GRQ;
+	<font color="#4169E1">ELSE</font> ERROR(severe,"negrel: unknown relation symbol in atomic formula.");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> negrel;
+
+<strong><font color="#4169E1">PROCEDURE pqreadaf</font></strong>():LIST;
+<font color="#B22222">(* polynomial equation read atomic formula. An atomic formula is read from
+the input stream. The global variable DOMAIN must be set.
+Atomic fomulas have the following syntax: "&lt;dip&gt; &lt;rel&gt; &lt;dip&gt;",
+where dip are distributive polynomials over an arbitrary domain 
+with the variable list VALIS and rel is one of the sympols 
+&lt;,=,&gt;,&gt;=,&lt;&gt;,&lt;=,#,LES,EQU,GRE,LSQ,NEQ,GRQ,LEQ,GEQ. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> lhs,rhs,rel,sym:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	lhs:=DIREAD(VALIS,DOMAIN);
+	rel:=KEYREAD();
+	sym:=ASSOCQ(rel,BbfParserSyms);
+	<font color="#4169E1">IF</font> sym=SIL <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"pqreadaf: unknown relation symbol.");
+		RETURN pqmkaf(EQU,lhs); <font color="#B22222">(* dummy *)</font>
+	<font color="#4169E1">ELSE</font>
+		rel:=FIRST(sym);
+	<strong><font color="#4169E1">END</font></strong>;
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c=MASORD("]") <font color="#4169E1">THEN</font> <font color="#B22222">(* for abbreviation only; not clean, but it is 
+					correct. *)</font>
+		BKSP();
+		rhs:=0;
+	<font color="#4169E1">ELSE</font>
+		BKSP();
+		rhs:=DIREAD(VALIS,DOMAIN);
+		lhs:=DIPSUM(lhs,DIPNEG(rhs));
+	<strong><font color="#4169E1">END</font></strong>; 	
+	RETURN pqmkaf(rel,lhs);
+<strong><font color="#4169E1">END</font></strong> pqreadaf;
+
+<strong><font color="#4169E1">PROCEDURE InitBbfParser</font></strong>();
+<font color="#B22222">(* Initialize black-box formula parser. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	BbfParserSyms:=SIL;
+	LISTVAR(BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("&lt;&gt;"),NEQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("#"),NEQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("NEQ"),NEQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("="),EQU,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("!="),EQU,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("EQU"),EQU,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("&gt;"),GRE,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("GRE"),GRE,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("&lt;"),LES,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("LES"),LES,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("&lt;="),LSQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("LSQ"),LSQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("LEQ"),LSQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("&gt;="),GRQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("GRQ"),GRQ,BbfParserSyms);
+	BbfParserSyms:=COMP2(LISTS("GEQ"),GRQ,BbfParserSyms);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> InitBbfParser;
+
+<strong><font color="#4169E1">PROCEDURE pqsmart</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation atomic formula smart simplification. 
+phi is a conjunction or a disjunction over atomic formulas. 
+All atomic formulas with identical left hand sides are contracted to 
+one atomic formula. A conjunction or a disjunction over these contracted
+formulas is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> op,L,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPFOR(phi,op,L);
+	<font color="#4169E1">IF</font> op=ET <font color="#4169E1">THEN</font>
+		result:=ContractEt(L);
+	ELSIF op=VEL <font color="#4169E1">THEN</font>
+		result:=ContractVel(L); 
+	<font color="#4169E1">ELSE</font> 
+		BLINES(0);
+		UWRIT1(op);
+		ERROR(spotless,"pqsmart: operator symbol <font color="#4169E1">not</font> valid.");
+		RETURN phi;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (result=VERUM) <font color="#4169E1">OR</font> (result=FALSUM) <font color="#4169E1">THEN</font>
+		RETURN result;
+	<font color="#4169E1">ELSE</font>
+		RETURN FORMKFOR(op,result);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pqsmart;
+
+<strong><font color="#4169E1">PROCEDURE ContractVel</font></strong>(l:LIST):LIST;
+<font color="#B22222">(* contract vel. l is a list of atomic formulas. These atomic formulas are 
+interpreted as arguments of a disjunction. The relations of atomic formulas 
+with equal left hand sides are contracted. A new list of atomic formulas
+is returned. Every two atomic formulas in the returned list have differenet
+left hand sides. For the returned list r the following 
+equivalent holds VEL(l) &lt;=&gt; VEL(r) *)</font>
+	<strong><font color="#228B22">VAR</font></strong> mem, atom, rel, term, rels, fpoint, result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	mem:=SIL;
+	<font color="#4169E1">WHILE</font> l&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(l,atom,l);
+		pqpaf(atom,rel,term);
+		fpoint:=ASSOCQ(term,mem);
+		<font color="#4169E1">IF</font> fpoint=SIL <font color="#4169E1">THEN</font>
+			mem:=COMP2(term,rel,mem);
+		<font color="#4169E1">ELSE</font>
+			rels:=FIRST(fpoint);
+			rels:=PQCRELOR(rels,rel);
+		 	SFIRST(fpoint,rels);		
+			<font color="#4169E1">IF</font> rels=VERUM <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> mem&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV2(mem,term,rel,mem);
+		result:=COMP(pqmkaf(rel,term),result)
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> ContractVel;
+
+<strong><font color="#4169E1">PROCEDURE PQCRELOR</font></strong>(left,right:LIST):LIST;
+<font color="#B22222">(* contract relations or. left and right are relations or the 
+constants VERUM, FALSUM, the contraction of
+left an right are returned. (this procedure works correct, even if left=SIL.)
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> 	left=SIL	<font color="#4169E1">THEN</font> RETURN right;
+	ELSIF	right=SIL	<font color="#4169E1">THEN</font> RETURN left;
+	ELSIF	left=FALSUM	<font color="#4169E1">THEN</font> RETURN right;
+	ELSIF	right=FALSUM	<font color="#4169E1">THEN</font> RETURN left;
+	ELSIF	(left=VERUM) <font color="#4169E1">OR</font> (right=VERUM) <font color="#4169E1">THEN</font> RETURN VERUM;
+	ELSIF	left=right	<font color="#4169E1">THEN</font> RETURN right;
+	<strong><font color="#4169E1">END</font></strong>;
+	
+	<font color="#4169E1">IF</font>   left=LES <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LSQ <font color="#4169E1">THEN</font> RETURN LSQ;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN LSQ;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN NEQ;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRE <font color="#4169E1">THEN</font> RETURN NEQ;
+		<font color="#4169E1">ELSE</font> ERROR(severe,"PQCRELOR: unknown relation symbol.");
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=LSQ <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN LSQ;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN LSQ;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRE <font color="#4169E1">THEN</font> RETURN VERUM;
+		<font color="#4169E1">ELSE</font> ERROR(severe,"PQCRELOR: unknown relation symbol.");
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=EQU <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN LSQ;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN LSQ;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN GRQ;
+		ELSIF right=GRE <font color="#4169E1">THEN</font> RETURN GRQ;
+		<font color="#4169E1">ELSE</font> ERROR(severe,"PQCRELOR: unknown relation symbol.");
+		<strong><font color="#4169E1">END</font></strong>;	
+	ELSIF left=NEQ <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN NEQ;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRE <font color="#4169E1">THEN</font> RETURN NEQ;
+		<font color="#4169E1">ELSE</font> ERROR(severe,"PQCRELOR: unknown relation symbol.");
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=GRQ <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN GRQ;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=GRE <font color="#4169E1">THEN</font> RETURN GRQ;
+		<font color="#4169E1">ELSE</font> ERROR(severe,"PQCRELOR: unknown relation symbol.");
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=GRE <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN NEQ;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN VERUM;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN GRQ;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN NEQ;
+		ELSIF  right=GRQ <font color="#4169E1">THEN</font> RETURN GRQ;
+		<font color="#4169E1">ELSE</font> ERROR(severe,"PQCRELOR: unknown relation symbol.");
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font> 
+		ERROR(severe,"PQCRELOR: unknown relation symbol.");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PQCRELOR;
+
+<strong><font color="#4169E1">PROCEDURE ContractEt</font></strong>(l:LIST):LIST;
+<font color="#B22222">(* contract vel. l is a list of atomic formulas. These atomic formulas are 
+interpreted
+as arguments of a disjunction. The relations of atomic formulas with equal
+identifiers are contracted. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> mem,atom,rel,term,rels,fpoint,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	mem:=SIL;
+	<font color="#4169E1">WHILE</font> l&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(l,atom,l);
+		pqpaf(atom,rel,term);
+		fpoint:=ASSOCQ(term,mem);
+		<font color="#4169E1">IF</font> fpoint=SIL <font color="#4169E1">THEN</font>
+			mem:=COMP2(term,rel,mem);
+		<font color="#4169E1">ELSE</font>
+			rels:=FIRST(fpoint);
+			rels:=PQCRELAND(rels,rel);
+		 	SFIRST(fpoint,rels);		
+			<font color="#4169E1">IF</font> rels=FALSUM <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> mem&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV2(mem,term,rel,mem);
+		result:=COMP(pqmkaf(rel,term),result)
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> ContractEt;
+
+<strong><font color="#4169E1">PROCEDURE PQCRELAND</font></strong>(left,right:LIST):LIST;
+<font color="#B22222">(* contract relations or. left and right are relations, the contraction of
+left an right are returned. (this procedure works correct, even if left=SIL.)
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> left=SIL <font color="#4169E1">THEN</font> RETURN right; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> left=right <font color="#4169E1">THEN</font> RETURN right; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> left=FALSUM <font color="#4169E1">THEN</font> RETURN right; <strong><font color="#4169E1">END</font></strong>;
+	
+	<font color="#4169E1">IF</font>   left=LES <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LSQ <font color="#4169E1">THEN</font> RETURN LES;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN LES;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN FALSUM;
+		<font color="#4169E1">ELSE</font> <font color="#B22222">(* right=GRE *)</font> RETURN FALSUM;
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=LSQ <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN LES;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN EQU;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN LES;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN EQU;
+		<font color="#4169E1">ELSE</font> <font color="#B22222">(* right=GRE *)</font> RETURN FALSUM;
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=EQU <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN EQU;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN EQU;
+		<font color="#4169E1">ELSE</font> <font color="#B22222">(* right=GRE *)</font> RETURN FALSUM;
+		<strong><font color="#4169E1">END</font></strong>;	
+	ELSIF left=NEQ <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN LES;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN LES;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=GRQ <font color="#4169E1">THEN</font> RETURN GRE;
+		<font color="#4169E1">ELSE</font> <font color="#B22222">(* right=GRE *)</font> RETURN GRE;
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF left=GRQ <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN EQU;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN EQU;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN GRE;
+		<font color="#4169E1">ELSE</font> <font color="#B22222">(* right=GRE *)</font> RETURN GRE;
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font> <font color="#B22222">(* left=GRE *)</font>
+		<font color="#4169E1">IF</font>    right=LES <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=LSQ <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=EQU <font color="#4169E1">THEN</font> RETURN FALSUM;
+		ELSIF right=NEQ <font color="#4169E1">THEN</font> RETURN GRE;
+		<font color="#4169E1">ELSE</font> <font color="#B22222">(* right=GRQ *)</font> RETURN GRE;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PQCRELAND;
+
+<font color="#B22222">(******************************************************************************
+*                  U N I Q U E   V A R I A B L E   N A M E S                  *
+******************************************************************************)</font>
+
+<font color="#B22222">(******************************************************************************
+In the following section we implement a procedure to generate unique names
+of variables. This procedure is necessary to transform arbitrary 
+formulas in prenex normal form. The basic procedure is implemented
+in the MASLOG module. But there is a serious problem to apply this
+procedure for the PQ-system. We use distributive polynomials of the
+DIP polynomiall system to represent
+terms. But duriong the generation of unique names, we must introduce
+new variables. The DIP sytsem uses exponent vectors with a positional 
+correspondence to the variables. Each exponent vector in each polynomial  
+of the formula must have the same length. So you cannot introduce trivially
+a new variable. For a solving of this problem we introduce temporary a new
+representation of atomic formulas. These representation has the following
+form:
+
+	(PQSAF Substitutions AtomicFormula)
+
+PQSAF is a MAS symbol to mark the special form of atomic formulas. 
+Substitutions is a list of lists with two atoms. 
+Atomic formula is a normal atomic formula of the PQ-system.
+Each pair (o,n) of the list Substitutions has the meaning 
+move a exponent form position l-o+1 to position l-n+1, where l=LENGTH(VALIS).
+The list of substitution must be applied in inverse order of their 
+occurence in the list Substitutions.
+
+As variable names, we uses the names from VALIS. 
+
+The procedure works as follows:
+
+1. Declare all variables from VALIS as maslog variables.
+2. Call FORMKVD
+3. Transform the special representation of the returned formula in standard 
+	representation.
+
+We use a global variable NewVariables to count the number of new introduced
+variables.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE EnterVariableNames</font></strong>(valis: LIST);
+<font color="#B22222">(* enter variable names. valis is a variable list. All names from valis
+are entered in the MASLOG symbol table. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>,dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">WHILE</font> valis&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(valis,  <strong><font color="#228B22">var</font></strong>,valis);
+		dummy:=FORVTENTER(<strong><font color="#228B22">var</font></strong>);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> EnterVariableNames;
+	
+<strong><font color="#4169E1">PROCEDURE pqlsvars</font></strong>(af: LIST):LIST;
+<font color="#B22222">(* polynomial equation list variables. af is a atomic formula. 
+All variables used in af is returned as a list of MASLOG variables. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel, pol, <strong><font color="#228B22">var</font></strong>, result, valis, vv, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	pol:=pqgpol(af);
+	<font color="#4169E1">IF</font> pol=0 <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	vv:=INV(DIPMVV(pol));	<font color="#B22222">(* valis has the inverted order of ev *)</font>
+	valis:=VALIS;
+	<font color="#4169E1">WHILE</font> vv&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(vv,  v,vv);
+		ADV(valis,  <strong><font color="#228B22">var</font></strong>,valis);
+		<font color="#4169E1">IF</font> v=1 <font color="#4169E1">THEN</font>
+			result:=COMP(FORMKVAR(FORVTENTER(<strong><font color="#228B22">var</font></strong>),ANY),result);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> pqlsvars;
+
+<strong><font color="#4169E1">PROCEDURE PqsafSubstvar</font></strong>(af,old,new:LIST):LIST;
+<font color="#B22222">(* polynomial equation special atomic formula substitute variable. 
+phi is an atomic formula. 
+old and new are variables. The variable old is substituted with new in af. 
+VALIS is modified!!!! *)</font>
+	<strong><font color="#228B22">VAR</font></strong> oIndex, nIndex,name,<strong><font color="#228B22">type</font></strong>,n: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPVAR(old,  name,<strong><font color="#228B22">type</font></strong>);
+	oIndex:=LSRCHQ(FORVTGET(name),VALIS);
+	FORPVAR(new,  name,<strong><font color="#228B22">type</font></strong>);
+	nIndex:=LSRCHQ(FORVTGET(name),VALIS);
+	<font color="#4169E1">IF</font> nIndex=0 <font color="#4169E1">THEN</font> 
+		NewVariables:=NewVariables+1;
+		VALIS:=SUFFIX(VALIS,FORVTGET(name));
+		nIndex:=LENGTH(VALIS);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> FORGOP(af)&lt;&gt;PQSAF <font color="#4169E1">THEN</font>
+		RETURN LIST3(PQSAF,LIST1(LIST2(oIndex,nIndex)),af);
+	<font color="#4169E1">ELSE</font>
+		RETURN LIST3(PQSAF,COMP(LIST2(oIndex,nIndex),SECOND(af)),
+			THIRD(af));
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PqsafSubstvar;
+
+<strong><font color="#4169E1">PROCEDURE PqsafNormalizeAf</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation special atomic formula normalize atomic formula. 
+af is atomic formula is special representation. The normalized representation
+is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> op, pol, rel, subst,s, o,n,i,length,perm :LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(* *)</font>	<font color="#B22222">(* Initialization *)</font>
+	op:=FORGOP(af);
+	<font color="#4169E1">IF</font> (op=VERUM) <font color="#4169E1">OR</font> (op=FALSUM) <font color="#4169E1">THEN</font> RETURN af; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op&lt;&gt;PQSAF) <font color="#4169E1">AND</font> (NewVariables=0) <font color="#4169E1">THEN</font> RETURN af; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> op=PQSAF <font color="#4169E1">THEN</font>
+		pqpaf(THIRD(af),  rel,pol);
+		subst:=SECOND(af);
+	<font color="#4169E1">ELSE</font>
+		pqpaf(af,  rel,pol);
+		subst:=SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* *)</font>	<font color="#B22222">(* introduce new variables *)</font>
+	length:=LENGTH(VALIS);
+	<font color="#4169E1">IF</font> NewVariables&gt;0 <font color="#4169E1">THEN</font>
+		pol:=DIPINV(pol,length-NewVariables+1,NewVariables);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* *)</font>	<font color="#B22222">(* generate permutation vector from substitution list *)</font>	
+	perm:=SIL;
+	<font color="#4169E1">FOR</font> i:=length <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font>
+		perm:=COMP(i,perm);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> subst&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(subst,  s,subst);
+		FIRST2(s,  o,n);
+		SLELT(perm,n,o);
+		SLELT(perm,o,n);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* *)</font>	<font color="#B22222">(* permute polynomial *)</font>
+	pol:=DIPERM(pol,perm);
+	RETURN pqmkaf(rel,pol);
+<strong><font color="#4169E1">END</font></strong> PqsafNormalizeAf;
+
+	
+<strong><font color="#4169E1">PROCEDURE PQMKVD</font></strong>(phi:LIST): LIST;
+<font color="#B22222">(* polynomial equation make variable names disjoint. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> psi: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	NewVariables:=0;
+	EnterVariableNames(VALIS);
+	psi:=FORMKVD(phi,PqsafSubstvar,pqlsvars);
+	psi:=FORAPPLYAT(psi,PqsafNormalizeAf);
+	RETURN psi;
+<strong><font color="#4169E1">END</font></strong> PQMKVD;
+
+
+<strong><font color="#4169E1">PROCEDURE vlistflvar</font></strong>(lvar:LIST):LIST;
+<font color="#B22222">(* variable list from lvar. lvar is a LVAR object. A variable list in the 
+format of the module DIPC representing the same list of 
+variables is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, <strong><font color="#228B22">var</font></strong>, name,sort: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	lvar:=FORGLVAR(lvar);
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> lvar&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(lvar,  <strong><font color="#228B22">var</font></strong>,lvar);
+		FORPVAR(<strong><font color="#228B22">var</font></strong>,name,sort);
+		result:=COMP(FORVTGET(name),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> vlistflvar;
+
+<strong><font color="#4169E1">PROCEDURE lvarfvlist</font></strong>(vlist:LIST):LIST;
+<font color="#B22222">(* lvar from variable list. vlist is a variable list in the format of the 
+DIPC-module. A LVAR object representing the same variable list is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> vlist&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(vlist,  v,vlist);
+		result:=COMP(FORMKVAR(FORVTENTER(v),ANY),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN FORMKLVAR(INV(result));
+<strong><font color="#4169E1">END</font></strong> lvarfvlist;
+
+<font color="#B22222">(******************************************************************************
+*                       M A S L O G   I N T E R F A C E                       *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQMKDNF</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation make disjunctive normal form. phi is a formula;
+MLMKDNF returns a formula in strict disjunctive normal form which is
+equivalent to phi.  *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORMKDNF(phi,pqnegaf);
+<strong><font color="#4169E1">END</font></strong> PQMKDNF;
+
+<strong><font color="#4169E1">PROCEDURE PQMKCNF</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation make disjunctive normal form. phi is a formula;
+a formula in strict conjunctive normal form which is
+equivalent to phi is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORMKCNF(phi,pqnegaf);
+<strong><font color="#4169E1">END</font></strong> PQMKCNF;
+
+<strong><font color="#4169E1">PROCEDURE PQSMPL</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify. phi is a formula; a simplification on
+phi is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORSMPL(phi,pqsimplifyaf,pqnegaf);
+<strong><font color="#4169E1">END</font></strong> PQSMPL;
+
+<strong><font color="#4169E1">PROCEDURE PQSIMPLIFY</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify. phi is a formula. A simplification of 
+phi is returned. Following simplification steps are done:
+1. VERUM and FALSUM are eliminated 
+2. assoziative simplification
+3. idempotenz
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORSIMPLIFY(phi,pqsmart,pqsimplifyaf,pqnegaf);
+<strong><font color="#4169E1">END</font></strong> PQSIMPLIFY;
+
+<strong><font color="#4169E1">PROCEDURE PQSIMPLIFYP</font></strong>(phi,maxlevel:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify. phi is a formula. A simplification of 
+phi is returned. Following simplification steps are done:
+1. VERUM and FALSUM are eliminated 
+2. assoziative simplification
+3. idempotenz
+maxlevel is the number of levels that are simplified. 
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORSIMPLIFYP(phi,maxlevel,pqsmart,pqsimplifyaf,pqnegaf);
+<strong><font color="#4169E1">END</font></strong> PQSIMPLIFYP;
+
+<strong><font color="#4169E1">PROCEDURE PQMKPOS</font></strong>(phi: LIST): LIST;
+<font color="#B22222">(* polynomial equation make positive. phi is a formula; a equivalent positive 
+formula is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORMKPOS(phi,ET,pqnegaf);
+<strong><font color="#4169E1">END</font></strong> PQMKPOS;
+
+<strong><font color="#4169E1">PROCEDURE PQPPRT</font></strong>(phi:LIST);
+<font color="#B22222">(* polynomial equation pretty print. phi is a formula; this procedure writes
+the formula phi formatted in the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPPRT(phi,pqprtaf);
+<strong><font color="#4169E1">END</font></strong> PQPPRT;
+
+<strong><font color="#4169E1">PROCEDURE PQTEXW</font></strong>(phi: LIST);
+<font color="#B22222">(* polynomial equation tex write. The formula phi is printed in tex format in
+the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORTEXW(phi,pqtexwaf);
+<strong><font color="#4169E1">END</font></strong> PQTEXW;
+
+<strong><font color="#4169E1">PROCEDURE PQPREAD</font></strong>():LIST;
+<font color="#B22222">(* polynomial equation read. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORPREAD(pqreadaf);
+<strong><font color="#4169E1">END</font></strong> PQPREAD;
+
+<strong><font color="#4169E1">PROCEDURE PQIREAD</font></strong>():LIST;
+<font color="#B22222">(* polynomial equation infix read. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> keyword, value: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c &lt;&gt; MASORD("<font color="#B22222">{") THEN
+		BKSP();
+	ELSE
+		REPEAT
+			keyword:=SREAD1();
+			c:=CREADB();
+			IF c&lt;&gt;MASORD("=") THEN
+				DIBUFF();
+				ERROR(severe,"PQIREAD: = expected");
+			END;
+			IF EQUAL(keyword,LISTS("DOMAIN"))=1 THEN
+				DOMAIN:=ADDDREAD();
+			ELSIF EQUAL(keyword,LISTS("VALIS"))=1 THEN
+				VALIS:=VLREAD();
+			ELSIF EQUAL(keyword,LISTS("EVORD"))=1 THEN
+				EVORD:=UREAD();
+			END;
+			c:=CREADB();
+			IF (c&lt;&gt;MASORD(",")) AND (c&lt;&gt;MASORD("}</font>")) <font color="#4169E1">THEN</font>
+				DIBUFF();
+				ERROR(severe,"PQIREAD: , <font color="#4169E1">or</font> = expected");
+			<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">UNTIL</font> c=MASORD("}"); 
+BLINES(1);
+SWRITE("DOMAIN: ");ADDDWRIT(DOMAIN);BLINES(0);
+SWRITE("VALIS:  ");VLWRIT(VALIS);BLINES(0);
+SWRITE("EVORD:  ");UWRITE(EVORD);BLINES(1);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN FORIREAD(pqreadaf);
+<strong><font color="#4169E1">END</font></strong> PQIREAD;
+
+<strong><font color="#4169E1">PROCEDURE PQELIMXOPS</font></strong>(phi: LIST):LIST;
+<font color="#B22222">(* polynomial equation  eliminate extended operation symbols. phi is 
+formula, pref is a
+symbol of the set \{VEL, ET, NON\}; FORELIMXOPS returns a formula phi1
+equivalent to phi. If pref is NON then this function does nothing. Otherwise
+this function replaces all subterms of phi with the operators IMP, REP, EQUIV
+or XOR with terms with the operators VEL, ET and NON. There are two different
+substitutions for EQUIV and XOR. If pref=ET (pref=VEL) then the outermost
+operator of the replacement terms for EQUIV, XOR is ET (VEL). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORELIMXOPS(phi,ET); <font color="#B22222">(* -- to do -- set preference *)</font>
+<strong><font color="#4169E1">END</font></strong> PQELIMXOPS;
+
+<strong><font color="#4169E1">PROCEDURE PQELIMXOPS1</font></strong>(phi,pref: LIST):LIST;
+<font color="#B22222">(* polynomial equation  eliminate extended operation symbols. phi is 
+formula, pref is a
+symbol of the set \{VEL, ET, NON\}; FORELIMXOPS returns a formula phi1
+equivalent to phi. If pref is NON then this function does nothing. Otherwise
+this function replaces all subterms of phi with the operators IMP, REP, EQUIV
+or XOR with terms with the operators VEL, ET and NON. There are two different
+substitutions for EQUIV and XOR. If pref=ET (pref=VEL) then the outermost
+operator of the replacement terms for EQUIV, XOR is ET (VEL). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORELIMXOPS(phi,pref); <font color="#B22222">(* -- to do -- set preference *)</font>
+<strong><font color="#4169E1">END</font></strong> PQELIMXOPS1;
+
+<strong><font color="#4169E1">PROCEDURE PQMKPRENEX</font></strong>(phi,pref:LIST): LIST;
+<font color="#B22222">(* polynomial equation make prenex. 
+phi is a formula; pref is an element of \{EXIST,
+FORALL\}; a formula psi in prenex normal form is returned.  phi must be a
+relative positive formula without additional operation symbols like IMP, REP,
+etc.  All bound variables in phi must have different specifications (i.e.
+different names or different types).  The only transformation which is used to
+calculate psi is the interchange of a junctor with a quantifier.  The formula
+psi has the minimal number of blocks of quantifiers under all prenex formulas
+which are built using only the interchange of a junctor with a quantifier.
+The argument pref is only respected, if there are two equivalent formulas with
+the same optimal number of blocks of quantifiers.  In this case the formula is
+returned which has a "pref"-quantifier as the outermost operation symbol.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORMKPRENEX(phi,pref);
+<strong><font color="#4169E1">END</font></strong> PQMKPRENEX;
+
+<font color="#B22222">(******************************************************************************
+*                                  P R I N G                                  *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQPRING</font></strong>(R: LIST): LIST;
+<font color="#B22222">(* polynomial equation polynomial ring. The global variables that describe the
+polynomial ring are set. The list R is of the following format: The first entry
+is the domain descriptor of the field, the second entry is the list of the 
+variables, and the third entry is the term order. You can omit an entry of R 
+by writing a -1 on the place of the entry. Not all entries must specified. 
+The old parameters are returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> old: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	old:=LIST3(DOMAIN,VALIS,EVORD);
+	<font color="#4169E1">IF</font> R&lt;&gt;SIL <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> FIRST(R)&lt;&gt;-1 <font color="#4169E1">THEN</font> ADV(R,DOMAIN,R); <font color="#4169E1">ELSE</font> R:=RED(R); <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> R&lt;&gt;SIL <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> FIRST(R)&lt;&gt;-1 <font color="#4169E1">THEN</font> ADV(R,VALIS,R); <font color="#4169E1">ELSE</font> R:=RED(R); <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> R&lt;&gt;SIL <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> FIRST(R)&lt;&gt;-1 <font color="#4169E1">THEN</font> ADV(R,EVORD,R); <font color="#4169E1">ELSE</font> R:=RED(R); <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN old;
+<strong><font color="#4169E1">END</font></strong> PQPRING;
+
+<strong><font color="#4169E1">PROCEDURE PQPRINGWR</font></strong>();
+<font color="#B22222">(* polynomial equation polynomial ring write. The description of the polynomial
+ring is written in the output stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> variable,varlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	BLINES(1);
+	SWRITE("Specification <font color="#4169E1">of</font> the polynomial ring:");
+	BLINES(0);
+	SWRITE("  The domain: "); ADDDWRIT(DOMAIN);BLINES(0);
+	<font color="#4169E1">IF</font> VALIS=SIL <font color="#4169E1">THEN</font> 
+		SWRITE("No list <font color="#4169E1">of</font> variables specified!"); 
+	<font color="#4169E1">ELSE</font>
+		SWRITE("  The list <font color="#4169E1">of</font> variables: "); 
+		VLWRIT(VALIS);
+	<strong><font color="#4169E1">END</font></strong>;
+	BLINES(0);
+	SWRITE("  The term order <font color="#4169E1">of</font> the polynomial ring: ");
+	<font color="#4169E1">IF</font> EVORD&gt;SIL <font color="#4169E1">THEN</font>
+		SWRITE("user defined term order:");
+		UWRIT1(EVORD);
+	<font color="#4169E1">ELSE</font>
+		<font color="#4169E1">CASE</font> INTEGER(EVORD) <font color="#4169E1">OF</font>
+		LEX:		SWRITE("LEX");		|
+		INVLEX:		SWRITE("INVLEX");	|
+		GRLEX:		SWRITE("GRLEX");	|
+		IGRLEX:		SWRITE("IGRLEX");	|
+		REVLEX:		SWRITE("REVLEX");	|
+		REVILEX:	SWRITE("REVILEX");	|
+		REVTDEG:	SWRITE("REVTDEG");	|
+		REVITDG:	SWRITE("REVITDG");
+		<font color="#4169E1">ELSE</font> 		SWRITE("WARNING: unknown term order indicator.");
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	BLINES(1);
+<strong><font color="#4169E1">END</font></strong> PQPRINGWR;
+	
+<font color="#B22222">(******************************************************************************
+*                                   M A I N                                   *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#B22222">(* *** symbols for bb-formulas *** *)</font>
+	Declare(EQU,"EQU");
+	Declare(NEQ,"NEQ");
+	Declare(LES,"LES");
+	Declare(LSQ,"LSQ");
+	Declare(GRQ,"GRQ");
+	Declare(GRE,"GRE");
+	Declare(PQSAF,"PQSAF");
+	<font color="#B22222">(* *** listvar declarations for global variables. *** *)</font>
+	LISTVAR(DOMAIN);
+	<font color="#B22222">(* *** initialize the bb-formula parser. *** *)</font>
+	InitBbfParser();
+	<font color="#B22222">(* *** initialize the global variables. ***  *)</font>
+	<font color="#B22222">(* DOMAIN:=LIST3(DOMRND,0,-1);	(* RN -1 *)</font> *)
+	<font color="#B22222">(* last line does not work. It is executed before domain RN loaded *)</font>
+	DOMAIN:=LIST3(8,0,-1);	<font color="#B22222">(* RN -1 *)</font> 
+<strong><font color="#4169E1">END</font></strong> PQBASE.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

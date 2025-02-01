@@ -1,3 +1,24 @@
+All Rights Reserved. Permission is granted for unrestricted noncommercial use and noncommercial redistribution if the copyright notice is retained when a copy is made. There are no known bugs, however we disclaim any usefulness and make no warranty on the correctness of the Modula-2 Algebra System. For certain machines and/or operating systems further copying restrictions apply, e.g. see the files
+
+    copying.mas, copying.reuse, copying.mtc, 
+    copying.emx, copying, copying.lib and copying.bsd
+
+in the exam directory. The C code has been generated from the Modula-2 sources of MAS with the 'mtc' 'Modula-2 to C' translator by GMD Karlsruhe. Although it is not required, you should get a copy of it from some ftp site to have the sources of the used libraries. The executables for PC have been compiled using the GNU gcc compiler with the emx runtime system by Ernst Mattes. The latest versions and documentation of emx can also be found on ftp servers.
+
+Copyrights:
+
+ MAS:         (c) 1989-1998, by H. Kredel, University Mannheim, 
+                             M. Pesch, University Passau.
+ ALDES/SAC-2: (c) 1982, by G.E.Collins, R.Loos.  
+
+---
+Heinz Kredel, University of Mannheim, L 15, 16, D-68131 Mannheim, Germany. Tel: +49/621/181-3171, E-mail: kredel@rz.uni-mannheim.de. 
+
+
+
+
+where not otherwise stated (e.g. new code):
+
 MIT License
 
 Copyright (c) 2025 Kurt Pagani

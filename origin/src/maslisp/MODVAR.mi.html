@@ -1,0 +1,309 @@
+
+<html>
+<head>
+<title>./maslisp/MODVAR.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T21:01:28+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MODVAR.mi,v 1.1 1994/11/28 21:01:28 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MODVAR.mi,v $
+ * Revision 1.1  1994/11/28  21:01:28  dolzmann
+ * New modules MODVAR.md and MODVAR.mi.
+ * Procedures for the access to global variables from the interpreter.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MODVAR;
+<font color="#B22222">(* modula global variable implementation module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*		M O D U L A   G L O B A L   V A R I A B L E S		      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel                                                      *
+* Remark:   Libraries maskern, maslisp are used.                              *
+*           Module SYSTEM is used!                                            *
+* Abstract: This module implements routines for the access to global          *
+*           variables of MODULA modules from the MAS interpreter.             *
+******************************************************************************)</font>
+
+FROM SYSTEM 	IMPORT	ADR, ADDRESS;
+
+FROM MASBIOS	IMPORT	BLINES, LISTS, SWRITE;
+FROM MASELEM	IMPORT	GAMMAINT;
+FROM MASERR	IMPORT	ERROR, confusion, fatal, harmless, severe, spotless;
+FROM MASLISP	IMPORT	STRNG;
+FROM MASLISPU	IMPORT	Declare;
+FROM MASSTOR	IMPORT	COMP, LIST, LISTVAR, SIL;
+FROM MASSYM2	IMPORT	ENTER, GET, NOSHOW, PUT, UWRIT1, UWRITE; 
+FROM SACLIST	IMPORT	CLOUT, LIST2, SECOND;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MODVAR.mi,v 1.1 1994/11/28 21:01:28 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1994 Universitaet Passau";
+
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong>	MGV,		<font color="#B22222">(* Property to mark a modula variable (MVAR)	*)</font>
+	CMT,		<font color="#B22222">(* Property to mark a comment of a MVAR.	*)</font>
+	SORT, 		<font color="#B22222">(* Property to mark a sort of a MVAR.		*)</font>
+	BOOL, 		<font color="#B22222">(* A special sort of a MVAR.			*)</font>
+	LST,		<font color="#B22222">(* A special sort of a MVAR.			*)</font>
+	ACCESS, 	<font color="#B22222">(* Property to mark the access permissions of 
+			   a MVAR.					*)</font>
+	RO, 		<font color="#B22222">(* A special access permission.			*)</font>
+	RW:  		<font color="#B22222">(* A special access permission.			*)</font>
+		LIST;
+
+<font color="#B22222">(******************************************************************************
+*                             P R O C E D U R E S                             *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE MVDeclareL</font></strong>(<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>: LIST; name,comment: ARRAY <font color="#4169E1">OF</font> CHAR;
+			access: BOOLEAN);
+<font color="#B22222">(* modula variable declare list. 
+The global variable var is made accessible for the
+MAS interpreter under the name name. Comment is a string which explains the
+variable. access is a flag that determines, whether var is protected from 
+overwriting or not. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> sym: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	Declare(sym,name);
+	PUT(sym,MGV,LIST2(NOSHOW,GAMMAINT(ADR(<strong><font color="#228B22">var</font></strong>))));
+	PUT(sym,CMT,LIST2(NOSHOW,LISTS(comment)));
+	<font color="#4169E1">IF</font> access <font color="#4169E1">THEN</font>
+		PUT(sym,ACCESS,RW);
+	<font color="#4169E1">ELSE</font>
+		PUT(sym,ACCESS,RO);
+	<strong><font color="#4169E1">END</font></strong>;
+	PUT(sym,SORT,LST);
+<strong><font color="#4169E1">END</font></strong> MVDeclareL;
+
+<strong><font color="#4169E1">PROCEDURE MVDeclareB</font></strong>(<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>: BOOLEAN; name,comment: ARRAY <font color="#4169E1">OF</font> CHAR;
+			access:BOOLEAN);
+<font color="#B22222">(* modula variable declare boolean. 
+The global variable var is made accessible for the
+MAS interpreter under the name name. Comment is a string which explains the
+variable. access is a flag that determines, whether var is protected from 
+overwriting or not. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> sym: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	Declare(sym,name);
+	PUT(sym,MGV,LIST2(NOSHOW,GAMMAINT(ADR(<strong><font color="#228B22">var</font></strong>))));
+	PUT(sym,CMT,LIST2(NOSHOW,LISTS(comment)));
+	<font color="#4169E1">IF</font> access <font color="#4169E1">THEN</font>
+		PUT(sym,ACCESS,RW);
+	<font color="#4169E1">ELSE</font>
+		PUT(sym,ACCESS,RO);
+	<strong><font color="#4169E1">END</font></strong>;
+	PUT(sym,SORT,BOOL);
+<strong><font color="#4169E1">END</font></strong> MVDeclareB;
+
+<strong><font color="#4169E1">PROCEDURE MVSET</font></strong>(sym,value:LIST);
+<font color="#B22222">(* modula variable set. 
+sym is a symbol, value is a list.
+The value value is assigned to the modula variable  with the interpreter-name 
+sym. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> varp: POINTER <font color="#4169E1">TO</font> LIST;
+	<strong><font color="#228B22">VAR</font></strong> varl: LIST;
+	<strong><font color="#228B22">VAR</font></strong> acc,srt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	varl:=GET(sym,MGV);
+	<font color="#4169E1">IF</font> varl=SIL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVSET: unbound modula variable");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	acc:=GET(sym,ACCESS);
+	<font color="#4169E1">IF</font> acc=RO <font color="#4169E1">THEN</font> 
+		ERROR(harmless,"MVSET: variable is read only");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	srt:=GET(sym,SORT);
+	<font color="#4169E1">IF</font> srt&lt;&gt;LST <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVSET: MVSET is possible only <font color="#4169E1">for</font> list variables.");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	varp:=ADDRESS(SECOND(varl));
+	varp^:=value;
+<strong><font color="#4169E1">END</font></strong> MVSET;
+
+<strong><font color="#4169E1">PROCEDURE MVGET</font></strong>(sym:LIST): LIST;
+<font color="#B22222">(* modula variable get. The value of the modula variable with the name sym is
+returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> varp: POINTER <font color="#4169E1">TO</font> LIST;
+	<strong><font color="#228B22">VAR</font></strong> varl:LIST;
+	<strong><font color="#228B22">VAR</font></strong> srt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	varl:=GET(sym,MGV);
+	<font color="#4169E1">IF</font> varl=SIL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVGET: unbound modula variable");
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	srt:=GET(sym,SORT);
+	<font color="#4169E1">IF</font> srt&lt;&gt;LST <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVGET: MVGET is possible only <font color="#4169E1">for</font> list variables.");
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	varp:=ADDRESS(SECOND(varl));
+	RETURN varp^;
+<strong><font color="#4169E1">END</font></strong> MVGET;
+
+<strong><font color="#4169E1">PROCEDURE MVFLAG</font></strong>(sym:LIST): LIST;
+<font color="#B22222">(* modula variable get. The boolean value of the modula variable with the 
+name sym is returned. TRUE is equivalent to 1 and FALSE is equivalent to 0. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> varp: POINTER <font color="#4169E1">TO</font> BOOLEAN;
+	<strong><font color="#228B22">VAR</font></strong> varl:LIST;
+	<strong><font color="#228B22">VAR</font></strong> srt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	varl:=GET(sym,MGV);
+	<font color="#4169E1">IF</font> varl=SIL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVGET: unbound modula variable");
+		RETURN 0;
+	<strong><font color="#4169E1">END</font></strong>;
+	srt:=GET(sym,SORT);
+	<font color="#4169E1">IF</font> srt&lt;&gt;BOOL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVFLAG: MVFLAG is possible only <font color="#4169E1">for</font> boolean variables.");
+		RETURN 0;
+	<strong><font color="#4169E1">END</font></strong>;
+	varp:=ADDRESS(SECOND(varl));
+	<font color="#4169E1">IF</font> varp^ <font color="#4169E1">THEN</font>
+		RETURN 1;
+	<font color="#4169E1">ELSE</font>	
+		RETURN 0;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> MVFLAG;
+
+<strong><font color="#4169E1">PROCEDURE MVON</font></strong>(sym:LIST);
+<font color="#B22222">(* modula variable on. The value 1 is assigned to the module variable with
+the interpreter name sym. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> varp: POINTER <font color="#4169E1">TO</font> BOOLEAN;
+	<strong><font color="#228B22">VAR</font></strong> varl: LIST;
+	<strong><font color="#228B22">VAR</font></strong> acc,srt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	varl:=GET(sym,MGV);
+	<font color="#4169E1">IF</font> varl=SIL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVON: unbound modula variable");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	acc:=GET(sym,ACCESS);
+	<font color="#4169E1">IF</font> acc=RO <font color="#4169E1">THEN</font> 
+		ERROR(harmless,"MVON: variable is read only");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	srt:=GET(sym,SORT);
+	<font color="#4169E1">IF</font> srt&lt;&gt;BOOL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVON: MVON is only <font color="#4169E1">for</font> boolean variables possible.");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	varp:=ADDRESS(SECOND(varl));
+	varp^:=TRUE;
+<strong><font color="#4169E1">END</font></strong> MVON;
+
+<strong><font color="#4169E1">PROCEDURE MVOFF</font></strong>(sym:LIST);
+<font color="#B22222">(* modula variable off. The value 0 is assigned to the module variable with
+the interpreter name sym. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> varp: POINTER <font color="#4169E1">TO</font> BOOLEAN;
+	<strong><font color="#228B22">VAR</font></strong> varl: LIST;
+	<strong><font color="#228B22">VAR</font></strong> acc,srt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	varl:=GET(sym,MGV);
+	<font color="#4169E1">IF</font> varl=SIL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVOFF: unbound modula variable");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	acc:=GET(sym,ACCESS);
+	<font color="#4169E1">IF</font> acc=RO <font color="#4169E1">THEN</font> 
+		ERROR(harmless,"MVOFF: variable is read only");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	srt:=GET(sym,SORT);
+	<font color="#4169E1">IF</font> srt&lt;&gt;BOOL <font color="#4169E1">THEN</font>
+		ERROR(harmless,"MVOFF: MVOFF is possible only <font color="#4169E1">for</font> boolean variables.");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	varp:=ADDRESS(SECOND(varl));
+	varp^:=FALSE;
+<strong><font color="#4169E1">END</font></strong> MVOFF;
+
+<strong><font color="#4169E1">PROCEDURE MVHLP</font></strong>(sym:LIST);
+<font color="#B22222">(* modula variable help. All known informations over the modula variable with 
+the interpreter name sym is printed to the output stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> varpl: POINTER <font color="#4169E1">TO</font> LIST;
+	<strong><font color="#228B22">VAR</font></strong> varpb: POINTER <font color="#4169E1">TO</font> BOOLEAN;
+	<strong><font color="#228B22">VAR</font></strong> varl: LIST;
+	<strong><font color="#228B22">VAR</font></strong> acc,srt,cmt: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	BLINES(0);
+	varl:=GET(sym,MGV);
+	<font color="#4169E1">IF</font> varl=SIL <font color="#4169E1">THEN</font>
+		UWRIT1(sym);SWRITE(" is <font color="#4169E1">not</font> a modula variable. ");BLINES(0);
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	SWRITE("Modula variable: ");UWRITE(sym);
+	acc:=GET(sym,ACCESS);
+	<font color="#4169E1">IF</font> acc=RO <font color="#4169E1">THEN</font> 
+		SWRITE("  is a read-only variable");
+	<font color="#4169E1">ELSE</font>
+		SWRITE("  is a read-write variable");
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#B22222">(* BLINES(0); *)</font>
+	srt:=GET(sym,SORT);
+	<font color="#4169E1">IF</font> (srt=BOOL) <font color="#4169E1">THEN</font> 
+		SWRITE(" <font color="#4169E1">of</font> the <strong><font color="#228B22">type</font></strong> BOOLEAN.");
+	<font color="#4169E1">ELSE</font>
+		SWRITE(" <font color="#4169E1">of</font> the <strong><font color="#228B22">type</font></strong> LIST.");
+	<strong><font color="#4169E1">END</font></strong>;
+	BLINES(0);
+	cmt:=SECOND(GET(sym,CMT));
+	SWRITE("  Documentation:");BLINES(0);
+	SWRITE("    ");
+	CLOUT(cmt);
+	BLINES(0);
+	SWRITE("  Current value: ");BLINES(0);SWRITE("    ");
+	<font color="#4169E1">IF</font> srt=BOOL <font color="#4169E1">THEN</font>
+		varpb:=ADDRESS(SECOND(varl));
+		<font color="#4169E1">IF</font> varpb^ <font color="#4169E1">THEN</font>
+			SWRITE("TRUE");
+		<font color="#4169E1">ELSE</font>
+			SWRITE("FALSE");
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font>
+		varpl:=ADDRESS(SECOND(varl));
+		UWRIT1(varpl^);
+	<strong><font color="#4169E1">END</font></strong>;
+	BLINES(0);
+<strong><font color="#4169E1">END</font></strong> MVHLP;
+
+<font color="#B22222">(******************************************************************************
+*                                   M A I N                                   *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+	Declare(MGV,"MGV");
+	Declare(CMT,"Comment");
+	Declare(SORT,"<strong><font color="#228B22">TYPE</font></strong>");
+	Declare(BOOL,"BOOLEAN");
+	Declare(LST,"LIST");
+	Declare(RW,"ReadWrite");
+	Declare(RO,"ReadOnly");
+	Declare(ACCESS,"Access");
+<strong><font color="#4169E1">END</font></strong> MODVAR.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

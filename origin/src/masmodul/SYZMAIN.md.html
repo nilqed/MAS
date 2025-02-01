@@ -1,0 +1,169 @@
+
+<html>
+<head>
+<title>./masmodul/SYZMAIN.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:33:21+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYZMAIN.md,v 1.2 1992/02/12 17:33:20 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SYZMAIN.md,v $
+ * Revision 1.2  1992/02/12  17:33:20  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:46  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SYZMAIN;
+
+<font color="#B22222">(* Syzygy Main Programs Definition Module. *)</font>
+
+
+<font color="#B22222">(* Author: J. Philipp, Uni Passau, 1991. *)</font>
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SYZMAIN.md,v 1.2 1992/02/12 17:33:20 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE SYHC</font></strong>(PM, SANZ, SRD : LIST): LIST;
+<font color="#B22222">(* Syzygy for homogenous commutative system of equation. Berechnet die
+Syzygien fuer ein kommutatives Gleichungssystem. Das Bit SRD steuert
+eine moegliche Reduktion waehrend des Verfahrens. Das Bit SANZ regelt die
+Anzeigeart von Zwischenergebnissen. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE HEQ</font></strong>(PL, SANZ, SRD : LIST): LIST;
+<font color="#B22222">(* Homogenous Equation. Berechnet den Syzygienmodul fuer eine Gleichung mit 
+den Polynomen aus PL. Das Bit SRD steuert eine moegliche Reduktion waehrend 
+des Verfahrens. Das Bit SANZ regelt die Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE HSEQ</font></strong>(PM, SANZ, SRD : LIST): LIST;
+<font color="#B22222">(* Homogenous System of Equation. Berechnet den Syzygienmodul fuer das
+Gleichungssystem mit den Polynomen aus der Matrix PM. Das Bit SRD steuert
+eine moegliche Reduktion waehrend des Verfahrens. Das Bit SANZ regelt die
+Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SYTHC</font></strong>(SY, PM, VL : LIST);
+<font color="#B22222">(* Syzygy Test for homogenous commutative Case. Testet, ob der berechnete
+Loesungsgenerator SY jede einzelne Gleichung von PM loest. Die Polynome
+der errechnten linken Seiten der Gleichungen werden ausgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SIC</font></strong>(PM, PL, SANZ, SRD : LIST): LIST;
+<font color="#B22222">(* Special Solution for inhomogenous commutative system of equation.
+Berechnet eine spezielle Loesung fuer ein kommutatives Gleichungssystem PM.
+Die Polynome der rechten Seite stehen in der Liste PL. Das Bit SRD steuert
+eine moegliche Reduktion waehrend des Verfahrens. Das Bit SANZ regelt die
+Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IEQ</font></strong>(PL, P, SANZ, SRD : LIST): LIST;
+<font color="#B22222">(* Special Solution for inhomogenous commutative equation. Berechnet eine
+spezielle Loesung fuer eine lineare Gleichung PL. Das Polynom der rechten
+Seite ist P. Das Bit SRD steuert eine moegliche Reduktion waehrend des
+Verfahrens. Das Bit SANZ regelt die Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ISEQ</font></strong>(PM, PL, SANZ, SRD : LIST): LIST;
+<font color="#B22222">(* Special Solution for inhomogenous commutative system of equation.
+Berechnet eine spezielle Loesung fuer ein kommutatives Gleichungssystem PM.
+Die Polynome der rechten Seite stehen in der Liste PL. Das Bit SRD steuert
+eine moegliche Reduktion waehrend des Verfahrens. Das Bit SANZ regelt die
+Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STIC</font></strong>(SY, PM, PL, VL : LIST);
+<font color="#B22222">(* Solution Test for inhomogenous commutative Case. Testet, ob der berechnete
+Loesungsvektor SY jede einzelne Gleichung von PM loest. Die Polynome
+der errechnten linken Seiten werden von denen der rechten Seite abgezogen,
+und das Ergebnis dieser Differenz wird ausgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SYHNL</font></strong>(PM, SANZ, SRD, T : LIST): LIST;
+<font color="#B22222">(* Syzygy for homogenous non-commutative system of equation. Berechnet die
+Syzygien fuer ein nicht-kommutatives Gleichungssystem. Das Bit SRD steuert
+eine moegliche Reduktion waehrend des Verfahrens. Das Bit SANZ regelt die
+Anzeigeart von Zwischenergebnissen. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NLHEQ</font></strong>(PL, SANZ, SRD, T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Homogenous Equation. Berechnet den Syzygienmodul fuer eine
+Gleichung mit den Polynomen aus PL. Das Bit SRD steuert eine moegliche
+Reduktion waehrend des Verfahrens. Das Bit SANZ regelt die Anzeigeart von
+Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NLHSEQ</font></strong>(PM, SANZ, SRD, T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Homogenous System of Equation. Berechnet den Syzygienmodul
+fuer das Gleichungssystem mit den Polynomen aus der Matrix PM. Das Bit SRD
+steuert eine moegliche Reduktion waehrend des Verfahrens. Das Bit SANZ regelt
+die Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SYTHNL</font></strong>(SY, PM, VL, T : LIST);
+<font color="#B22222">(* Syzygy Test for homogenous non-commutative Case. Testet, ob der berechnete
+Loesungsgenerator SY jede einzelne Gleichung von PM loest. Die Polynome
+der errechnten linken Seiten der Gleichungen werden ausgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SINL</font></strong>(PM, PL, SANZ, SRD, T : LIST): LIST;
+<font color="#B22222">(* Special Solution for inhomogenous non-commutative system of equation.
+Berechnet eine spezielle Loesung fuer ein nicht-kommutatives Gleichungs-
+system PM. Die Polynome der rechten Seite stehen in der Liste PL. Das
+Bit SRD steuert eine moegliche Reduktion waehrend des Verfahrens. Das
+Bit SANZ regelt die Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NLIEQ</font></strong>(PL, P, SANZ, SRD, T : LIST): LIST;
+<font color="#B22222">(* Special Solution for inhomogenous non-commutative equation. Berechnet eine
+spezielle Loesung fuer eine lineare Gleichung PL. Das Polynom der rechten
+Seite ist P. Das Bit SRD steuert eine moegliche Reduktion waehrend des
+Verfahrens. Das Bit SANZ regelt die Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NLISEQ</font></strong>(PM, PL, SANZ, SRD, T : LIST): LIST;
+<font color="#B22222">(* Special Solution for inhomogenous non-commutative system of equation.
+Berechnet eine spezielle Loesung fuer ein nicht-kommutatives Gleichungs-
+system PM. Die Polynome der rechten Seite stehen in der Liste PL. Das
+Bit SRD steuert eine moegliche Reduktion waehrend des Verfahrens. Das Bit
+SANZ regelt die Anzeigeart von Zwischenergebnissen.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STINL</font></strong>(SY, PM, PL, VL, T : LIST);
+<font color="#B22222">(* Solution Test for inhomogenous non-commutative Case. Testet, ob der
+berechnete Loesungsvektor SY jede einzelne Gleichung von PM loest. Die
+Polynome der errechnten linken Seiten werden von denen der rechten Seite
+abgezogen, und das Ergebnis dieser Differenz wird ausgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE OREC</font></strong>(P1, P2 : LIST; <strong><font color="#228B22">VAR</font></strong> P3, P4, T : LIST);
+<font color="#B22222">(* Ore Condition. Fuer gegebene Polynome P1 und P2 werden Polynome P3 und P4
+berechnet, sodass P3*P1 = P4*P2. Die Multiplikation * ist die nicht-
+kommutative Multiplikation. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SYZMAIN.
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

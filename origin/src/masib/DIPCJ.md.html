@@ -1,0 +1,179 @@
+
+<html>
+<head>
+<title>./masib/DIPCJ.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T14:36:41+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPCJ.md,v 1.2 1995/12/16 12:21:52 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPCJ.md,v $
+ * Revision 1.2  1995/12/16 12:21:52  kredel
+ * Comments slightly changed.
+ *
+ * Revision 1.1  1995/10/12  14:44:45  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPCJ;
+
+<font color="#B22222">(* DIP Common Polynomial System Definition Module in the sense of Janet. *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR 	IMPORT 	LIST;
+
+FROM MASLISPU 	IMPORT 	PROCF1;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPCJ.md,v 1.2 1995/12/16 12:21:52 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE ADDTDG</font></strong>(deg, P: LIST): LIST;
+<font color="#B22222">(* Add total degree.
+   Input: polynomial degree deg and polynomial P in distributive list
+          representation.
+   Output: polynom P with first list entry now total degree of the
+           leading exponent vector. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADVTDG</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> p, PP: LIST);
+<font color="#B22222">(* Advance total degree.
+   Input: polynom P in distributive list representation. The first entry of the
+          list is the total degree of the leading exponent vector.
+   Output: p - the first entry of the list; PP - the polynom without the
+           first entry *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILEBBS</font></strong>(A: LIST);
+<font color="#B22222">(* Distributive List Extended Bubble Sort.
+   Sort a list of polynoms in decreasing order of the total degree of the
+   leading exponent. The total degree must be the first entry of each polynom. 
+   Input: A is a list of polynoms.
+   A is changed *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILBBS</font></strong>(A: LIST);
+<font color="#B22222">(* Distributive List Bubble Sort.
+   Sort a list of polynoms in decreasing order of the total degree of the
+   leading exponent.
+   Input: A is a list of polynoms.
+   A is changed *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILEP2P</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive polynom list extended polynom to polynom.
+   Input: P - a list of extended polynoms.
+   Output: a list of polynoms whithout the first entry. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILATDG</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive polynom list add total degree. 
+   P is a list of distributive polynomials. 
+   The result is a list of distributive polynoms with total
+   degree of the leading term as first entry of each polynomial. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILTDG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial list total degree
+   Input: A is a list of distributive polynomials, 
+   Output tdg: the total degree of A *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPCLP</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributiv Polynomial Class of Polynomial.
+   Input: P is a polynomial, 
+   Output: t is the index of the lowest variable of the leading
+           term of P, t=0 if P is Empty *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPCLT</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributiv Polynomial Class of Term.
+   Input: P is a term, 
+   Output: t is the index of the lowest variable in P,
+           t=0 if P is empty *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPFIRST</font></strong>(P: LIST; extended: BOOLEAN; <strong><font color="#228B22">VAR</font></strong> pp, PP: LIST);
+<font color="#B22222">(* Distributive polynomial first polynomial,
+   P is a list of polynomials,
+   pp is the first polynomial and PP is the reductum of P.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPSSM</font></strong>(P: LIST; extended: BOOLEAN; <strong><font color="#228B22">VAR</font></strong> pp, PP: LIST);
+<font color="#B22222">(* Distributive polynomial sort and select minimal.
+   Input: P - a list of polynoms,
+          extended is TRUE iff the first entry of each polynimial in P is the
+          total degree of the leading exponent vector.
+   Output: pp - the minimal polynom w.r.t. the admissible term order.
+           PP - sorted list of P without pp.
+   P is changed *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILCAN</font></strong>(P: LIST; F: PROCF1): LIST;
+<font color="#B22222">(* Distributive Polynomial Cancel. 
+   P is a list of distributive polynomials. F is the cancel-function.
+   Output is a list of distributive polynomials or an empty list if all 
+   polynomials in A equal 0. The coefficients of each polynomial are canceld
+   down by F. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIILPP</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynomial list primitive part. 
+   P is a list of distributive integral polynoms. The result is the positive
+   primitive part of each polynomial in P. The list-order is reversed. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIRPMV</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Distributiv Polynomial multiplication with a variable.
+   Input: A is the polynomial, B is an exponent vector.
+   Output:  A*B  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE EVDIF2</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(* Exponent vector difference. 
+   Input: U=(u1, ...,ur), V=(v1, ...,vr)
+          are exponent vectors of length r. 
+   Output: W=(w1, ...,wr) is the componentwise difference of U and V.
+   Unlike procedure EVDIV this procedure returns 0 and not (0...0) if U=V *)</font>
+
+<strong><font color="#4169E1">PROCEDURE EVMTJ</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(* Exponent vector multiple test in the sense of Janet. 
+   Input: U=(u1, ...,ur), V=(v1, ...,vr) are exponent vectors of length r.
+   Output: t=1 if U is a multiple in the sense of Janet of V, t=0 else. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPNML</font></strong>(G: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial nonmultiple variable list.
+   Compute for a polynom G the List of nonmultiplicative variables.
+   Input: G is a polynomial.
+   Output: a list of non-multiplicative variables for the leading term of G. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPPGL2</font></strong>(F, V, LL: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial prolongation list.
+   Input: F - polynomial which first entry is the total degree of the leading
+              term; V - list of variables; LL - number of different variables 
+	      in F.
+   Output: PP - List of prolongations of F with non-multiplicative variables 
+                for F from V. *)</font> 
+
+<strong><font color="#4169E1">PROCEDURE DIPPGL3</font></strong>(F, V, LL: LIST): LIST;
+<font color="#B22222">(* Distributive polynom prolongation list.
+   Input: F - polynomial; V - list of variables; LL - number of variables in F.
+   Output: PP - List of prolongations of F with non-multiplicative variables 
+                for F from V. *)</font> 
+
+<strong><font color="#4169E1">PROCEDURE DIPPGL</font></strong>(V: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial prolongation list. 
+   Input: V is an arbitrary domain polynomial.  
+   Output: List of prolongations of V with nonmultiplicative variables for V.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPVL</font></strong>(V: LIST): LIST;
+<font color="#B22222">(* Distributive Polynomial List of Variables.
+   Input: a polynomial V.
+   Output: list of variables with class &gt; 1. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPCJ.
+
+<font color="#B22222">(* -EOF- *)</font>
+
+</pre>
+</body>
+
+</html>

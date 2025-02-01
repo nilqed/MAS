@@ -1,0 +1,747 @@
+
+<html>
+<head>
+<title>./maspoly/SACMPOL.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:37+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACMPOL.mi,v 1.3 1992/10/15 16:28:42 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACMPOL.mi,v $
+ * Revision 1.3  1992/10/15  16:28:42  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:01  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:16  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACMPOL;
+
+<font color="#B22222">(* SAC Modular Polynomial Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASMAX;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, SRED,
+                    FIRST, RED, COMP, INV, ADV, LIST1;
+
+FROM SACLIST IMPORT LIST2, COMP2, ADV2, FIRST2, 
+                    CLOUT, CINV, RED2, SECOND, EQUAL;
+
+FROM SACD IMPORT DQR, DRANN;
+
+FROM SACM IMPORT SMFMI, MDRAN, MDQ, MDINV, MDHOM, 
+                 MDSUM, MDPROD, MDDIF, MDNEG, MIPROD, 
+                 MIINV, MISUM, MINEG, MIDIF, MIHOM, MIRAN;
+
+FROM SACI IMPORT ISIGNF, ISUM, IPROD;
+
+FROM SACPOL IMPORT PINV, PDEG, PLDCF, PRED, PLBCF; 
+
+FROM SACIPOL IMPORT IPIPR, IPPROD;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACMPOL.mi,v 1.3 1992/10/15 16:28:42 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE MIPDIF</font></strong>(RL,M,A,B: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial difference.  M is a positive integer.
+A and B are polynomials in r variables over Z sub M, r ge 0.  C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CP, CPP, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=MIPNEG(RL,M,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=MIDIF(M,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP);
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); CP:=COMP2(AL,EL,CP);
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MINEG(M,BL); <font color="#4169E1">ELSE</font>
+                      CL:=MIPNEG(RLP,M,BL); <strong><font color="#4169E1">END</font></strong>;
+                   CP:=COMP2(CL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP);
+                   ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MIDIF(M,AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=MIPDIF(RLP,M,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> CPP:=BETA; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> CPP:=MIPNEG(RL,M,BP); <font color="#4169E1">ELSE</font> CPP:=AP; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      C:=INV(CP);
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=CPP; <font color="#4169E1">ELSE</font> SRED(CP,CPP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> MIPDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPFSM</font></strong>(RL,M,A: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial from symmetric modular.  M is a positive
+integer.  A is a polynomial in r variables over Z prime sub M, r ge 0.
+B belongs to Z sub M (x, ...,x sub r) with B=A (modulo M).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> ISIGNF(A) &lt; 0 <font color="#4169E1">THEN</font> B:=ISUM(M,A); <font color="#4169E1">ELSE</font> B:=A; <strong><font color="#4169E1">END</font></strong>;
+         RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); BL:=MIPFSM(RLP,M,AL);
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MIPFSM;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPHOM</font></strong>(RL,M,A: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial homomorphism.  A is an integral
+polynomial in r variables, r ge 0.  M is a positive integer.
+B=H sub M (A), a polynomial in r variables over Z sub M.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=MIHOM(M,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=MIHOM(M,AL); <font color="#4169E1">ELSE</font>
+                BL:=MIPHOM(RLP,M,AL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,EL,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MIPHOM;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPIPR</font></strong>(RL,M,D,A,B: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial mod ideal product.  D is a list (d sub
+1, ...,d sub r-1) of non-negative beta-integers, r ge 1.  M is a
+positive integer.  A and B belong to Z sub M (x sub 1, ...,x sub
+r-1,y)/(x sub 1 ** d sub 1, ...,x sub r-1 ** d sub r-1).  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CP:=IPIPR(RL,D,A,B); C:=MIPHOM(RL,M,CP); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MIPIPR;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPNEG</font></strong>(RL,M,A: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial negation.  M is a positive integer.  A is
+a polynomial in r variables over Z sub M, r ge 0.  B=-A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=MINEG(M,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=MINEG(M,AL); <font color="#4169E1">ELSE</font>
+                BL:=MIPNEG(RLP,M,AL); <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MIPNEG;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPPR</font></strong>(RL,M,A,B: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial product.  M is a positive integer.  A and
+B are polynomials in r variables over Z sub M, r ge 0.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=IPPROD(RL,A,B); C:=MIPHOM(RL,M,J1Y); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MIPPR;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPRAN</font></strong>(RL,M,QL,N: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial, random.  M is a positive integer.  q is
+a rational number q1/q2 with 0 lt q1 le q2 lt beta.  N is a list
+(n sub r, ...,n sub 1) of non-negative beta-digits, r ge 0.  A is a
+random polynomial in r variables over Z sub M with deg sub i of A le
+n sub i for 1 le i le r.  q is the probability that any particular
+term of A has a non-zero coefficient.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, DL, EL, IDUM, NL, NP, QL1, QL2, QLS, RLP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute qls=int(ql*beta).*)</font> FIRST2(QL, QL1,QL2);
+      DQR(QL1,0,QL2, QLS,TL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> DL:=DRANN();
+         <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> A:=MIRAN(M); <font color="#4169E1">ELSE</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 0.*)</font> RLP:=RL-1; ADV(N, NL,NP); A:=BETA;
+      <font color="#4169E1">FOR</font> EL:=0 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> DL:=DRANN();
+             <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> AL:=MIRAN(M); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">ELSE</font> AL:=MIPRAN(RLP,M,QL,NP); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(EL,AL,A); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MIPRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE MIPSUM</font></strong>(RL,M,A,B: LIST): LIST;
+<font color="#B22222">(*Modular integral polynomial sum.  M is a positive integer.  A and B
+are polynomials in r variables over Z sub M, r ge 0.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CP, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=MISUM(M,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP);
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); CP:=COMP2(AL,EL,CP);
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP);
+                   CP:=COMP2(BL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP);
+                   ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MISUM(M,AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=MIPSUM(RLP,M,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AP:=BP; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=AP; <font color="#4169E1">ELSE</font> C:=INV(CP); SRED(CP,AP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> MIPSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE MIUPQR</font></strong>(M,A,B: LIST;    <strong><font color="#228B22">VAR</font></strong> Q,R: LIST);
+<font color="#B22222">(*Modular integral univariate polynomial quotient and remainder.  M is
+a positive integer.  A and B belong to Z sub M (x) with LDCF(B) a unit.
+Q and R are the unique elements of Z sub M (x) such that A=B*Q+R with
+either R=0 or DEG(R) lt DEG(B).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, BLP, BP, DL, ML, NL, Q1, QL, QP, RP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=PDEG(B); BL:=PLDCF(B); BP:=PRED(B); Q:=BETA;
+      R:=A; BLP:=MIINV(M,BL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute quotient terms.*)</font>
+      <font color="#4169E1">WHILE</font> R &lt;&gt; 0 <font color="#4169E1">DO</font> ML:=PDEG(R); DL:=ML-NL;
+            <font color="#4169E1">IF</font> DL &lt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font>
+               <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+               RETURN;
+               <strong><font color="#4169E1">END</font></strong>;
+            AL:=PLDCF(R); QL:=MIPROD(M,AL,BLP); Q:=COMP2(QL,DL,Q);
+            Q1:=LIST2(DL,QL); RP:=PRED(R); QP:=MIPPR(1,M,BP,Q1);
+            R:=MIPDIF(1,M,RP,QP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MIUPQR;
+
+
+<strong><font color="#4169E1">PROCEDURE MMPIQR</font></strong>(RL,M,D,A,B: LIST;    <strong><font color="#228B22">VAR</font></strong> Q,R: LIST);
+<font color="#B22222">(*Modular monic polynomial mod ideal quotient and remainder.  M is a
+positive integer.  D is a list (d sub 1, ...,d sub r-1) of non-nega-
+tive beta-integers, r ge 1.  A and B belong to Z sub M(x sub 1, ...,x
+sub r-1,y)/(x sub 1 ** d sub 1, ...,x sub r-1 ** d sub r-1), with B
+monic.  A=B*Q+R, deg sub y of R lt deg sub y of B unless B divides A,
+in which case R=0, with Q,R belonging to Z sub M (x sub 1, ...,x sub
+r-1,y)/(x sub 1 ** d sub 1, ...,x sub r-1 ** d sub r-1).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BP, DL, ML, NL, Q1, QP, RP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=PDEG(B); BP:=PRED(B); Q:=BETA; R:=A;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute quotient terms.*)</font>
+      <font color="#4169E1">WHILE</font> R &lt;&gt; 0 <font color="#4169E1">DO</font> ML:=PDEG(R); DL:=ML-NL;
+            <font color="#4169E1">IF</font> DL &lt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font>
+               <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+               RETURN;
+               <strong><font color="#4169E1">END</font></strong>;
+            AL:=PLDCF(R); Q:=COMP2(AL,DL,Q); Q1:=LIST2(DL,AL);
+            RP:=PRED(R); QP:=MIPIPR(RL,M,D,BP,Q1);
+            R:=MIPDIF(RL,M,RP,QP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MMPIQR;
+
+
+<strong><font color="#4169E1">PROCEDURE MPDIF</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Modular polynomial difference.  A and B are polynomials in r
+variables over Z sub m, m a beta-integer.  C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CP, CPP, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=MPNEG(RL,ML,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP);
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); CP:=COMP2(AL,EL,CP);
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDNEG(ML,BL); <font color="#4169E1">ELSE</font>
+                      CL:=MPNEG(RLP,ML,BL); <strong><font color="#4169E1">END</font></strong>;
+                   CP:=COMP2(CL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP);
+                   ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDDIF(ML,AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=MPDIF(RLP,ML,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> CPP:=BETA; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> CPP:=MPNEG(RL,ML,BP); <font color="#4169E1">ELSE</font> CPP:=AP; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      C:=INV(CP);
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=CPP; <font color="#4169E1">ELSE</font> SRED(CP,CPP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE MPEMV</font></strong>(RL,ML,A,AL: LIST): LIST;
+<font color="#B22222">(*Modular polynomial evaluation of main variable.  A is a polynomial in
+r variables over Z sub m, m a beta-integer.  a is an element of
+Z sub m.  B(x(1), ...,x(r-1))=A(x(1), ...,x(r-1),a).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AP, B, EL1, EL2, IL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horners method.*)</font> ADV(A, EL1,AP); B:=0; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL1,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=MDSUM(ML,B,AL1); <font color="#4169E1">ELSE</font>
+                B:=MPSUM(RLP,ML,B,AL1); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> AP &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(AP, EL2,AP); <font color="#4169E1">ELSE</font> EL2:=0; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1-EL2 <font color="#4169E1">DO</font>
+                 <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=MDPROD(ML,AL,B); <font color="#4169E1">ELSE</font>
+                    B:=MPMDP(RLP,ML,AL,B); <strong><font color="#4169E1">END</font></strong>;
+                 <strong><font color="#4169E1">END</font></strong>;
+             EL1:=EL2;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MPEMV;
+
+
+<strong><font color="#4169E1">PROCEDURE MPEVAL</font></strong>(RL,ML,A,IL,AL: LIST): LIST;
+<font color="#B22222">(*Modular polynomial evaluation.  A is a polynomial in r variables
+over Z sub m, m a beta-integer.  1 le i le r.  a is an element of
+Z sub m.  B(x(1), ...,x(i-1),x(i+1), ...,x(r))=
+A(x(1), ...,x(i-1),a,x(i+1), ...,x(r)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, B, B1, EL1, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font>
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> B:=MPEMV(RL,ML,A,AL); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*il lt rl.*)</font> RLP:=RL-1; AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,A1,AP); B1:=MPEVAL(RLP,ML,A1,IL,AL);
+             <font color="#4169E1">IF</font> B1 &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(B1,EL1,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPEVAL;
+
+
+<strong><font color="#4169E1">PROCEDURE MPEXP</font></strong>(RL,ML,A,NL: LIST): LIST;
+<font color="#B22222">(*Modular polynomial exponentiation.  A is a polynomial in r variables
+over Z sub m, m a beta-integer.  n is a non-negative integer.
+B=A**n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=0.*)</font>
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=PINV(0,1,RL); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> B:=A;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> B:=MPPROD(RL,ML,B,A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPEXP;
+
+
+<strong><font color="#4169E1">PROCEDURE MPHOM</font></strong>(RL,ML,A: LIST): LIST;
+<font color="#B22222">(*Modular polynomial homomorphism.  A is an integral polynomial in r
+variables, r ge 0.  m is a positive beta-integer.  B is the image of
+A under the homomorphism H sub m, a polynomial in r variables over
+Z sub m.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=MDHOM(ML,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> RLP:=RL-1; AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=MDHOM(ML,AL); <font color="#4169E1">ELSE</font>
+                BL:=MPHOM(RLP,ML,AL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,EL,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPHOM;
+
+
+<strong><font color="#4169E1">PROCEDURE MPINT</font></strong>(PL,B,BL,BLP,RL,A,A1: LIST): LIST;
+<font color="#B22222">(*Modular polynomial interpolation.  p is a prime beta-integer.  B is
+a univariate polynomial over Z sub p.  b is an element of Z sub p
+such that B(b) ne 0 and bp=B(b)**-1.  A is a polynomial over Z sub
+p in r variables, r ge 1, with A=0 or the degree of A in x(1) less
+than the degree of B.  A1 is a polynomial over Z sub p in r-1
+variables.  AS(x(1), ...,x(r)) is the unique polynomial over Z sub
+p such that AS(x(1), ...,x(r)) is congruent to A(x(1), ...,x(r))
+modulo B(x(1)), AS(b,x(2), ...,x(r))=A1(x(2), ...,x(r)) and
+the degree of AS in x(1) is less than or equal to the degree of B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AL1, ALS, AP, AP1, AS, CL, DL, EL, EL1, ELS, J1Y, NL, RLP:
+     LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*deg(b)=0.*)</font> NL:=PDEG(B);
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> J1Y:=RL-1; AS:=PINV(J1Y,A1,1); RETURN(AS); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font>
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> AL:=MPEMV(1,PL,A,BL); DL:=MDDIF(PL,A1,AL);
+         <font color="#4169E1">IF</font> DL = 0 <font color="#4169E1">THEN</font> AS:=A; <font color="#4169E1">ELSE</font> CL:=MDPROD(PL,DL,BLP);
+            J1Y:=MPMDP(1,PL,CL,B); AS:=MPSUM(1,PL,J1Y,A); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(AS); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 1.*)</font> AS:=BETA; RLP:=RL-1;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AP:=BETA; <font color="#4169E1">ELSE</font> AP:=A; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A1 = 0 <font color="#4169E1">THEN</font> AP1:=BETA; <font color="#4169E1">ELSE</font> AP1:=A1; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">OR</font> (AP1 &lt;&gt; SIL) <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AL:=0; ADV2(AP1, ELS,AL1,AP1); <font color="#4169E1">ELSE</font>
+               <font color="#4169E1">IF</font> AP1 = SIL <font color="#4169E1">THEN</font> AL1:=0; ADV2(AP, ELS,AL,AP); <font color="#4169E1">ELSE</font>
+                  EL:=FIRST(AP); EL1:=FIRST(AP1); ELS:=MASMAX(EL,EL1);
+                  AL:=0; AL1:=0;
+                  <font color="#4169E1">IF</font> EL = ELS <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); <strong><font color="#4169E1">END</font></strong>;
+                  <font color="#4169E1">IF</font> EL1 = ELS <font color="#4169E1">THEN</font> ADV2(AP1, EL1,AL1,AP1); <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            ALS:=MPINT(PL,B,BL,BLP,RLP,AL,AL1); AS:=COMP2(ALS,ELS,AS);
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> AS = SIL <font color="#4169E1">THEN</font> AS:=0; <font color="#4169E1">ELSE</font> AS:=INV(AS); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AS);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPINT;
+
+
+<strong><font color="#4169E1">PROCEDURE MPMDP</font></strong>(RL,PL,AL,B: LIST): LIST;
+<font color="#B22222">(*Modular polynomial modular digit product.  a is an element of
+Z sub p, p a prime beta-integer.  B is a polynomial in r variables
+over Z sub p.  C=a*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, BP, C, CL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*c=0.*)</font>
+      <font color="#4169E1">IF</font> (AL = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> BP:=B; C:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(BP, EL,BL,BP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDPROD(PL,AL,BL); <font color="#4169E1">ELSE</font>
+                CL:=MPMDP(RLP,PL,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP2(CL,EL,C);
+             <font color="#4169E1">UNTIL</font> BP = SIL;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MPMDP;
+
+
+<strong><font color="#4169E1">PROCEDURE MPMON</font></strong>(RL,PL,A: LIST): LIST;
+<font color="#B22222">(*Modular polynomial monic.  A is a polynomial in r variables over
+Z sub p, p a prime beta-integer.  If A is non-zero then AP is
+the polynomial similar to A with LBCF(AP)=1.  If A=0 then AP=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, AP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AP:=0; RETURN(AP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a non-zero.*)</font> AL:=PLBCF(RL,A); ALP:=MDINV(PL,AL);
+      AP:=MPMDP(RL,PL,ALP,A); RETURN(AP);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MPMON;
+
+
+<strong><font color="#4169E1">PROCEDURE MPNEG</font></strong>(RL,ML,A: LIST): LIST;
+<font color="#B22222">(*Modular polynomial negative.  A is a polynomial in r variables over
+Z sub m, m a beta-integer.  B=-A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a non-zero.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=MDNEG(ML,AL); <font color="#4169E1">ELSE</font>
+                BL:=MPNEG(RLP,ML,AL); <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MPNEG;
+
+
+<strong><font color="#4169E1">PROCEDURE MPPROD</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Modular polynomial product.  A and B are polynomials in r variables
+over Z sub m, m a beta-integer, r ge 0.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BS, C, C1, CL, EL, FL, J1Y, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=MDPROD(ML,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=CINV(B); C:=0; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(BS, BL,FL,BS); AP:=AS; C1:=BETA;
+             <font color="#4169E1">REPEAT</font> ADV2(AP, AL,EL,AP);
+                    <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDPROD(ML,AL,BL); <font color="#4169E1">ELSE</font>
+                       CL:=MPPROD(RLP,ML,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> J1Y:=EL+FL; C1:=COMP2(J1Y,CL,C1);
+                       <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">UNTIL</font> AP = SIL;
+             <font color="#4169E1">IF</font> C1 &lt;&gt; SIL <font color="#4169E1">THEN</font> C:=MPSUM(RL,ML,C,C1); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> BS = SIL;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE MPPSR</font></strong>(RL,PL,A,B: LIST): LIST;
+<font color="#B22222">(*Modular polynomial pseudo-remainder.  A and B are polynomials
+in r variables over Z sub p, p a prime beta-integer,
+with B non-zero.  C is the pseudo-remainder of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B1, BB, BS, C, C1, CL, IL, J1Y, LL, ML, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*deg(b)=0.*)</font> NL:=PDEG(B);
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*deg(b) gt 0.*)</font> ML:=PDEG(A); C:=A; BB:=PRED(B); J1Y:=PLDCF(B);
+      B1:=LIST2(0,J1Y);
+      <font color="#4169E1">FOR</font> IL:=ML <font color="#4169E1">TO</font> NL BY -1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> C = 0 <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+          LL:=PDEG(C);
+          <font color="#4169E1">IF</font> LL = IL <font color="#4169E1">THEN</font> CL:=PLDCF(C); C:=PRED(C);
+             C:=MPPROD(RL,PL,C,B1); J1Y:=LL-NL; C1:=LIST2(J1Y,CL);
+             BS:=MPPROD(RL,PL,BB,C1); C:=MPDIF(RL,PL,C,BS); <font color="#4169E1">ELSE</font>
+             C:=MPPROD(RL,PL,C,B1); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MPPSR;
+
+
+<strong><font color="#4169E1">PROCEDURE MPQ</font></strong>(RL,PL,A,B: LIST): LIST;
+<font color="#B22222">(*Modular polynomial quotient.  A and B are polynomials in r
+variables over Z sub p, p a prime beta-integer, r ge 0.  B is a
+non-zero divisor of A.  C=A/B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=MDQ(PL,A,B); <font color="#4169E1">ELSE</font> MPQR(RL,PL,A,B, C,R); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MPQ;
+
+
+<strong><font color="#4169E1">PROCEDURE MPQR</font></strong>(RL,PL,A,B: LIST;    <strong><font color="#228B22">VAR</font></strong> Q,R: LIST);
+<font color="#B22222">(*Modular polynomial quotient and remainder.  A and B are polynomials
+un r variables over Z sub p, p a prime beta-integer, with B non-zero.
+Q and R are the unique polynomials such that either B divides A, Q=A/B
+and R=0 or else B does not divide A and A=BQ+R with DEG(R) minimal.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, BP, DL, ML, NL, Q1, QL, QP, RLP, RP, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=PDEG(B); BL:=PLDCF(B); BP:=PRED(B); Q:=BETA;
+      R:=A; RLP:=RL-1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute quotient terms.*)</font>
+      <font color="#4169E1">WHILE</font> R &lt;&gt; 0 <font color="#4169E1">DO</font> ML:=PDEG(R); DL:=ML-NL;
+            <font color="#4169E1">IF</font> DL &lt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font>
+               <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+               RETURN;
+               <strong><font color="#4169E1">END</font></strong>;
+            AL:=PLDCF(R);
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> QL:=MDQ(PL,AL,BL); SL:=0; <font color="#4169E1">ELSE</font>
+               MPQR(RLP,PL,AL,BL, QL,SL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font>
+               <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+               RETURN;
+               <strong><font color="#4169E1">END</font></strong>;
+            Q:=COMP2(QL,DL,Q); Q1:=LIST2(DL,QL); RP:=PRED(R);
+            QP:=MPPROD(RL,PL,BP,Q1); R:=MPDIF(RL,PL,RP,QP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPQR;
+
+
+<strong><font color="#4169E1">PROCEDURE MPRAN</font></strong>(RL,ML,QL,N: LIST): LIST;
+<font color="#B22222">(*Modular polynomial, random.  m is a positive beta-integer.  q is a
+rational number q1/q2 with 0 lt q1 le q2 lt beta.  N is a list (n
+sub r, ...,n sub 1) of non-negative beta-digits, r ge 0.  A is a
+random polynomial in r variables over Z sub m with deg sub i of A le
+n sub i for 1 le i le r.  q is the probability that any particular
+term of A has a non-zero coefficient.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, DL, EL, IDUM, NL, NP, QL1, QL2, QLS, RLP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute qls=int(ql*beta).*)</font> FIRST2(QL, QL1,QL2);
+      DQR(QL1,0,QL2, QLS,TL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> DL:=DRANN();
+         <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> A:=MDRAN(ML); <font color="#4169E1">ELSE</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 0.*)</font> RLP:=RL-1; ADV(N, NL,NP); A:=BETA;
+      <font color="#4169E1">FOR</font> EL:=0 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> DL:=DRANN();
+             <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> AL:=MDRAN(ML); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">ELSE</font> AL:=MPRAN(RLP,ML,QL,NP); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(EL,AL,A); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE MPSUM</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Modular polynomial sum.  A and B are polynomials in r variables over
+Z sub m, m a beta-integer.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CP, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP);
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); CP:=COMP2(AL,EL,CP);
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP);
+                   CP:=COMP2(BL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP);
+                   ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDSUM(ML,AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=MPSUM(RLP,ML,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AP:=BP; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=AP; <font color="#4169E1">ELSE</font> C:=INV(CP); SRED(CP,AP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE MPUP</font></strong>(RL,ML,CL,A: LIST): LIST;
+<font color="#B22222">(*Modular polynomial univariate product.  A is a polynomial in r
+variables, r ge 1, over Z sub m, m a positive beta-integer.  c is a
+univariate polynomial over Z sub m.  B(x(1), ...,x(r)) =
+c(x(1))*A(x(1), ...,x(r)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*cl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> (CL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font>
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> B:=MPPROD(RL,ML,CL,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> RLP:=RL-1; AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); BL:=MPUP(RLP,ML,CL,AL);
+             <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,EL,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MPUP;
+
+
+<strong><font color="#4169E1">PROCEDURE MPUQ</font></strong>(RL,PL,A,BL: LIST): LIST;
+<font color="#B22222">(*Modular polynomial univariate quotient.  A is a polynomial in r
+variables, r ge 2, over Z sub p, p a prime beta-integer.  b is a
+non-zero univariate polynomial over Z sub p which divides A.
+C(x(1), ...,x(r))=A(x(1), ...,x(r))/b(x(1)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, CL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a non-zero.*)</font> AP:=A; RLP:=RL-1; C:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 1 <font color="#4169E1">THEN</font> CL:=MPQ(RLP,PL,AL,BL); <font color="#4169E1">ELSE</font>
+                CL:=MPUQ(RLP,PL,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP2(CL,EL,C);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MPUQ;
+
+
+<strong><font color="#4169E1">PROCEDURE MUPDER</font></strong>(ML,A: LIST): LIST;
+<font color="#B22222">(*Modular univariate polynomial derivative.  m is a beta-integer.  A
+is a univariate polynomial over Z sub m.  B is the derivative of A, a
+univariate polynomial over Z sub m.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> B:=BETA; AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); AL:=MDPROD(ML,EL,AL);
+             <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> EL:=EL-1; B:=COMP2(AL,EL,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> MUPDER;
+
+
+<strong><font color="#4169E1">PROCEDURE MUPRAN</font></strong>(PL,NL: LIST): LIST;
+<font color="#B22222">(*Modular univariate polynomial, random.  A is a random univariate
+polynomial of degree n over Z(p).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, IL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=BETA;
+      <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> AL:=MDRAN(PL);
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(IL,AL,A); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=PL-1; J1Y:=MDRAN(J1Y); AL:=J1Y+1; A:=COMP2(NL,AL,A);
+      RETURN(A);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MUPRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE SMFMIP</font></strong>(RL,M,A: LIST): LIST;
+<font color="#B22222">(*Symmetric modular from modular integral polynomial.  M is a positive
+integer.  A is a polynomial in r variables over Z sub M, r ge 0.  B
+belongs to Z prime sub M (x1, ...,x sub r) with B=A (modulo M).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=SMFMI(M,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=SMFMI(M,AL); <font color="#4169E1">ELSE</font>
+                BL:=SMFMIP(RLP,M,AL); <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> SMFMIP;
+
+
+<strong><font color="#4169E1">PROCEDURE VMPIP</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Vector of modular polynomial inner product.  A and B are vectors of
+modular polynomials in r variables over Z sub m, r non-negative, m
+a beta-integer.  C is the inner product of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, CL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> CL:=0;
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(CL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); ADV(BP, BL,BP);
+             <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> J1Y:=MDPROD(ML,AL,BL);
+                CL:=MDSUM(ML,CL,J1Y); <font color="#4169E1">ELSE</font> J1Y:=MPPROD(RL,ML,AL,BL);
+                CL:=MPSUM(RL,ML,CL,J1Y); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(CL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> VMPIP;
+
+
+<strong><font color="#4169E1">END</font></strong> SACMPOL.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

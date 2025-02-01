@@ -1,0 +1,1022 @@
+
+<html>
+<head>
+<title>./masmodul/LINALGRN.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:30+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: LINALGRN.mi,v 1.5 1995/11/05 09:24:14 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: LINALGRN.mi,v $
+ * Revision 1.5  1995/11/05 09:24:14  kredel
+ * Fixed comments and code.
+ *
+ * Revision 1.4  1992/10/15  16:29:16  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.3  1992/08/21  13:52:13  kredel
+ * Corrected error in RNMDET: wrong check for square matrix.
+ *
+ * Revision 1.2  1992/02/12  17:33:11  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:51  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE LINALGRN;
+
+<font color="#B22222">(* MAS Linear Algebra Rational Number Implementation Module. *)</font>
+
+
+<font color="#B22222">(*-------------------------------------------------------------------------
+
+Implementation Module: Linear Algebra Rational Number 
+
+Programmierpraktikum SS 1990: JUERGEN MUELLER, Heinz Kredel 
+
+Contents: Standartoperations for matrix and vector manipulations,  
+          Gaussian elimination, LU-Decomposition, Solve,    
+          Inversion, Nullspace, Determinant. 
+
+Stand : 27.09.90, Juergen Mueller                         
+        from then date of the file, Heinz Kredel             
+
+Remarks: A vector is represented as a list of elements.
+         The elements may be integers or rational numbers.
+         A matix is represented as a list of vectors.
+         In most circumstances these vectors are interpreted row 
+         vectors, but they can also be interpreted as column vectors.
+
+--------------------------------------------------------------------------*)</font>
+
+  FROM MASELEM IMPORT GAMMAINT, MASMIN, MASEVEN;
+
+  FROM MASBIOS IMPORT SWRITE, BLINES, CREADB, BKSP, MASORD, DIGIT;
+
+  FROM MASSTOR IMPORT LIST, SIL, BETA, 
+                      ADV, FIRST, RED, INV, LIST1, COMP, LENGTH;
+
+  FROM MASERR IMPORT ERROR, severe;
+
+  FROM SACLIST IMPORT LIST2, CCONC, CINV, CONC;
+
+  FROM SACRN IMPORT RNINV, RNABS, RNCOMP, RNWRIT, RNNEG, RNDIF, RNQ, 
+                    RNDEN, RNNUM, RNRED, RNINT, RNPROD, RNSUM;
+
+  FROM MASRN IMPORT RNMAX, RNDWR;
+
+  FROM MASAPF IMPORT RNDRD, APFRN, APWRIT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: LINALGRN.mi,v 1.5 1995/11/05 09:24:14 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#228B22">TYPE</font></strong> F2 = PROCEDURE(LIST,LIST): LIST;
+
+<font color="#B22222">(*The TDI compiler accepts only global functions in expressions. *)</font>   
+
+<strong><font color="#4169E1">PROCEDURE rnhi</font></strong>(i,j: LIST): LIST; <font color="#B22222">(*Hilbert*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> RETURN(RNRED(1,i+j-1)) <strong><font color="#4169E1">END</font></strong> rnhi;
+
+<strong><font color="#4169E1">PROCEDURE rnum</font></strong>(i,j: LIST): LIST; <font color="#B22222">(*unit matrix*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> <font color="#4169E1">IF</font> i = j <font color="#4169E1">THEN</font> RETURN(RNINT(1)) <font color="#4169E1">ELSE</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> rnum;
+
+<font color="#B22222">(*---------------- arbitrary matices --------------------*)</font>
+
+<strong><font color="#4169E1">PROCEDURE MDIM</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Matrix dimension. M is a matrix. MDIM returns
+max( row, column) of M. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   zeile, spalte : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> zeile := LENGTH(FIRST(M));
+      spalte := LENGTH(M);
+      <font color="#4169E1">IF</font> spalte &lt; zeile <font color="#4169E1">THEN</font> RETURN(zeile) 
+                        <font color="#4169E1">ELSE</font> RETURN(spalte) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MDIM;
+
+
+<strong><font color="#4169E1">PROCEDURE MGET</font></strong>(M, k, l : LIST): LIST;
+<font color="#B22222">(*Matrix get. M is a matrix. k, l are integers, 0 le k le  rows(M),
+0 le l le  columns(M). MGET returns the element M(k,l) of matrix M. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, j, h1, rest : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> rest := M; h1 := SIL;
+      i := 0; j := 0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Suche nach Eintrag in der gewuenschter Zeile*)</font>
+      <font color="#4169E1">WHILE</font> i &lt; k <font color="#4169E1">DO</font>
+            i := i+1;
+            ADV(rest, h1, rest);
+            <strong><font color="#4169E1">END</font></strong>;
+      rest := h1;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Suche nach Eintrag in der gewuenschten Spalte*)</font>
+      <font color="#4169E1">WHILE</font> j &lt; l <font color="#4169E1">DO</font>
+            j := j+1;
+            ADV(rest, h1, rest);
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(h1);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MGET;
+
+
+<strong><font color="#4169E1">PROCEDURE MSET</font></strong>(M, k, l, x : LIST): LIST;
+<font color="#B22222">(*Matrix set. M is a matrix. k, l are integers, 0 le k le  rows(M),
+0 le l le  columns(M). MSET sets the element M(k,l) to x. 
+The new matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>    i, j, h1, rest1, rest2, neuk, neul, neuhilf, 
+       egal, neu : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> rest1 := M; neuk := SIL;
+      i := 0;
+      j := 0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Suche k-te Zeile*)</font>
+      <font color="#4169E1">WHILE</font> i &lt; k <font color="#4169E1">DO</font>
+            i := i+1;
+            ADV(rest1, h1, rest1);
+            neuk := COMP(h1,neuk);
+            <strong><font color="#4169E1">END</font></strong>;
+      rest2 := h1;
+      neul := SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Suche l-te Spalte*)</font>
+      <font color="#4169E1">WHILE</font> j &lt; l <font color="#4169E1">DO</font>
+            j := j+1;
+            ADV(rest2, h1, rest2);
+            neul := COMP(h1,neul);
+            <strong><font color="#4169E1">END</font></strong>;
+      neu := COMP(x,rest2); <font color="#B22222">(*tausche x aus*)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*und fuege neu zusammen*)</font>
+      ADV(neul, egal, neul);
+      <font color="#4169E1">WHILE</font> neul &lt;&gt; SIL <font color="#4169E1">DO</font>
+            ADV(neul, neuhilf, neul);
+            neu := COMP(neuhilf,neu);
+            <strong><font color="#4169E1">END</font></strong>;
+      neu := LIST1(neu);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*restauriere Matrix*)</font> 
+      ADV(neuk, egal, neuk);
+      <font color="#4169E1">WHILE</font> neuk&lt;&gt;SIL <font color="#4169E1">DO</font>
+            ADV(neuk, neuhilf, neuk);
+            neu := COMP(neuhilf,neu);
+            <strong><font color="#4169E1">END</font></strong>;
+      neu := INV(neu);
+<font color="#B22222">(*6*)</font> <font color="#4169E1">WHILE</font> rest1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+            ADV(rest1, neuhilf, rest1);
+            neu := COMP(neuhilf,neu);
+            <strong><font color="#4169E1">END</font></strong>;
+      neu := INV(neu);
+      RETURN(neu);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MSET;
+
+
+<strong><font color="#4169E1">PROCEDURE VDELEL</font></strong>(V, i : LIST): LIST;
+<font color="#B22222">(*Vector delete element. V is a vector. The i-th element of V 
+is deleted. 0 le i le length(V). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   U, VP, v, j : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> i &lt;= 0 <font color="#4169E1">THEN</font> RETURN(V) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> RETURN(V) <strong><font color="#4169E1">END</font></strong>;
+      VP := V; j := 0; U := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font>
+             j := j+1;
+             <font color="#4169E1">IF</font> VP = SIL <font color="#4169E1">THEN</font> RETURN(V); <strong><font color="#4169E1">END</font></strong>;
+             ADV(VP, v, VP);
+             U := COMP(v,U);
+             <font color="#4169E1">UNTIL</font> j=i;
+<font color="#B22222">(*3*)</font> U := RED(U); U := INV(U); U := CONC(U,VP);
+      RETURN(U);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> VDELEL;
+
+
+<strong><font color="#4169E1">PROCEDURE MDELCOL</font></strong>(M, i : LIST): LIST;
+<font color="#B22222">(*Matrix delete column. M is a vector of row vectors. In each 
+row the i-th element is deleted, 0 le i le  columns(M). The new 
+matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   N, MP, V : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> i &lt;= 0 <font color="#4169E1">THEN</font> RETURN(M) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> M = SIL <font color="#4169E1">THEN</font> RETURN(M) <strong><font color="#4169E1">END</font></strong>;
+      MP := M; N := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> MP # SIL <font color="#4169E1">DO</font>
+            ADV(MP, V, MP);
+            V := VDELEL(V,i);
+            N := COMP(V,N);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> N := INV(N);
+      RETURN(N);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MDELCOL;
+
+
+<strong><font color="#4169E1">PROCEDURE MMINOR</font></strong>(M, i, j : LIST): LIST;
+<font color="#B22222">(*Matrix minor. M is a vector of row vectors. The i-th column, 
+0 le i le  rows(M), and in each remaining row the j-th element,
+0 le j le  columns(M), is deleted. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   MP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> MP:=VDELEL(M,j); MP:=MDELCOL(MP,i); 
+      RETURN(MP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MMINOR;
+
+
+<strong><font color="#4169E1">PROCEDURE MTRANS</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Matrix transpose. M is a matrix. The transposed matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, C, MT, a, b : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=M; MT:=SIL;
+      <font color="#4169E1">WHILE</font> B # SIL <font color="#4169E1">DO</font> 
+            A:=B; B:=SIL; C:=SIL; 
+            <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font> ADV(A,a,A); 
+                  <font color="#4169E1">IF</font> a # SIL <font color="#4169E1">THEN</font> ADV(a,b,a); 
+                     B:=COMP(a,B); C:=COMP(b,C) <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            C:=INV(C); 
+            <font color="#4169E1">IF</font> C # SIL <font color="#4169E1">THEN</font> MT:=COMP(C,MT) <strong><font color="#4169E1">END</font></strong>;
+            B:=INV(B);
+            <strong><font color="#4169E1">END</font></strong>;
+      MT:=INV(MT); RETURN(MT);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MTRANS;
+
+
+<strong><font color="#4169E1">PROCEDURE VEL</font></strong>(a, n : LIST): LIST;
+<font color="#B22222">(*Vector elements. A vector of length n with elements a is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, k : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A := SIL; k := 1;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> k&lt;=n <font color="#4169E1">DO</font> k := k+1;
+            A := COMP(a,A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(A);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> VEL;
+
+
+<strong><font color="#4169E1">PROCEDURE MFILL</font></strong>(M, m, n: LIST): LIST;
+<font color="#B22222">(*Matrix fill. M is an upper triangular matrix. A (m x n) matrix 
+with zeros in the lower triangular part is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, j, V, MP, np: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> MP:=SIL; i:=0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> i &lt; m <font color="#4169E1">DO</font> i:=i+1; j:=0; 
+            <font color="#4169E1">IF</font> M # SIL <font color="#4169E1">THEN</font> ADV(M,V,M); np:=n-LENGTH(V);  
+                       <font color="#4169E1">ELSE</font> V:=SIL; np:=n <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">WHILE</font> j &lt; np <font color="#4169E1">DO</font> j:=j+1; V:=COMP(0,V) <strong><font color="#4169E1">END</font></strong>;
+            MP:=COMP(V,MP);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> MP:=INV(MP); RETURN(MP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MFILL;
+
+
+<strong><font color="#4169E1">PROCEDURE MRANG</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Matrix rang. U is an upper triangular matrix from a
+LU-decomposition. The rang of U is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=LENGTH(U); 
+      RETURN(r);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MRANG;
+
+
+<strong><font color="#4169E1">PROCEDURE MAT</font></strong>(f: F2; m, n: LIST): LIST;
+<font color="#B22222">(*Matrix. An (m x n) matrix with elements given by f(i,j) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, j, V, M, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M:=SIL;
+      <font color="#4169E1">IF</font> (m &lt;= 0) <font color="#4169E1">OR</font> (n &lt;= 0) <font color="#4169E1">THEN</font> RETURN(M) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> i:=0;
+      <font color="#4169E1">WHILE</font> i &lt; m <font color="#4169E1">DO</font> i:=i+1; j:=0; V:=SIL; 
+            <font color="#4169E1">WHILE</font> j &lt; n <font color="#4169E1">DO</font> j:=j+1;
+                  v:=f(i,j); V:=COMP(v,V) <strong><font color="#4169E1">END</font></strong>;
+            V:=INV(V); M:=COMP(V,M);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> M:=INV(M); RETURN(M);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MAT;
+
+
+<font color="#B22222">(*---------------- rational number matices --------------------*)</font>
+
+<strong><font color="#4169E1">PROCEDURE RNMHILBERT</font></strong>(m, n : LIST): LIST;
+<font color="#B22222">(*Rational number matrix Hilbert. m, n integer. A (m x n) rational 
+number Hilbert matrix is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RETURN(MAT(rnhi,m,n));
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMHILBERT;
+
+
+<strong><font color="#4169E1">PROCEDURE RNUM</font></strong>(m, n : LIST): LIST;
+<font color="#B22222">(*Rational number unit matrix. m, n integer. A (m x n) rational 
+number unit matrix is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RETURN(MAT(rnum,m,n));
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVWRITE</font></strong>(A, s : LIST);
+<font color="#B22222">(*Rational number vector write. A is a rational number vector. 
+A is written to the output stream. The rational numbers are written 
+as rational numbers if s = -1, as decimal approximations, with s decimal 
+digits if s &gt;= 0 or in floating point format if s &lt; -1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("(");
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> 
+               <font color="#4169E1">IF</font> s = -1 <font color="#4169E1">THEN</font> RNWRIT(a) 
+                  <font color="#4169E1">ELSE</font> a:=APFRN(a); APWRIT(a); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> RNDWR(a,s); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> A # SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> SWRITE(")");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVREAD</font></strong>(): LIST;
+<font color="#B22222">(*Rational number vector read. A rational number vector is 
+read from the input stream, and returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   c, a, A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c:=CREADB(); A:=SIL;
+      <font color="#4169E1">IF</font> c # MASORD("(") <font color="#4169E1">THEN</font> ERROR(severe,"RNVREAD ( expected."); 
+         BKSP; RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> LOOP c:=CREADB(); 
+           <font color="#4169E1">IF</font> c = MASORD(")") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; BKSP; 
+           a:=RNDRD(); A:=COMP(a,A);
+           c:=CREADB();               
+           <font color="#4169E1">IF</font> c # MASORD(",") <font color="#4169E1">THEN</font> BKSP <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> A:=INV(A); RETURN(A); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMWRITE</font></strong>(A, s : LIST);
+<font color="#B22222">(*Rational number matrix write. A is a rational number matrix. 
+A is written to the output stream. The rational numbers are written 
+as rational numbers if s = -1, as decimal approximations, with s decimal 
+digits if s &gt;= 0 or in floating point format if s &lt; -1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BLINES(0); SWRITE("(");
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            RNVWRITE(a,s);
+            <font color="#4169E1">IF</font> A # SIL <font color="#4169E1">THEN</font> SWRITE(", "); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> SWRITE(")"); BLINES(0);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMREAD</font></strong>(): LIST;
+<font color="#B22222">(*Rational number matrix read. A rational number matrix is 
+read from the input stream, and returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   c, a, A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c:=CREADB(); A:=SIL;
+      <font color="#4169E1">IF</font> c # MASORD("(") <font color="#4169E1">THEN</font> ERROR(severe,"RNMREAD ( expected."); 
+         BKSP; RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> LOOP c:=CREADB(); 
+           <font color="#4169E1">IF</font> c = MASORD(")") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           <font color="#4169E1">IF</font> c = MASORD("(") <font color="#4169E1">THEN</font> BKSP; a:=RNVREAD(); 
+              A:=COMP(a,A);
+              c:=CREADB();               
+              <font color="#4169E1">IF</font> c # MASORD(",") <font color="#4169E1">THEN</font> BKSP <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> A:=INV(A); RETURN(A); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVFIV</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Rational number vector from integer vector. A is an integer 
+vector. A rational number vector with denominators 1 
+and nominators equal to the elements of A is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; a := SIL; c := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := RNINT(a);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> C := INV(C);
+      RETURN(C);
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> RNVFIV;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMFIM</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Rational number matrix from integer matrix. A is an integer 
+matrix. A rational number matrix with denominators 1 
+and nominators equal to the elements of A is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   hilf, neu : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> hilf := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M # SIL <font color="#4169E1">DO</font>
+            ADV(M, neu, M);
+            neu := RNVFIV(neu);
+            hilf := COMP(neu,hilf);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> hilf := INV(hilf);
+      RETURN(hilf);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMFIM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVDIF</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector difference. A and B are rational number 
+vectors. The rational number vector C = A - B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C, test : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+      <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := RNDIF(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+      C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVQ</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector quotient. A and B are rational number vectors.
+The rational number vector C = A / FIRST(B) is returned. *)</font>
+    <strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+    <strong><font color="#4169E1">BEGIN</font></strong>
+      C := SIL;
+      <font color="#4169E1">IF</font> B#SIL <font color="#4169E1">THEN</font>
+        <font color="#4169E1">WHILE</font> A#SIL <font color="#4169E1">DO</font>
+          ADV(A, a, A);
+          c := RNQ(a,FIRST(B));
+          C := COMP(c,C);
+        <strong><font color="#4169E1">END</font></strong>;
+        C := INV(C);
+        RETURN(C);
+      <font color="#4169E1">ELSE</font>
+        RETURN(A);
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong> RNVQ;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVQF</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Rational number vector quotient. A is a rational number vector.  
+The rational number vector C = A / FIRST(A) is returned. *)</font>
+    <strong><font color="#228B22">VAR</font></strong>   b : LIST;
+    <strong><font color="#4169E1">BEGIN</font></strong>
+      <font color="#4169E1">IF</font> b#LIST(0) <font color="#4169E1">THEN</font>
+        A := RNVQ(A,A);
+      <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+    <strong><font color="#4169E1">END</font></strong> RNVQF;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVVSUM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector vector sum. A and B are rational number vectors. 
+A rational number vector C = A + B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C, test : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := RNSUM(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVVSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVSVSUM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector scalar sum. A and B are rational number vectors.
+A rational number vector C = A + FIRST(B) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; b:=FIRST(B); 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := RNSUM(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVSVSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVSSUM</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Rational number vector scalar sum. A is a rational number vector.
+A rational number C = a1 + a2 + ... + an is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, c : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> a := SIL; c := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := RNSUM(a,c);
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(c);
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> RNVSSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVSVPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector scalar vector product. A and B are 
+rational number vectors. A rational number vector 
+C = (a1*FIRST(B), ..., an*FIRST(B)) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; b:=FIRST(B);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := RNPROD(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVSVPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVVPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector vector product. A and B are 
+rational number vectors. A rational number vector 
+C = (a1*b1, ..., an*bn) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := RNPROD(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVVPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVSPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector scalar product. A and B are rational 
+number vectors. A rational number C = a1*b1 + ... + an*bn is
+returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := RNPROD(a,b);
+            C := RNSUM(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVSPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNVMAX</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Rational number vector maximum norm. M is a rational number 
+vector. A rational number a = maximum absolute value M(i) 
+is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   g, zeile, element, max : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> max := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M # SIL <font color="#4169E1">DO</font>
+            ADV(M, element, M);
+            element := RNABS(element);
+            max:=RNMAX(max,element);  
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(max);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVMAX;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMSUM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number matrix sum. A and B are rational number
+matrices. A rational number matrix C = A + B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B=SIL <font color="#4169E1">THEN</font> RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+      C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A#SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := RNVVSUM(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMDIF</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number matrix difference. A and B are rational number
+matrices. A rational number matrix C = A - B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font>
+         B := RNSMPROD(B,RNINT(-1));
+         RETURN(B);
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B=SIL <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+      C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := RNVDIF(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE RNSMPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number scalar and matrix product. A is a rational 
+number matrix. B is a rational number. A rational number matrix 
+C = A * B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font> RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+      C := SIL; b:=LIST1(B);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := RNVSVPROD(a,b); <font color="#B22222">(* geaendert *)</font>
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNSMPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMMAX</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Rational number matrix maximum norm. M is a rational number 
+matrix. A rational number a = maximum absolute value M(i,j) 
+is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   g, zeile, element, max : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> max := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M # SIL <font color="#4169E1">DO</font>
+            ADV(M, zeile, M);
+            element := RNVMAX(zeile);
+            max:=RNMAX(max,element);  
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(max);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMMAX;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMGE</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Rational number matrix Gaussian elimination. M is a (n x m) 
+rational number matrix. A (n x m) rational number matrix
+resulting from Gaussian elimination is returned.  
+RNMGELUD is called. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   l, u, i, j, MP : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> i:=LENGTH(M);
+      <font color="#4169E1">IF</font> M # SIL <font color="#4169E1">THEN</font> j:=LENGTH(FIRST(M))
+                 <font color="#4169E1">ELSE</font> j:=0 <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RNMGELUD(M,l,u);
+<font color="#B22222">(*3*)</font> MP:=MFILL(u,i,j);
+      RETURN(MP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMGE;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMDETL</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Rational number matrix determinant, using Laplace expansion. 
+M is a rational number matrix. The determinant of M is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, d, dp, s, N, MP, V, VP, v : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> d := 0;
+      <font color="#4169E1">IF</font> M = SIL <font color="#4169E1">THEN</font> RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+      ADV(M, V, MP);
+      <font color="#4169E1">IF</font> MP = SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*not square matrix ? *)</font>
+         <font color="#4169E1">IF</font> RED(V) # SIL <font color="#4169E1">THEN</font> d:=0 <font color="#4169E1">ELSE</font> d:=FIRST(V) <strong><font color="#4169E1">END</font></strong>;
+         RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+      s := 1;
+      i := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> V # SIL <font color="#4169E1">DO</font>
+            ADV(V, v, V);
+            i := i+1;
+            <font color="#4169E1">IF</font> v # 0 <font color="#4169E1">THEN</font>
+               N := MDELCOL(MP,i);
+               dp := RNMDETL(N);
+               dp := RNPROD(v,dp);
+               <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> dp := RNNEG(dp) <strong><font color="#4169E1">END</font></strong>;
+               d := RNSUM(d,dp);
+               <strong><font color="#4169E1">END</font></strong>;
+            s := -s; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(d);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMDETL;
+
+
+<font color="#B22222">(*-------------------*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNVLC</font></strong>(a, A, b, B : LIST): LIST;
+<font color="#B22222">(*Rational number vector linear combination. A and B are rational 
+number vectors. a and b are rational numbers. A rational number vector 
+C = a*A + b*B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>    c, cp, C, ap, bp : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A#SIL <font color="#4169E1">DO</font>
+            ADV(A, ap, A);  ADV(B, bp, B);
+            c := RNPROD(a,ap); cp := RNPROD(b,bp);
+            c := RNSUM(c,cp); C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNVLC;
+
+
+<strong><font color="#4169E1">PROCEDURE RNSVPROD</font></strong>(a, A : LIST): LIST;
+<font color="#B22222">(*Rational number vector product with scalar. A is a rational 
+number vector. a is a rational number. A rational number vector
+C = a*A is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   c, cp, C, ap : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A#SIL <font color="#4169E1">DO</font>
+            ADV(A, ap, A);
+            c := RNPROD(a,ap);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNSVPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Rational number matrix product. A and B are rational number
+matrices. A rational number matrix C = A * B is returned, if 
+the number of coloums of A is equal to the number of rows of B, 
+otherwise the empty matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   H1, H2, C, C1, a, c, BP, BT, b : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+      H1 := LENGTH(FIRST(A));
+      H2 := LENGTH(B);
+      <font color="#4169E1">IF</font> H1 # H2 <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> BT:=MTRANS(B); <font color="#B22222">(*transpose B. *)</font>
+      <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font> ADV(A, a, A);
+            C1:=SIL; BP:=BT;
+            <font color="#4169E1">WHILE</font> BP # SIL <font color="#4169E1">DO</font> ADV(BP,b,BP);
+                  c:=RNVSPROD(a,b);   
+                  C1:=COMP(c,C1);
+                  <strong><font color="#4169E1">END</font></strong>;
+            C1 := INV(C1);
+            C := COMP(C1,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMPROD;
+
+
+<font color="#B22222">(*--------------------------*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNMDET</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Rational number matrix determinant, using Gaussian elimination. 
+M is a rational number matrix. The determinant of M is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   d, s, i, C, M1, MP, a, b, c, MP1, V, e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M1 := M; d := 0; s := 1;
+      <font color="#4169E1">IF</font> M1 = SIL <font color="#4169E1">THEN</font> RETURN(d) <strong><font color="#4169E1">END</font></strong>;
+      V:=FIRST(M1); 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> RETURN(d) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> LENGTH(M1) # LENGTH(V) <font color="#4169E1">THEN</font> RETURN(d) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* not square *)</font> 
+      e:=RNINT(1); d := e;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M1 # SIL <font color="#4169E1">DO</font>
+            MP1 := M1; M1 := SIL;
+            a := 0; i:=0;
+            <font color="#B22222">(*search pivot row and count sign changes. *)</font>
+            <font color="#4169E1">WHILE</font> (MP1 # SIL) <font color="#4169E1">AND</font> (a = 0) <font color="#4169E1">DO</font>
+                  ADV(MP1, C, MP1); i:=i+1;
+                  ADV(C, a, C);
+                  <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> M1 := COMP(C,M1) <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> MASEVEN(i) <font color="#4169E1">THEN</font> s:=-s <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> d:=0; RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#B22222">(*rest matrix. *)</font>
+            d:=RNPROD(d,a);
+            <font color="#4169E1">WHILE</font> MP1 # SIL <font color="#4169E1">DO</font>
+                  ADV(MP1, V, MP1);
+                  ADV(V, b, V);
+                  <font color="#4169E1">IF</font> b # 0 <font color="#4169E1">THEN</font> b:=RNNEG(RNQ(b,a));
+                     V := RNVLC(e,V,b,C) <strong><font color="#4169E1">END</font></strong>;
+                  M1 := COMP(V,M1);
+                  <strong><font color="#4169E1">END</font></strong>;
+            M1 := INV(M1); 
+            <font color="#4169E1">IF</font> M1 # SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*not square matrix ? *)</font>
+               <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> d := 0; RETURN(d) <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> d:=RNNEG(d) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(d);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMDET;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMGELUD</font></strong>(M : LIST; <strong><font color="#228B22">VAR</font></strong> L, U: LIST);
+<font color="#B22222">(*Rational number matrix Gaussian elimination LU-decomposition. 
+M is a rational number matrix represented rowwise. L is a lower 
+triangular rational number matrix represented columnwise.
+U is an upper triangular rational number matrix represented rowwise.
+M = L * U for appropriate modifications of L and U. 
+The pivot operations are also recorded in L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, M1, MP, L1, a, b, c, MP1, V, e, n, Z : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M1 := M; MP := SIL; L := SIL; U := SIL;
+      <font color="#4169E1">IF</font> M1 = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      e := RNINT(1);
+      n := RNINT(0);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M1 # SIL <font color="#4169E1">DO</font>
+            L1 := SIL; MP1 := M1; M1 := SIL;
+            a := 0;
+            <font color="#B22222">(*search pivot row. *)</font>
+            <font color="#4169E1">WHILE</font> (MP1 # SIL) <font color="#4169E1">AND</font> (a = 0) <font color="#4169E1">DO</font>
+                  ADV(MP1, C, MP1);
+                  ADV(C, a, C);
+                  <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> M1 := COMP(C,M1); L1 := COMP(a,L1); <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*C:=COMP(a,C); M1:=RED(M1); *)</font>
+               <font color="#4169E1">ELSE</font>  
+               a := RNQ(e,a);
+               L1 := COMP(a,L1);
+               C := RNSVPROD(a,C);
+               <font color="#4169E1">WHILE</font> MP1 # SIL <font color="#4169E1">DO</font>
+                     ADV(MP1, V, MP1);
+                     ADV(V, b, V);
+                     <font color="#4169E1">IF</font> b # 0 <font color="#4169E1">THEN</font> V := RNVLC(e,V,RNNEG(b),C) <strong><font color="#4169E1">END</font></strong>;
+                     M1 := COMP(V,M1);
+                     L1 := COMP(b,L1);
+                     <strong><font color="#4169E1">END</font></strong>;
+               C := COMP(e,C);
+               MP := COMP(C,MP); 
+               <strong><font color="#4169E1">END</font></strong>;
+            M1 := INV(M1); 
+            L1 := INV(L1); L := COMP(L1,L);
+            <font color="#4169E1">IF</font> M1 # SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*if not square matrix *)</font>
+               <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> M1 := SIL <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> U := INV(MP); L := INV(L);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMGELUD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMLT</font></strong>(L, b : LIST): LIST;
+<font color="#B22222">(*Rational matrix lower triangular matrix transformation. 
+L is a lower triangular rational number matrix represented 
+columnwise as generated by RNMGELUD. b is a rational number 
+vector. A rational number vector u = L * b is returned, 
+such that if M * x = b and M = L * U, then U * x = u. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   u, L1, b1, c, l, d, a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> u := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> L # SIL <font color="#4169E1">DO</font>
+            ADV(L, L1, L);
+            b1 := b; b := SIL;
+            l := 0;
+            <font color="#4169E1">WHILE</font> (L1 # SIL) <font color="#4169E1">AND</font> (l = 0) <font color="#4169E1">DO</font>
+                  ADV(L1, l, L1);
+                  ADV(b1, c, b1);
+                  <font color="#4169E1">IF</font> l = 0 <font color="#4169E1">THEN</font> b := COMP(c,b) <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> l = 0 
+               <font color="#4169E1">THEN</font> <font color="#B22222">(*u := COMP(c,u);*)</font> 
+               <font color="#4169E1">ELSE</font> <font color="#B22222">(* l # 0 *)</font>
+                    c := RNPROD(c,l);
+                    u := COMP(c,u);
+                    <font color="#4169E1">WHILE</font> L1 # SIL <font color="#4169E1">DO</font>
+                          ADV(L1, l, L1);
+                          ADV(b1, d, b1);
+                          a := RNPROD(l,c);
+                          a := RNDIF(d,a);
+                          b := COMP(a,b);
+                          <strong><font color="#4169E1">END</font></strong>;
+                    <strong><font color="#4169E1">END</font></strong>;
+            b := INV(b);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#4169E1">WHILE</font> b &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(b,c,b); <font color="#B22222">(*unsolvable ? *)</font>
+            <font color="#4169E1">IF</font> c # 0 <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> u := INV(u); RETURN(u);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMLT;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMUT</font></strong>(U, b : LIST): LIST;
+<font color="#B22222">(*Rational matrix upper triangular matrix transformation. 
+U is an upper triangular rational number matrix represented rowwise
+as generated by RNMGELUD. b is a rational number vector 
+b = L * b' as generated by RNMLT. A rational number vector x, 
+such that U * x = b is returned. If no such x exists, then an 
+empty vector is returned. If more than one such x exists, then 
+for free x(i), x(i) = 0 is taken. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   UP, x, U1, a, c, y, u, xp, b1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> x:=SIL; 
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(x) <strong><font color="#4169E1">END</font></strong>;
+      UP := CINV(U); b1 := CINV(b);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> UP # SIL <font color="#4169E1">DO</font>
+            ADV(UP, U1, UP);
+            U1 := CINV(U1);
+            y := 0;
+            xp := x;
+            <font color="#4169E1">WHILE</font> xp # SIL <font color="#4169E1">DO</font>
+                  ADV(xp, c, xp);
+                  ADV(U1, u, U1);
+                  u := RNPROD(u,c);
+                  y := RNSUM(y,u);
+                  <strong><font color="#4169E1">END</font></strong>;
+            xp:=SIL; 
+            <font color="#4169E1">WHILE</font> RED(U1) # SIL <font color="#4169E1">DO</font>
+                  U1:=RED(U1);
+                  xp:=COMP(0,xp); <font color="#B22222">(* arbitrary solution. *)</font>
+                  <strong><font color="#4169E1">END</font></strong>;
+            ADV(U1, u, U1); 
+            ADV(b1, c, b1);
+            c := RNDIF(c,y);
+            <font color="#B22222">(* u = 0, should not occur. *)</font> 
+            a := RNQ(c,u); 
+            xp := COMP(a,xp); xp:=INV(xp);
+            x := CONC(x,xp);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> x := INV(x); RETURN(x);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMUT;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMSDS</font></strong>(L, U, b : LIST): LIST;
+<font color="#B22222">(*Rational number matrix solve decomposed system. 
+L is a lower triangular rational number matrix represented 
+columnwise, U is an upper triangular rational number matrix 
+represented rowwise. L and U as generated by RNMGELUD.
+If M = L * U, then a rational number vector x, such that 
+M * x = b is returned. If no such x exists, then an empty 
+vector is returned. If more than one such x exists, then 
+for free x(i), x(i) = 0 is taken. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   u, x : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> u := RNMLT(L,b);
+      <font color="#4169E1">IF</font> u # SIL <font color="#4169E1">THEN</font> x := RNMUT(U,u);
+                 <font color="#4169E1">ELSE</font> x := SIL; <font color="#B22222">(*unsolvable*)</font> <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(x);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMSDS;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMINV</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Rational number matrix inversion. A is a rational number matrix 
+represented rowwise. If it exists, the inverse matrix of A is 
+returned, otherwise an empty matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, l, u, n, E, e, x : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> n := LENGTH(A); B := SIL;
+      <font color="#4169E1">IF</font> n &lt;= 0 <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> n # LENGTH(FIRST(A)) <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*LU-decomposition. *)</font>
+      RNMGELUD(A,l,u); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*solve A Ainv = E. *)</font>
+      E := RNUM(n,n);
+      <font color="#4169E1">WHILE</font> E # SIL <font color="#4169E1">DO</font>
+            ADV(E, e, E);
+            x := RNMSDS(l,u,e);
+            <font color="#4169E1">IF</font> x = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*singular *)</font>
+            B := COMP(x,B);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> B := INV(B); RETURN(B);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMINV;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMUNS</font></strong>(U : LIST): LIST;
+<font color="#B22222">(*Rational number matrix upper triangular matrix solution null space. 
+U is an upper triangular rational number matrix represented rowwise
+as generated by RNMGELUD. A matrix X of linear independent rational 
+number vectors x is returned, such that for each x in X, U * x = 0 holds. 
+If only x = 0 satisfies the condition U * x = 0, then the 
+matrix X is empty. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   UP, V, N, Z, ZP, e, a, c, u, up, b, i, n, m, j: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UP:=CINV(U); N:=SIL; Z:=SIL; i:=0; e:=RNINT(1);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> UP # SIL <font color="#4169E1">DO</font> ADV(UP,u,UP); 
+            n:=LENGTH(u)-1;
+            <font color="#4169E1">IF</font> i &lt; n <font color="#4169E1">THEN</font> ADV(u,b,u); 
+               <font color="#4169E1">WHILE</font> i &lt; n <font color="#4169E1">DO</font> i:=i+1; j:=i; 
+                     ZP:=COMP(e,Z); Z:=COMP(0,Z); 
+                     <font color="#4169E1">WHILE</font> j &lt; n <font color="#4169E1">DO</font> j:=j+1; ZP:=COMP(0,ZP) <strong><font color="#4169E1">END</font></strong>;
+                     a:=RNVSPROD(u,ZP); 
+                     c:=RNNEG(a); a:=RNQ(c,b); 
+                     j:=j+1; ZP:=COMP(a,ZP);
+                     V:=UP; 
+                     <font color="#4169E1">WHILE</font> V # SIL <font color="#4169E1">DO</font> ADV(V,up,V);
+                           m:=LENGTH(up)-1; 
+                           <font color="#4169E1">WHILE</font> j &lt; m <font color="#4169E1">DO</font> j:=j+1; ZP:=COMP(0,ZP) <strong><font color="#4169E1">END</font></strong>;
+                           ADV(up,c,up); 
+                           a:=RNVSPROD(up,ZP); 
+                           a:=RNNEG(a); a:=RNQ(a,c); 
+                           j:=j+1; ZP:=COMP(a,ZP);
+                           <strong><font color="#4169E1">END</font></strong>;
+                     N:=COMP(ZP,N); 
+                     <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>; 
+            i:=n+1;    
+            <strong><font color="#4169E1">END</font></strong>;
+      N:=INV(N); RETURN(N);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMUNS;
+
+
+<strong><font color="#4169E1">END</font></strong> LINALGRN.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

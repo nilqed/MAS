@@ -1,0 +1,107 @@
+
+<html>
+<head>
+<title>./maspoly/SACRPOL.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:05+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACRPOL.md,v 1.2 1992/02/12 17:34:04 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACRPOL.md,v $
+ * Revision 1.2  1992/02/12  17:34:04  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:56  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACRPOL;
+
+<font color="#B22222">(* SAC Rational Polynomial Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACRPOL.md,v 1.2 1992/02/12 17:34:04 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE RPDIF</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Rational polynomial difference.  A and B are rational polynomials in
+r variables, r ge 0.  C=A-B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPEMV</font></strong>(RL,A,BL: LIST): LIST;
+<font color="#B22222">(*Rational polynomial evaluation, main variable.  A is a rational
+polynomial in r variables, r gt 0.  b is a rational number.
+C(x(1), ...,x(r-1))=A(x(1), ...,x(r-1),b).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPFIP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Rational polynomial from integral polynomial.  A is an integral
+polynomial in r variables, r ge 0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPIMV</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Rational polynomial integration, main variable.  A is a rational
+polynomial in r variables, r gt 0.  B is the integral of A with
+respect to its main variable.  The constant of integration is 0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPNEG</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Rational polynomial negative.  A is an rational polynomial in r
+variables, r ge 0.  B=-A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPPROD</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Rational polynomial product.  A and B are rational polynomials in r
+variables, r ge 0.  C=A*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPQR</font></strong>(RL,A,B: LIST;    <strong><font color="#228B22">VAR</font></strong> Q,R: LIST);
+<font color="#B22222">(*Rational polynomial quotient and remainder.  A and B are rational
+polynomials in r variables with B non-zero.  Q and R are the unique
+rational polynomials such that either B divides A, Q=A/B and R=0 or
+else B does not divide A and A=BQ+R with DEG(R) minimal.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPREAD</font></strong>( <strong><font color="#228B22">VAR</font></strong> RL,A,V: LIST);
+<font color="#B22222">(*Rational polynomial read.  The rational polynomial A is read from the
+input stream.  r ge 0 is the number of variables of A and V is the
+variable list of A.  Any number of preceding blanks are skipped.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPRNP</font></strong>(RL,AL,B: LIST): LIST;
+<font color="#B22222">(*Rational polynomial rational number product.  B is a rational
+polynomial in r variables, r ge 0.  a is a rational number.  C=a*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPSUM</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Rational polynomial sum.  A and B are rational polynomials in r
+variables, r ge 0.  C=A+B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPWRIT</font></strong>(RL,A,V: LIST);
+<font color="#B22222">(*Rational polynomial write.  A is a rational polynomial in r
+variables, r ge 0.  V is a variable list for A.  A is written
+in the output stream in external canonical form.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACRPOL.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

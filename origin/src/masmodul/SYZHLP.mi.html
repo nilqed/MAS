@@ -1,0 +1,766 @@
+
+<html>
+<head>
+<title>./masmodul/SYZHLP.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:24+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYZHLP.mi,v 1.3 1992/10/15 16:29:22 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SYZHLP.mi,v $
+ * Revision 1.3  1992/10/15  16:29:22  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:19  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:02  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SYZHLP;
+
+<font color="#B22222">(* Syzygy Utility Programs Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Author: J. Philipp, Uni Passau, 1991. *)</font>
+
+
+FROM DIPC    IMPORT DIPEVL, DIPFMO, DIPINV, DIPMAD, DIPMPV, EVDEL, 
+                    EVORD, VALIS;
+
+FROM DIPRN   IMPORT DIRLRD, DIRPQ, DIRPMC, DIRPSM, DIRPWR;
+
+FROM MASBIOS IMPORT BLINES, BKSP, CREADB, MASORD, SOLINE, SWRITE;
+
+FROM MASNC   IMPORT DINLRD, EVZERO;
+
+FROM MASSTOR IMPORT ADV, BETA, FIRST, LENGTH, LIST, LIST1, RED, SIL, 
+                    SFIRST, SRED, TIME;
+
+FROM SACLIST IMPORT ADV2, AWRITE, CCONC, COMP2, EQUAL, FIRST3, LAST, 
+                    LIST4, LWRITE;
+
+FROM SACPOL  IMPORT PDEG;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SYZHLP.mi,v 1.3 1992/10/15 16:29:22 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ALFA</font></strong>(L : LIST);
+<font color="#B22222">(* Automatic Linear Form Adaption. Fuehrt bei einer gegebenen Linearform
+von EVORD L neue Variablen mit Graden groesser als der hoechste Grad
+der EVORD-Polynome ein. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   LF, G, P, G1, P1, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> EVORD &lt; BETA <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+   SWRITE(<font color="#666666">'ALFA'</font>);
+   LF := EVORD;
+   G := 0;
+   <font color="#4169E1">WHILE</font> LF &lt;&gt; SIL <font color="#4169E1">DO</font>
+     ADV(LF, P, LF);
+     G1 := PDEG(P);
+     <font color="#4169E1">IF</font> G1 &gt; G <font color="#4169E1">THEN</font> G := G1; <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>;
+   C := 1;
+   <font color="#4169E1">WHILE</font> C &lt;= L <font color="#4169E1">DO</font>
+     P1 := CCONC(LIST1(G + C), LIST1(1));
+     EVORD := CCONC(LIST1(P1), EVORD);
+     C := C + 1;
+   <strong><font color="#4169E1">END</font></strong>;
+   RETURN;
+<strong><font color="#4169E1">END</font></strong> ALFA;
+
+
+<strong><font color="#4169E1">PROCEDURE ALFRA</font></strong>(L : LIST);
+<font color="#B22222">(* Automatic Linear Form Readaption. Gegenstueck zu ALFA. Reduziert bei
+gegebener Linearform von EVORD die fuehrenden L Polynome. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> EVORD &lt; BETA <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">WHILE</font> L &gt;= 1 <font color="#4169E1">DO</font>
+      EVORD := RED(EVORD);
+      L := L - 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> ALFRA;
+
+
+<strong><font color="#4169E1">PROCEDURE ADDPPOS</font></strong>(PL, P, POS : LIST): LIST;
+<font color="#B22222">(* Add Polynomial P at Position. Gegeben ist eine Polynomliste PL. Dann 
+wird P an der POS-ten Position dieser Liste zu dem dort vorhandenen Polynom
+addiert. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL1, C, P1, P2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PL1 := PL;
+    PL := SIL;
+    <font color="#4169E1">FOR</font> C := 1 <font color="#4169E1">TO</font> POS - 1 <font color="#4169E1">DO</font>
+      ADV(PL1, P1, PL1);
+      PL := CCONC(PL, LIST1(P1));
+    <strong><font color="#4169E1">END</font></strong>;
+    ADV(PL1, P1, PL1);
+    P2 := DIRPSM(P1, P);
+    PL := CCONC(PL, LIST1(P2));
+    <font color="#4169E1">WHILE</font> PL1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL1, P1, PL1);
+      PL := CCONC(PL, LIST1(P1));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (PL);
+<strong><font color="#4169E1">END</font></strong> ADDPPOS;
+
+
+<strong><font color="#4169E1">PROCEDURE PLWR</font></strong>(PL, VL : LIST);
+<font color="#B22222">(* Polynomial List Write. Am Bildschirm wird die Polynomliste PL bzgl.
+der Variablenliste VL ausgegeben. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   OS, LS, RS, P, P1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    OS := -1; LS := 0; RS := 80;
+    SOLINE(OS, LS, RS);
+    <font color="#4169E1">IF</font> PL = SIL <font color="#4169E1">THEN</font>
+      SWRITE(<font color="#666666">' () '</font>);
+      RETURN;
+    <strong><font color="#4169E1">END</font></strong>;
+    SWRITE(<font color="#666666">'('</font>);
+    <font color="#4169E1">WHILE</font> RED(PL) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL, P, PL);
+      <font color="#4169E1">IF</font> P = 0 <font color="#4169E1">THEN</font>
+        SWRITE(<font color="#666666">' 0, '</font>);
+      <font color="#4169E1">ELSE</font>
+        DIRPWR(P, VL, -1);
+        SWRITE(<font color="#666666">', '</font>);
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    DIRPWR(FIRST(PL), VL, -1);
+    SWRITE(<font color="#666666">')'</font>);
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> PLWR;
+
+
+<strong><font color="#4169E1">PROCEDURE PMWR</font></strong>(PM, VL : LIST);
+<font color="#B22222">(* Polynomial Matrix Write. Am Bildschirm wird die Polynommatrix PM 
+(Liste ueber Listen) bzgl. der Variablenliste VL ausgegeben. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> PM = SIL <font color="#4169E1">THEN</font>
+      SWRITE(<font color="#666666">'()'</font>);
+      RETURN;
+    <strong><font color="#4169E1">END</font></strong>;
+    SWRITE(<font color="#666666">'('</font>);
+    BLINES(0);
+    <font color="#4169E1">WHILE</font> RED(PM) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL, PM);
+      PLWR(PL, VL);
+      SWRITE(<font color="#666666">', '</font>);
+      BLINES(0);
+    <strong><font color="#4169E1">END</font></strong>;
+    ADV(PM, PL, PM);
+    PLWR(PL, VL);
+    BLINES(0);
+    SWRITE(<font color="#666666">')'</font>);
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> PMWR;
+
+
+<strong><font color="#4169E1">PROCEDURE APP0</font></strong>(PM : LIST): LIST;
+<font color="#B22222">(* Append 0. Haengt an jede Polynomliste von PM das Nullpolynom an. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PM1, PL : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PM1 := SIL;
+    <font color="#4169E1">WHILE</font> PM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL, PM);
+      PL := CCONC(PL, LIST1(0));
+      PM1 := CCONC(PM1, LIST1(PL));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (PM1);
+<strong><font color="#4169E1">END</font></strong> APP0;
+
+
+<strong><font color="#4169E1">PROCEDURE ADDLAST</font></strong>(P, PL : LIST): LIST;
+<font color="#B22222">(* Add last Polynomial. Addiert das Polynom P zum letzten Polynom der
+Polynomliste PL. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL1, P1, P2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PL1 := SIL;
+    <font color="#4169E1">WHILE</font> RED(PL) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL, P1, PL);
+      PL1 := CCONC(PL1, LIST1(P1));
+    <strong><font color="#4169E1">END</font></strong>;
+    ADV(PL, P1, PL);
+    P2 := DIRPSM(P, P1);
+    PL1 := CCONC(PL1, LIST1(P2));
+    RETURN (PL1);
+<strong><font color="#4169E1">END</font></strong> ADDLAST;
+
+
+<strong><font color="#4169E1">PROCEDURE POS</font></strong>(P, PL : LIST): LIST;
+<font color="#B22222">(* Position of Polynomial. Bestimmt die Position des Polynoms P in der
+Polynomliste PL. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   POS, P1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    POS := 1;
+    <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL, P1, PL);
+      <font color="#4169E1">IF</font> EQUAL(P1, P) = 1 <font color="#4169E1">THEN</font>
+        RETURN(POS);
+      <strong><font color="#4169E1">END</font></strong>;
+      POS := POS + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> POS;
+
+
+<strong><font color="#4169E1">PROCEDURE POL</font></strong>(PL, POS : LIST): LIST;
+<font color="#B22222">(* Polynomial at Position. Bestimmt das Polynom an der POS-ten Stelle in 
+der Polynomliste PL. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">FOR</font> C := 1 <font color="#4169E1">TO</font> POS <font color="#4169E1">DO</font>
+      ADV(PL, P, PL);
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (P);
+<strong><font color="#4169E1">END</font></strong> POL;
+
+
+<strong><font color="#4169E1">PROCEDURE GENPOSV</font></strong>(GB, GBR : LIST): LIST;
+<font color="#B22222">(* Generate Postion Vector. Gegeben ist eine Groebner Basis GB und die dazu-
+gehoerige diskret reduzierte Groebner Basis GBR. Bestimmt wird nun ein
+Vektor mit Nullen und Einsen, bei dem die Einsen an der Position stehen,
+an der ein Polynom aus GB nicht ganz zu Null reduziert werden konnte.
+Zusaetzlich bleiben immer mindestens zwei Polynome aus GB uebrig.
+Bsp.: GB = (P1, P2, P3), GBR = (P2, P3), dann ist POSV = (0, 1, 1). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, POS, P1, P2, POSV : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    POSV := EVZERO(LENGTH(GB));
+    <font color="#4169E1">WHILE</font> GBR &lt;&gt; SIL <font color="#4169E1">DO</font>
+      POS := 1;
+      ADV(GBR, P1, GBR);
+      GB1 := GB;
+      LOOP
+        ADV(GB1, P2, GB1);
+        <font color="#4169E1">IF</font> EQUAL(P1, P2) = 1 <font color="#4169E1">THEN</font>
+          POSV := ADDPPOS(POSV, 1, POS);
+          EXIT;
+        <strong><font color="#4169E1">END</font></strong>;
+        POS := POS + 1;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(POSV);
+<strong><font color="#4169E1">END</font></strong> GENPOSV;
+
+
+<strong><font color="#4169E1">PROCEDURE INSPOSV</font></strong>(PM, POSV : LIST): LIST;
+<font color="#B22222">(* Insert Position Vector. Fuegt bei der Polynommatrix PM in jede Polynomliste
+PL Nullen an den Stellen ein, an denen bei POSV auch Nullen stehen.
+Bsp.: Sei eine Polynomliste PLi = (P1, P2, P3), und sei
+POSV = (0, 1, 0, 1, 1, 0, 0). Dann wird als neue Polynomliste
+(0, P1, 0, P2, P3, 0, 0) an die Matrix zurueckgegeben. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL, PL1, P, POSV1, TW, PM1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PM1 := SIL;
+    <font color="#4169E1">WHILE</font> PM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL, PM);
+      PL1 := SIL;
+      POSV1 := POSV;
+      <font color="#4169E1">WHILE</font> POSV1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(POSV1, TW, POSV1);
+        <font color="#4169E1">IF</font> TW = 0 <font color="#4169E1">THEN</font>
+          PL1 := CCONC(PL1, LIST1(0));
+        <font color="#4169E1">ELSE</font>
+          ADV(PL, P, PL);
+          PL1 := CCONC(PL1, LIST1(P));
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+      PM1 := CCONC(PM1, LIST1(PL1));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PM1);
+<strong><font color="#4169E1">END</font></strong> INSPOSV;
+
+
+<strong><font color="#4169E1">PROCEDURE EXPPL</font></strong>(P, GB : LIST): LIST;
+<font color="#B22222">(* Exclude P from GB. Loescht das Polynom P aus der Polynomliste GB. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, P1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    GB1 := SIL;
+    <font color="#4169E1">WHILE</font> GB &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(GB, P1, GB);
+      <font color="#4169E1">IF</font> EQUAL(P, P1) &lt;&gt; 1 <font color="#4169E1">THEN</font>
+        GB1 := CCONC(GB1, LIST1(P1));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (GB1);
+<strong><font color="#4169E1">END</font></strong> EXPPL;
+
+
+<strong><font color="#4169E1">PROCEDURE EX0PL</font></strong>(PL : LIST): LIST;
+<font color="#B22222">(* Exclude 0 from PL. Loescht alle Nullen aus der Polynomliste PL. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL1, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PL1 := SIL;
+    <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL, P, PL);
+      <font color="#4169E1">IF</font> P &lt;&gt; 0 <font color="#4169E1">THEN</font>
+        PL1 := CCONC(PL1, LIST1(P));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (PL1);
+<strong><font color="#4169E1">END</font></strong> EX0PL;
+
+
+<strong><font color="#4169E1">PROCEDURE EVF</font></strong>(EV, L : LIST): LIST;
+<font color="#B22222">(* Exponent Vector First. Liefert die ersten L Stellen des Exponentenvektors
+EV zurueck. Bsp.: Sei EV = (4, 3, 0, 1, 9), und sei L = 3, dann wird 
+(4, 3, 0) zurueckgegeben. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EV1, EV11, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    EV1 := SIL;
+    C := 1;
+    <font color="#4169E1">WHILE</font> C &lt;= L <font color="#4169E1">DO</font>
+      ADV(EV, EV11, EV);
+      EV1 := CCONC(EV1, LIST1(EV11));
+      C := C + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (EV1);
+<strong><font color="#4169E1">END</font></strong> EVF;
+
+
+<strong><font color="#4169E1">PROCEDURE EVR</font></strong>(PM, L : LIST): LIST;
+<font color="#B22222">(* Exponent Vector Reduction. Bei der Polynommatrix PM wird jeder
+Exponentenvektor jeden Polynoms um die ersten L Stellen gekuerzt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PM1, PL, PL1, P, P1, P2, KO, EV, C, H : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PM1 := SIL;
+    <font color="#4169E1">WHILE</font> PM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL, PM);
+      PL1 := SIL;
+      <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL, P, PL);
+        <font color="#4169E1">IF</font> P = 0 <font color="#4169E1">THEN</font>
+          PL1 := CCONC(PL1, LIST1(P));
+        <font color="#4169E1">ELSE</font>
+          P1 := 0;
+          <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font>
+            DIPMAD(P, KO, EV, P);
+            C := L;
+            <font color="#4169E1">WHILE</font> C &lt;&gt; 0 <font color="#4169E1">DO</font>
+              EVDEL(EV, 1, EV, H);
+              C := C - 1;
+            <strong><font color="#4169E1">END</font></strong>;
+            P2 := DIPFMO(KO, EV);
+            P1 := DIRPSM(P1, P2);
+          <strong><font color="#4169E1">END</font></strong>;
+          PL1 := CCONC(PL1, LIST1(P1));
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+      PM1 := CCONC(PM1, LIST1(PL1));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PM1);
+<strong><font color="#4169E1">END</font></strong> EVR;
+
+
+<strong><font color="#4169E1">PROCEDURE MREAD</font></strong>(VL : LIST): LIST;
+<font color="#B22222">(* Matrix Read. Liest eine Polynommatrix entsprechend der Variablenliste 
+VL und der gegebenen Einheit (Textdatei, "Bildschirm") ein. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PM, PL, CH : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PM := SIL;
+    CH := CREADB();
+    <font color="#4169E1">IF</font> CH &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font>
+      RETURN (PM);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">REPEAT</font>
+      CH := CREADB();
+      <font color="#4169E1">IF</font> CH = MASORD(",") <font color="#4169E1">THEN</font>
+        CH := CREADB();
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> CH &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font>
+        BKSP();
+        PL := DIRLRD(VL);
+        PM := CCONC(PM, LIST1(PL));
+      <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">UNTIL</font> CH = MASORD(")");
+    RETURN (PM);
+<strong><font color="#4169E1">END</font></strong> MREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE NMREAD</font></strong>(VL, T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Matrix Read. Liest eine Polynommatrix mit nicht-
+kommutativen Polynomen entsprechend der Variablenliste VL, der Relations-
+matrix T und der gegebenen Einheit (Textdatei, "Bildschirm") ein. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PM, PL, CH : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PM := SIL;
+    CH := CREADB();
+    <font color="#4169E1">IF</font> CH &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font>
+      RETURN (PM);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">REPEAT</font>
+      CH := CREADB();
+      <font color="#4169E1">IF</font> CH = MASORD(",") <font color="#4169E1">THEN</font>
+        CH := CREADB();
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> CH &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font>
+        BKSP();
+        PL := DINLRD(VL, T);
+        PM := CCONC(PM, LIST1(PL));
+      <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">UNTIL</font> CH = MASORD(")");
+    RETURN (PM);
+<strong><font color="#4169E1">END</font></strong> NMREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE TA</font></strong>(L : LIST; T : LIST): LIST;
+<font color="#B22222">(* T Adaption. Die Exponentenvektoren jeden Polynoms in der Polynomliste T
+werden um L Stellen erweitert. Bsp.: Sei EV = (2, 1, 3) und L = 2, 
+dann wird EV zu (0, 0, 2, 1, 3). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EV, L1, T1, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    EV := DIPEVL(FIRST(T));
+    L1 := LENGTH(EV) + L + 1;
+    T1 := SIL;
+    <font color="#4169E1">WHILE</font> T &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(T, P, T);
+      P := DIPINV(P, L1, L);
+      T1 := CCONC(T1, LIST1(P));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(T1);
+<strong><font color="#4169E1">END</font></strong> TA;
+
+
+<strong><font color="#4169E1">PROCEDURE TR</font></strong>(L : LIST; T : LIST): LIST;
+<font color="#B22222">(* T Readaption. Die Exponentenvektoren jeden Polynoms in der Polynomliste 
+T werden um L Stellen gekuerzt. Bsp.: Sei EV = (0, 0, 2, 1, 3) und 
+L = 2, dann wird EV zu (2, 1, 3). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T1, P, P1, P2, KO, EV, C, H : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    T1 := SIL;
+    <font color="#4169E1">WHILE</font> T &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(T, P, T);
+      P1 := 0;
+      <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font>
+        DIPMAD(P, KO, EV, P);
+        C := 1;
+        <font color="#4169E1">WHILE</font> C &lt;= L <font color="#4169E1">DO</font>
+          EVDEL(EV, 1, EV, H);
+          C := C + 1;
+        <strong><font color="#4169E1">END</font></strong>;
+        P2 := DIPFMO(KO, EV);
+        P1 := DIRPSM(P1, P2);
+      <strong><font color="#4169E1">END</font></strong>;
+      T1 := CCONC(T1, LIST1(P1));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(T1);
+<strong><font color="#4169E1">END</font></strong> TR;
+
+
+<strong><font color="#4169E1">PROCEDURE NEXTPAIR</font></strong>(<strong><font color="#228B22">VAR</font></strong> P1, P2, PPL : LIST);
+<font color="#B22222">(* Next Pair of Polynomials. Bestimmt aus der Polynompaarliste PPL das
+naechste Paar P1, P2 von Polynomen. Gleichzeitig wird dieses Paar aus
+der Liste entfernt. Siehe Groebner Basis Algorithmen! *)</font>
+<strong><font color="#228B22">VAR</font></strong> PP, PL1, PL2, PM1, PM2, PL, PM21, PM22, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    ADV(PPL, PP, PPL);
+    FIRST3(PP, PL2, PM1, PM2);
+    ADV(PM1, PL, PL1);
+    P1 := FIRST(PL);
+    PM21 := RED(PM2);
+    P2 := FIRST(PM21);
+    PM21 := RED(PM2);
+    PM22 := RED(PM21);
+    SRED(PM2, PM22);
+    <font color="#4169E1">IF</font> PM22 = SIL <font color="#4169E1">THEN</font>
+      P := LAST(PL);
+      SFIRST(PL1, P);
+    <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> NEXTPAIR;
+
+
+<strong><font color="#4169E1">PROCEDURE EVT</font></strong>(P1, P2, L : LIST): LIST;
+<font color="#B22222">(* Exponent Vector Test. Ueberprueft, ob die Exponentenvektoren der HT der
+Polynome P1 und P2 in den fuehrenden L Stellen uebereinstimmen. Ist dies
+der Fall, dann wird die 1, ansonsten die 0 zurueckgegeben. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EV1, EV2, EV11, EV21, LL, e1, e2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    EV1 := DIPEVL(P1);
+    EV2 := DIPEVL(P2);
+    LL:=0; 
+    <font color="#4169E1">WHILE</font> (LL &lt; L) <font color="#4169E1">AND</font> (EV1 &lt;&gt; SIL) <font color="#B22222">(* AND (EV2 &lt;&gt; SIL) *)</font> <font color="#4169E1">DO</font>
+          LL:=LL+1; ADV(EV1, e1, EV1); ADV(EV2, e2, EV2); 
+          <font color="#4169E1">IF</font> e1 &lt;&gt; e2 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+    RETURN(1); 
+    <font color="#B22222">(* EV11 := EVF(EV1, L);
+       EV21 := EVF(EV2, L);
+       RETURN(EQUAL(EV11, EV21)); *)</font>
+<strong><font color="#4169E1">END</font></strong> EVT;
+
+
+<strong><font color="#4169E1">PROCEDURE WRS1</font></strong>(SZ, C1, C2, C3 : LIST);
+<font color="#B22222">(* Write Situation. Ausgegben wird die CPU-Zeit minus eine Startzeit SZ,
+die Anzahl der H-Polynome C1, die Anzahl der S-Polynome C2 und die
+Anzahl der uebrigen Paare von Polynomen C3. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+    AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec., '</font>); BLINES(0);
+    <font color="#4169E1">IF</font> C1 = 1 <font color="#4169E1">THEN</font> AWRITE(C1); SWRITE(<font color="#666666">' H-Polynom, '</font>); BLINES(0);
+    <font color="#4169E1">ELSE</font>           AWRITE(C1); SWRITE(<font color="#666666">' H-Polynome, '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> C2 = 1 <font color="#4169E1">THEN</font> AWRITE(C2); SWRITE(<font color="#666666">' S-Polynom, '</font>); BLINES(0);
+    <font color="#4169E1">ELSE</font>           AWRITE(C2); SWRITE(<font color="#666666">' S-Polynome, '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> C3 = 1 <font color="#4169E1">THEN</font>  AWRITE(C3); SWRITE(<font color="#666666">' uebriges Paar. '</font>); BLINES(0);
+    <font color="#4169E1">ELSE</font>            AWRITE(C3); SWRITE(<font color="#666666">' uebrige Paare. '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    BLINES(1);
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> WRS1;
+
+
+<strong><font color="#4169E1">PROCEDURE WRS2</font></strong>(SZ, C1, TW1, C2, SPN, C3 : LIST);
+<font color="#B22222">(* Write Situation. Ausgegben wird die CPU-Zeit minus eine Startzeit SZ,
+die Anzahl der H-Polynome C1 und das letzte H-Polynom, die Anzahl der
+S-Polynome C2 und das letzte S-Polynom, sowie die Anzahl der uebrigen
+Paare von Polynomen C3. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+    AWRITE(TIME() - SZ); SWRITE(<font color="#666666">' sec., '</font>); BLINES(0);
+    <font color="#4169E1">IF</font> C1 = 1 <font color="#4169E1">THEN</font> AWRITE(C1); SWRITE(<font color="#666666">' H-Polynom, '</font>); 
+                   PLWR(LIST1(TW1), VALIS); BLINES(0);
+    <font color="#4169E1">ELSE</font>           AWRITE(C1); SWRITE(<font color="#666666">' H-Polynome, '</font>); 
+                   PLWR(LIST1(TW1), VALIS); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> C2 = 1 <font color="#4169E1">THEN</font> AWRITE(C2); SWRITE(<font color="#666666">' S-Polynom, '</font>); 
+                   PLWR(LIST1(SPN), VALIS); BLINES(0);
+    <font color="#4169E1">ELSE</font>           AWRITE(C2); SWRITE(<font color="#666666">' S-Polynome, '</font>); 
+                   PLWR(LIST1(SPN), VALIS); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> C3 = 1 <font color="#4169E1">THEN</font> AWRITE(C3); SWRITE(<font color="#666666">' uebriges Paar. '</font>); BLINES(0);
+    <font color="#4169E1">ELSE</font>           AWRITE(C3); SWRITE(<font color="#666666">' uebrige Paare. '</font>); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    BLINES(1);
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> WRS2;
+
+
+<strong><font color="#4169E1">PROCEDURE EVL</font></strong>(PM : LIST) : LIST;
+<font color="#B22222">(* Exponent Vector Length. Bestimmt in einer Polynommatrix PM die Laenge des
+Exponentenvektors des ersten Polynoms ungleich dem Nullpolynom. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L, PL, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    L := 0;
+    <font color="#4169E1">WHILE</font> PM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL, PM);
+      <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL, P, PL);
+        <font color="#4169E1">IF</font> P &lt;&gt; 0 <font color="#4169E1">THEN</font>
+          L := LENGTH(DIPEVL(P));
+          RETURN(L);
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(L);
+<strong><font color="#4169E1">END</font></strong> EVL;
+
+
+<strong><font color="#4169E1">PROCEDURE NORMF</font></strong>(<strong><font color="#228B22">VAR</font></strong> PL, GBTM : LIST);
+<font color="#B22222">(* Normative Factors. Berechnet eine Matrix GBTM, auf deren Hauptdiagonalen
+die Normfaktoren der Polynome der Polynomliste PL stehen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL1, PL2, POS, L, NV, P, PN, NF : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PL1 := PL;
+    PL := SIL;
+    GBTM := SIL;
+    POS := 1;
+    L := LENGTH(PL1);
+    NV := EVZERO(L);
+    <font color="#4169E1">WHILE</font> PL1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL1, P, PL1);
+      PN := DIRPMC(P);
+      NF := DIRPQ(PN, P);
+      PL2 := ADDPPOS(NV, NF, POS);
+      PL := CCONC(PL, LIST1(PN));
+      GBTM := CCONC(GBTM, LIST1(PL2));
+      POS := POS + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> NORMF;
+
+
+<strong><font color="#4169E1">PROCEDURE GBTMRED</font></strong>(GBTM, POSV : LIST) : LIST;
+<font color="#B22222">(* GBTM Reduction. Reduziert die Spalten von GBTM entsprechend der
+auftretenden Nullen in POSV. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GBTM1, PL, PL1, P, TW, POSV1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    GBTM1 := SIL;
+    <font color="#4169E1">WHILE</font> GBTM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(GBTM, PL, GBTM);
+      POSV1 := POSV;
+      PL1 := SIL;
+      <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL, P, PL);
+        ADV(POSV1, TW, POSV1);
+        <font color="#4169E1">IF</font> TW = 1 <font color="#4169E1">THEN</font>
+          PL1 := CCONC(PL1, LIST1(P));
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+      GBTM1 := CCONC(GBTM1, LIST1(PL1));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(GBTM1);
+<strong><font color="#4169E1">END</font></strong> GBTMRED;
+
+
+<strong><font color="#4169E1">PROCEDURE MTPLV</font></strong>(PM : LIST; <strong><font color="#228B22">VAR</font></strong> L : LIST): LIST;
+<font color="#B22222">(* Matrix to Polynomial List Vertical. Erzeugt eine Polynomliste PL derart,
+dass L (gleich Zeilenzahl) neue verschiedene Variablen mit der Matrix
+multipliziert werden (1. Variable mit der 1. Zeile, ...), und anschlieaend
+die so erhaltene Matrix spaltenweise aufaddiert wird. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L1, L2, PL1, P, P1, PL, POS : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    L := LENGTH(FIRST(PM));
+    L1 := EVL(PM);
+    <font color="#4169E1">IF</font> L1 = 0 <font color="#4169E1">THEN</font> PL := LIST1(0); RETURN(PL); <strong><font color="#4169E1">END</font></strong>;
+    L1 := L1 + 1;
+    L2 := L1 + L;
+    PL := SIL;
+    <font color="#4169E1">WHILE</font> PM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL1, PM);
+      POS := 1;
+      P := 0;
+      <font color="#4169E1">WHILE</font> PL1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL1, P1, PL1);
+        <font color="#4169E1">IF</font> P1 &lt;&gt; 0 <font color="#4169E1">THEN</font>
+          P1 := DIPINV(P1, L1, L);
+          P1 := DIPMPV(P1, L2 - POS, 1);
+          P := DIRPSM(P1, P);
+        <strong><font color="#4169E1">END</font></strong>;
+        POS := POS + 1;
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> P &lt;&gt; 0 <font color="#4169E1">THEN</font>
+        PL := CCONC(PL, LIST1(P));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> MTPLV;
+
+
+<strong><font color="#4169E1">PROCEDURE PLVTM</font></strong>(PL, L : LIST): LIST;
+<font color="#B22222">(* Polynomial List Vertical To Matrix. Das Gegenstueck zu MTPLV. Beachtet
+werden mua hierbei nur, dass Anteile der Polynome aus der Polynomliste PL
+enstprechend der L neu eingefuehrten Variablen wieder in eine Matrix
+zerlegt werden, d.h. das erste Polynom der Polynomliste PL verteilt sich
+in der ersten Spalte, ... . *)</font>
+<strong><font color="#228B22">VAR</font></strong>   NV, PL1, P, POS, KO, EV, P1, P2, P3, EV1, EV2, C, H, PM : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PM := SIL;
+    NV := EVZERO(L);
+    <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL, P, PL);
+      PL1 := SIL;
+      POS := 1;
+      <font color="#4169E1">WHILE</font> POS &lt;= L <font color="#4169E1">DO</font>
+        P1 := P;
+        EV2 := ADDPPOS(NV, 1, POS);
+        POS  := POS + 1;
+        P2 := 0;
+        <font color="#4169E1">WHILE</font> P1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+          DIPMAD(P1, KO, EV, P1);
+          EV1 := EVF(EV, L);
+          <font color="#4169E1">IF</font> EQUAL(EV2, EV1) = 1 <font color="#4169E1">THEN</font>
+            C := 1;
+            <font color="#4169E1">WHILE</font> C &lt;= L <font color="#4169E1">DO</font>
+              EVDEL(EV, 1, EV, H);
+              C := C + 1;
+            <strong><font color="#4169E1">END</font></strong>;
+            P3 := DIPFMO(KO, EV);
+            P2 := DIRPSM(P3, P2);
+          <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+        PL1 := CCONC(PL1, LIST1(P2));
+      <strong><font color="#4169E1">END</font></strong>;
+      PM := CCONC(PM, LIST1(PL1));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PM);
+<strong><font color="#4169E1">END</font></strong> PLVTM;
+
+
+<strong><font color="#4169E1">PROCEDURE MTPLH</font></strong>(PM : LIST; <strong><font color="#228B22">VAR</font></strong> L : LIST): LIST;
+<font color="#B22222">(* Matrix to Polynomial List Horizontal. Erzeugt eine Polynomliste PL derart,
+dass L (gleich Spaltenzahl) neue verschiedene Variablen mit der Matrix
+multipliziert werden (1. Variable mit der 1. Spalte, ...), und anschlieaend
+die so erhaltene Matrix zeilenweise aufaddiert wird. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L1, L2, POS1, POS2, PL, PL1, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    L := LENGTH(PM);
+    L1 := EVL(PM);
+    PL := EVZERO(LENGTH(FIRST(PM)));
+    L2 := L1 + L + 1;
+    POS1 := 0;
+    <font color="#4169E1">WHILE</font> PM &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PM, PL1, PM);
+      POS1 := POS1 + 1;
+      POS2 := 1;
+      <font color="#4169E1">WHILE</font> PL1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL1, P, PL1);
+        <font color="#4169E1">IF</font> P &lt;&gt; 0 <font color="#4169E1">THEN</font>
+          P := DIPINV(P, L2, L);
+          P := DIPMPV(P, L2 - POS1, 1);
+          PL := ADDPPOS(PL, P, POS2);
+        <strong><font color="#4169E1">END</font></strong>;
+        POS2 := POS2 + 1;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> MTPLH;
+
+
+
+<strong><font color="#4169E1">PROCEDURE PLHTP</font></strong>(PL : LIST): LIST;
+<font color="#B22222">(* Polynomial List Horizontal To Polynomial. Jedes Polynom aus PL wird mit
+einer neuen , zu den anderen verschiedenen, Variablen multipliziert und
+zu einem Polynom aufaddiert. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L1, L2, L3, POS, P, P1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    P := 0;
+    L1 := LENGTH(PL);
+    L2 := EVL(LIST1(PL));
+    L3 := L2 + L1 + 1;
+    POS := 0;
+    <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(PL, P1, PL);
+      POS := POS + 1;
+      <font color="#4169E1">IF</font> P1 &lt;&gt; 0 <font color="#4169E1">THEN</font>
+        P1 := DIPINV(P1, L3, L1);
+        P1 := DIPMPV(P1, L3 - POS, 1);
+        P := DIRPSM(P, P1);
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(P);
+<strong><font color="#4169E1">END</font></strong> PLHTP;
+
+
+
+<strong><font color="#4169E1">PROCEDURE VMADD</font></strong>(PM : LIST): LIST;
+<font color="#B22222">(* Vertical Matrix Addition. Erzeugt wird eine Polynomliste, deren Elemente
+aus den aufaddierten Spalten der Matrix PM gebildet wurden. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL, PL1, POS, P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    PL := EVZERO(LENGTH(FIRST(PM)));
+    <font color="#4169E1">WHILE</font> (PM &lt;&gt; SIL) <font color="#4169E1">DO</font>
+      POS := 0;
+      ADV(PM, PL1, PM);
+       <font color="#4169E1">WHILE</font> (PL1 &lt;&gt; SIL) <font color="#4169E1">DO</font>
+        ADV(PL1, P, PL1);
+        POS := POS + 1;
+        PL := ADDPPOS(PL, P, POS);
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(PL);
+<strong><font color="#4169E1">END</font></strong> VMADD;
+
+
+<strong><font color="#4169E1">END</font></strong> SYZHLP.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

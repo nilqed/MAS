@@ -1,0 +1,134 @@
+
+<html>
+<head>
+<title>./masmodul/GSYMINP.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T18:52:49+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: GSYMINP.mi,v 1.1 1996/06/08 18:52:49 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1996 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: GSYMINP.mi,v $
+ * Revision 1.1  1996/06/08 18:52:49  pesch
+ * Input procedures for G-symmetric polynomials.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE GSYMINP;
+
+<font color="#B22222">(* GSYM Input Implementation Module. *)</font>
+
+FROM DIPC	IMPORT	EVORD, IGRLEX, INVLEX, REVITDG, PLFDIL, REVILEX,
+			VALIS;
+
+FROM DIPI	IMPORT	DIILRD, DIIPDF, DIIPEX, DIIPIP, DIIPNG, DIIPPR,
+			DIIPSM, DIIPSO, DIIPWR;
+
+FROM DIPRN	IMPORT	DIRLRD, DIRLWR, DIRPPR, DIRPWR;
+
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREADB, MASORD, SWRITE;
+
+FROM MASSTOR	IMPORT	COMP, FIRST, INV, LENGTH, LIST, LIST1, SIL;
+
+FROM SACPOL	IMPORT	VLREAD;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: GSYMINP.mi,v 1.1 1996/06/08 18:52:49 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1996 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE GSDREAD</font></strong>(): LIST;
+<font color="#B22222">(* G-symmetric descriptor read.
+--- to do ---: remove *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, T, V, E, Q, r, X: LIST; <font color="#B22222">(* read polynomial descriptor *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;                    <font color="#B22222">(* i.e. variable list &amp; term order *)</font>
+<font color="#4169E1">REPEAT</font> V:=VLREAD(); BLINES(1); <font color="#4169E1">UNTIL</font> V &lt;&gt; SIL;
+VALIS:=V;
+<font color="#4169E1">REPEAT</font> E:=CREADB(); BLINES(1);
+    <font color="#4169E1">UNTIL</font>   (E = MASORD("("))
+         <font color="#4169E1">OR</font> (E = MASORD("S"))
+         <font color="#4169E1">OR</font> (E = MASORD("L"))
+         <font color="#4169E1">OR</font> (E = MASORD("P"))
+         <font color="#4169E1">OR</font> (E = MASORD("G")); <font color="#B22222">(* end of repeat *)</font>
+<font color="#4169E1">IF</font> E = MASORD("S") <font color="#4169E1">THEN</font> EVORD:=REVILEX <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("L") <font color="#4169E1">THEN</font> EVORD:=INVLEX <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("P") <font color="#4169E1">THEN</font> EVORD:=REVITDG <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("G") <font color="#4169E1">THEN</font> EVORD:=IGRLEX <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("(") <font color="#4169E1">THEN</font> BKSP;
+    T:=LIST1(LIST1(MASORD("T")));
+    X:=EVORD;
+    EVORD:=INVLEX;
+    P:=DIILRD(T);
+    PLFDIL(P, r, Q);
+    EVORD:=X;
+    <font color="#4169E1">IF</font> LENGTH(Q) = LENGTH(V) <font color="#4169E1">THEN</font> EVORD:=INV(Q);
+    <font color="#4169E1">ELSE</font> SWRITE("Wrong number <font color="#4169E1">of</font> polynomials."); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+RETURN(COMP(V, LIST1(EVORD)))
+<strong><font color="#4169E1">END</font></strong> GSDREAD;
+
+<strong><font color="#4169E1">PROCEDURE GSPREAD</font></strong>(): LIST;
+<font color="#B22222">(* G-symmetric polynomial read.
+--- to do ---: remove *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, V, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;
+X:=GSDREAD(); V:=FIRST(X);
+<font color="#4169E1">REPEAT</font> SWRITE("Enter polynomial list: "); P:=DIILRD(V); BLINES(0);
+    <font color="#4169E1">UNTIL</font> P &lt;&gt; SIL; <font color="#B22222">(* end of repeat *)</font>
+RETURN(P)
+<strong><font color="#4169E1">END</font></strong> GSPREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE GSRDREAD</font></strong>(): LIST;
+<font color="#B22222">(* G-symmetric rational descriptor read.
+--- to do ---: remove *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, T, V, E, Q, r, X: LIST; <font color="#B22222">(* read polynomial descriptor *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;                    <font color="#B22222">(* i.e. variable list &amp; term order *)</font>
+<font color="#4169E1">REPEAT</font> V:=VLREAD(); BLINES(1); <font color="#4169E1">UNTIL</font> V &lt;&gt; SIL;
+VALIS:=V;
+<font color="#4169E1">REPEAT</font> E:=CREADB(); BLINES(1);
+    <font color="#4169E1">UNTIL</font>   (E = MASORD("("))
+         <font color="#4169E1">OR</font> (E = MASORD("S"))
+         <font color="#4169E1">OR</font> (E = MASORD("L"))
+         <font color="#4169E1">OR</font> (E = MASORD("P"))
+         <font color="#4169E1">OR</font> (E = MASORD("G")); <font color="#B22222">(* end of repeat *)</font>
+<font color="#4169E1">IF</font> E = MASORD("S") <font color="#4169E1">THEN</font> EVORD:=REVILEX <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("L") <font color="#4169E1">THEN</font> EVORD:=INVLEX <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("P") <font color="#4169E1">THEN</font> EVORD:=REVITDG <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("G") <font color="#4169E1">THEN</font> EVORD:=IGRLEX <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> E = MASORD("(") <font color="#4169E1">THEN</font> BKSP;
+    T:=LIST1(LIST1(MASORD("T")));
+    X:=EVORD;
+    EVORD:=INVLEX;
+    P:=DIRLRD(T);
+    PLFDIL(P, r, Q);
+    EVORD:=X;
+    <font color="#4169E1">IF</font> LENGTH(Q) = LENGTH(V) <font color="#4169E1">THEN</font> EVORD:=INV(Q);
+    <font color="#4169E1">ELSE</font> SWRITE("Wrong number <font color="#4169E1">of</font> polynomials."); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+RETURN(COMP(V, LIST1(EVORD)))
+<strong><font color="#4169E1">END</font></strong> GSRDREAD;
+
+<strong><font color="#4169E1">PROCEDURE GSRREAD</font></strong>(): LIST;
+<font color="#B22222">(* G-symmetric rational polynomial read.
+--- to do ---: remove *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, V, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;
+X:=GSRDREAD(); V:=FIRST(X);
+<font color="#4169E1">REPEAT</font> SWRITE("Enter polynomial list: "); P:=DIRLRD(V); BLINES(0);
+    <font color="#4169E1">UNTIL</font> P &lt;&gt; SIL; <font color="#B22222">(* end of repeat *)</font>
+RETURN(P)
+<strong><font color="#4169E1">END</font></strong> GSRREAD;
+
+
+<strong><font color="#4169E1">END</font></strong> GSYMINP.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

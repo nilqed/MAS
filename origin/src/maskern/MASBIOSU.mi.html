@@ -1,0 +1,136 @@
+
+<html>
+<head>
+<title>./maskern/MASBIOSU.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:50+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASBIOSU.mi,v 1.3 1992/10/15 16:24:56 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASBIOSU.mi,v $
+ * Revision 1.3  1992/10/15  16:24:56  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:31:52  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:30  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASBIOSU;
+
+<font color="#B22222">(* MAS BIOS Utility Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT GAMMAINT;
+
+FROM MASSTOR IMPORT SIL, ADV, LIST;
+
+FROM MASBIOS IMPORT LISTS, CWRITE, SWRITE,
+                    SIUNIT, SOUNIT, CUNIT, SLIST;
+
+<font color="#B22222">(*FROM MASmtc*)</font> IMPORT MASmtc; <font color="#B22222">(*EDIT, DOS*)</font>
+
+FROM SACLIST IMPORT CCONC;
+
+<font color="#B22222">(*FROM Strings IMPORT tString;*)</font>
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASBIOSU.mi,v 1.3 1992/10/15 16:24:56 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE INP</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Input. Set input unit to stream A, A is an SAC-2 character list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S: ARRAY [0..80] <font color="#4169E1">OF</font> CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to string and set *)</font> 
+      SLIST(A,S); RETURN(SIUNIT(S)); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> INP;
+
+
+<strong><font color="#4169E1">PROCEDURE OUT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Output. Set output unit to stream A, A is an SAC-2 character list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S: ARRAY [0..80] <font color="#4169E1">OF</font> CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to string and set *)</font> 
+      SLIST(A,S); RETURN(SOUNIT(S)); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> OUT;
+
+
+<strong><font color="#4169E1">PROCEDURE SHUT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Shut. Close stream A, A is an SAC-2 character list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S: ARRAY [0..80] <font color="#4169E1">OF</font> CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to string and close *)</font> 
+      SLIST(A,S); RETURN(CUNIT(S)); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> SHUT;
+
+
+<strong><font color="#4169E1">PROCEDURE EDIT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Edit. Call editor for file A, A is an SAC-2 character list. *)</font>
+<strong><font color="#228B22">VAR</font></strong> S: ARRAY [0..80] <font color="#4169E1">OF</font> CHAR;
+    i: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to string and set *)</font> 
+      SLIST(A,S); i:=GAMMAINT(MASmtc.EDIT(S));
+      RETURN(i); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> EDIT;
+
+
+<strong><font color="#4169E1">PROCEDURE DOS</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*DOS. Call DOS program with parameters. A is an SAC-2 character list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S: ARRAY [0..80] <font color="#4169E1">OF</font> CHAR;
+      i: GAMMAINT;
+      B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*add blank *)</font> B:=LISTS(" "); 
+      B:=CCONC(A,B); 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to string and call *)</font> 
+      SLIST(B,S); i:=GAMMAINT(MASmtc.DOS(S));
+      RETURN(i); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> DOS;
+
+
+<strong><font color="#4169E1">PROCEDURE CLTIS</font></strong>(A: LIST);
+<font color="#B22222">(*Character list to input stream. A is an SAC-2 character list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, k, b: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> k:=CUNIT("RAM:internal");  
+      k:=SOUNIT("RAM:internal");
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write out characters. *)</font> AP:=A;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP,b,AP); CWRITE(b) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> k:=CUNIT("RAM:internal");  
+      k:=SIUNIT("RAM:internal"); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> CLTIS;
+                       
+
+<strong><font color="#4169E1">END</font></strong> MASBIOSU.
+
+
+
+
+
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,393 @@
+
+<html>
+<head>
+<title>./masdom/DOMFF.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:00+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DOMFF.mi,v 1.5 1995/11/05 09:29:05 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DOMFF.mi,v $
+ * Revision 1.5  1995/11/05 09:29:05  kredel
+ * Fixed DDDRD, DDDWR and other corrections.
+ *
+ * Revision 1.4  1994/09/06  11:48:54  rose
+ * modified comment
+ *
+ * Revision 1.3  1994/05/19  10:42:47  rose
+ * Added DPNF, DPSP, DPSUGNF, DPSUGSP in connection with the new module DIPAGB
+ *
+ * Revision 1.2  1992/10/15  16:30:15  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.1  1992/09/28  17:47:10  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DOMFF;
+
+<font color="#B22222">(* MAS Domain Finite Field Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, ADV, FIRST, RED, SIL, COMP, LIST1; 
+
+FROM MASERR IMPORT harmless, severe, fatal, ERROR;
+
+FROM MASADOM IMPORT Domain, NewDom, 
+                    SetDifFunc, SetExpFunc, SetFIntFunc, SetFIPolFunc, 
+                    SetGcdFunc, SetInvFunc, SetInvTFunc,   
+                    SetLcmFunc, SetNegFunc, SetOneFunc, 
+                    SetProdFunc, SetQuotFunc, SetReadFunc, 
+                    SetSignFunc, SetSumFunc, SetWritFunc, 
+                    <font color="#B22222">(*SetVlddFunc,*)</font> SetDdrdFunc, SetDdwrFunc, 
+		    SetPNormFunc, SetPSpolFunc, SetPSugNormFunc,
+		    SetPSugSpolFunc;
+
+FROM MASBIOS IMPORT BLINES, SWRITE, DIGIT, LETTER, MASORD, CREAD, CREADB, BKSP;
+
+FROM SACLIST IMPORT OWRITE, CLOUT, ADV2, THIRD, FIRST2, FIRST4, 
+                    AWRITE, LIST4, SECOND, FOURTH;
+
+FROM SACI IMPORT IREAD, IWRITE;
+
+FROM SACPOL IMPORT VREAD;
+
+FROM MASFF IMPORT FFWRITE, FFREAD, FFFINT, FFHOM, FFRAND, 
+                  FFCOMP, FFONE, FFNEG,   
+                  FFSUM, FFDIF, FFINV, FFPROD, FFQ, FFEXP;
+
+FROM DIPC IMPORT PFDIP, DIPFP; 
+
+FROM DIPI IMPORT DIIPWR, DIIPRD;
+
+FROM DIPAGB IMPORT EDIPSUGNOR, EDIPSUGSP;
+
+FROM DIPGB IMPORT DIPNOR, DIPSP;
+
+FROM SACMUFAC IMPORT MUPFBL; 
+
+FROM SACPGCD IMPORT MUPSFF; 
+
+FROM SACPRIM IMPORT IFACT; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DOMFF.mi,v 1.5 1995/11/05 09:29:05 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Domain:            (dom, val, mod, modpol, prime, V) 
+   Domain descriptor:           (mod, modpol, prime, V) 
+
+   where: val    = finite field element   
+          mod    = modulus integer
+          modpol = modulus polynomial 
+          prime  = 1 if mod is prime, 2 if mod is squarefree, 0 else  
+          V      = variable list
+*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DDIF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Domain difference. c=a-b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M); ADV(B, BL,BP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFDIF(p,M,AL,BL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE DEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Domain exponentiation. c=a**nl. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFEXP(p,M,AL,NL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DEXP; 
+
+
+<strong><font color="#4169E1">PROCEDURE DFI</font></strong>(D, A: LIST): LIST; 
+<font color="#B22222">(*Domain from integer. D is a domain element with descriptor, 
+A is an integer. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CL, p, M: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> D:=RED(D); FIRST2(D,p,M);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFFINT(p,M,A);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,D); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DFI; 
+
+
+<strong><font color="#4169E1">PROCEDURE DFIP</font></strong>(D, A: LIST): LIST; 
+<font color="#B22222">(*Domain from integral polynomial. D is a domain element with descriptor, 
+A is an integral polynomial in 1 variables. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CL, M, p, BL, DL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> D:=RED(D); FIRST2(D,p,M); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFHOM(p,M,A);  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(DL,D); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DFIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINV</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Domain inverse. c=1/a. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFINV(p,M,AL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DINV; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINVT</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Domain inverse existence test.
+tl=1 if a is invertible, tl=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP);  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> TL:=0; 
+      <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> TL:=THIRD(AP);
+         <font color="#4169E1">IF</font> TL &lt;&gt; 1 <font color="#4169E1">THEN</font> TL:=0 <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> DINVT; 
+
+
+<strong><font color="#4169E1">PROCEDURE DNEG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Domain negative. c=-a. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFNEG(p,M,AL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DNEG; 
+
+
+<strong><font color="#4169E1">PROCEDURE DONE</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Domain one. sl=1 if a=1, sl ne 1 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP);  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> SL:=FFONE(AL); 
+<font color="#B22222">(*5*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> DONE; 
+
+
+<strong><font color="#4169E1">PROCEDURE DPNF</font></strong>(G,P: LIST): LIST;
+<font color="#B22222">(* domain polynomial normalform.
+   G is a list of polynomials in distributive
+   representation with coefficients from the domain,
+   P is a polynomial as above,
+   h is a polynomial such that P is reducible to h
+   modulo G and h is in normalform with respect to G *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   RETURN(DIPNOR(G,P));
+<strong><font color="#4169E1">END</font></strong> DPNF;
+
+
+<strong><font color="#4169E1">PROCEDURE DPROD</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Domain product. c=a*b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M); ADV(B, BL,BP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFPROD(p,M,AL,BL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DPROD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DPSP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* domain polynomial S-polynomial.
+   A and B are polynomials in distributive representation
+   with coefficients from the domain,
+   S is the S-polynomial of A and B *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   RETURN(DIPSP(A,B));
+<strong><font color="#4169E1">END</font></strong> DPSP;
+
+
+<strong><font color="#4169E1">PROCEDURE DPSUGNF</font></strong>(G,P: LIST): LIST;
+<font color="#B22222">(* domain polynomial normal with sugar strategy normalform.
+   G is a list of extended polynomials in distributive
+   representation with coefficients from the domain,
+   P is an extended polynomial as above,
+   h is an extended polynomial such that P is reducible to h
+   modulo G and h is in normalform with respect to G *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   RETURN(EDIPSUGNOR(G,P));
+<strong><font color="#4169E1">END</font></strong> DPSUGNF;
+
+
+<strong><font color="#4169E1">PROCEDURE DPSUGSP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* domain polynomial normal with sugar strategy S-polynomial.
+   A and B are extended polynomials in distributive representation
+   with coefficients from the domain,
+   S is the extended S-polynomial of A and B *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   RETURN(EDIPSUGSP(A,B));
+<strong><font color="#4169E1">END</font></strong> DPSUGSP;
+
+
+<strong><font color="#4169E1">PROCEDURE DQUOT</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Domain quotient. c=a/b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M); ADV(B, BL,BP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFQ(p,M,AL,BL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DQUOT; 
+
+
+<strong><font color="#4169E1">PROCEDURE DREAD</font></strong>(D: LIST): LIST; 
+<font color="#B22222">(*Domain read. d is the domain element with descriptor. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CL, M, p, RL, V, BL, DL, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> D:=RED(D); ADV2(D,p,M,X);  V:=SECOND(X);  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read and convert. *)</font> CL:=FFREAD(V); 
+      DL:=FFHOM(p,M,CL);   
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(DL,D); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DREAD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DSIGN</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Domain sign. cl=sign(a). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> AL:=FIRST(A); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> SL:=0 <font color="#4169E1">ELSE</font> SL:=1 <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> DSIGN; 
+
+
+<strong><font color="#4169E1">PROCEDURE DSUM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Domain sum. c=a+b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CL, M, p: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); FIRST2(AP,p,M); ADV(B, BL,BP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute. *)</font> CL:=FFSUM(p,M,AL,BL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(CL,AP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DSUM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DWRIT</font></strong>(A: LIST); 
+<font color="#B22222">(*Domain write. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, SL, M, p, I, PL, CL, N, J, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A,AL,AP); V:=FOURTH(AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write. *)</font> FFWRITE(AL,V); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DWRIT; 
+
+
+<strong><font color="#4169E1">PROCEDURE DDDRD</font></strong>(): LIST; 
+<font color="#B22222">(*Domain, domain descriptor read. A domain element with descriptor
+D is read from the input stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   c, D, PL, pl, M, p, V, RL, L: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialization. *)</font> p:=0; PL:=0; M:=0; V:=SIL;  
+      D:=LIST4(p,M,PL,V); D:=COMP(0,D); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read, syntax = (mod, var, pol). *)</font> 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> BKSP; 
+         ERROR(severe,"FF domain read: <font color="#666666">'('</font> expected."); RETURN(D) <strong><font color="#4169E1">END</font></strong>; 
+      c:=CREADB(); BKSP; 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> DIGIT(c) <font color="#4169E1">THEN</font> 
+         ERROR(severe,"FF domain read: <font color="#666666">'modulus'</font> expected."); RETURN(D) <strong><font color="#4169E1">END</font></strong>;
+      p:=IREAD(); 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c &lt;&gt; MASORD(",") <font color="#4169E1">THEN</font> BKSP; 
+         ERROR(severe,"FF domain read: <font color="#666666">','</font> expected."); RETURN(D) <strong><font color="#4169E1">END</font></strong>;
+      c:=CREADB(); BKSP;  
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> LETTER(c) <font color="#4169E1">THEN</font> 
+         ERROR(severe,"FF domain read: <font color="#666666">'variable'</font> expected."); RETURN(D) <strong><font color="#4169E1">END</font></strong>;
+      V:=VREAD(); V:=LIST1(V); 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c &lt;&gt; MASORD(",") <font color="#4169E1">THEN</font> BKSP; 
+         ERROR(severe,"FF domain read: <font color="#666666">','</font> expected."); RETURN(D) <strong><font color="#4169E1">END</font></strong>;
+      M:=DIIPRD(V); PFDIP(M, RL,M);   
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font> BKSP; 
+         ERROR(severe,"FF domain read: <font color="#666666">')'</font> expected."); RETURN(D) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*check for prime or squarefree. *)</font> PL:=1; pl:=1;  
+      L:=IFACT(p); 
+      <font color="#4169E1">IF</font> RED(L) &lt;&gt; SIL <font color="#4169E1">THEN</font> OWRITE(L); BLINES(0); 
+         ERROR(harmless,"Warning: .. <font color="#4169E1">not</font> prime number. "); 
+         pl:=0; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      L:=MUPSFF(p,M); 
+      <font color="#4169E1">IF</font> RED(L) &lt;&gt; SIL 
+         <font color="#4169E1">THEN</font> OWRITE(L); BLINES(0); 
+              ERROR(harmless,"Warning: .. <font color="#4169E1">not</font> squarefree. "); 
+              PL:=0; 
+         <font color="#4169E1">ELSE</font> L:=MUPFBL(p,M); 
+              <font color="#4169E1">IF</font> RED(L) &lt;&gt; SIL 
+                 <font color="#4169E1">THEN</font> OWRITE(L); BLINES(0); 
+                      ERROR(harmless,"Warning: .. <font color="#4169E1">not</font> prime. "); 
+                      PL:=2; 
+                 <font color="#4169E1">ELSE</font> PL:=1; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>; 
+      PL:=PL*pl; 
+      D:=LIST4(p,M,PL,V); D:=COMP(0,D); 
+<font color="#B22222">(*5*)</font> RETURN(D); <strong><font color="#4169E1">END</font></strong> DDDRD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DDDWR</font></strong>(D: LIST); 
+<font color="#B22222">(*Domain, domain descriptor write. d is a domain element with 
+descriptor. d is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, M, p, PL, CL, V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> ADV(D,AL,AP); FIRST4(AP,p,M,PL,V); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write. *)</font> 
+      SWRITE("( "); IWRITE(p);  
+      SWRITE(", "); CLOUT(FIRST(V)); SWRITE(", "); 
+      CL:=DIPFP(1,M); DIIPWR(CL,V); SWRITE(" )"); 
+      SWRITE(" <font color="#B22222">(* "); 
+      IF PL &lt;&gt; 1 THEN SWRITE("not ") END;
+      SWRITE(" prime. *)</font> "); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DDDWR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DomLoadFF</font></strong>();
+<font color="#B22222">(*Domain load finite field. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   d: Domain;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> d:=NewDom("FF","Finite Field"); DOMFFD:=d;
+<font color="#B22222">(*2*)</font> SetDifFunc(d,DDIF); 
+      SetExpFunc(d,DEXP); 
+      SetFIntFunc(d,DFI); 
+      SetFIPolFunc(d,DFIP); 
+      SetInvFunc(d,DINV); 
+      SetInvTFunc(d,DINVT); 
+      SetNegFunc(d,DNEG); 
+      SetOneFunc(d,DONE); 
+      SetProdFunc(d,DPROD); 
+      SetQuotFunc(d,DQUOT); 
+      SetReadFunc(d,DREAD); 
+      SetSignFunc(d,DSIGN); 
+      SetSumFunc(d,DSUM); 
+      SetWritFunc(d,DWRIT); 
+      SetDdrdFunc(d,DDDRD); 
+      SetDdwrFunc(d,DDDWR); 
+<font color="#B22222">(*3*)</font> SetPNormFunc(d,DPNF);
+      SetPSpolFunc(d,DPSP);
+      SetPSugNormFunc(d,DPSUGNF);
+      SetPSugSpolFunc(d,DPSUGSP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DomLoadFF;
+
+
+<strong><font color="#4169E1">END</font></strong> DOMFF.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

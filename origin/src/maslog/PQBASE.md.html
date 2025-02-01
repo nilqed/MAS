@@ -1,0 +1,264 @@
+
+<html>
+<head>
+<title>./maslog/PQBASE.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T21:10:01+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: PQBASE.md,v 1.1 1994/11/28 21:10:01 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: PQBASE.md,v $
+ * Revision 1.1  1994/11/28  21:10:01  dolzmann
+ * New modules PQBASE.md and PQBASE.mi:
+ *   Procedures for the manipulating first oder formulas over the language of
+ *   ordered rings.
+ * New modules RQEPRRC.md and RQEPRRC.mi:
+ *   Procedures for the real quantifier elimination.
+ * New modules TFORM.md and TFORM.mi:
+ *   Procedures for the computation of type formulas.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE PQBASE;
+<font color="#B22222">(* Polynomial Equation Base Definition Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			     P Q B A S E				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Abstract: Implementation of the language of ordered fields. The             *
+*           implementation use distributive polynomials over an arbitrary     *
+*           domain for the representation of terms.                           *
+******************************************************************************)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: PQBASE.md,v 1.1 1994/11/28 21:10:01 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong>  EQU, NEQ, GRE, LES, GRQ, LSQ: LIST; <font color="#B22222">(* Relations =, #, &gt;, &lt;, &gt;=, &lt;= *)</font>
+<strong><font color="#228B22">VAR</font></strong> PQSAF: LIST ;
+	<font color="#B22222">(* symbol to mark a polynomial equation special atomic formula *)</font>
+<strong><font color="#228B22">VAR</font></strong> DOMAIN: LIST;
+
+
+<strong><font color="#4169E1">PROCEDURE vlistflvar</font></strong>(lvar:LIST):LIST;
+<font color="#B22222">(* variable list from lvar. lvar is a LVAR object. A variable list in the 
+format of the module DIPC representing the same list of 
+variables is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE lvarfvlist</font></strong>(vlist:LIST):LIST;
+<font color="#B22222">(* lvar from variable list. vlist is a variable list in the format of the 
+DIPC-module. A LVAR object representing the same variable list is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqmkaf</font></strong>(rel:LIST;pol:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplification make atomic formula.
+rel is a relation, pol is a
+polynomial, the atomic formula (rel,id) is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqpaf</font></strong>(af:LIST; <strong><font color="#228B22">VAR</font></strong> rel,pol:LIST);
+<font color="#B22222">(* polynomial equation simplification parse atomic formula. af is an atomic
+formula; the relation symbol of af is in rel returned; the polynomial of af
+is in id returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqgrel</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation get relation symbol. af is an atomic formula. The 
+relation symbol of af is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqgpol</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation get polynomial. af is an atomic formula. The 
+polynomial of af is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqatom</font></strong>(phi:LIST):BOOLEAN;
+<font color="#B22222">(* polynomial equation atomic formula. pqatom returns true
+iff phi has the structure of an atomic formula, i.e. phi is a list 
+with two elements, and the first element of the list is an valid
+relation symbol. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqprtaf</font></strong>(af: LIST);
+<font color="#B22222">(* polynomial equation simplification print atomic formula. The atomic formula
+af is printed.
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqtexwaf</font></strong>(af: LIST);
+<font color="#B22222">(* polynomia equation tex write atomic formula. The atomic formula af 
+is written to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqnegaf</font></strong>(af: LIST):LIST;
+<font color="#B22222">(* negate atomic formula. af is a atomic formula. The negation of af is
+returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqsimplifyaf</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify atomic formula. af is an atomic formula. 
+af is simplified and af the result is returned. Only the relations between 
+a constant polynomial (and zero) are evaluated. Be careful: Use only
+polynomials over an domain with a proper ADSIGN function. 
+(For example: RN, but not RF.) *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqreadaf</font></strong>():LIST;
+<font color="#B22222">(* polynomial equation read atomic formula. An atomic formula is read from
+the input stream. The global variable DOMAIN must be set.
+Atomic fomulas have the following syntax: "&lt;dilp&gt; &lt;rel&gt; &lt;dip&gt;",
+where dip are distributive polynomials over an arbitrary domain 
+with the variable list VALIS and rel is one of the sympols 
+&lt;,=,&gt;,&gt;=,&lt;&gt;,&lt;=,#,LES,EQU,GRE,LSQ,NEQ,GRQ,LEQ,GEQ. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE InitBbfParser</font></strong>();
+<font color="#B22222">(* Initialize black-box formula parser. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE pqsmart</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation atomic formula smart simplification. 
+phi is a conjunction or a disjunction over atomic formulas. 
+All atomic formulas with identical left hand sides are contracted to 
+one atomic formula. A conjunction or a disjunction over these contraced
+formulas is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ContractVel</font></strong>(l:LIST):LIST;
+<font color="#B22222">(* contract vel. l is a list of atomic formulas. These atomic formulas are 
+interpreted as arguments of a disjunction. The relations of atomic formulas 
+with equal left hand sides are contracted. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQCRELOR</font></strong>(left,right:LIST):LIST;
+<font color="#B22222">(* contract relations or. left and right are relations, the contraction of
+left an right are returned. (this procedure works correct, even if left=SIL.)
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE ContractEt</font></strong>(l:LIST):LIST;
+<font color="#B22222">(* contract vel. l is a list of atomic formulas. These atomic formulas are 
+interpreted
+as arguments of a disjunction. The relations of atomic formulas with equal
+identifiers are contracted. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQCRELAND</font></strong>(left,right:LIST):LIST;
+<font color="#B22222">(* contract relations or. left and right are relations, the contraction of
+left an right are returned. (this procedure works correct, even if left=SIL.)
+*)</font>
+
+<font color="#B22222">(******************************************************************************
+*                       M A S L O G   I N T E R F A C E                       *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQMKDNF</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation make disjunctive normal form. phi is a formula;
+MLMKDNF returns a formula in strict disjunctive normal form which is
+equivalent to phi.  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQMKCNF</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation make disjunctive normal form. phi is a formula;
+a formula in strict conjunctive normal form which is
+equivalent to phi is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQSMPL</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify. phi is a formula; a simplification on
+phi is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQSIMPLIFY</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify. phi is a formula. A simplification of 
+phi is returned. Following simplification steps are done:
+1. VERUM and FALSUM are eliminated 
+2. assoziative simplification
+3. idempotenz
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQSIMPLIFYP</font></strong>(phi,maxlevel:LIST):LIST;
+<font color="#B22222">(* polynomial equation simplify. phi is a formula. A simplification of 
+phi is returned. Following simplification steps are done:
+1. VERUM and FALSUM are eliminated 
+2. assoziative simplification
+3. idempotenz
+maxlevel is the number of levels that are simplified. 
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQMKPOS</font></strong>(phi: LIST): LIST;
+<font color="#B22222">(* polynomial equation make positive. phi is a formula; a equivalent positive 
+formula is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQPPRT</font></strong>(phi:LIST);
+<font color="#B22222">(* polynomial equation pretty print. phi is a formula; this procedure writes
+the formula phi formatted in the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQTEXW</font></strong>(phi: LIST);
+<font color="#B22222">(* polynomial equation tex write. The formula phi is printed in tex format in
+the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQPREAD</font></strong>():LIST;
+<font color="#B22222">(* polynomial equation read. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQIREAD</font></strong>():LIST;
+<font color="#B22222">(* polynomial equation infix read. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQELIMXOPS</font></strong>(phi: LIST):LIST;
+<font color="#B22222">(* polynomial equation  eliminate extended operation symbols. phi is 
+formula, pref is a
+symbol of the set \{VEL, ET, NON\}; FORELIMXOPS returns a formula phi1
+equivalent to phi. If pref is NON then this function does nothing. Otherwise
+this function replaces all subterms of phi with the operators IMP, REP, EQUIV
+or XOR with terms with the operators VEL, ET and NON. There are two different
+substitutions for EQUIV and XOR. If pref=ET (pref=VEL) then the outermost
+operator of the replacement terms for EQUIV, XOR is ET (VEL). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQELIMXOPS1</font></strong>(phi,pref: LIST):LIST;
+<font color="#B22222">(* polynomial equation  eliminate extended operation symbols. phi is 
+formula, pref is a
+symbol of the set \{VEL, ET, NON\}; FORELIMXOPS returns a formula phi1
+equivalent to phi. If pref is NON then this function does nothing. Otherwise
+this function replaces all subterms of phi with the operators IMP, REP, EQUIV
+or XOR with terms with the operators VEL, ET and NON. There are two different
+substitutions for EQUIV and XOR. If pref=ET (pref=VEL) then the outermost
+operator of the replacement terms for EQUIV, XOR is ET (VEL). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQMKPRENEX</font></strong>(phi,pref:LIST): LIST;
+<font color="#B22222">(* polynomial equation make prenex. 
+phi is a formula; pref is an element of \{EXIST,
+FORALL\}; a formula psi in prenex normal form is returned.  phi must be a
+relative positive formula without additional operation symbols like IMP, REP,
+etc.  All bound variables in phi must have different specifications (i.e.
+different names or different types).  The only transformation which is used to
+calculate psi is the interchange of a junctor with a quantifier.  The formula
+psi has the minimal number of blocks of quantifiers under all prenex formulas
+which are built using only the interchange of a junctor with a quantifier.
+The argument pref is only respected, if there are two equivalent formulas with
+the same optimal number of blocks of quantifiers.  In this case the formula is
+returned which has a "pref"-quantifier as the outermost operation symbol.*)</font>
+
+<font color="#B22222">(******************************************************************************
+*                                  P R I N G                                  *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQPRING</font></strong>(R: LIST): LIST;
+<font color="#B22222">(* polynomial equation polynomial ring. The global variables that describe the
+polynomial ring are set. The list R is of the following format: The first entry
+is the domain descriptor of the field, the second entry is the list of the 
+variables, and the third entry is the term order. You can omit an entry of R 
+by writing a -1 on the place of the entry. Not all entries must specified. 
+The old parameters are returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQPRINGWR</font></strong>();
+<font color="#B22222">(* polynomial equation polynomial ring write. The description of the polynomial
+ring is written in the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PQMKVD</font></strong>(phi:LIST): LIST;
+<font color="#B22222">(* polynomial equation make variable names disjoint. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> PQBASE.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

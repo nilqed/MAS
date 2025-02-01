@@ -1,0 +1,72 @@
+
+<html>
+<head>
+<title>./maspoly/SACDPOL.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:33:56+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACDPOL.md,v 1.2 1992/02/12 17:33:56 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACDPOL.md,v $
+ * Revision 1.2  1992/02/12  17:33:56  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:48  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACDPOL;
+
+<font color="#B22222">(* SAC Dense Polynomial Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACDPOL.md,v 1.2 1992/02/12 17:33:56 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE DMPPRD</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Dense modular polynomial product.  A and B are polynomials in r
+variables over Z sub m, m a beta-integer, r ge 0.  C=A*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DMPSUM</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Dense modular polynomial sum.  A and B are dense polynomials in r
+variables over Z sub m, m a beta-integer.  C=A+B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DMUPNR</font></strong>(PL,A,B: LIST): LIST;
+<font color="#B22222">(*Dense modular univariate polynomial natural remainder.  A and B are
+non-zero dense univariate polynomials over Z sub p, p a prime
+beta-integer, with deg(A) ge deg(B).  C is the natural remainder of B.
+The list for A is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DPFP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Dense polynomial from polynomial.  A is a polynomial in r
+variables, r ge 0.  B is the result of converting A to dense
+polynomial representation.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACDPOL.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

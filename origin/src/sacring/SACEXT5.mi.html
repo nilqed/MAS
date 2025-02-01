@@ -1,0 +1,262 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT5.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT5.mi,v 1.3 1992/10/15 16:28:57 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT5.mi,v $
+ * Revision 1.3  1992/10/15  16:28:57  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:51  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:16:00  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACEXT5;
+
+<font color="#B22222">(* SAC Extensions 5 Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font> 
+
+FROM MASELEM IMPORT MASEVEN, MASREM, MASODD;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    INV, COMP, SRED, ADV, FIRST, RED;
+
+FROM MASERR IMPORT ERROR, fatal;
+
+FROM SACLIST IMPORT CONC, MEMBER, EQUAL, 
+                    LIST2, SECOND, ADV2, FIRST2, LAST;
+
+FROM SACI IMPORT IEXP, ICOMP, IPROD, IDP2, IMP2, IORD2;
+
+FROM SACM IMPORT MDPROD, MDHOM, MDINV;
+
+FROM SACCOMB IMPORT IFACTL;
+
+FROM SACPOL IMPORT PRIME, PMON, PLDCF, PDEG;
+
+FROM SACIPOL IMPORT IPPSR, IPDMV, IPCRA, IPMAXN, IPPROD, 
+                    IPQ, IPNEG, IPEXP;
+
+FROM SACMPOL IMPORT MPMDP, MPDIF, MPHOM, MPQR, MPPROD;
+
+FROM SACPGCD IMPORT IPRES, IPSF, IPSCPP, IPGCDC;
+
+FROM SACEXT4 IMPORT PCONST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACEXT5.mi,v 1.3 1992/10/15 16:28:57 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IPCSFB</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial coarsest squarefree basis.  A eq (A sub 1
+, ..., A sub n ), n ge 0, is a list of positive primitive integral
+polynomials in r variables, r ge 1, each of which is of positive
+degree in its main variable.  B is a coarsest squarefree basis
+for A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, AP1, AS, B, L, L1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AS:=BETA; AP:=A; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, A1,AP); L:=IPSF(RL,A1); 
+            <font color="#4169E1">REPEAT</font> ADV(L, L1,L); AP1:=SECOND(L1); AS:=COMP(AP1,AS); 
+                   <font color="#4169E1">UNTIL</font> L = SIL; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      B:=ISPSFB(RL,AS); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPCSFB; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPDSCR</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial discriminant.  A is an integral polynomial
+in r variables, r ge 1, of degree greater than or equal to two in
+its main variable.  B is the discriminant of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, NL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=IPDMV(RL,A); B:=IPRES(RL,A,AP); AL:=PLDCF(A); RLP:=RL-1; 
+      B:=IPQ(RLP,B,AL); NL:=PDEG(A); 
+      <font color="#4169E1">IF</font> MASREM(NL,4) &gt;= 2 <font color="#4169E1">THEN</font> B:=IPNEG(RLP,B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPDSCR; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPLCPP</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> C,P: LIST); 
+<font color="#B22222">(*Integral polynomial list of contents and primitive parts.
+A eq (A sub 1 , ..., A sub n ), n ge 0, is a list of integral
+polynomials in r variables, r ge 1.  C eq (C sub 1 , ..., C sub s ),
+0 le s le n, is a list such that for 1 le i le n, content(a sub i ) eq
+c sub j for some j, 1 le j le s, if and only if content(a sub i )
+has positive degree in some variable.
+P eq (P sub 1 , ..., P sub m ), 0 le m le n, is a list such that
+for 1 le i le n, PP(A sub i ) eq P sub j for some j, 1 le j le m,
+if and only if PP(a sub i ) has positive degree in its main
+variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, C1, P1, RLP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=BETA; P:=BETA; AP:=A; RLP:=RL-1; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, A1,AP); IPSCPP(RL,A1, SL,C1,P1); 
+            <font color="#4169E1">IF</font>  <font color="#4169E1">NOT</font> (PCONST(RLP,C1) = 1) <font color="#4169E1">THEN</font> C:=COMP(C1,C); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> PDEG(P1) &gt; 0 <font color="#4169E1">THEN</font> P:=COMP(P1,P); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      C:=INV(C); P:=INV(P); RETURN; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPLCPP; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPPSC</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial principal subresultant coefficients.  A and B
+are integral polynomials in r variables, r ge 1, of positive degree
+in the main variable.  P is a list of the principal subresultant
+coefficients of the second kind of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL0, DL1, G1, G2, G3, GH3, GL1, HL0, HL1, HLS0, HLS1, IL, J1Y,
+     NL1, NL2, NL3, P, RLP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Initialize.*)</font> NL1:=PDEG(A); NL2:=PDEG(B); 
+      <font color="#4169E1">IF</font> NL1 &gt; NL2 <font color="#4169E1">THEN</font> G1:=A; G2:=B; <font color="#4169E1">ELSE</font> G1:=B; G2:=A; TL:=NL1; 
+         NL1:=NL2; NL2:=TL; <strong><font color="#4169E1">END</font></strong>; 
+      DL0:=0; DL1:=NL1-NL2; RLP:=RL-1; IL:=1; P:=BETA; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Compute g hat sub i+2.*)</font> 
+      <font color="#4169E1">IF</font> G2 &lt;&gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*GO TO 3;*)</font> 
+         GH3:=IPPSR(RL,G1,G2); 
+         <font color="#4169E1">IF</font> GH3 &lt;&gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*GO TO 3;*)</font> 
+            <font color="#4169E1">IF</font> MASEVEN(DL1) <font color="#4169E1">THEN</font> GH3:=IPNEG(RL,GH3); <strong><font color="#4169E1">END</font></strong>; 
+            NL3:=PDEG(GH3); 
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Compute h sub i.*)</font> 
+      <font color="#4169E1">IF</font> IL &gt; 1 <font color="#4169E1">THEN</font> GL1:=PLDCF(G1); HL1:=IPEXP(RLP,GL1,DL0); 
+         <font color="#4169E1">IF</font> IL &gt; 2 <font color="#4169E1">THEN</font> J1Y:=DL0-1; HLS0:=IPEXP(RLP,HL0,J1Y); 
+            HL1:=IPQ(RLP,HL1,HLS0); P:=COMP(HL1,P); 
+            <font color="#4169E1">IF</font> G2 = 0 <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Compute g sub i+2.*)</font> 
+      <font color="#4169E1">IF</font> (IL = 1) <font color="#4169E1">OR</font> (GH3 = 0) <font color="#4169E1">THEN</font> G3:=GH3; <font color="#4169E1">ELSE</font>
+         HLS1:=IPEXP(RLP,HL1,DL1); HLS1:=IPPROD(RLP,GL1,HLS1); 
+         HLS1:=LIST2(0,HLS1); G3:=IPQ(RL,GH3,HLS1); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Update.*)</font> NL1:=NL2; NL2:=NL3; DL0:=DL1; DL1:=NL1-NL2; G1:=G2; 
+      G2:=G3; 
+      <font color="#4169E1">IF</font> IL &gt; 1 <font color="#4169E1">THEN</font> HL0:=HL1; <strong><font color="#4169E1">END</font></strong>; 
+      IL:=IL+1; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*GO TO 2;*)</font> 
+<font color="#B22222">(*8*)</font> RETURN(P); <strong><font color="#4169E1">END</font></strong> IPPSC; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPSFBA</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial squarefree basis augmentation.  A is a
+primitive positive squarefree integral polynomial in r variables,
+r ge 1, of positive degree in its main variable.
+B eq (B sub 1 , ..., B sub s ), s ge 0, is a squarefree integral
+polynomial basis in r variables.  BS is a coarsest squarefree
+basis for (A,B sub 1 , ..., B sub s ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ABP, AP, B1, BB1, BP, BS, C: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; BP:=B; BS:=BETA; 
+      <font color="#4169E1">WHILE</font> (BP &lt;&gt; SIL) <font color="#4169E1">AND</font> (PDEG(AP) &gt; 0) <font color="#4169E1">DO</font> ADV(BP, B1,BP); 
+            IPGCDC(RL,AP,B1, C,ABP,BB1); 
+            <font color="#4169E1">IF</font> PDEG(C) &gt; 0 <font color="#4169E1">THEN</font> BS:=COMP(C,BS); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> PDEG(BB1) &gt; 0 <font color="#4169E1">THEN</font> BS:=COMP(BB1,BS); <strong><font color="#4169E1">END</font></strong>; 
+            AP:=ABP; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> PDEG(AP) &gt; 0 <font color="#4169E1">THEN</font> BS:=COMP(AP,BS); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BP, B1,BP); BS:=COMP(B1,BS); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(BS); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPSFBA; 
+
+
+<strong><font color="#4169E1">PROCEDURE ISPSFB</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral squarefree polynomial squarefree basis.  A eq (A sub 1
+, ..., A sub n ), n ge 0, is a list of positive primitive squarefree
+integral polynomials in r variables,r ge 1, each of which is of
+positive degree in its main variable.  B is a coarsest squarefree
+basis for A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=BETA; AP:=A; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, A1,AP); B:=IPSFBA(RL,A1,B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ISPSFB; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPRC</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,R: LIST); 
+<font color="#B22222">(*Integral univariate polynomial resultant and cofactor.  A and B are
+univariate integral polynomials of positive degree.  R is the
+resultant of A and B.  C is a univariate integral polynomial such
+that for some univariate integral polynomial D, AD+BC eq R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AS, BS, CS, DL, EL, FL, I, J1Y, ML, NL, PL, Q, QL, RS:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Compute coefficient bound.*)</font> DL:=IPMAXN(1,A); EL:=IPMAXN(1,B); 
+      ML:=PDEG(A); NL:=PDEG(B); DL:=IEXP(DL,NL); EL:=IEXP(EL,ML); 
+      J1Y:=ML+NL; FL:=IFACTL(J1Y); FL:=IPROD(EL,FL); FL:=IPROD(DL,FL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Initialize.*)</font> I:=PRIME; Q:=1; C:=0; R:=0; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Loop.*)</font> 
+      <font color="#4169E1">WHILE</font> I &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(I, PL,I); AS:=MPHOM(1,PL,A); 
+            <font color="#4169E1">IF</font> PDEG(AS) = ML <font color="#4169E1">THEN</font> BS:=MPHOM(1,PL,B); 
+               <font color="#4169E1">IF</font> PDEG(BS) = NL <font color="#4169E1">THEN</font> MUPRC(PL,AS,BS, CS,RS); 
+                  QL:=MDHOM(PL,Q); QL:=MDINV(PL,QL); 
+                  C:=IPCRA(Q,PL,QL,1,C,CS); R:=IPCRA(Q,PL,QL,0,R,RS); 
+                  Q:=IPROD(Q,PL); 
+                  <font color="#4169E1">IF</font> ICOMP(Q,FL) &gt;= 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Algorithm fails.*)</font> ERROR(fatal,"algorithm IUPRC fails");  
+<font color="#B22222">(*7*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> IUPRC; 
+
+
+<strong><font color="#4169E1">PROCEDURE MUPRC</font></strong>(PL,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,RL: LIST); 
+<font color="#B22222">(*Modular univariate polynomial resultant and cofactor.  p is a
+prime beta-digit.  A and B are univariate polynomials over
+Z sub p of positive degree.  R is the resultant of A and B,
+an element of Z sub p.  C is a univariate polynomial over
+Z sub p such that for some univariate polynomial D over
+Z sub p, AD+BC eq R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A2, A3, IL, J1Y, NL1, NL2, NL3, Q, RL2, SL, TL, VL1, VL2,
+     VL3: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> RL:=1; A1:=A; A2:=B; VL1:=0; VL2:=PMON(1,0); 
+      NL1:=PDEG(A1); NL2:=PDEG(A2); SL:=0; 
+      <font color="#4169E1">IF</font> NL1 &lt; NL2 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> ODD(NL1) <font color="#4169E1">AND</font> ODD(NL2) <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+         TL:=A1; A1:=A2; A2:=TL; VL1:=VL2; VL2:=0; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop.*)</font> 
+      <font color="#4169E1">REPEAT</font> MPQR(1,PL,A1,A2, Q,A3); J1Y:=MPPROD(1,PL,Q,VL2); 
+             VL3:=MPDIF(1,PL,VL1,J1Y); 
+             <font color="#4169E1">IF</font> A3 = 0 <font color="#4169E1">THEN</font> RL:=0; C:=VL3; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+             NL1:=PDEG(A1); NL2:=PDEG(A2); NL3:=PDEG(A3); 
+             <font color="#4169E1">IF</font> MASODD(NL1) <font color="#4169E1">AND</font> MASODD(NL2) <font color="#4169E1">THEN</font> SL:=1-SL; <strong><font color="#4169E1">END</font></strong>; 
+             RL2:=PLDCF(A2); 
+             <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL1-NL3 <font color="#4169E1">DO</font> RL:=MDPROD(PL,RL,RL2); <strong><font color="#4169E1">END</font></strong>; 
+             A1:=A2; A2:=A3; VL1:=VL2; VL2:=VL3; 
+             <font color="#4169E1">UNTIL</font> NL3 = 0; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> RL2:=PLDCF(A2); 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL2-1 <font color="#4169E1">DO</font> RL:=MDPROD(PL,RL,RL2); <strong><font color="#4169E1">END</font></strong>; 
+      C:=MPMDP(1,PL,RL,VL2); RL:=MDPROD(PL,RL,RL2); 
+      <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> RL:=PL-RL; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MUPRC; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT5.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

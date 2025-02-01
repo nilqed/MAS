@@ -1,0 +1,794 @@
+
+<html>
+<head>
+<title>./masmodul/SYZFUNC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-04T18:00:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYZFUNC.mi,v 1.4 1995/11/04 18:00:51 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SYZFUNC.mi,v $
+ * Revision 1.4  1995/11/04 18:00:51  pesch
+ * Changed comments violating documentation rules.
+ *
+ * Revision 1.3  1992/10/15  16:29:20  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:16  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:57  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SYZFUNC;
+
+<font color="#B22222">(* Syzygy Functions Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Author: J. Philipp, Uni Passau, 1991. *)</font>
+
+
+FROM DIPC    IMPORT DIPEVL, DIPFMO, DIPMAD, EVDEL, EVDIF, EVLCM, EVMT, 
+                    DIPINV, DIPLBC, DIPMPV, DIPLPM, VALIS;
+
+FROM DIPRN   IMPORT DIRPDF, DIRPNG, DIRPPR, DIRPQ, DIRPRP, DIRPSM;
+
+FROM DIPRNGB IMPORT DIRPNF;
+
+FROM MASBIOS IMPORT SWRITE, BLINES;
+
+FROM MASNC   IMPORT DINPPR, EVZERO;
+
+FROM MASNCGB IMPORT DINLNF;
+
+FROM MASSTOR IMPORT ADV, FIRST, LIST, LIST1, RED, SIL, LENGTH;
+
+FROM SACLIST IMPORT ADV2, AWRITE, LWRITE, CCONC;
+
+FROM SACRN   IMPORT RNINT, RNQ;
+
+FROM SYZHLP  IMPORT ADDLAST, APP0, EVT, EXPPL, PLWR, POS, POL, EVL, 
+                    ADDPPOS, GBTMRED, GENPOSV;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SYZFUNC.mi,v 1.4 1995/11/04 18:00:51 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE SPC</font></strong>(P1, P2 : LIST; <strong><font color="#228B22">VAR</font></strong> SPFL, SP : LIST);
+<font color="#B22222">(* S-Polynomial with Coefficients. Berechnet das S-Pol SP von P1 und P2,
+und speichert die zugehoerigen Faktoren Uij und Vij in dieser Reihenfolge
+unter SPFL ab. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   SP1, SP2, KO1, KO2, EV1, EV2, H, EV3, EV31, EV32, SPF1, SPF2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    DIPMAD(P1, KO1, EV1, H);
+    DIPMAD(P2, KO2, EV2, H);
+    EV3 := EVLCM(EV1,EV2);
+    EV31 := EVDIF(EV3, EV1);
+    EV32 := EVDIF(EV3, EV2);
+    SPF1 := DIPFMO(KO2, EV31);
+    SPF2 := DIPFMO(KO1, EV32);
+    SPFL := CCONC(LIST1(SPF1), LIST1(SPF2));
+    SP1 := DIRPPR(SPF1, P1);
+    SP2 := DIRPPR(SPF2, P2);
+    SP := DIRPDF(SP1,SP2);
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> SPC;
+
+
+<strong><font color="#4169E1">PROCEDURE NLSPC</font></strong>(P1, P2 : LIST; <strong><font color="#228B22">VAR</font></strong> SPFL, SP, T : LIST);
+<font color="#B22222">(* Non-Commutative S-Polynomial with Coefficients. Berechnet nicht-
+kommutative das S-Pol SP von P1 und P2, und speichert die zugehoerigen
+Faktoren Uij und Vij in dieser Reihenfolge unter SPFL ab. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   SP1, SP2, KO1, KO2, EV1, EV2, EV3, EV31, EV32, RZ,
+      SPF1, SPF2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    EV1 := DIPEVL(P1);
+    EV2 := DIPEVL(P2);
+    EV3 := EVLCM(EV1, EV2);
+    EV31 := EVDIF(EV3, EV1);
+    EV32 := EVDIF(EV3, EV2);
+    RZ := RNINT(1);
+    SPF1 := DIPFMO(RZ, EV31);
+    SPF2 := DIPFMO(RZ, EV32);
+    SP1 := DINPPR(T, SPF1, P1);
+    SP2 := DINPPR(T, SPF2, P2);
+    KO1 := DIPLBC(SP1);
+    KO2 := DIPLBC(SP2);
+    SP1 := DIRPRP(SP1, KO2);
+    SP2 := DIRPRP(SP2, KO1);
+    SPF1 := DIRPRP(SPF1, KO2);
+    SPF2 := DIRPRP(SPF2, KO1);
+    SPFL := CCONC(LIST1(SPF1), LIST1(SPF2));
+    SP := DIRPDF(SP1, SP2);
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> NLSPC;
+
+
+<strong><font color="#4169E1">PROCEDURE SPCGB</font></strong>(GB : LIST; <strong><font color="#228B22">VAR</font></strong> SPFL, SPL : LIST);
+<font color="#B22222">(* S-Polynomials with Coefficients for Groebner Base. Berechnet die 
+S-Polynome aller Polynome in GB und speichert diese in SPL ab. Die 
+zugehoerigen Faktoren Uij und Vij aller S-Polynome werden in dieser 
+Reihenfolge unter SPFL abgelegt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, P1, P2, SPFL1, SP : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPFL := SIL;
+    SPL := SIL;
+    <font color="#4169E1">WHILE</font> RED(GB) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      GB1 := RED(GB);
+      ADV(GB, P1, GB);
+      <font color="#4169E1">WHILE</font> GB1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GB1, P2, GB1);
+        SPC(P1, P2, SPFL1, SP);
+        SPFL := CCONC(SPFL, SPFL1);
+        SPL := CCONC(SPL, LIST1(SP));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> SPCGB;
+
+
+<strong><font color="#4169E1">PROCEDURE NLSPCGB</font></strong>(GB : LIST; <strong><font color="#228B22">VAR</font></strong> SPFL, SPL, T : LIST);
+<font color="#B22222">(* Non-Commutative S-Polynomials with Coefficients for Groebner Base. 
+Berechnet die nicht-kommutativen S-Polynome aller Polynome in GB und 
+speichert diese in SPL ab. Die zugehoerigen Faktoren Uij und Vij aller 
+S-Polynome werden in dieser Reihenfolge unter SPFL abgelegt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, P1, P2, SPFL1, SP : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPFL := SIL;
+    SPL := SIL;
+    <font color="#4169E1">WHILE</font> RED(GB) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      GB1 := RED(GB);
+      ADV(GB, P1, GB);
+      <font color="#4169E1">WHILE</font> GB1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GB1, P2, GB1);
+        NLSPC(P1, P2, SPFL1, SP, T);
+        SPFL := CCONC(SPFL, SPFL1);
+        SPL := CCONC(SPL, LIST1(SP));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> NLSPCGB;
+
+
+<strong><font color="#4169E1">PROCEDURE SPCEGB</font></strong>(GB, L : LIST; <strong><font color="#228B22">VAR</font></strong> SPFL, SPL : LIST);
+<font color="#B22222">(* S-Polynomials with Coefficients and Exponenetvector-Check for Groebner Base.
+Berechnet die S-Polynome aller Polynome in GB unter Beruecksichtigung der
+Gleichheit der fuehrenden L Stellen des Exponenetenvektors der HT, und
+speichert diese in SPL ab. Die zugehoerigen Faktoren Uij und Vij aller
+S-Polynome werden in dieser Reihenfolge unter SPFL abgelegt. Konnte ein
+S-Polynom nicht gebildet werden, dann wird an die Liste SPFL als
+Steuerbit eine Null angehaengt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, P1, P2, SPFL1, SP : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPFL := SIL;
+    SPL := SIL;
+    <font color="#4169E1">WHILE</font> RED(GB) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      GB1 := RED(GB);
+      ADV(GB, P1, GB);
+      <font color="#4169E1">WHILE</font> GB1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GB1, P2, GB1);
+        <font color="#4169E1">IF</font> EVT(P1, P2, L) = 1 <font color="#4169E1">THEN</font>
+          SPC(P1, P2, SPFL1, SP);
+          SPFL := CCONC(SPFL, SPFL1);
+          SPL := CCONC(SPL, LIST1(SP));
+        <font color="#4169E1">ELSE</font>
+          SPFL := CCONC(SPFL, LIST1(0));
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> SPCEGB;
+
+
+<strong><font color="#4169E1">PROCEDURE NLSPCEGB</font></strong>(GB, L : LIST; <strong><font color="#228B22">VAR</font></strong> SPFL, SPL, T : LIST);
+<font color="#B22222">(* Non-Commutative S-Polynomials with Coefficients and Exponenetvector-Check
+for Groebner Base. Berechnet die nicht-kommutativen S-Polynome aller 
+Polynome in GB unter Beruecksichtigung der Gleichheit der fuehrenden 
+L Stellen des Exponenetenvektors der HT, und speichert diese in SPL ab. 
+Die zugehoerigen Faktoren Uij und Vij aller S-Polynome werden in dieser 
+Reihenfolge unter SPFL abgelegt. Konnte ein S-Polynom nicht gebildet 
+werden, dann wird an die Liste SPFL als Steuerbit eine Null angehaengt. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, P1, P2, SPFL1, SP : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPFL := SIL;
+    SPL := SIL;
+    <font color="#4169E1">WHILE</font> RED(GB) &lt;&gt; SIL <font color="#4169E1">DO</font>
+      GB1 := RED(GB);
+      ADV(GB, P1, GB);
+      <font color="#4169E1">WHILE</font> GB1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GB1, P2, GB1);
+        <font color="#4169E1">IF</font> EVT(P1, P2, L) = 1 <font color="#4169E1">THEN</font>
+          NLSPC(P1, P2, SPFL1, SP, T);
+          SPFL := CCONC(SPFL, SPFL1);
+          SPL := CCONC(SPL, LIST1(SP));
+        <font color="#4169E1">ELSE</font>
+          SPFL := CCONC(SPFL, LIST1(0));
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> NLSPCEGB;
+
+
+<strong><font color="#4169E1">PROCEDURE RCSP</font></strong>(GB, SPL : LIST): LIST;
+<font color="#B22222">(* Reduction Chain of S-Polynomials. Fuer alle S-Polynome in SPL werden
+diejenigen Faktoren gespeichert, die noetig sind, um ein S-Polynom
+bzgl. der Groebner Basis GB zu Null zu reduzieren.
+Bsp.: Sei GB = (G1, G2, G3) und gelte SPi - P1 G1 - P2 G2 - P3 G1 = 0.
+Dann hat die i-te Zeile der Ergebnismatrix die Gestalt: (P1+P3, P2, 0). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EV1, EV2, GB1, P1, P2, P3, NF, KO1, KO2, PL, NV, P, PR,
+      H, POS, TW, SPAK : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPAK := SIL;
+    NV := EVZERO(LENGTH(GB));
+    <font color="#4169E1">WHILE</font> SPL &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(SPL, PR, SPL);
+      <font color="#4169E1">IF</font> PR = 0 <font color="#4169E1">THEN</font>
+        SPAK := CCONC(SPAK, LIST1(NV));
+      <font color="#4169E1">ELSE</font>
+        PL := NV;
+        <font color="#4169E1">WHILE</font> (PR &lt;&gt; 0) <font color="#4169E1">DO</font>
+          GB1 := GB;
+          POS := 0;
+          <font color="#4169E1">WHILE</font> (GB1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (PR &lt;&gt; 0) <font color="#4169E1">DO</font>
+            ADV(GB1, P, GB1);
+            POS := POS + 1;
+            DIPMAD(PR, KO1, EV1, H);
+            DIPMAD(P, KO2, EV2, H);
+            TW := EVMT(EV1, EV2);
+            <font color="#4169E1">IF</font> TW = 1 <font color="#4169E1">THEN</font>
+              P1 := DIPFMO(KO1, EV1);
+              P2 := DIPFMO(KO2, EV2);
+              NF := DIRPQ(P1, P2);
+              P3 := DIRPPR(NF, P);
+              PR := DIRPDF(PR, P3);
+              PL := ADDPPOS(PL, NF, POS);
+            <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPAK := CCONC(SPAK, LIST1(PL));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SPAK);
+<strong><font color="#4169E1">END</font></strong> RCSP;
+
+
+<strong><font color="#4169E1">PROCEDURE RCSPR</font></strong>(PL : LIST; <strong><font color="#228B22">VAR</font></strong> SP : LIST): LIST;
+<font color="#B22222">(* Reduction Chain of S-Polynomials with Remainder. Fuer das S-Polynome 
+SP werden diejenigen Faktoren gespeichert, die noetig sind, um dieses 
+S-Polynom bzgl. der Polynome in PL zu Null zu reduzieren. Konnte bei 
+einem Durchlauf nicht mehr reduziert werden, dann bricht das Verfahren 
+mit den bereits errechneten Werten ab.
+Bsp.: Sei PL = (P1, P2, P3) und gelte SP - F1 P1 - F2 P2 - F3 P1 = 0.
+Dann hat die Ergebniszeile die Gestalt: (F1+F3, F2, 0). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, EV1, EV2, P1, P2, P3, NF, KO1, KO2, NV, P, PL1, H, POS,
+      TW, SPAK : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPAK := EVZERO(LENGTH(PL));
+    C := 1;
+    <font color="#4169E1">WHILE</font> (SP &lt;&gt; 0) <font color="#4169E1">AND</font> (C = 1) <font color="#4169E1">DO</font>
+      PL1 := PL;
+      POS := 0;
+      C := 0;
+      <font color="#4169E1">WHILE</font> (PL1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (SP &lt;&gt; 0) <font color="#4169E1">DO</font>
+        ADV(PL1, P, PL1);
+        POS := POS + 1;
+        DIPMAD(SP, KO1, EV1, H);
+        DIPMAD(P, KO2, EV2, H);
+        TW := EVMT(EV1, EV2);
+        <font color="#4169E1">IF</font> TW = 1 <font color="#4169E1">THEN</font>
+          C := 1;
+          P1 := DIPFMO(KO1, EV1);
+          P2 := DIPFMO(KO2, EV2);
+          NF := DIRPQ(P1, P2);
+          P3 := DIRPPR(NF, P);
+          SP := DIRPDF(SP, P3);
+          SPAK := ADDPPOS(SPAK, NF, POS);
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SPAK);
+<strong><font color="#4169E1">END</font></strong> RCSPR;
+
+
+<strong><font color="#4169E1">PROCEDURE NLRCSPR</font></strong>(PL : LIST; <strong><font color="#228B22">VAR</font></strong> SP, T : LIST): LIST;
+<font color="#B22222">(* Reduction Chain of S-Polynomials with Remainder. Fuer das S-Polynome 
+SP werden diejenigen Faktoren gespeichert, die noetig sind, um dieses 
+S-Polynom bzgl. der Polynome in PL zu Null zu reduzieren. Konnte bei 
+einem Durchlauf nicht mehr reduziert werden, dann bricht das Verfahren 
+mit den bereits errechneten Werten ab.
+Bsp.: Sei PL = (P1, P2, P3) und gelte SP - F1 P1 - F2 P2 - F3 P1 = 0.
+Dann hat die Ergebniszeile die Gestalt: (F1+F3, F2, 0). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, EV1, EV2, P1, P2, P3, NF, KO, KO1, KO2, NV, P, PL1, H, POS,
+      TW, SPAK : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPAK := EVZERO(LENGTH(PL));
+    C := 1;
+    <font color="#4169E1">WHILE</font> (SP &lt;&gt; 0) <font color="#4169E1">AND</font> (C = 1) <font color="#4169E1">DO</font>
+      PL1 := PL;
+      POS := 0;
+      C := 0;
+      <font color="#4169E1">WHILE</font> (PL1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (SP &lt;&gt; 0) <font color="#4169E1">DO</font>
+        ADV(PL1, P, PL1);
+        POS := POS + 1;
+        DIPMAD(SP, KO1, EV1, H);
+        DIPMAD(P, KO2, EV2, H);
+        TW := EVMT(EV1, EV2);
+        <font color="#4169E1">IF</font> TW = 1 <font color="#4169E1">THEN</font>
+          C := 1;
+          NF := EVDIF(EV1, EV2);
+          P1 := DIPFMO(RNINT(1), NF);
+          P2 := DINPPR(T, P1, P);
+          KO := RNQ(KO1, DIPLBC(P2));
+          P2 := DIRPRP(P2, KO);
+          SP := DIRPDF(SP, P2);
+          P1 := DIRPRP(P1, KO);
+          SPAK := ADDPPOS(SPAK, P1, POS);
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SPAK);
+<strong><font color="#4169E1">END</font></strong> NLRCSPR;
+
+
+<strong><font color="#4169E1">PROCEDURE NLRCSP</font></strong>(GB, SPL : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Reduction Chain of S-Polynomials. Fuer alle S-Polynome 
+in SPL werden diejenigen Faktoren gespeichert, die noetig sind, um 
+eine S-Polynom bzgl. der Groebner Basis GB und der Kommutatorrelationen 
+T zu Null zu reduzieren.
+Bsp.: Sei GB = (G1, G2, G3) und gelte SPi - P1 G1 - P2 G2 - P3 G1 = 0.
+Dann hat die i-te Zeile der Ergebnismatrix die Gestalt: (P1+P3, P2, 0). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EV1, EV2, GB1, P1, P2, P3, NF, KO, KO1, KO2, PL, NV, P, PR,
+      H, POS, TW, SPAK : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SPAK := SIL;
+    NV := EVZERO(LENGTH(GB));
+    <font color="#4169E1">WHILE</font> SPL &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(SPL, PR, SPL);
+      <font color="#4169E1">IF</font> PR = 0 <font color="#4169E1">THEN</font>
+        SPAK := CCONC(SPAK, LIST1(NV));
+      <font color="#4169E1">ELSE</font>
+        PL := NV;
+        <font color="#4169E1">WHILE</font> (PR &lt;&gt; 0) <font color="#4169E1">DO</font>
+          GB1 := GB;
+          POS := 0;
+          <font color="#4169E1">WHILE</font> (GB1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (PR &lt;&gt; 0) <font color="#4169E1">DO</font>
+            ADV(GB1, P, GB1);
+            POS := POS + 1;
+            DIPMAD(PR, KO1, EV1, H);
+            DIPMAD(P, KO2, EV2, H);
+            TW := EVMT(EV1, EV2);
+            <font color="#4169E1">IF</font> TW = 1 <font color="#4169E1">THEN</font>
+              NF := EVDIF(EV1, EV2);
+              P1 := DIPFMO(RNINT(1), NF);
+              P2 := DINPPR(T, P1, P);
+              KO := RNQ(KO1, DIPLBC(P2));
+              P2 := DIRPRP(P2, KO);
+              P1 := DIRPRP(P1, KO);
+              PR := DIRPDF(PR, P2);
+              PL := ADDPPOS(PL, P1, POS);
+            <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+        SPAK := CCONC(SPAK, LIST1(PL));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SPAK);
+<strong><font color="#4169E1">END</font></strong> NLRCSP;
+
+
+<strong><font color="#4169E1">PROCEDURE SYGB</font></strong>(SPFL, SPAK : LIST): LIST;
+<font color="#B22222">(* Syzygy for Groebner Base. Berechnet wird aufgrund bereits erzeugter
+Faktorenliste SPFL und den S-Polynom Ableitungsketten SPAK ein
+Loesungsmodulgenerator fuer eine homogene Gleichung, wobei die Polynome
+dieser Gleichung eine Groebner Basis bilden. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C1, C2, C3, C4, PL, PL1, P, P1, SPF1, SPF2, SY1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SY1 := SIL;
+    C3 := LENGTH(FIRST(SPAK));
+    <font color="#4169E1">FOR</font> C1 := 1 <font color="#4169E1">TO</font> C3 - 1 <font color="#4169E1">DO</font>
+      <font color="#4169E1">FOR</font> C2 := C1 + 1 <font color="#4169E1">TO</font> C3 <font color="#4169E1">DO</font>
+        ADV2(SPFL, SPF1, SPF2, SPFL);
+        ADV(SPAK, PL1, SPAK);
+        PL := SIL;
+        <font color="#4169E1">FOR</font> C4 := 1 <font color="#4169E1">TO</font> C3 <font color="#4169E1">DO</font>
+          ADV(PL1, P, PL1);
+          <font color="#4169E1">IF</font> (C4 &lt;&gt; C1) <font color="#4169E1">AND</font> (C4 &lt;&gt; C2) <font color="#4169E1">THEN</font>
+            P1 := P;
+          ELSIF (C4 = C1) <font color="#4169E1">THEN</font>
+            P1 := DIRPDF(P, SPF1);
+          ELSIF (C4 = C2) <font color="#4169E1">THEN</font>
+            P1 := DIRPSM(P, SPF2);
+          <strong><font color="#4169E1">END</font></strong>;
+          PL := CCONC(PL, LIST1(P1));
+        <strong><font color="#4169E1">END</font></strong>;
+        SY1 := CCONC(SY1, LIST1(PL));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SY1);
+<strong><font color="#4169E1">END</font></strong> SYGB;
+
+
+<strong><font color="#4169E1">PROCEDURE SYGBE</font></strong>(SPFL, SPAK : LIST): LIST;
+<font color="#B22222">(* Syzygy for Groebner Base with Exponent Vector. Berechnet wird aufgrund
+bereits erzeugter Faktorenliste SPFL und den S-Polynom Ableitungsketten 
+SPAK ein Loesungsmodulgenerator fuer eine homogene Gleichung, wobei die 
+Polynome dieser Gleichung eine Groebner Basis bilden. Hier wird das bei 
+SPCEGB in die Faktorliste SPFL eingetragene Steuerbit 0 verwertet, das 
+besagt, dass sofort ein neuer Schleifendurchlauf beginnen soll. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C1, C2, C3, C4, PL, PL1, P, P1, SPF1, SPF2, SY1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SY1 := SIL;
+    C3 := LENGTH(FIRST(SPAK));
+    <font color="#4169E1">FOR</font> C1 := 1 <font color="#4169E1">TO</font> C3 - 1 <font color="#4169E1">DO</font>
+      <font color="#4169E1">FOR</font> C2 := C1 + 1 <font color="#4169E1">TO</font> C3 <font color="#4169E1">DO</font>
+        ADV(SPFL, SPF1, SPFL);
+        <font color="#4169E1">IF</font> SPF1 &lt;&gt; 0 <font color="#4169E1">THEN</font>
+          ADV(SPFL, SPF2, SPFL);
+          ADV(SPAK, PL1, SPAK);
+          PL := SIL;
+          <font color="#4169E1">FOR</font> C4 := 1 <font color="#4169E1">TO</font> C3 <font color="#4169E1">DO</font>
+            ADV(PL1, P, PL1);
+            <font color="#4169E1">IF</font> (C4 &lt;&gt; C1) <font color="#4169E1">AND</font> (C4 &lt;&gt; C2) <font color="#4169E1">THEN</font>
+              P1 := P;
+            ELSIF (C4 = C1) <font color="#4169E1">THEN</font>
+              P1 := DIRPDF(P, SPF1);
+            ELSIF (C4 = C2) <font color="#4169E1">THEN</font>
+              P1 := DIRPSM(P, SPF2);
+            <strong><font color="#4169E1">END</font></strong>;
+            PL := CCONC(PL, LIST1(P1));
+          <strong><font color="#4169E1">END</font></strong>;
+          SY1 := CCONC(SY1, LIST1(PL));
+        <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SY1);
+<strong><font color="#4169E1">END</font></strong> SYGBE;
+
+
+<strong><font color="#4169E1">PROCEDURE MMULT</font></strong>(SY1, GBTM : LIST): LIST;
+<font color="#B22222">(* Matrix Multiplication. Das Produkt der Matrizen SY1 * GBTM ergibt 
+die Loesungsmatrix. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL, PL1, PL2, PL3, P1, P2, P3, P4, GBTM1, SY2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SY2 := SIL;
+    <font color="#4169E1">WHILE</font> SY1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(SY1, PL, SY1);
+      PL2 := SIL;
+      GBTM1 := GBTM;
+      <font color="#4169E1">WHILE</font> GBTM1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GBTM1, PL3, GBTM1);
+        PL1 := PL;
+        P2 := 0;
+        <font color="#4169E1">WHILE</font> PL1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(PL1, P3, PL1);
+          ADV(PL3, P4, PL3);
+          P1 := DIRPPR(P3, P4);
+          P2 := DIRPSM(P2, P1);
+        <strong><font color="#4169E1">END</font></strong>;
+        PL2 := CCONC(PL2, LIST1(P2));
+      <strong><font color="#4169E1">END</font></strong>;
+      SY2 := CCONC(SY2, LIST1(PL2));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SY2);
+<strong><font color="#4169E1">END</font></strong> MMULT;
+
+
+<strong><font color="#4169E1">PROCEDURE NLMMULT</font></strong>(SY1, GBTM : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Matrix Multiplication. Das nicht-kommutative Produkt
+der Matrizen SY1 * GBTM ergibt die Loesungsmatrix. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PL, PL1, PL2, PL3, P1, P2, P3, P4, GBTM1, SY2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    SY2 := SIL;
+    <font color="#4169E1">WHILE</font> SY1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(SY1, PL, SY1);
+      PL2 := SIL;
+      GBTM1 := GBTM;
+      <font color="#4169E1">WHILE</font> GBTM1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GBTM1, PL3, GBTM1);
+        PL1 := PL;
+        P2 := 0;
+        <font color="#4169E1">WHILE</font> PL1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(PL1, P3, PL1);
+          ADV(PL3, P4, PL3);
+          P1 := DINPPR(T, P3, P4);
+          P2 := DIRPSM(P2, P1);
+        <strong><font color="#4169E1">END</font></strong>;
+        PL2 := CCONC(PL2, LIST1(P2));
+      <strong><font color="#4169E1">END</font></strong>;
+      SY2 := CCONC(SY2, LIST1(PL2));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SY2);
+<strong><font color="#4169E1">END</font></strong> NLMMULT;
+
+
+<strong><font color="#4169E1">PROCEDURE BGFUP</font></strong>(P1, P2, SP, SPN, SPFL, GB, SPAK, GBTM : LIST): LIST;
+<font color="#B22222">(* Base Generators Factor Update. Fuer das zu einer Groebner Basis GB 
+neu hinzugenommene normierte Polynom SPN werden dessen Abhaengigkeiten 
+zu den Grundpolynomen berechnet. Dazu werden die Polynome P1 und P2, 
+aus denen SP gebildet wurde, die zwei Faktoren des S-Polynoms in SPFL, 
+die Ableitungskette des urspruenglichen S-Polynoms SPAK und die bereits 
+bestehende Faktormatrix GBTM verwendet. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   NF, P, P3, P4, P5, PL, PL1, H, GBTM1, SPF1, SPF2, POS1, POS2, POS3,
+      SPAK1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    GBTM := APP0(GBTM);
+    NF := DIRPQ(SPN, SP);
+    POS1 := POS(P1, GB);
+    POS2 := POS(P2, GB);
+    ADV2(SPFL, SPF1, SPF2, H);
+    GBTM1 := GBTM;
+    GBTM := SIL;
+    <font color="#4169E1">WHILE</font> GBTM1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      POS3 := 0;
+      SPAK1 := SPAK;
+      ADV(GBTM1, PL, GBTM1);
+      PL1 := PL;
+      <font color="#4169E1">WHILE</font> RED(PL1) &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL1, P, PL1);
+        ADV(SPAK1, P3, SPAK1);
+        POS3 := POS3 + 1;
+        <font color="#4169E1">IF</font> POS3 = POS1 <font color="#4169E1">THEN</font>
+          P4 := DIRPPR(DIRPDF(SPF1, P3), NF);
+          P4 := DIRPPR(P4, P);
+        ELSIF POS3 = POS2 <font color="#4169E1">THEN</font>
+          P4 := DIRPDF(DIRPNG(SPF2), P3);
+          P4 := DIRPPR(P4, NF);
+          P4 := DIRPPR(P4, P);
+        <font color="#4169E1">ELSE</font>
+          P4 := DIRPPR(DIRPNG(P3), NF);
+          P4 := DIRPPR(P4, P);
+        <strong><font color="#4169E1">END</font></strong>;
+        PL := ADDLAST(P4, PL);
+      <strong><font color="#4169E1">END</font></strong>;
+      GBTM := CCONC(GBTM, LIST1(PL));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(GBTM);
+<strong><font color="#4169E1">END</font></strong> BGFUP;
+
+
+<strong><font color="#4169E1">PROCEDURE NLBGFUP</font></strong>(P1, P2, SP, SPN, SPFL, GB, SPAK, GBTM : LIST; 
+                  <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Base Generators Factor Update. Fuer das zu einer 
+Groebner Basis GB neu hinzugenommene normierte Polynom SPN werden 
+dessen Abhaengigkeiten zu den Grundpolynomen berechnet. Dazu werden 
+die Polynome P1 und P2, aus denen SP mit nicht-kommutativer 
+Multiplikation gebildet wurde, die zwei Faktoren des S-Polynoms in 
+SPFL und die bereits bestehende Faktormatrix GBTM verwendet. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   NF, P, P3, P4, P5, PL, PL1, H, GBTM1, SPF1, SPF2, POS1, POS2, POS3,
+      SPAK1 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    GBTM := APP0(GBTM);
+    NF := DIRPQ(SPN, SP);
+    POS1 := POS(P1, GB);
+    POS2 := POS(P2, GB);
+    ADV2(SPFL, SPF1, SPF2, H);
+    GBTM1 := GBTM;
+    GBTM := SIL;
+    <font color="#4169E1">WHILE</font> GBTM1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      POS3 := 0;
+      SPAK1 := SPAK;
+      ADV(GBTM1, PL, GBTM1);
+      PL1 := PL;
+      <font color="#4169E1">WHILE</font> RED(PL1) &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(PL1, P, PL1);
+        ADV(SPAK1, P3, SPAK1);
+        POS3 := POS3 + 1;
+        <font color="#4169E1">IF</font> POS3 = POS1 <font color="#4169E1">THEN</font>
+          P4 := DINPPR(T, NF, DIRPDF(SPF1, P3));
+          P4 := DINPPR(T, P4, P);
+        ELSIF POS3 = POS2 <font color="#4169E1">THEN</font>
+          P4 := DIRPDF(DIRPNG(SPF2), P3);
+          P4 := DINPPR(T, NF, P4);
+          P4 := DINPPR(T, P4, P);
+        <font color="#4169E1">ELSE</font>
+          P4 := DINPPR(T, NF, DIRPNG(P3));
+          P4 := DINPPR(T, P4, P);
+        <strong><font color="#4169E1">END</font></strong>;
+        PL := ADDLAST(P4, PL);
+      <strong><font color="#4169E1">END</font></strong>;
+      GBTM := CCONC(GBTM, LIST1(PL));
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(GBTM);
+<strong><font color="#4169E1">END</font></strong> NLBGFUP;
+
+
+<strong><font color="#4169E1">PROCEDURE DGBRED</font></strong>(GB, GBTM : LIST; <strong><font color="#228B22">VAR</font></strong> SY : LIST): LIST;
+<font color="#B22222">(* Discrete Groebner Base Reduction. Konnte ein Polynom P aus GB 
+bzgl. GB ohne P nicht zu Null reduziert werden, dann verbleibt es im 
+Ursprungszustand in der Groebner Basis GB. Hat die so reduzierte 
+GB nur noch ein Polynom, dann wird die Syzygie abhaengig von der 
+Faktormatrix GBTM berechnet. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, GB2, GB3, L1, L2, P, PL, P1, KO1, EV1, KO2, EV2, H, TW : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    GB1 := GB;
+    GB2 := GB;
+    GB := SIL;
+    <font color="#4169E1">WHILE</font> GB1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(GB1, P, GB1);
+      GB3 := EXPPL(P, GB2);
+      TW := DIRPNF(GB3, P);
+      <font color="#4169E1">IF</font> TW &lt;&gt; 0 <font color="#4169E1">THEN</font> GB := CCONC(GB, LIST1(P)); <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    SY := SYONP(GB2, GB, GBTM);
+    RETURN (GB);
+<strong><font color="#4169E1">END</font></strong> DGBRED;
+
+
+<strong><font color="#4169E1">PROCEDURE NLDGBRED</font></strong>(GB, GBTM : LIST; <strong><font color="#228B22">VAR</font></strong> SY, T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Discrete Groebner Base Reduction. Konnte ein Polynom 
+P aus GB bzgl. GB ohne P nicht zu Null reduziert werden, dann verbleibt 
+es im Ursprungszustand in der Groebner Basis GB. Verwendung findet 
+hier die Bildung der Linksnormalform mit DINLNF. Hat die so 
+reduzierte GB nur noch ein Polynom, dann wird die Syzygie abhaengig 
+von der Faktormatrix GBTM berechnet. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GB1, GB2, GB3, L1, L2, P, TW : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    GB1 := GB;
+    GB2 := GB;
+    GB := SIL;
+    <font color="#4169E1">WHILE</font> GB1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(GB1, P, GB1);
+      GB3 := EXPPL(P, GB2);
+      TW := DINLNF(T, GB3, P);
+      <font color="#4169E1">IF</font> TW &lt;&gt; 0 <font color="#4169E1">THEN</font> GB := CCONC(GB, LIST1(P)); <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    SY := NLSYONP(GB2, GB, GBTM, T);
+    RETURN(GB);
+<strong><font color="#4169E1">END</font></strong> NLDGBRED;
+
+
+<strong><font color="#4169E1">PROCEDURE SYONP</font></strong>(GB1, GB2, GBTM : LIST): LIST;
+<font color="#B22222">(* Syzygy for old Polynomials by new Polynomials. Berechnet einen
+Loesungsmodulgenerator ausgehend von der Groebner Basis GB1 unter
+Zuhilfenahme der alten Polynome und der Faktormatrix GBTM. GB2 ist 
+die eventuell reduzierte Groebner Basis. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   POS1, POS2, PALT, PL, PL1, PL2, P, P1, P2, P3, P4, L, SY,
+      GBTM1, GBTM2, POSV, GB3 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    POS1 := LENGTH(GBTM);
+    POS2 := 1;
+    GBTM1 := GBTM;
+    PALT := SIL;
+    GB3 := GB1;
+    <font color="#4169E1">WHILE</font> POS2 &lt;= POS1 <font color="#4169E1">DO</font>
+      ADV(GB3, P, GB3);
+      ADV(GBTM1, PL, GBTM1);
+      P1 := POL(PL, POS2);
+      PALT := CCONC(PALT, LIST1(DIRPQ(P, P1)));
+      POS2 := POS2 + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    POSV := GENPOSV(GB1, GB2);
+    GBTM1 := GBTMRED(GBTM, POSV);
+    GBTM2 := RCSP(GB2, PALT);
+    SY := SIL;
+    L := EVL(GBTM1);
+    P3 := DIPFMO(RNINT(-1), EVZERO(L));
+    POS2 := 1;
+    <font color="#4169E1">WHILE</font> GBTM2 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      GBTM := GBTM1;
+      PL := SIL;
+      ADV(GBTM2, PL2, GBTM2);
+      <font color="#4169E1">WHILE</font> GBTM &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GBTM, PL1, GBTM);
+        P := PLMULT(PL2, PL1);
+        PL := CCONC(PL, LIST1(P));
+      <strong><font color="#4169E1">END</font></strong>;
+      PL2 := ADDPPOS(PL, P3, POS2);
+      SY := CCONC(SY, LIST1(PL2));
+      POS2 := POS2 + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SY);
+<strong><font color="#4169E1">END</font></strong> SYONP;
+
+
+<strong><font color="#4169E1">PROCEDURE NLSYONP</font></strong>(GB1, GB2, GBTM : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Syzygy for one Polynomial. Berechnet einen Loesungsmodulgenerator 
+fuer das Polynom P unter Zuhilfenahme der Faktormatrix GBTM. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   POS1, POS2, PALT, PL, PL1, PL2, P, P1, P2, P3, P4, L, SY,
+      GBTM1, GBTM2, POSV, GB3 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    POS1 := LENGTH(GBTM);
+    POS2 := 1;
+    GBTM1 := GBTM;
+    PALT := SIL;
+    GB3 := GB1;
+    <font color="#4169E1">WHILE</font> POS2 &lt;= POS1 <font color="#4169E1">DO</font>
+      ADV(GB3, P, GB3);
+      ADV(GBTM1, PL, GBTM1);
+      P1 := POL(PL, POS2);
+      PALT := CCONC(PALT, LIST1(DINPQ(P, P1, T)));
+      POS2 := POS2 + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    POSV := GENPOSV(GB1, GB2);
+    GBTM1 := GBTMRED(GBTM, POSV);
+    GBTM2 := NLRCSP(GB2, PALT, T);
+    SY := SIL;
+    L := EVL(GBTM1);
+    P3 := DIPFMO(RNINT(-1), EVZERO(L));
+    POS2 := 1;
+    <font color="#4169E1">WHILE</font> GBTM2 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      GBTM := GBTM1;
+      PL := SIL;
+      ADV(GBTM2, PL2, GBTM2);
+      <font color="#4169E1">WHILE</font> GBTM &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(GBTM, PL1, GBTM);
+        P := NLPLMULT(PL2, PL1, T);
+        PL := CCONC(PL, LIST1(P));
+      <strong><font color="#4169E1">END</font></strong>;
+      PL2 := ADDPPOS(PL, P3, POS2);
+      SY := CCONC(SY, LIST1(PL2));
+      POS2 := POS2 + 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(SY);
+  RETURN(SY);
+<strong><font color="#4169E1">END</font></strong> NLSYONP;
+
+
+<strong><font color="#4169E1">PROCEDURE DINPQ</font></strong>(P1, P2 : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Distributive non-commutative Polynomial Quotient. Berechnet wird 
+der nicht-kommutaive Quotient P1/P2=P3; *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    P := NLRCSPR(LIST1(P2), P1, T);
+    P := FIRST(P);
+    <font color="#4169E1">IF</font> P1 = 0 <font color="#4169E1">THEN</font>
+      RETURN(P)
+    <font color="#4169E1">ELSE</font>
+      RETURN(SIL);
+    <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> DINPQ;
+
+
+<strong><font color="#4169E1">PROCEDURE PLMULT</font></strong>(SY, PL : LIST): LIST;
+<font color="#B22222">(* Polynomial List Multiplication. Multipliziert die Polynome der 
+Listen SY und PL komponentenweise, und addiert die erhaltenen 
+Ergebnisse. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, P1, P2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    P := 0;
+    <font color="#4169E1">WHILE</font> (SY &lt;&gt; SIL) <font color="#4169E1">DO</font>
+      ADV(SY, P1, SY);
+      ADV(PL, P2, PL);
+      P2 := DIRPPR(P1, P2);
+      P := DIRPSM(P, P2);
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (P);
+<strong><font color="#4169E1">END</font></strong> PLMULT;
+
+
+<strong><font color="#4169E1">PROCEDURE NLPLMULT</font></strong>(SY, PL : LIST; <strong><font color="#228B22">VAR</font></strong> T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Polynomial List Multiplication. Multipliziert die 
+Polynome der Listen SY und PL komponentenweise, und addiert die 
+erhaltenen Ergebnisse. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, P1, P2 : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    P := 0;
+    <font color="#4169E1">WHILE</font> (SY &lt;&gt; SIL) <font color="#4169E1">DO</font>
+      ADV(SY, P1, SY);
+      ADV(PL, P2, PL);
+      P2 := DINPPR(T, P1, P2);
+      P := DIRPSM(P, P2);
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN (P);
+<strong><font color="#4169E1">END</font></strong> NLPLMULT;
+
+
+<strong><font color="#4169E1">END</font></strong> SYZFUNC.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,256 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT4.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT4.mi,v 1.3 1992/10/15 16:28:57 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT4.mi,v $
+ * Revision 1.3  1992/10/15  16:28:57  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:50  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:58  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACEXT4;
+
+<font color="#B22222">(* SAC Extensions 4 Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font> 
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    LIST1, INV, COMP, SRED, ADV, FIRST, RED;
+
+FROM SACLIST IMPORT CINV, CONC, LIST2, ADV2, COMP2, 
+                    COMP4, FIRST2, LAST;
+
+FROM SACI IMPORT IQ;
+
+FROM SACRN IMPORT RNINT, RNPROD, RNINV;
+
+FROM SACCOMB IMPORT LPERM;
+
+FROM SACPOL IMPORT PLBCF, PDPV, PDEG, PMON, PLDCF;
+
+FROM SACIPOL IMPORT IPQ, IPIQ, IPGSUB; 
+
+FROM SACRPOL IMPORT RPRNP, RPFIP;
+
+FROM SACPGCD IMPORT IPSCPP;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACEXT4.mi,v 1.3 1992/10/15 16:28:57 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IPINT</font></strong>(RL,A,BL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial integration.  A is a non-zero integral
+polynomial in r variables, r ge 1, such that the integral of a with
+respect to its main variable is an integral polynomial.  b is an
+integral polynomial in r-1 variables.  B eq B(x sub 1 , ..., x sub r )
+is the integral of a with respect to its main variable, such that
+B(x sub 1 , ..., x sub r-1 ,0) eq b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, CL, EL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; B:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); EL:=EL+1; 
+             <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> CL:=IQ(AL,EL); <font color="#4169E1">ELSE</font>
+                CL:=IPIQ(RLP,AL,EL); <strong><font color="#4169E1">END</font></strong>; 
+             B:=COMP2(CL,EL,B); 
+             <font color="#4169E1">UNTIL</font> (AP = SIL); 
+      <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,0,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPINT; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPIHT</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial integer homothetic transformation.
+A is a non-zero univariate integral polynomial.  n is a non-zero
+integer.  B(x) is the primitive part of A(nx).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, CL, J1Y, M, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M:=PMON(NL,1); J1Y:=LIST1(M); B:=IPGSUB(1,A,1,J1Y); 
+      IPSCPP(1,B,SL,CL,B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IUPIHT; 
+
+
+<strong><font color="#4169E1">PROCEDURE PCONST</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Polynomial constant.  A(x sub 1 ,  ..., x sub r ) is a polynomial
+in r variables, r ge 1.  b eq 1 if a is a constant polynomial,
+otherwise b eq 0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BL, IL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> BL:=1; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> AP:=A; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> PDEG(AP) &lt;&gt; 0 <font color="#4169E1">THEN</font> BL:=0; RETURN(BL); <font color="#4169E1">ELSE</font>
+             AP:=PLDCF(AP); <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(BL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PCONST; 
+
+
+<strong><font color="#4169E1">PROCEDURE PSDSV</font></strong>(RL,A,IL,NL: LIST): LIST; 
+<font color="#B22222">(*Polynomial special decomposition, specified variable.  A is a
+polynomial in r variables.  1 le i le r and n is a beta-integer such
+that each exponent of x sub i occurring in a is divisible by n.
+B is A with each exponent e of x sub i replaced by e/n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, FL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0 or n eq 0.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (NL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); 
+             <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> BL:=AL; FL:=EL DIV NL; <font color="#4169E1">ELSE</font>
+                BL:=PDPV(RLP,AL,IL,NL); FL:=EL; <strong><font color="#4169E1">END</font></strong>; 
+             B:=COMP2(BL,FL,B); 
+             <font color="#4169E1">UNTIL</font> (AP = SIL); 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PSDSV; 
+
+
+<strong><font color="#4169E1">PROCEDURE PUNT</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Polynomial univariate test.  A eq A(x sub 1 , ..., x sub r ) is a
+polynomial in r variables, r ge 1.  b eq 2 if A has degree zero in all
+variables.  b eq 1 if A has degree zero in x sub 2 , ..., x sub r, but
+positive degree in x sub 1.  otherwise b eq 0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BL, IL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> BL:=2; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> AP:=A; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL-1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> PDEG(AP) &lt;&gt; 0 <font color="#4169E1">THEN</font> BL:=0; RETURN(BL); <font color="#4169E1">ELSE</font>
+             AP:=PLDCF(AP); <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> PDEG(AP) &gt; 0 <font color="#4169E1">THEN</font> BL:=1; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(BL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PUNT; 
+
+
+<strong><font color="#4169E1">PROCEDURE RPDMV</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Rational polynomial derivative, main variable.  A is a rational
+polynomial in r variables.  B is the derivative of A with respect to
+its main variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, ELP, J1Y, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; RLP:=RL-1; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); 
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> J1Y:=RNINT(EL); BL:=RNPROD(J1Y,AL); 
+                <font color="#4169E1">ELSE</font> J1Y:=RNINT(EL); BL:=RPRNP(RLP,J1Y,AL); <strong><font color="#4169E1">END</font></strong>; 
+             ELP:=EL-1; 
+             <font color="#4169E1">IF</font> EL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,ELP,B); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL); 
+      B:=INV(B); 
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RPDMV; 
+
+
+<strong><font color="#4169E1">PROCEDURE RPMAIP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Rational polynomial monic associate of integral polynomial.
+A is an integral polynomial in r variables, r ge 1.  If A eq 0
+then B eq 0.  if A ne 0, let the integer a be the leading base
+coefficient of A.  Then B eq (1/a) A, a monic rational polynomial.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> B:=RPFIP(RL,A); AL:=PLBCF(RL,B); AL:=RNINV(AL); 
+      B:=RPRNP(RL,AL,B); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RPMAIP; 
+
+
+<font color="#B22222">(* unused code, since the representation of distributive 
+polynomials in DIP is different.
+
+FROM SACPOL IMPORT DIPFP, PFDIP;
+
+PROCEDURE DIPINS(AL,DL,A: LIST;  VAR TL,B: LIST); 
+(*Distributed polynomial, insert term.  A is either a distributed
+polynomial in r variables, r ge 0, or the null list.  a is the
+coefficient and d the degree vector of a term in r variables
+to be inserted.  If d does not already occur in A, then t eq 1 and
+B is the distributive polynomial resulting from inserting the term.
+If d does already occur in A, then t eq 0 and B eq A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, AP, BL, DLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a empty.*)</font> TL:=1; 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> B:=LIST2(AL,DL); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      B:=A; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a nonempty.*)</font> AP:=A; ADV2(AP, ALP,DLP,AP); BL:=DVCMP(DL,DLP); 
+      <font color="#4169E1">IF</font> BL = 0 <font color="#4169E1">THEN</font> TL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> BL &gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(AL,DL,A); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      B:=LIST2(DLP,ALP); 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AP, ALP,DLP,AP); BL:=DVCMP(DL,DLP); 
+            <font color="#4169E1">IF</font> BL = 0 <font color="#4169E1">THEN</font> B:=A; TL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> BL &gt; 0 <font color="#4169E1">THEN</font> B:=COMP4(DLP,ALP,DL,AL,B); B:=INV(B); 
+               B:=CONC(B,AP); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+            B:=COMP2(DLP,ALP,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=COMP2(DL,AL,B); B:=INV(B); RETURN; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPINS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DVCMP</font></strong>(DL1,DL2: LIST): LIST; 
+<font color="#B22222">(*Degree vector comparison.  d1 and d2 are degree vectors of
+distributive polynomials in r variables, r ge 0.  With respect to
+the inverse lexicographical ordering of degree vectors, b eq -1
+if d1 lt d2, b eq 0 if d1 eq d2, and b eq 1 if d1 gt d2.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, DLP1, DLP2, EL1, EL2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> DLP1:=DL1; DLP2:=DL2; BL:=0; 
+      <font color="#4169E1">WHILE</font> DLP1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(DLP1, EL1,DLP1); ADV(DLP2, EL2,DLP2); 
+            <font color="#4169E1">IF</font> EL1 &lt; EL2 <font color="#4169E1">THEN</font> BL:=-1; RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> EL1 &gt; EL2 <font color="#4169E1">THEN</font> BL:=1; RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(BL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DVCMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE PPERMV</font></strong>(RL,A,P: LIST): LIST; 
+<font color="#B22222">(*Polynomial permutation of variables.  A is a polynomial in r
+variables, r ge 0.  P is a list (P sub 1 , ..., P sub r ) whose
+elements are the beta-digits 1 through r.  B(x sub (P sub 1)
+, ..., x sub (P sub r) ) eq A(x sub 1 , ..., x sub r ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BP, DL, DLP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*convert a to distributive representation and reorder.*)</font> 
+      AP:=DIPFP(RL,A); BP:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, AL,DL,AP); DLP:=CINV(DL); DLP:=LPERM(DLP,P); 
+             DLP:=INV(DLP); DIPINS(AL,DLP,BP, TL,BP); 
+             <font color="#4169E1">UNTIL</font> (AP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*convert back to recursive representation.*)</font> B:=PFDIP(RL,BP); 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> PPERMV; 
+
+<strong><font color="#4169E1">end</font></strong> <font color="#4169E1">of</font> unused code. *)
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT4.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

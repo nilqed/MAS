@@ -1,0 +1,521 @@
+
+<html>
+<head>
+<title>./masdom/CGBDSTR.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T16:47:06+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: CGBDSTR.md,v 1.9 1996/06/08 16:47:06 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1992-1996 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: CGBDSTR.md,v $
+ * Revision 1.9  1996/06/08 16:47:06  pesch
+ * Reformatted, removed obsolete procedures.
+ *
+ * Revision 1.8  1995/12/16 13:54:48  kredel
+ * Comments slightly edited.
+ *
+ * Revision 1.7  1995/03/23  16:05:41  pesch
+ * Added new data structure Colp for coloured polynomials.
+ *
+ * Revision 1.6  1994/04/09  18:05:53  pesch
+ * Reformatted parts of the CGB sources. Updated comments in CGB*.md.
+ *
+ * Revision 1.5  1994/03/14  16:42:52  pesch
+ * Minor changes requested by A. Dolzmann
+ *
+ * Revision 1.4  1994/03/11  15:58:08  pesch
+ * Major changes to CGB.
+ * C-Preprocessor now used for .mip files. The corresponding .mi files have
+ * been removed.
+ * Many new CGB-Functions and fixes of old ones.
+ *
+ * Revision 1.3  1993/05/11  10:34:30  kredel
+ * Added comments
+ *
+ * Revision 1.2  1993/04/15  13:14:19  kredel
+ * Further corrections by Pesch
+ *
+ * Revision 1.1  1993/03/17  11:43:18  kredel
+ * Initial Revision, added by Pesch.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE CGBDSTR;
+
+<font color="#B22222">(* Comprehensive-Groebner-Bases Data-Structures Definition Module. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: CGBDSTR.md,v 1.9 1996/06/08 16:47:06 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1992-1996 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Conditions (Cond)
+=================================
+
+A condition contains information (=0, &lt;&gt;0, unknown) on coefficients. 
+A conditions is implemented as a list containing two lists of coefficients:
+((P_1, ..., P_i), (Q_1, ..., Q_j)) where P_l=0 and Q_k&lt;&gt;0.
+The empty condition is ((), ()).
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondZero</font></strong>(Cond: LIST): LIST;
+<font color="#B22222">(* Condition zero part.
+Cond is a condition.
+Returns the list of coefficients =0 in Cond.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondNzero</font></strong>(Cond: LIST): LIST;
+<font color="#B22222">(* Condition non-zero part.
+Cond is a condition.
+Returns the list of coefficients &lt;&gt;0 in Cond.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondParts</font></strong>(Cond: LIST; <strong><font color="#228B22">VAR</font></strong> C0, C1:LIST);
+<font color="#B22222">(* Condition parts.
+Cond is a condition.
+C0,C1 need not be initialized.
+Returns the list of coefficients =0 from Cond in C0 and 
+the list of coefficients &lt;&gt;0 from Cond in C1 *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondCons</font></strong>(C0, C1:LIST):LIST;
+<font color="#B22222">(* Condition construct.
+C0, C1 are lists of coefficients.
+Returns a condition where the coefficients from C0 are =0 and
+the coefficients from C1 are &lt;&gt;0. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondIsEmpty</font></strong>(Cond: LIST): BOOLEAN;
+<font color="#B22222">(* Condition is empty.
+Cond is a condition.
+Returns true iff Cond is the empty condition. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondEmpty</font></strong>():LIST;
+<font color="#B22222">(* Condition empty.
+Returns the empty condition. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondRead</font></strong>(VD: LIST): LIST;
+<font color="#B22222">(* Condition read.
+VD is a list containing a variable list and a domain descriptor.
+Returns a condition read from the input stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondPRead</font></strong>(VD, B: LIST): LIST;
+<font color="#B22222">(* Condition part read.
+VD is a list containing a variable list and a domain descriptor.
+Returns a condition part read from the input stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondWrite</font></strong>(Cond: LIST); 
+<font color="#B22222">(* Condition write.
+Cond is a condition, which is written to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FormFCond</font></strong>(Cond: LIST; <strong><font color="#228B22">VAR</font></strong> VD: LIST): LIST;
+<font color="#B22222">(* Formula from Condition.
+Cond is a condition.
+DOM and VARL need not be initialized.
+Returns a formula "equivalent" to Cond and its variable list and
+domain descriptor in VD. *)</font>
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Colouring (Col).
+================================
+
+A colouring contains information (=0 (green), &lt;&gt;0 (red), unknown (white))
+about monomials of a polynomial and the unknown factors of an unknown
+coefficient.
+A colouring is implemented as a list containing two lists: (CRED, CWHITE).
+CRED is a sorted list of red terms.
+CWHITE=((T_1, (F_1_1, ..., F_1_n)), ..., (T_m, (F_m_1, ..., F_m_n))) is
+a list sorted by T_i, where T_i are white terms, and F_i_j are white
+factors of the coefficient of T_i.
+The empty colouring is ((), ()).
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColRed</font></strong>(Col: LIST): LIST;
+<font color="#B22222">(* Colouring red.
+Col is a Colouring.
+Returns a list of red terms in Col. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColWhite</font></strong>(Col: LIST): LIST;
+<font color="#B22222">(* Colouring white.
+Col is a Colouring.
+Returns a list of white terms with white factors in Col. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColParts</font></strong>(Col: LIST; <strong><font color="#228B22">VAR</font></strong> R, W:LIST);
+<font color="#B22222">(* Colouring parts.
+Col is a Colouring.
+R, W need not be initialized.
+Returns a list of red terms from Col in R and
+a list of white terms with white factors in W. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColCons</font></strong>(R, W: LIST): LIST;
+<font color="#B22222">(* Colouring construct.
+R is a (possibly empty) list of red terms.
+W is a (possibly empty) list of white terms.
+Returns a colouring constructed from R an W. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColConsCond</font></strong>(POL,COND: LIST): LIST;
+<font color="#B22222">(* Colouring construct from condition.
+POL is a polynomial.
+COND is a condition.
+Returns a colouring of POL according to COND. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColIsEmpty</font></strong>(Col: LIST): BOOLEAN;
+<font color="#B22222">(* Colouring is empty.
+Col is a Colouring.
+Returns true iff Col is the empty Colouring. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColEmpty</font></strong>(): LIST;
+<font color="#B22222">(* Colouring empty.
+Returns the empty Colouring. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColHT</font></strong> (COL: LIST): LIST;
+<font color="#B22222">(* Colouring head term.
+COL is a colouring.
+If the highest non-zero (red) term is greater then the highest unknown (white)
+term returns the highest non-zero term else returns SIL. *)</font>
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Coloured polynomial (Colp)
+==========================================
+
+A coloured polynomial contains a a polynomial and information about the
+colouring (=0,&lt;&gt;0,unknown) of its monomials.
+A coloured polynomial is implemented as a list (POL,COL) containing
+a distributive polynomial over the domain IP and a colouring (Col).
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpCons</font></strong> (POL,COL: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial construct.
+POL is a polynomial.
+COL is a colouring.
+Returns a Colp built from POL and COL.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpConsCond</font></strong>(POL,COND: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial construct from condition.
+POL is a polynomial.
+COND is a condition.
+Returns a Colp by colouring POL according to COND. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpPol</font></strong>(COLP: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial polynomial part.
+COLP is a coloured polynomial.
+Returns the polynomial in Colp. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpCol</font></strong>(COLP: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial colouring part.
+COLP is a coloured polynomial.
+Returns the colouring of COLP. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpParts</font></strong>(COLP: LIST; <strong><font color="#228B22">VAR</font></strong> POL,COL: LIST);
+<font color="#B22222">(* Coloured polynomial parts.
+COLP is a coloured polynomial.
+POL, COL need not be initialized.
+Returns the polynomial from COLP in POL and the colouring from COLP in COL.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpIsCnst</font></strong>(COLP: LIST): BOOLEAN;
+<font color="#B22222">(* Coloured polynomial is (non zero) constant.
+COLP is a coloured polynomial
+Returns TRUE iff COLP is constant (i.e. its degree is 0) and non zero wrt.
+to its colouring *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpHT</font></strong> (COLP: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial head term.
+COLP is a coloured polynomial.
+If the head term of COLP is determined by its colouring (i.e. the
+highest non-zero (red) term is greater then the highest unknown (white)
+term) returns the head term else returns SIL. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpIsZero</font></strong> (COLP: LIST): BOOLEAN;
+<font color="#B22222">(* Coloured polynomial is zero.
+COLP is a coloured polynomial.
+Returns TRUE iff all terms of COLP are zero (green) wrt. its colouring. *)</font>
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Case distinction (Cd)
+=====================================
+
+A case distinction is implemented as a list containing conditions.
+-to do-: complete
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdRead</font></strong>(VD: LIST): LIST;
+<font color="#B22222">(* Case distinction read.
+VD is a variable list and a domain descriptor.
+Returns a case distinction read from the input stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdWrite</font></strong>(CD: LIST); 
+<font color="#B22222">(*Case distinction write.
+CD is a case distinction which is written to the output stream. *)</font>
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Case distinction and polynomial set (Cdp)
+=========================================================
+
+A case distinction and polynomial set is implemented as a list containing
+three elements: (CD,PL,VD) where CD is a case distinction, PL is a
+list of polynomials and VD is a variable list and domain descriptor for PL.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpCons</font></strong>(CD,PL,VD: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set construct.
+CD is a case distinction.
+PL is a list of Polynomials.
+VD is a varable list and domain descriptor for PL.
+Returns a CDP built from CD,PL,VD.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpParts</font></strong>(CDP: LIST; <strong><font color="#228B22">VAR</font></strong> CD,PL,VD: LIST);
+<font color="#B22222">(* Case distinction and polynomial set parts.
+CDP is a case distinction and polynomial set.
+Returns the case distinction from CDP in CD, the polynomial set from CDP
+in PL and the variable list and domain descriptor from CDP in VD. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpCd</font></strong>(CDP: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set case distinction part.
+CDP is a case distinction and polynomial set.
+Returns the case distinction from CDP. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpPs</font></strong>(CDP: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set polynomial set part.
+CDP is a case distinction and polynomial set.
+Returns the polynomial set from CDP. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpVd</font></strong>(CDP: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set variable list and domain descriptor 
+part.
+CDP is a case distinction and polynomial set.
+Returns the variable list and domain descriptor from CDP. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpRead</font></strong>():LIST; 
+<font color="#B22222">(*Case distinction and polynomial set read.
+Returns a case distinction and polynomial set read from the input stream.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpWrite</font></strong>(CDP: LIST);
+<font color="#B22222">(*Case distinction and polynomial set write.
+CDP is a case distinction and polynomial set.
+Writes CDP to the output-stream.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE RDSYS</font></strong>(VD: LIST): LIST; 
+<font color="#B22222">(*Read polynomial systems.
+VD is a variable list and domain descriptor.
+PPS is a list of two polynomial systems read from the input stream. *)</font>
+<font color="#B22222">(* -to do-: get rid of this procedure! -- mp *)</font>
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Groebner system (Gs)
+====================================
+
+A Groebner System  is implemented as a list containing three lists:
+(S,VD,CD) where S is a list containing the Groebner system, VD is
+a variable list and domain descriptor for S and CD is the initial
+case distinction.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsCons</font></strong>(S,VD,CD: LIST): LIST;
+<font color="#B22222">(* Groebner system construct.
+S is a Groebner system,
+VD its variables list and domain descriptor and
+CD the initial case distinction
+Returns the Groebner system constructed from S, VD and CD *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsS</font></strong>(GS: LIST): LIST;
+<font color="#B22222">(* Groebner system system part.
+GS is a Groebner system.
+Returns the system part of GS *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsVd</font></strong>(GS: LIST): LIST;
+<font color="#B22222">(* Groebner system variable list and domain descriptor.
+GS is a Groebner system.
+Returns the variable list and domain descriptor for GS. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsCd</font></strong>(GS: LIST): LIST;
+<font color="#B22222">(* Groebner system initial case distinction.
+GS is a Groebner system.
+Returns the initial case distinction for GS. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsParts</font></strong>(GS: LIST; <strong><font color="#228B22">VAR</font></strong> S,VD,CD: LIST);
+<font color="#B22222">(* Groebner system parts.
+S and VD need not be initialized.
+Returns the system part of GS in S, the variable list and domain
+descriptor for GS in VD and the initial case distinction in CD. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsWrite</font></strong>(GS: LIST);
+<font color="#B22222">(* Groebner system write.
+GS is a Groebner system which is written to the output stream. *)</font>
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Comprehensive Groebner basis (Cgb)
+==================================================
+
+A Comprehensive Groebner basis is implemented as a list containing four
+elements: (CGB,I,VD,CD) where CD is the CGB (a list of polynomials),
+I is the number of conditions, VD is the variable list and domain descriptor
+and CD is the initial case distinction.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbCons</font></strong>(CGB,I,VD,CD: LIST): LIST;
+<font color="#B22222">(* Groebner system construct.
+CGB is a list of polynomials,
+I is an Integer, the number of conditions,
+VD its variables list and domain descriptor and
+CD the initial case distinction
+Returns the comprehensive Groebner basis constructed from CGB, I, VD and CD *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbP</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Comprehensive Groebner basis polynomial list part.
+CGB is a comprehensive Groebner basis
+Returns the polynomial list part of CGB *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbI</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Comprehensive Groebner basis number of conditions part.
+CGB is a comprehensive Groebner basis
+Returns the number of conditions part of CGB *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbVd</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Comprehensive Groebner basis variable list and domain descriptor.
+CGB is a Comprehensive Groebner basis.
+Returns the variable list and domain descriptor for CGB. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbCd</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Groebner system initial case distinction.
+CGB is a Comprehensive Groebner basis.
+Returns the initial case distinction for CGB. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbParts</font></strong>(CGB: LIST; <strong><font color="#228B22">VAR</font></strong> P,I,VD,CD: LIST);
+<font color="#B22222">(* Comprehensive Groebner basis parts.
+P, I, VD and CD need not be initialized.
+Returns the polynomial list part of CGB in P, the number of conditions
+in I,  the variable list and domain
+descriptor for CGB in VD and the initial case distinction in CD. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbWrite</font></strong>(CGB: LIST);
+<font color="#B22222">(* Comprehensive Groebner basis write.
+CGB is a comprehensive Groebner basis which is written to the output stream
+*)</font>
+
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Formula and dimension (Fd)
+==========================================
+
+A formula and dimension implemented as a list (D, F, V) containing
+three elements: a formula F an integer D and a variable list V.
+(D is first (instead of F) because of problems with the interpreter.)
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdCons</font></strong>(F,D,V: LIST): LIST;
+<font color="#B22222">(* Formula and dimension construct.
+F is a formula.
+D is an integer.
+Returns the Fd constructed from F and D. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdParts</font></strong>(FD: LIST; <strong><font color="#228B22">VAR</font></strong> F,D,V: LIST);
+<font color="#B22222">(* Formula and dimension parts.
+FD is a formula and dimension.
+F, D and V need not be initialized.
+Returns the formula from FD in F, the dimension in D and the variable
+list in V. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdF</font></strong>(FD: LIST): LIST;
+<font color="#B22222">(* Formula and dimension formula part.
+FD is a formula and dimension.
+Returns the formula part from FD*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdD</font></strong>(FD: LIST): LIST;
+<font color="#B22222">(* Formula and dimension formula part.
+FD is a formula and dimension.
+Returns the dimension part from FD*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdV</font></strong>(FD: LIST): LIST;
+<font color="#B22222">(* Formula and dimension variable list part.
+FD is a formula and dimension.
+Returns the variable list part from FD*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdWrite</font></strong>(FD: LIST);
+<font color="#B22222">(* Formula and dimension write.
+FD is a formula and dimension, which is written to the output stream.
+PQPRING must be called prior to calling FdWrite to set domain descriptor
+and variable list. *)</font>
+<font color="#B22222">(* --- to do ---: this must change!!! *)</font>
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Parametric dimension (Pd)
+=========================================
+
+A parametric dimension implemented as a list containing
+two elements: a list of formulas and dimensions and the appropriate
+variable list and domain descriptor.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PdCons</font></strong>(F,VD: LIST): LIST;
+<font color="#B22222">(* Parametric dimension construct.
+F is a formula.
+VD is the variable list and domain descriptor for F.
+Returns the Pd constructed from F and V. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PdParts</font></strong>(PD: LIST; <strong><font color="#228B22">VAR</font></strong> F,VD: LIST);
+<font color="#B22222">(* Parametric dimension parts.
+Pd is a parametric dimension.
+F and V need not be initialized.
+Returns the formula from PD in F and the variable list and domain descriptor
+in V. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PdF</font></strong>(PD: LIST): LIST;
+<font color="#B22222">(* Parametric dimension formula and dimension list part.
+PD is a parametric dimension.
+Returns the formula and dimension list from PD. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PdVd</font></strong>(PD: LIST): LIST;
+<font color="#B22222">(* Parametric dimension variable list and domain descriptor part.
+PD is a Parametric dimension.
+Returns the dimension from PD. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PdWrite</font></strong>(PD: LIST);
+<font color="#B22222">(* Parametric dimension write.
+PD is a Parametric dimension, which is written to the output stream.
+ *)</font>
+     
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Variable list and domain descriptor (Vd)
+========================================================
+
+A Variable list and domain descriptor is implemented as a list containing
+two elements: the variable list and the domain descriptor.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE VdCons</font></strong>(V,D: LIST): LIST;
+<font color="#B22222">(* Variable list and domain descriptor construct.
+V is a variable list.
+D is a domain descriptor.
+Returns the VD constructed from V and D. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE VdV</font></strong>(Vd: LIST): LIST;
+<font color="#B22222">(* Variable list and domain descriptor variable list part.
+Vd is a variable list and domain descriptor.
+Returns the variable list from Vd. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE VdD</font></strong>(Vd: LIST): LIST;
+<font color="#B22222">(* Variable list and domain descriptor domain descriptor part.
+Vd is a variable list and domain descriptor.
+Returns the domain descriptor from Vd. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE VdParts</font></strong>(Vd: LIST; <strong><font color="#228B22">VAR</font></strong> V,D: LIST);
+<font color="#B22222">(* Variable list and domain descriptor parts.
+Vd is a variable list and domain descriptor.
+Returns the variable list from Vd in V and the domain descriptor in D. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE VdRead</font></strong>(): LIST; 
+<font color="#B22222">(*Variable list and domain descriptor read.
+Returns a variable list and domain descriptor read from the input stream.*)</font>
+
+<strong><font color="#4169E1">END</font></strong> CGBDSTR.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

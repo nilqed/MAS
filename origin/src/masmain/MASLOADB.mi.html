@@ -1,0 +1,200 @@
+
+<html>
+<head>
+<title>./masmain/MASLOADB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:25+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASLOADB.mi,v 1.8 1995/11/05 09:08:56 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASLOADB.mi,v $
+ * Revision 1.8  1995/11/05 09:08:56  kredel
+ * Access to PRIME.
+ *
+ * Revision 1.7  1995/11/04  22:14:39  pesch
+ * New procedures EVOWRITE and EvordWrite.
+ *
+ * Revision 1.6  1995/11/04 20:36:21  pesch
+ * Added DILBSO, DILFPL, PLFDIL, DIPBSO.
+ *
+ * Revision 1.5  1994/03/11  15:39:55  pesch
+ * Additions for CGB, MASROOT and NNGB.
+ *
+ * Revision 1.4  1993/03/23  12:12:53  kredel
+ * Added DIILWR
+ *
+ * Revision 1.3  1992/10/15  16:30:33  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:50  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:09  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASLOADB;
+
+<font color="#B22222">(* MAS Load Implementation Module B. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASLISPU	IMPORT	Compiledf0, Compiledf1, Compiledf2, Compiledf3,
+			Compiledp0, Compiledp1, Compiledp1v2, Compiledp1v3,
+			Compiledp2, Compiledp2v2, Compiledp2v3, Compiledp3,
+			Compiledp3v2, Compiledp3v3, Declare;
+
+FROM SACPOL IMPORT PFDP, PRIME;
+
+FROM SACDPOL	IMPORT	DMPPRD, DMPSUM, DMUPNR, DPFP;
+
+FROM SACIPOL	IMPORT	IPEXP, IPNEG, IPPROD, IPQR, IPSUM;
+
+FROM SACPGCD	IMPORT	IPCPP, IPGCDC, IPPGSD, IPRES, IPRPRS;
+
+FROM SACPFAC	IMPORT	IPFAC;
+
+FROM SACROOT	IMPORT	IPRIM; 
+
+FROM DIPC	IMPORT	DILBSO, DILFPL, DIPBSO, DIPEVL, DIPFMO, DIPFP,
+			DIPLBC, DIPLDC, DIPMAD, DIPMRD, EVCADD, EVCOMP,
+			EVDFSI, EVDIF, EVDOV, EVLCM, EVORD, EVOWRITE, EVSIGN,
+			EVSUM, EVTDEG, EvordWrite, IGRLEX, INVLEX, PFDIP,
+			PLFDIL, VALIS;
+
+FROM DIPI	IMPORT	DIIFRP, DIILFR, DIILRD, DIILWR, DIIPDF, DIIPEX,
+			DIIPPS, DIIPQR, DIIPRD, DIIPSM, DIIPWR;
+
+FROM DIPRN	IMPORT	DIRFIP, DIRLRD, DIRLWR, DIRPDM, DIRPEX, DIRPNG,
+			DIRPPR, DIRPQ, DIRPQR, DIRPRD, DIRPRP, DIRPRQ,
+			DIRPSG, DIRPSM, DIRPWR;
+
+FROM DIPRNPOL	IMPORT	RUPGCD;
+
+FROM DIPRNGB	IMPORT	DIRLIS, DIRPGB, DIRPNF, DIRPSP;
+
+FROM DIPIGB	IMPORT	DIILIS, DIIPGB, DIIPNF, DIIPSP;
+
+FROM DIPGCD	IMPORT	DIRFAC;
+
+FROM DIPTOO	IMPORT	DIPVOP; 
+
+FROM MASYMDIP	IMPORT	InitExternalsI;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASLOADB.mi,v 1.8 1995/11/05 09:08:56 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE InitExternalsB</font></strong>;
+<font color="#B22222">(*Initialize external compiled polynomial procedures. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*from dense polynomial system. *)</font>
+      Compiledf2(DPFP,"DPFP"); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*from recursive polynomial system. *)</font>
+      Compiledf2(PFDP,"PFDP");
+      Compiledf0(GetPRIME,"PRIME");
+      Compiledf3(IPPROD,"IPPROD");
+      Compiledf3(IPSUM,"IPSUM");
+      Compiledf3(IPEXP,"IPEXP");
+      Compiledf2(IPNEG,"IPNEG"); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*from distributive polynomial system. *)</font>
+      Compiledp1v2(PFDIP,"PFDIP");
+
+      Compiledp1(DILBSO,"DILBSO");
+      Compiledf2(DILFPL,"DILFPL");
+      Compiledp1v2(PLFDIL,"PLFDIL");
+      Compiledp1(DIPBSO,"DIPBSO");
+      Compiledf1(DIPLDC,"DIPLDC");
+      Compiledf1(DIPLBC,"DIPLBC");
+      Compiledf2(DIRPRP,"DIRPRP");
+      Compiledf1(DIRPSG,"DIRPSG");
+      Compiledf1(DIRPRD,"DIRPRD");
+      Compiledp3(DIRPWR,"DIRPWR");
+      Compiledf1(DIRPDM,"DIRPDM");
+      Compiledf2(DIRPQ,"DIRPQ");
+      Compiledp2v2(DIRPQR,"DIRPQR");
+      Compiledf2(DIRPRQ,"DIRPRQ");
+      Compiledf2(RUPGCD,"RUPGCD");
+
+      Compiledp2v2(EVDFSI,"EVDFSI");    <font color="#B22222">(* used for AD-version *)</font>
+      Compiledf1(EVDOV,"EVDOV");
+      Compiledf2(EVCOMP,"EVCOMP");
+      Compiledp3v2(EVCADD,"EVCADD");
+      Compiledp1(EVOWRITE,"EVOWRITE");
+      Compiledp0(EvordWrite,"EVORDWRITE");
+      Compiledf2(EVSUM,"EVSUM");
+      Compiledf2(EVDIF,"EVDIF");
+      Compiledf1(EVSIGN,"EVSIGN");
+      Compiledf2(EVLCM,"EVLCM");
+      Compiledf1(EVTDEG,"EVTDEG");
+      Compiledf1(DIPEVL,"DIPEVL");
+      Compiledf2(DIPFMO,"DIPFMO");
+      Compiledf1(DIPMRD,"DIPMRD");
+      Compiledp1v3(DIPMAD,"DIPMAD");
+
+      Compiledf2(DIPFP,"DIPFP");
+      Compiledf1(DIIFRP,"DIIFRP");
+      Compiledf1(DIILFR,"DIILFR");
+      Compiledf2(DIIPPS,"DIIPPS");
+      Compiledp2v2(DIIPQR,"DIIPQR");
+      Compiledp2(DIILWR,"DIILWR");
+      Compiledf1(DIRFIP,"DIRFIP");
+      Compiledf1(DIRLRD,"DIRLRD");
+      Compiledf2(DIRPPR,"DIRPPR");
+      Compiledf2(DIRPSM,"DIRPSM");
+      Compiledf2(DIRPEX,"DIRPEX");
+      Compiledf1(DIRPNG,"DIRPNG");
+      Compiledp2v2(DIPVOP,"DIPVOP");
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*from groebner bases system. *)</font>
+      Compiledf2(DIRPSP,"DIRPSP"); <font color="#B22222">(*rational*)</font>
+      Compiledf2(DIRPNF,"DIRPNF");
+      Compiledf1(DIRLIS,"DIRLIS");
+      Compiledf2(DIRPGB,"DIRPGB");
+      Compiledf2(DIIPSP,"DIIPSP"); <font color="#B22222">(*integral*)</font>
+      Compiledf3(DIIPNF,"DIIPNF");
+      Compiledf1(DIILIS,"DIILIS");
+      Compiledf2(DIIPGB,"DIIPGB");
+      Compiledf1(DIIPRD,"DIIPRD");
+      Compiledp2(DIIPWR,"DIIPWR");
+      Compiledf1(DIILRD,"DIILRD");
+      Compiledf2(DIIPDF,"DIIPDF");
+      Compiledf2(DIIPSM,"DIIPSM");
+      Compiledf2(DIIPEX,"DIIPEX");
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*from gcd system, factorization and root. *)</font>
+      Compiledp3v3(IPGCDC,"IPGCDC");
+      Compiledf3(IPRES,"IPRES");
+      Compiledf3(IPRPRS,"IPRPRS");
+      Compiledp2v3(IPFAC,"IPFAC");
+      Compiledf1(DIRFAC,"DIRFAC");
+      Compiledf1(IPRIM,"IPRIM");
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*initialize symbol interface. *)</font>
+      InitExternalsI;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitExternalsB;
+
+
+<strong><font color="#4169E1">PROCEDURE GetPRIME</font></strong>(): LIST;
+<font color="#B22222">(*access global variable via function. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> RETURN(PRIME) <strong><font color="#4169E1">END</font></strong> GetPRIME;
+
+
+<strong><font color="#4169E1">END</font></strong> MASLOADB.
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

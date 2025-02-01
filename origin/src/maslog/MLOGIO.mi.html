@@ -1,0 +1,1063 @@
+
+<html>
+<head>
+<title>./maslog/MLOGIO.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MLOGIO.mi,v 1.2 1994/11/28 21:04:15 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MLOGIO.mi,v $
+ * Revision 1.2  1994/11/28  21:04:15  dolzmann
+ * New revision of the MASLOG system: New functions and bug fixes of old one.
+ *
+ * Revision 1.1  1993/12/17  17:12:15  dolzmann
+ * MASLOG is divided into three parts. (MLOGBASE, MLOGIO, MASLOG)
+ * Additional input procedures are added.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MLOGIO;
+<font color="#B22222">(* Maslog Input Output System Implementation Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*				 M L O G I O				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: MODULA II (mocka or mtc are possible.)                            *
+* System:   Program for the computer algebra system MAS by Heinz Kredel.      *
+* Project:  MASLOG                                                            *
+* Remark:   Libraries maskern, maslisp, maslog are used.                      *
+* Abstract: A package for the MAS computer algebra system by Heinz Kredel.    *
+*           This package implements input and outputroutins for formulas      *
+*	    in the format of the MASLOG library.                              *
+******************************************************************************)</font>
+
+FROM MASELEM	IMPORT	GAMMAINT, MASEVEN, MASMAX, MASREM;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, LISTVAR,
+			RED, SIL;
+FROM MASERR	IMPORT	ERROR, confusion, fatal, harmless, severe, spotless;
+FROM MASLISP	IMPORT	ENV;
+FROM MASLISPU	IMPORT	Declare, PROCF0, PROCF1, PROCF3, PROCP1;
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, CWRITE, DIBUFF, DIGIT,
+			LETTER, LISTS, MASORD, SWRITE;
+FROM MASSYM	IMPORT	ATOM, UWRIT1, UWRITE;
+FROM MASSYM2	IMPORT	ACOMP, ASSOCQ, ENTER, EXPLOD, GENSYM, SREAD, SREAD1,
+			SYMBOL, SYWRIT;
+FROM SACLIST	IMPORT	ADV2, ADV3, AREAD, AWRITE, CCONC, CINV, CLOUT, COMP2,
+			CONC, EQUAL, LIST10, LIST2, LIST3, LIST4, LIST5,
+			MEMBER, SECOND, THIRD;
+FROM MLOGBASE	IMPORT	ANY, BOOL, EQUIV, ET, EXIST, FALSUM, FORALL,
+			FORGARGS, FORGLVAR, FORGOP, FORISBOOLVAR, FORISLVAR,
+			FORISVAR, FORMKBINOP, FORMKCNST, FORMKFOR, FORMKLVAR,
+			FORMKQUANT, FORMKUNOP, FORMKVAR, FORPARGS, FORPBINOP,
+			FORPBINOPA, FORPFOR, FORPLVAR, FORPQUANT, FORPQUANTA,
+			FORPUNOP, FORPUNOPA, FORPVAR, FORPVARA, FORTST,
+			FORVTENTER, FORVTGET, IMP, NON, REP, TVAR, VEL,
+			VERUM, XOR;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MLOGIO.mi,v 1.2 1994/11/28 21:04:15 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<strong><font color="#228B22">VAR</font></strong> ParserSyms: LIST; <font color="#B22222">(* name table for the formula parser. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			   P R E T T Y   P R I N T                            *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPPRT</font></strong>(phi: LIST; bbpprt:PROCP1);
+<font color="#B22222">(* formula pretty print. phi is a formula; bbpprt a bb-procedure to write a
+bb-formula to the output stream; phi is written formated to the output stream.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> op, red, arg, arg1, arg2, vars, qform, dummy, sort, name: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> phi = SIL <font color="#4169E1">THEN</font> SWRITE("SIL"); RETURN; <strong><font color="#4169E1">END</font></strong>;
+
+	FORPFOR(phi,op,red);
+	<font color="#4169E1">IF</font> (op=VERUM) <font color="#4169E1">OR</font> (op=FALSUM)
+	<font color="#4169E1">THEN</font>
+		pprtop(op);
+	ELSIF (op=VEL) <font color="#4169E1">OR</font> (op=ET)
+	<font color="#4169E1">THEN</font>
+		FORPARGS(red,arg,red);
+		SWRITE("(");
+		FORPPRT(arg,bbpprt);
+		<font color="#4169E1">WHILE</font> red &lt;&gt; SIL <font color="#4169E1">DO</font>
+			FORPARGS(red,arg,red);
+			pprtop(op);
+			FORPPRT(arg,bbpprt)
+		<strong><font color="#4169E1">END</font></strong>;
+		SWRITE(")");
+	ELSIF op=NON
+	<font color="#4169E1">THEN</font>
+		FORPUNOPA(red,arg);
+		pprtop(op);
+		SWRITE("(");
+		FORPPRT(arg,bbpprt);
+		SWRITE(")");
+	ELSIF (op=IMP) <font color="#4169E1">OR</font> (op=REP) <font color="#4169E1">OR</font> (op=EQUIV) <font color="#4169E1">OR</font> (op=XOR)
+	<font color="#4169E1">THEN</font>
+		FORPBINOPA(red,arg1,arg2);
+		SWRITE("(");
+		FORPPRT(arg1,bbpprt);
+		pprtop(op);
+		FORPPRT(arg2,bbpprt);
+		SWRITE(")");
+	ELSIF (op=EXIST) <font color="#4169E1">OR</font> (op=FORALL)
+	<font color="#4169E1">THEN</font>
+		FORPQUANTA(red,vars,qform);
+		SWRITE("(");
+		pprtop(op);
+		FORPPLVAR(vars);
+		SWRITE(":");
+		FORPPRT(qform,bbpprt);
+		SWRITE(")");
+	ELSIF op=TVAR
+	<font color="#4169E1">THEN</font>
+		FORPPVAR(phi);
+	<font color="#4169E1">ELSE</font>
+		bbpprt(phi);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORPPRT;
+
+<strong><font color="#4169E1">PROCEDURE pprtop</font></strong>(op: LIST);
+<font color="#B22222">(* pretty print operator. a symbol for an operator is written to the output
+stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> (op=IMP)	<font color="#4169E1">THEN</font> SWRITE(" =&gt; ");	RETURN;	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=REP)	<font color="#4169E1">THEN</font> SWRITE(" &lt;= "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=EQUIV)	<font color="#4169E1">THEN</font> SWRITE(" &lt;=&gt; "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=XOR)	<font color="#4169E1">THEN</font> SWRITE(" &lt;#&gt; "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=ET)	<font color="#4169E1">THEN</font> SWRITE(" /\ "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=VEL)	<font color="#4169E1">THEN</font> SWRITE(" \/ "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=NON)	<font color="#4169E1">THEN</font> SWRITE("-- "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=EXIST)	<font color="#4169E1">THEN</font> SWRITE("EX "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=FORALL)	<font color="#4169E1">THEN</font> SWRITE("FA "); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=VERUM)	<font color="#4169E1">THEN</font> SWRITE("TRUE"); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=FALSUM)	<font color="#4169E1">THEN</font> SWRITE("FALSE"); 	RETURN; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pprtop;
+
+<strong><font color="#4169E1">PROCEDURE FORPPVAR</font></strong>(<strong><font color="#228B22">var</font></strong>: LIST);
+<font color="#B22222">(* formula pretty print variable. var is a variable; var is formated written
+to the output stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> name, sort: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPVAR(<strong><font color="#228B22">var</font></strong>,name,sort);
+	CLOUT(FORVTGET(name));
+	<font color="#4169E1">IF</font> (sort&lt;&gt;ANY) <font color="#4169E1">AND</font> (sort&lt;&gt;BOOL) <font color="#4169E1">THEN</font> 
+		SWRITE("<font color="#B22222">{");
+		CLOUT(FORVTGET(sort));
+		SWRITE("}</font>");
+	<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*	SWRITE("&lt;");
+	CLOUT(FORVTGET(name));
+	SWRITE(":");
+	CLOUT(FORVTGET(sort));
+	SWRITE("&gt;"); *)</font>
+<strong><font color="#4169E1">END</font></strong> FORPPVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORPPLVAR</font></strong>(lvar: LIST);
+<font color="#B22222">(* formula print lvar. L is an lvar object; lvar is formated written to the
+output stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>, varlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPLVAR(lvar,varlist);
+	<font color="#4169E1">IF</font> varlist=SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>; 
+	FORPARGS(varlist,<strong><font color="#228B22">var</font></strong>,varlist);
+	FORPPVAR(<strong><font color="#228B22">var</font></strong>);
+	<font color="#4169E1">WHILE</font> varlist &lt;&gt; SIL <font color="#4169E1">DO</font>
+		SWRITE(",");
+		FORPARGS(varlist,<strong><font color="#228B22">var</font></strong>,varlist);
+		FORPPVAR(<strong><font color="#228B22">var</font></strong>);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORPPLVAR;
+
+
+<font color="#B22222">(******************************************************************************
+*			      T E X   W R I T E                               *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORTEXW</font></strong>(phi: LIST; bbtexw:PROCP1);
+<font color="#B22222">(* formula tex write. phi is a formula; bbtexw a bb-procedure to write a
+bb-formula in tex style to the outputstream; this procedure writes a formula
+in tex style to the outputstream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> op, red, arg, arg1, arg2, vars, qform:  LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> phi = SIL <font color="#4169E1">THEN</font> SWRITE("SIL"); RETURN; <strong><font color="#4169E1">END</font></strong>;
+	FORPFOR(phi,op,red);
+	<font color="#4169E1">IF</font> (op=VERUM) <font color="#4169E1">OR</font> (op=FALSUM)
+	<font color="#4169E1">THEN</font>
+		BLINES(0);
+		ptexsymbol(phi);
+	ELSIF (op=ET) <font color="#4169E1">OR</font> (op=VEL)
+	<font color="#4169E1">THEN</font>
+		BLINES(0);
+		FORPARGS(red,arg,red);
+		SWRITE("(");
+		FORTEXW(arg,bbtexw);
+		<font color="#4169E1">WHILE</font> red &lt;&gt; SIL <font color="#4169E1">DO</font>
+			FORPARGS(red,arg,red);
+			SWRITE(" ");
+			ptexsymbol(op);
+			SWRITE(" ");
+			FORTEXW(arg,bbtexw)
+		<strong><font color="#4169E1">END</font></strong>;
+		SWRITE(")");
+	ELSIF op=NON
+	<font color="#4169E1">THEN</font>
+		BLINES(0);
+		SWRITE("(");
+		ptexsymbol(op);
+		FORPUNOPA(red,arg);
+		FORTEXW(arg,bbtexw);
+		SWRITE(")");
+	ELSIF (op=EXIST) <font color="#4169E1">OR</font> (op=FORALL)
+	<font color="#4169E1">THEN</font>
+		BLINES(0);
+		FORPQUANTA(red,vars,qform);
+		SWRITE("(");
+		ptexsymbol(op);
+		FORTEXWLVAR(vars);
+		SWRITE("(");
+		FORTEXW(qform,bbtexw);
+		SWRITE("))");
+	ELSIF (op=IMP) <font color="#4169E1">OR</font> (op=REP) <font color="#4169E1">OR</font> (op=EQUIV) <font color="#4169E1">OR</font> (op=XOR)
+	<font color="#4169E1">THEN</font>
+		BLINES(0);
+		FORPBINOPA(red,arg1,arg2);
+		SWRITE("(");
+		FORTEXW(arg1,bbtexw);
+		ptexsymbol(op);
+		FORTEXW(arg2,bbtexw);
+		SWRITE(")");
+	ELSIF (op=TVAR)
+	<font color="#4169E1">THEN</font>
+		BLINES(0);
+		FORTEXWVAR(phi);
+	<font color="#4169E1">ELSE</font>
+		BLINES(0);
+		bbtexw(phi);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORTEXW;
+
+<strong><font color="#4169E1">PROCEDURE FORTEXWVAR</font></strong>(<strong><font color="#228B22">var</font></strong>: LIST);
+<font color="#B22222">(* formula tex write variable. var is a variable; this procedure writes var in
+tex style to the output stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> name, sort: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*	BLINES(0);
+	FORPVAR(var,name,sort);
+	SWRITE("\mbox{");
+	CLOUT(FORVTGET(name));
+	SWRITE("}:\mbox{");
+	CLOUT(FORVTGET(sort));
+	SWRITE("}"); *)</font>
+
+	FORPVAR(<strong><font color="#228B22">var</font></strong>,name,sort);
+	CLOUT(FORVTGET(name));
+	<font color="#4169E1">IF</font> (sort&lt;&gt;ANY) <font color="#4169E1">AND</font> (sort&lt;&gt;BOOL) <font color="#4169E1">THEN</font> 
+		SWRITE("<font color="#B22222">{");
+		CLOUT(FORVTGET(sort));
+		SWRITE("}</font>");
+	<strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong> FORTEXWVAR;
+
+
+<strong><font color="#4169E1">PROCEDURE FORTEXWLVAR</font></strong>(lvar: LIST);
+<font color="#B22222">(* tex write list of varaiables. lvar is an lvar object; this procedure writes
+all variables in lvar in tex style to the outputstream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>, red, sort, name: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPLVAR(lvar,red);
+	ADV(red,<strong><font color="#228B22">var</font></strong>,red);
+	FORTEXWVAR(<strong><font color="#228B22">var</font></strong>);
+	<font color="#4169E1">WHILE</font> red &lt;&gt; SIL <font color="#4169E1">DO</font>
+		ADV(red,<strong><font color="#228B22">var</font></strong>,red);
+		SWRITE(", ");
+		FORTEXWVAR(<strong><font color="#228B22">var</font></strong>);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORTEXWLVAR;
+
+<strong><font color="#4169E1">PROCEDURE ptexsymbol</font></strong>(sym: LIST);
+<font color="#B22222">(* print tex symbol. sym is predifened MASLOG symbol; writes sym in tex style
+to the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> sym=VERUM	<font color="#4169E1">THEN</font> SWRITE("\mbox<font color="#B22222">{TRUE}</font>");	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=FALSUM	<font color="#4169E1">THEN</font> SWRITE("\mbox<font color="#B22222">{FALSE}</font>");	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=NON	<font color="#4169E1">THEN</font> SWRITE("\lnot");		RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=ET	<font color="#4169E1">THEN</font> SWRITE("\land");		RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=VEL	<font color="#4169E1">THEN</font> SWRITE("\lor");		RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=IMP	<font color="#4169E1">THEN</font> SWRITE("\Rightarrow");	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=REP	<font color="#4169E1">THEN</font> SWRITE("\Leftarrow");	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=EQUIV	<font color="#4169E1">THEN</font> SWRITE("\iff");		RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=XOR	<font color="#4169E1">THEN</font> SWRITE("\oplus");		RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=EXIST	<font color="#4169E1">THEN</font> SWRITE("\exists ");	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> sym=FORALL	<font color="#4169E1">THEN</font> SWRITE("\forall " );	RETURN; <strong><font color="#4169E1">END</font></strong>;
+	SWRITE("\mbox<font color="#B22222">{???}</font>"); RETURN;
+<strong><font color="#4169E1">END</font></strong> ptexsymbol;
+
+<font color="#B22222">(******************************************************************************
+*                    R E A D   P R E F I X   F O R M U L A                    *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPREAD</font></strong>(bbread: PROCF0):LIST;
+<font color="#B22222">(* formula prefix read. bbread is a bb-procedure to read a bb.formula from 
+the input stream. FORPREAD reads a formula in prefix notation from the 
+input stream and returns the read formula. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c:GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> result, args, sym, info, noargs, key: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c=70 <font color="#B22222">(* c=MASORD("(") *)</font>  <font color="#4169E1">THEN</font>
+		result:=FORPREAD(bbread);
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c&lt;&gt;MASORD(")") <font color="#4169E1">THEN</font>
+			DIBUFF();
+			ERROR(severe,") expected");
+			BKSP();
+		<strong><font color="#4169E1">END</font></strong>;
+		RETURN result;
+	ELSIF c=85 <font color="#B22222">(* c=MASORD("[") *)</font> <font color="#4169E1">THEN</font>
+		BKSP();
+		result:=atomicread(bbread);
+		RETURN result;
+	<font color="#4169E1">ELSE</font>
+		BKSP();
+		key:=KEYREAD();
+		result:=upcase(key);
+		info:=ASSOCQ(result,ParserSyms);
+		<font color="#4169E1">IF</font> info=SIL <font color="#4169E1">THEN</font> 		<font color="#B22222">(* treat as a variable. *)</font>
+			RETURN FORRDVARA(key,BOOL);
+		<font color="#4169E1">ELSE</font>
+			info:=FIRST(info);
+			sym:=FIRST(info);
+			noargs:=SECOND(info);	<font color="#B22222">(* number of arguments *)</font>
+			<font color="#4169E1">IF</font> noargs=0 <font color="#4169E1">THEN</font> 
+				RETURN FORMKCNST(sym);
+			ELSIF noargs=-1 <font color="#4169E1">THEN</font>
+				args:=multiarg(bbread);
+				RETURN FORMKFOR(sym,args);
+			ELSIF noargs=1 <font color="#4169E1">THEN</font>
+				args:=onearg(bbread);
+				RETURN FORMKUNOP(sym,args);
+			ELSIF noargs=-2 <font color="#4169E1">THEN</font>
+				args:=FORRDQUANTA(bbread);
+				RETURN FORMKQUANT(sym,FIRST(args),
+					SECOND(args));
+			ELSIF noargs=2 <font color="#4169E1">THEN</font>
+				args:=twoargs(bbread);
+				RETURN FORMKBINOP(sym,FIRST(args),
+					SECOND(args));
+			<font color="#4169E1">ELSE</font> 
+				ERROR(severe,"FORPREAD: unknown noarg");
+				RETURN SIL;
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;	
+<strong><font color="#4169E1">END</font></strong> FORPREAD;
+
+<strong><font color="#4169E1">PROCEDURE FORRDVAR</font></strong>():LIST;
+<font color="#B22222">(* formula read variable. A description of a variable is read from the input 
+stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> name, sort, sname, ssort:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	name:=SREAD1();
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> isvarname(name) <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"<font color="#4169E1">not</font> valid as a variable name");
+	<strong><font color="#4169E1">END</font></strong>;
+	sname:=FORVTENTER(name);
+	c:=CREAD();
+	<font color="#4169E1">IF</font> c=91 <font color="#B22222">(* c=MASORD("{") *)</font> <font color="#4169E1">THEN</font> 	<font color="#B22222">(* { read sort of variable. *)</font>
+		sort:=SREAD1();
+		<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> isvarname(sort) <font color="#4169E1">THEN</font>
+			DIBUFF();
+			ERROR(severe,"<font color="#4169E1">not</font> valid as a sort name");
+		<strong><font color="#4169E1">END</font></strong>;
+		ssort:=FORVTENTER(sort);
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c&lt;&gt;92 <font color="#B22222">(* c&lt;&gt;MASORD("}") *)</font> <font color="#4169E1">THEN</font>
+			DIBUFF();
+			ERROR(severe,"} expected");
+			BKSP();
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font>
+		BKSP();
+		ssort:=ANY;
+	<strong><font color="#4169E1">END</font></strong>;		
+	RETURN FORMKVAR(sname,ssort);
+<strong><font color="#4169E1">END</font></strong> FORRDVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORRDVARA</font></strong>(name,sdefault:LIST):LIST;
+<font color="#B22222">(* formula read variable arguments. name is a name of a variable. If the next
+string in the input stream is a sort name then the sort name is read otherwise
+sdefault is taken as a sort name. The complete description of the variable is 
+returned.  *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong>  sort, sname,ssort: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> isvarname(name) <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"<font color="#4169E1">not</font> valid as a variable name");
+	<strong><font color="#4169E1">END</font></strong>;
+	sname:=FORVTENTER(name);
+	c:=CREAD();
+	<font color="#4169E1">IF</font> c=91 <font color="#B22222">(* c=MASORD("{") *)</font> <font color="#4169E1">THEN</font> 	<font color="#B22222">(* read sort of variable. *)</font>
+		sort:=SREAD1();
+		<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> isvarname(sort) <font color="#4169E1">THEN</font>
+			DIBUFF();
+			ERROR(severe,"<font color="#4169E1">not</font> valid as a sort name");
+		<strong><font color="#4169E1">END</font></strong>;		
+		ssort:=FORVTENTER(sort);
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c&lt;&gt;92 <font color="#B22222">(* c&lt;&gt;MASORD("}") *)</font> <font color="#4169E1">THEN</font>
+			DIBUFF();
+			ERROR(severe,"} expected");
+			BKSP();
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font>
+		BKSP();
+		ssort:=sdefault;
+	<strong><font color="#4169E1">END</font></strong>;		
+	RETURN FORMKVAR(sname,ssort);
+<strong><font color="#4169E1">END</font></strong> FORRDVARA;
+
+<strong><font color="#4169E1">PROCEDURE FORRDLVAR</font></strong>():LIST;
+<font color="#B22222">(* formula read list of variables. One variable or a list of variables are 
+read from the input stream. A LVAR-object is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>, vlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> LETTER(c) <font color="#4169E1">THEN</font>
+		BKSP();
+		<strong><font color="#228B22">var</font></strong>:=FORRDVAR();
+		RETURN FORMKLVAR(LIST1(<strong><font color="#228B22">var</font></strong>));
+	ELSIF c=70 <font color="#B22222">(* c=MASORD("(") *)</font> <font color="#4169E1">THEN</font>		<font color="#B22222">(* read a list *)</font>
+		vlist:=SIL;
+		c:=CREADB();
+		<font color="#4169E1">WHILE</font> c&lt;&gt;71 <font color="#B22222">(* MASORD(")") *)</font> <font color="#4169E1">DO</font>
+			BKSP();
+			<strong><font color="#228B22">var</font></strong>:=FORRDVAR();
+			vlist:=COMP(<strong><font color="#228B22">var</font></strong>,vlist);
+			c:=CREADB();
+			<font color="#4169E1">IF</font> c=63 <font color="#B22222">(* c=MASORD(",") *)</font> <font color="#4169E1">THEN</font> c:=CREADB(); <strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+		RETURN FORMKLVAR(INV(vlist));
+	<font color="#4169E1">ELSE</font>
+		DIBUFF();
+		ERROR(severe,") expected");
+		BKSP();
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORRDLVAR; 
+
+<strong><font color="#4169E1">PROCEDURE FORRDQUANTA</font></strong>(bbread: PROCF0):LIST;
+<font color="#B22222">(* formula read quantifier arguments. 
+The arguments of  a quantifier is read from the input stream. A list is 
+returned. The first element of the list is the list of bound variables of
+the quantifier (as an LVAR-object). The second element of the list is the 
+bound formula. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c:GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> varlist, phi: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;70 <font color="#B22222">(* c&lt;&gt;MASORD("(") *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"( expected");
+		BKSP();
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	varlist:=FORRDLVAR();
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;63 <font color="#B22222">(* c&lt;&gt;MASORD(",") *)</font> <font color="#4169E1">THEN</font> BKSP(); <strong><font color="#4169E1">END</font></strong>;
+	phi:=FORPREAD(bbread);
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;71 <font color="#B22222">(* c&lt;&gt;MASORD(")") *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,") expected");
+		BKSP();
+		RETURN LIST2(varlist,phi);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN LIST2(varlist,phi);
+<strong><font color="#4169E1">END</font></strong> FORRDQUANTA;
+
+<strong><font color="#4169E1">PROCEDURE onearg</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* one argument. One argument is read from the input stream and is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> arg: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;70 <font color="#B22222">(* c&lt;&gt;MASORD("(") *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"( expected");
+		BKSP();
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	arg:=FORPREAD(bbread);
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;71 <font color="#B22222">(* c&lt;&gt;MASORD(")" *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,") expected");
+		BKSP();
+		RETURN arg;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN arg;
+<strong><font color="#4169E1">END</font></strong> onearg;
+
+<strong><font color="#4169E1">PROCEDURE twoargs</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* two arumgents. Two arguments are read from the input stream and are 
+returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> arg, result: LIST;
+	<strong><font color="#228B22">VAR</font></strong> i:INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;70 <font color="#B22222">(* c&lt;&gt;MASORD("(") *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"( expected");
+		BKSP();
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> 2 <font color="#4169E1">DO</font>
+		arg:=FORPREAD(bbread);
+		result:=COMP(arg,result);
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c&lt;&gt;63 <font color="#B22222">(* c&lt;&gt;MASORD(",") *)</font> <font color="#4169E1">THEN</font> BKSP(); <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;71 <font color="#B22222">(* c&lt;&gt;MASORD(")") *)</font> <font color="#4169E1">THEN</font> 
+		DIBUFF();
+		ERROR(severe,") expected");
+		BKSP();
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> twoargs;	
+
+<strong><font color="#4169E1">PROCEDURE multiarg</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* multi arguments. bbread is a bb-procedure to read a bb-formula from the
+input stream. A list of arguments is read from the input stream and is
+returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> arg, result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;70 <font color="#B22222">(* c&lt;&gt;MASORD("(") *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"( expected");
+		BKSP();
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	c:=CREADB();
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> c&lt;&gt;71 <font color="#B22222">(* MASORD(")") *)</font> <font color="#4169E1">DO</font>
+		BKSP();
+		arg:=FORPREAD(bbread);
+		result:=COMP(arg,result);
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c=63 <font color="#B22222">(* c=MASORD(",") *)</font> <font color="#4169E1">THEN</font> c:=CREADB(); <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> multiarg;
+
+<strong><font color="#4169E1">PROCEDURE atomicread</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* atomic read. bbread is a bb-procedure to read a bb-formula from the
+input stream. A bb-formula is read from the input stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c:GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> result:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB(); <font color="#B22222">(* ignore [ *)</font>
+	result:=bbread();
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;87 <font color="#B22222">(* c&lt;&gt;MASORD("]") *)</font> <font color="#4169E1">THEN</font>
+		DIBUFF();
+		ERROR(severe,"] expected");
+		BKSP();
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> atomicread;
+
+
+<strong><font color="#4169E1">PROCEDURE KEYREAD</font></strong>(): LIST;
+<font color="#B22222">(*key read. A keyword or a symbol for a keyword is read. A keyword is a string
+of letters ore a string of special characters. The keyword or the symbol is 
+also terminated by the characters "()[]{}".
+The read keyword is returned a a CLIST.
+This procedure is based on the procedure SREAD1 from the module MASSYM2 *)</font>
+	<strong><font color="#228B22">VAR</font></strong>  C, L: LIST;
+	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#4169E1">end</font></strong>:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	L:=SIL; 
+	C:=CREADB();
+	<font color="#4169E1">IF</font> LETTER(C) <font color="#4169E1">THEN</font>
+		<font color="#4169E1">REPEAT</font> 
+			L:=COMP(C,L);
+			C:=CREAD();
+		<font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font> DIGIT(C) <font color="#4169E1">AND</font> <font color="#4169E1">NOT</font> LETTER(C);
+	<font color="#4169E1">ELSE</font>
+		<font color="#4169E1">REPEAT</font> 
+			L:=COMP(C,L);
+			C:=CREAD();
+		<font color="#4169E1">UNTIL</font> ((C=70) <font color="#4169E1">OR</font> (C=71) <font color="#4169E1">OR</font> (C=72) <font color="#4169E1">OR</font> (C=85) <font color="#4169E1">OR</font> (C=87) <font color="#4169E1">OR</font> 
+			(C=91) <font color="#4169E1">OR</font> (C=92) <font color="#4169E1">OR</font> DIGIT(C) <font color="#4169E1">OR</font> LETTER(C) );
+	<strong><font color="#4169E1">END</font></strong>;
+	BKSP; 
+	L:=INV(L);
+	RETURN(L); 
+<strong><font color="#4169E1">END</font></strong> KEYREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE InitParser</font></strong>();
+<font color="#B22222">(* Initialize the internal data structures for the formula parsers
+FORPREAD and FORIREAD. 
+ParserSyms is a global name table for the parser. It has the format of a 
+ASSOC-list. The first entry in the ASSOC-list is the representation of a
+symbol. The second entry is a list which describes the symbol. The first 
+entry of this list is the internal representation of the symbol, the second
+entry describes the arity of the symbol, and the third entry is the priority
+of the symbol. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ParserSyms:=SIL;
+	LISTVAR(ParserSyms);
+	ParserSyms:=COMP2( LISTS("T"),	    LIST3(VERUM,   0,-1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("TRUE"),   LIST3(VERUM,   0,-1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("VERUM"),  LIST3(VERUM,   0,-1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("FALSE"),  LIST3(FALSUM,  0,-1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("F"),      LIST3(FALSUM,  0,-1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("FALSUM"), LIST3(FALSUM,  0,-1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("ET"),     LIST3(ET,     -1, 2), ParserSyms);
+	ParserSyms:=COMP2( LISTS("<font color="#4169E1">AND</font>"),    LIST3(ET,     -1, 2), ParserSyms);
+	ParserSyms:=COMP2( LISTS("/\"),     LIST3(ET,     -1, 2), ParserSyms);
+	ParserSyms:=COMP2( LISTS("<font color="#4169E1">OR</font>"),     LIST3(VEL,    -1, 3), ParserSyms);
+	ParserSyms:=COMP2( LISTS("VEL"),    LIST3(VEL,    -1, 3), ParserSyms);
+	ParserSyms:=COMP2( LISTS("\/"),     LIST3(VEL,    -1, 3), ParserSyms);
+	ParserSyms:=COMP2( LISTS("<font color="#4169E1">NOT</font>"),    LIST3(NON,     1, 1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("NOTT"),   LIST3(NON,     1, 1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("NON"),    LIST3(NON,     1, 1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("~"),      LIST3(NON,     1, 1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("--"),     LIST3(NON,     1, 1), ParserSyms);
+	ParserSyms:=COMP2( LISTS("FORALL"), LIST3(FORALL, -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("ALL"),    LIST3(FORALL, -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("FA"),     LIST3(FORALL, -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("EX"),	    LIST3(EXIST,  -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("EXIST"),  LIST3(EXIST,  -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("EXISTS"),  LIST3(EXIST,  -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("E"),      LIST3(EXIST,  -2, 6), ParserSyms);
+	ParserSyms:=COMP2( LISTS("EQUIV"),  LIST3(EQUIV,   2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;===&gt;"),  LIST3(EQUIV,   2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;=&gt;"),    LIST3(EQUIV,   2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("IMP"),    LIST3(IMP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("IMPL"),   LIST3(IMP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("===&gt;"),   LIST3(IMP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("==&gt;"),    LIST3(IMP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("=&gt;"),     LIST3(IMP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("REP"),    LIST3(REP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("REPL"),   LIST3(REP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;==="),   LIST3(REP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;=="),    LIST3(REP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;="),     LIST3(REP,     2, 4), ParserSyms);
+	ParserSyms:=COMP2( LISTS("XOR"),    LIST3(XOR,     2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("ANTIV"),  LIST3(XOR,     2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("+"),      LIST3(XOR,     2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;=/=&gt;"),  LIST3(XOR,     2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;/&gt;"),    LIST3(XOR,     2, 5), ParserSyms);
+	ParserSyms:=COMP2( LISTS("&lt;#&gt;"),    LIST3(XOR,     2, 5), ParserSyms);
+<strong><font color="#4169E1">END</font></strong> InitParser;
+
+<strong><font color="#4169E1">PROCEDURE upcase</font></strong>(clist:LIST):LIST;
+<font color="#B22222">(* upcase character list. clist is a character list. 
+All letters in clist are converted to upper case. The result is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c:GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> result:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> clist&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(clist,c,clist);
+		<font color="#4169E1">IF</font> LETTER(c) <font color="#4169E1">AND</font> MASEVEN(c) <font color="#4169E1">THEN</font>
+			result:=COMP(c+1,result);
+		<font color="#4169E1">ELSE</font>
+			result:=COMP(c,result);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> upcase;
+
+<font color="#B22222">(******************************************************************************
+*                     R E A D   I N F I X   F O R M U L A                     *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORIREAD</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* formula infix read. bbread is a bb-procedure to read a bb.formula from the 
+input stream. This procedure reads a formula in infix notation 
+from the input stream and returns the read formula. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> result, info, sym, noargs, args, key, dummy: LIST;
+	<strong><font color="#228B22">VAR</font></strong> opstack, argstack: LIST;
+	<strong><font color="#228B22">VAR</font></strong> parlevel: LIST; <font color="#B22222">(*parenthesis level*)</font>
+	<strong><font color="#228B22">VAR</font></strong> expectop: BOOLEAN; <font color="#B22222">(* expect operator symbol. If expectop is true 
+				  then the next symbol must be an operator. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> exitifparl0: BOOLEAN; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#B22222">(* to do; correct use of exitifparl0
+	          poping unary operation from operator stack, if an arguments 
+	          is pushed on the argument stack. *)</font>
+
+	opstack:=SIL;
+	argstack:=SIL;
+	expectop:=FALSE;
+	parlevel:=0;
+	c:=CREADB();
+	BKSP();
+<font color="#B22222">(*	IF c=MASORD("(") THEN 
+		exitifparl0:=TRUE;
+	ELSE
+		exitifparl0:=FALSE;
+	END; *)</font>
+exitifparl0:=FALSE;
+	LOOP
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c=70 <font color="#B22222">(* c=MASORD("(") *)</font>  <font color="#4169E1">THEN</font>
+			parlevel:=parlevel+1; 
+			push(LIST3(70,-99,99),opstack);			
+			<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font> 
+				DIBUFF();
+				ERROR(severe,"operator expected");
+			<strong><font color="#4169E1">END</font></strong>;
+		ELSIF c=71 <font color="#B22222">(* c=MASORD(")") *)</font> <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> parlevel&lt;=0 <font color="#4169E1">THEN</font>
+				DIBUFF();
+				ERROR(severe,"incorrect parenthesis");
+			<strong><font color="#4169E1">END</font></strong>;
+			<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> expectop <font color="#4169E1">THEN</font> 
+				DIBUFF();
+				ERROR(severe,"argument expected")
+			<strong><font color="#4169E1">END</font></strong>;
+			parlevel:=parlevel-1;
+			gensubformula(99,opstack,argstack);
+			pop(dummy,opstack);
+			<font color="#4169E1">IF</font> FIRST(dummy)&lt;&gt;70 <font color="#4169E1">THEN</font>
+				DIBUFF();
+				ERROR(severe,"incocrect parenthesis");
+			<strong><font color="#4169E1">END</font></strong>;
+			<font color="#4169E1">IF</font> exitifparl0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+		ELSIF c=85 <font color="#B22222">(* c=MASORD("[") *)</font> <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font>
+				DIBUFF();
+				ERROR(severe,"operator expected");
+			<strong><font color="#4169E1">END</font></strong>;
+			expectop:=TRUE; 
+			BKSP();
+			result:=atomicread(bbread);
+			push(result,argstack);
+		ELSIF c=75 <font color="#B22222">(* c=MASORD("#") *)</font> <font color="#4169E1">THEN</font> 
+			<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font> 
+				DIBUFF();
+				ERROR(severe,"operator expected");
+			<strong><font color="#4169E1">END</font></strong>; 
+			push(rdmasvar(),argstack);
+			expectop:=TRUE;
+		ELSIF c=62 <font color="#B22222">(* c=MASORD(".") *)</font> <font color="#4169E1">THEN</font> 
+			EXIT;
+		<font color="#4169E1">ELSE</font>
+			BKSP();
+			key:=KEYREAD();
+			result:=upcase(key);
+			info:=ASSOCQ(result,ParserSyms);
+			<font color="#4169E1">IF</font> info=SIL <font color="#4169E1">THEN</font> 	<font color="#B22222">(* treat as a variable. *)</font>
+				<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font> 
+					DIBUFF();
+					ERROR(severe,"operator expected");
+				<strong><font color="#4169E1">END</font></strong>;
+				push(FORRDVARA(key,BOOL),argstack);
+				expectop:=TRUE; 
+			<font color="#4169E1">ELSE</font>				
+				info:=FIRST(info);			
+				sym:=FIRST(info);
+				noargs:=SECOND(info); <font color="#B22222">(* number of arguments *)</font>
+				<font color="#4169E1">IF</font> noargs=0 <font color="#4169E1">THEN</font>
+					<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font> 
+						DIBUFF();
+						ERROR(severe,"operator expected");
+					<strong><font color="#4169E1">END</font></strong>;
+					expectop:=TRUE;
+					push(FORMKCNST(sym),argstack);
+				ELSIF noargs=1 <font color="#4169E1">THEN</font> 
+					<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font> 
+						DIBUFF();
+						ERROR(severe,"operator expected")
+					<strong><font color="#4169E1">END</font></strong>;
+					pushop(info,opstack,argstack);
+				ELSIF noargs=2 <font color="#4169E1">THEN</font> 
+					<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> expectop <font color="#4169E1">THEN</font> 
+						DIBUFF();
+						ERROR(severe,"argument expected");
+					<strong><font color="#4169E1">END</font></strong>;
+					pushop(info,opstack,argstack);
+					expectop:=FALSE;
+				ELSIF noargs=-1 <font color="#4169E1">THEN</font> 
+					<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> expectop <font color="#4169E1">THEN</font> 
+						DIBUFF();
+						ERROR(severe,"argument expected");
+					<strong><font color="#4169E1">END</font></strong>;
+					pushop(info,opstack,argstack);
+					expectop:=FALSE;
+				ELSIF noargs=-2 <font color="#4169E1">THEN</font>
+					<font color="#4169E1">IF</font> expectop <font color="#4169E1">THEN</font> 
+						DIBUFF();
+						ERROR(severe,"operator expected");
+					<strong><font color="#4169E1">END</font></strong>;				 
+					rdquanta(info,
+						opstack,argstack,bbread);
+				<font color="#4169E1">ELSE</font>
+					ERROR(severe,"parity <font color="#4169E1">not</font> valid");
+					pushop(info,opstack,argstack);
+				<strong><font color="#4169E1">END</font></strong>;
+			<strong><font color="#4169E1">END</font></strong>
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> parlevel&gt;0 <font color="#4169E1">THEN</font> 
+		DIBUFF();
+		ERROR(severe,"incorrect parenthesis");
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN genformula(opstack,argstack);
+<strong><font color="#4169E1">END</font></strong> FORIREAD;
+
+<strong><font color="#4169E1">PROCEDURE pushop</font></strong>(op:LIST;<strong><font color="#228B22">VAR</font></strong> opstack, argstack:LIST);
+<font color="#B22222">(* push operator. Op is a list which describes an operator. opstack, argstack
+are the internal stacks of the parser. An operator is pushed to the 
+opstack. Subformuls are generated if it is possible. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> sym, noargs, prio, lastop, lastsym, lastnoargs, lastprio:LIST;
+	<strong><font color="#228B22">VAR</font></strong> phi:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> opstack=SIL <font color="#4169E1">THEN</font> push(op,opstack); RETURN; <strong><font color="#4169E1">END</font></strong>;
+	sym:=FIRST(op);
+	noargs:=SECOND(op); <font color="#B22222">(* number of arguments *)</font>
+	prio:=THIRD(op);
+	lastop:=FIRST(opstack);
+	lastsym:=FIRST(lastop);
+	lastnoargs:=SECOND(lastop);
+	lastprio:=THIRD(lastop);
+	<font color="#4169E1">IF</font> prio&lt;lastprio <font color="#4169E1">THEN</font>
+		push(op,opstack);
+		RETURN;
+	ELSIF prio&gt;lastprio <font color="#4169E1">THEN</font>
+		gensubformula(prio,opstack,argstack);
+		push(op,opstack);
+	ELSIF prio=lastprio <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> noargs=1 <font color="#4169E1">THEN</font>
+			push(op,opstack);
+		ELSIF (noargs&gt;1) <font color="#4169E1">THEN</font>
+			gensubformula(prio,opstack,argstack);
+			push(op,opstack);
+		ELSIF (noargs=-1) <font color="#4169E1">AND</font> (sym=lastsym) <font color="#4169E1">THEN</font>
+			push(op,opstack);
+		ELSIF (noargs=-1) <font color="#4169E1">AND</font> (sym&lt;&gt;lastsym) <font color="#4169E1">THEN</font>
+			gensubformula(prio,opstack,argstack);
+			push(op,opstack);
+		ELSIF noargs=-2 <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> lastnoargs=-2 <font color="#4169E1">THEN</font> 
+				push(op,opstack);
+			<font color="#4169E1">ELSE</font> 
+				gensubformula(prio,opstack,argstack);
+				push(op,opstack);
+			<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">ELSE</font>
+			DIBUFF();
+			ERROR(severe,"INTERNAL ERROR (pushop): wrong noargs ");
+		<strong><font color="#4169E1">END</font></strong>;	
+	<font color="#B22222">(* ELSE  impossible *)</font>
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pushop;
+
+<strong><font color="#4169E1">PROCEDURE push</font></strong>(elem:LIST; <strong><font color="#228B22">VAR</font></strong> stack:LIST);
+<font color="#B22222">(* push. push the element elem to the stack stack. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	stack:=COMP(elem,stack);
+<strong><font color="#4169E1">END</font></strong> push;
+
+<strong><font color="#4169E1">PROCEDURE pop</font></strong>(<strong><font color="#228B22">VAR</font></strong> elem, stack:LIST);
+<font color="#B22222">(* pop. pop the elem elem from the stack stack.  *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> stack=SIL <font color="#4169E1">THEN</font>
+		ERROR(fatal,"POP: pop <font color="#4169E1">to</font> empty stack");
+		elem:=SIL;
+		RETURN;
+	<font color="#4169E1">ELSE</font>
+		ADV(stack,elem,stack);
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pop;
+
+<strong><font color="#4169E1">PROCEDURE pop2</font></strong>(<strong><font color="#228B22">VAR</font></strong> elem1,elem2,stack:LIST);
+<font color="#B22222">(* pop two elements. pop two elements elem1 and elem2 from the stack stack. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> (stack=SIL) <font color="#4169E1">OR</font> (RED(stack)=SIL) <font color="#4169E1">THEN</font>
+		ERROR(fatal,"POP2: pop <font color="#4169E1">to</font> empty stack");
+		elem1:=SIL;
+		elem2:=SIL;
+		RETURN;
+	<font color="#4169E1">ELSE</font>
+		ADV2(stack,elem1,elem2,stack);
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> pop2;
+
+<strong><font color="#4169E1">PROCEDURE gensubformula</font></strong>(prio:LIST;<strong><font color="#228B22">VAR</font></strong> opstack,argstack:LIST);
+<font color="#B22222">(* generate subformula. Generate a subformula in respect to the stacks 
+opstack and argstack. The provedure terminates, if either opstack is empty
+or the priority of the top of the opstack is lower (i.e prio has a numeric
+lower value than the priority of the top of the stack opstack.) than prio. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> lastop, lastsym, lastnoargs, lastprio, result: LIST;
+	<strong><font color="#228B22">VAR</font></strong> arg, arg1, arg2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">WHILE</font> (opstack&lt;&gt;SIL) <font color="#4169E1">AND</font> (THIRD(FIRST(opstack))&lt;=prio) 
+		<font color="#4169E1">AND</font> (FIRST(FIRST(opstack))&lt;&gt;70) <font color="#4169E1">DO</font>
+		pop(lastop,opstack);
+		lastsym:=FIRST(lastop);
+		lastnoargs:=SECOND(lastop);
+		lastprio:=THIRD(lastop);
+		<font color="#4169E1">IF</font> lastnoargs=1 <font color="#4169E1">THEN</font> 
+			pop(arg,argstack);
+			push(FORMKUNOP(lastsym,arg),argstack);
+		ELSIF lastnoargs=2 <font color="#4169E1">THEN</font>
+			pop2(arg2,arg1,argstack);
+			push(FORMKBINOP(lastsym,arg1,arg2),argstack);
+		ELSIF lastnoargs=-1 <font color="#4169E1">THEN</font>
+			aanop(lastsym,opstack,argstack);
+		ELSIF lastnoargs=-2 <font color="#4169E1">THEN</font>
+			pop2(arg2,arg1,argstack);
+			push(FORMKQUANT(lastsym,arg1,arg2),argstack);
+		<font color="#4169E1">ELSE</font>
+			DIBUFF();
+			ERROR(severe,"INTERNAL ERROR (gensubf): wrong noargs");
+		<strong><font color="#4169E1">END</font></strong>; 
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> gensubformula;
+
+<strong><font color="#4169E1">PROCEDURE genformula</font></strong>(<strong><font color="#228B22">VAR</font></strong> opstack,argstack:LIST):LIST;
+<font color="#B22222">(* generate formula. The stacks opstack and argstack are taked down. The 
+resulting formula is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> opstack=SIL <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> argstack=SIL <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+		ADV(argstack,result,argstack);
+	<font color="#4169E1">ELSE</font>
+		gensubformula(99,opstack,argstack);
+		ADV(argstack,result,argstack);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> genformula;
+
+<strong><font color="#4169E1">PROCEDURE aanop</font></strong>(lastsym:LIST;<strong><font color="#228B22">VAR</font></strong> opstack,argstack:LIST);
+<font color="#B22222">(* arbitrary argument number operation. An operator vel or et is taken from 
+the opstack. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> arg,arg1,arg2, arglist, op: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>	
+	arglist:=SIL;
+	pop2(arg2,arg1,argstack);
+	arglist:=LIST2(arg1,arg2);
+	<font color="#4169E1">WHILE</font> (opstack&lt;&gt;SIL) <font color="#4169E1">AND</font> (FIRST(FIRST(opstack))=lastsym) <font color="#4169E1">DO</font>
+		ADV(opstack,op,opstack);
+		ADV(argstack,arg,argstack);
+		arglist:=COMP(arg,arglist);
+	<strong><font color="#4169E1">END</font></strong>;
+	push(FORMKFOR(lastsym,arglist),argstack);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> aanop;
+
+<strong><font color="#4169E1">PROCEDURE rdvlist</font></strong>():LIST;
+<font color="#B22222">(* formula read list of variables. One variable or a list of variables are 
+read from the input stream. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">var</font></strong>, vlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	vlist:=SIL;
+	c:=CREADB();
+	<font color="#4169E1">WHILE</font> (c&lt;&gt;79) <font color="#4169E1">AND</font> (c&lt;&gt;70) <font color="#B22222">(* MASORD(":") MASORS("("). *)</font> <font color="#4169E1">DO</font>
+		BKSP();
+		<strong><font color="#228B22">var</font></strong>:=FORRDVAR();
+		vlist:=COMP(<strong><font color="#228B22">var</font></strong>,vlist);
+		c:=CREADB();
+		<font color="#4169E1">IF</font> c=63 <font color="#B22222">(* c=MASORD(",") *)</font> <font color="#4169E1">THEN</font> c:=CREADB(); <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> c=70 <font color="#4169E1">THEN</font> BKSP(); <strong><font color="#4169E1">END</font></strong>;
+	RETURN FORMKLVAR(INV(vlist));
+<strong><font color="#4169E1">END</font></strong> rdvlist; 
+
+<strong><font color="#4169E1">PROCEDURE rdquanta</font></strong>(quant:LIST; <strong><font color="#228B22">VAR</font></strong> opstack, argstack:LIST;bbread:PROCF0);
+<font color="#B22222">(* formula read quantifier arguments. quant is a symbol for a quantifier,
+opstack and argstack are the internal stacks of the parser. 
+The symbol quant is pushed to the opstack, a list of variables is read 
+from the input stream and is pushed to the argstack. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c:GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> varlist,phi,vars,alist:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c=70 <font color="#4169E1">THEN</font>
+		BKSP();
+		alist:=FORRDQUANTA(bbread);
+		vars:=FIRST(alist);
+		phi:=SECOND(alist);
+		push(FORMKQUANT(quant,vars,phi),argstack);
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	BKSP();
+	varlist:=rdvlist();
+	pushop(quant,opstack,argstack);
+	push(varlist,argstack);
+<strong><font color="#4169E1">END</font></strong> rdquanta;
+
+<strong><font color="#4169E1">PROCEDURE rdmasvar</font></strong>():LIST; 
+<font color="#B22222">(* read mas variable. The next symbol s of the input stream is read and the 
+value of the mas interpreter variable with name s is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> s: LIST;
+	<strong><font color="#228B22">VAR</font></strong> V,<strong><font color="#228B22">var</font></strong>,val: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	V:=ENV;
+	s:=SREAD();
+	<font color="#4169E1">WHILE</font> (V&lt;&gt;SIL) <font color="#4169E1">DO</font>
+		ADV2(V,<strong><font color="#228B22">var</font></strong>,val,V);
+		<font color="#4169E1">IF</font> <strong><font color="#228B22">var</font></strong>=s <font color="#4169E1">THEN</font> RETURN val <strong><font color="#4169E1">END</font></strong>; 
+	<strong><font color="#4169E1">END</font></strong>;
+	DIBUFF();
+	ERROR(severe,"<font color="#4169E1">not</font> defined as a mas variable"); 
+	RETURN VERUM;
+<strong><font color="#4169E1">END</font></strong> rdmasvar;
+
+<strong><font color="#4169E1">PROCEDURE isvarname</font></strong>(name:LIST):BOOLEAN;
+<font color="#B22222">(* is variable name. name is a CLIST. returns true if the first character 
+of name is a letter and all following charaters are letters or digits. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> name=SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	ADV(name,c,name);
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> LETTER(c) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> name&lt;&gt;SIL <font color="#4169E1">DO</font> 
+		ADV(name,c,name);
+		<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(LETTER(c) <font color="#4169E1">OR</font> DIGIT(c)) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN TRUE;
+<strong><font color="#4169E1">END</font></strong> isvarname; 
+
+<font color="#B22222">(******************************************************************************
+*                                   M A I N                                   *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+	InitParser();
+<strong><font color="#4169E1">END</font></strong> MLOGIO.
+</pre>
+</body>
+
+</html>

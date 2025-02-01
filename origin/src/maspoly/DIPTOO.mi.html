@@ -1,0 +1,379 @@
+
+<html>
+<head>
+<title>./maspoly/DIPTOO.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-09T12:11:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPTOO.mi,v 1.7 1996/06/09 12:11:54 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPTOO.mi,v $
+ * Revision 1.7  1996/06/09 12:11:54  pesch
+ * Fixed typo.
+ *
+ * Revision 1.6  1994/03/30  13:05:17  dolzmann
+ * New procedures DIPVOPP and INVPERM.
+ *
+ * Revision 1.5  1993/03/23  13:08:22  kredel
+ * Cosmetic
+ *
+ * Revision 1.4  1993/03/23  13:01:37  kredel
+ * Added LFCHECK
+ *
+ * Revision 1.3  1992/10/15  16:28:39  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:55  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:09  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPTOO;
+
+<font color="#B22222">(* DIP Termorder Optimization Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declaration. *)</font>
+
+FROM MASELEM IMPORT MASMAX, GAMMAINT;
+
+FROM MASSTOR IMPORT LIST, ADV, FIRST, RED, SIL, SRED, SFIRST,
+                    COMP, BETA, INV, LENGTH, LIST1;
+
+FROM SACLIST IMPORT ADV2, COMP2, LIST2, LAST, EQUAL,
+                    SECOND, SLELT, CINV, RED2, OWRITE;
+
+FROM MASBIOS IMPORT CREAD, CREADB, BLINES, SWRITE,
+                    DIBUFF, BKSP, MASORD;
+
+FROM SACD IMPORT DRANN;
+
+FROM SACI IMPORT IPROD, ISUM;
+
+FROM SACRN IMPORT RNRED;
+
+FROM SACPOL IMPORT VLWRIT, VLREAD, PMON, PDEG;
+
+FROM SACIPOL IMPORT IPSUM;
+
+FROM SACCOMB IMPORT LPERM;
+
+FROM DIPC IMPORT EVTDEG, EVSUM, EVLCM, EVORD, DILPERM,
+                 DIPMCP, DIPTDG, DIPERM, DIPFP, 
+                 DIPADM, DIPDEG, DIPMAD, DIPNOV;
+
+FROM DIPI IMPORT DIIPWR;
+
+FROM SACDPOL IMPORT DPFP;
+
+FROM LINALGRN IMPORT RNMGELUD, RNMFIM;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPTOO.mi,v 1.7 1996/06/09 12:11:54 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDEM</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial degree matrix. A is a distributive
+polynomial. B is the degree matrix of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL, I, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*init. *)</font> B:=BETA; RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> B:=COMP(0,B); <strong><font color="#4169E1">END</font></strong>;
+      AP:=A;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*add exponent vectors. *)</font>
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AP, AL,EL,AP); B:=DMEVAD(B,EL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIPDEM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDEV</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial degree vector. A is a distributive
+polynomial. N is the degree vector of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, N, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> N:=BETA;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(N); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0 or rl=1.*)</font>
+      <font color="#4169E1">IF</font> DIPNOV(A) &lt;= 1 <font color="#4169E1">THEN</font> NL:=DIPDEG(A); N:=LIST1(NL); RETURN(N);
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find maximal degree vector.*)</font> DIPMAD(A, AL,N,AS);
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AS, AL,EL,AS); N:=EVLCM(N,EL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(N);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPDEV;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLDM</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list degree matrix. A is a list of
+distributive polynomials. B is the sum of all degree matrices
+of each element of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, BP, C, CL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*init. *)</font> B:=BETA;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP);
+             <font color="#4169E1">UNTIL</font> (AL &lt;&gt; 0) <font color="#4169E1">OR</font> (AP = SIL);
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      B:=DIPDEM(AL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*add degree matrices. *)</font>
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AL,AP);
+            <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> BP:=DIPDEM(AL); C:=BETA;
+               <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BP, BL,BP); ADV(B, CL,B);
+                     CL:=IPSUM(1,BL,CL); C:=COMP(CL,C); <strong><font color="#4169E1">END</font></strong>;
+               B:=INV(C); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIPLDM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTRM</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial terms. A is a distributive polynomial
+in r variables. T is a list of beta-integers each counting
+the terms in the respective variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, FL, L, RL, SL, T, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or rl=0.*)</font> RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> T:=BETA; RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font>
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> L:=LENGTH(A); L:=L DIV 2; T:=LIST1(L);
+         RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion.*)</font> DIPADM(A, EL,FL,AL,AS); L:=1; TL:=DIPTRM(AL);
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; 0 <font color="#4169E1">DO</font> DIPADM(AS, EL,FL,AL,AS); SL:=DIPTRM(AL);
+            L:=L+1; TL:=EVSUM(TL,SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font> T:=COMP(L,TL); RETURN(T);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> DIPTRM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTYP</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial typ. A is a distributive polynomial
+in r variables. t is a rational number, t is the typ of A,
+0 lt t le 1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, P, PL, RL, SL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or rl=0 or rl=1.*)</font> RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL &lt;= 1 <font color="#4169E1">THEN</font> TL:=RNRED(1,1); RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl gt 1.*)</font> SL:=DIPTRM(A); P:=0;
+      <font color="#4169E1">REPEAT</font> ADV(SL, PL,SL); P:=ISUM(P,PL);
+             <font color="#4169E1">UNTIL</font> SL = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*normalise.*)</font> B:=IPROD(PL,RL); TL:=RNRED(P,B); RETURN(TL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPTYP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPVOP</font></strong>(P,V: LIST; <strong><font color="#228B22">VAR</font></strong> PP,VP: LIST);
+<font color="#B22222">(*Distributive polynomial variable ordering optimisation.
+P and PP are lists of distributive polynomials.
+V and VP are variable lists. The optimal variable ordering
+for the polynomials in P is determined. The variables
+of the polynomials in P are permuted to produce PP.
+VP is the new variable list.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  M, ML, MP, PL, PS, PV, VB, VL, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute the degree matrix and the permutation vector. *)</font>
+      M:=DIPLDM(P); PV:=PVDEMA(M);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write the reduced polynomials and permutation vector. *)</font>
+      VS:=CINV(V); VP:=LPERM(V,PV); MP:=M;
+      SWRITE("THE REDUCED POLYNOMIALS"); BLINES(2);
+      <font color="#4169E1">WHILE</font> MP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(MP, ML,MP); ADV(VS, VL,VS);
+            VB:=LIST1(VL); ML:=DIPFP(1,ML); DIIPWR(ML,VB); BLINES(2);
+            <strong><font color="#4169E1">END</font></strong>;
+      SWRITE("THE PERMUTATION VECTOR "); OWRITE(PV); BLINES(2);
+      SWRITE("THE NEW VARIABLE LIST   "); VLWRIT(VP); BLINES(4);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*permute the polynomials. *)</font> PP:=BETA; PS:=P;
+      <font color="#4169E1">WHILE</font> PS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PS, PL,PS); PL:=DIPERM(PL,PV);
+            PP:=COMP(PL,PP); <strong><font color="#4169E1">END</font></strong>;
+      PP:=INV(PP);
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DIPVOP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPVOPP</font></strong>(P,V: LIST; <strong><font color="#228B22">VAR</font></strong> PP,VP,PV: LIST);
+<font color="#B22222">(*Distributive polynomial variable ordering optimization and permutation 
+vector. P and PP are lists of distributive polynomials.
+V and VP are variable lists. The optimal variable ordering
+for the polynomials in P is determined. The variables
+of the polynomials in P are permuted to produce PP.
+VP is the new variable list, PV is the permutation to compute VP from V. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(*compute the degree matrix and the permutation vector. *)</font>
+	PV:=PVDEMA(DIPLDM(P));
+	<font color="#B22222">(* permute the variable list *)</font>
+	VP:=LPERM(V,PV);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(*permute the polynomials. *)</font> 
+	PP:=DILPERM(P,PV);
+<font color="#B22222">(*6*)</font>	RETURN; 
+<strong><font color="#4169E1">END</font></strong> DIPVOPP;
+
+
+<strong><font color="#4169E1">PROCEDURE DMEVAD</font></strong>(A,E: LIST): LIST;
+<font color="#B22222">(*Degree matrix exponent vector add. A is a degree matrix.
+E is an exponent vector. B=A + E. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, EP, FL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*init. *)</font> AP:=A; EP:=E; B:=BETA;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*add. *)</font>
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AL,AP); ADV(EP, EL,EP);
+            FL:=PMON(1,EL); BL:=IPSUM(1,AL,FL); B:=COMP(BL,B); <strong><font color="#4169E1">END</font></strong>;
+      B:=INV(B);
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DMEVAD;
+ 
+
+<strong><font color="#4169E1">PROCEDURE HDIFDI</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> B,FL: LIST);
+<font color="#B22222">(*Homogeneous distributive polynomial from distributive polynomial.
+A is a distributive polynomial in r variables. s=r+1.
+If A is allready homogeneous then f=0 else f=1.
+B(xs,x1, ...,xr)=(xs)**(tdeg(A)) * A(x1/xs, ...,xr/xs). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, DL, E, EL, G, GL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> B:=0; FL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*insert new variable.*)</font> AP:=A; DL:=DIPTDG(A); C:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,E,AP); EL:=EVTDEG(E); GL:=DL-EL;
+             <font color="#4169E1">IF</font> GL &gt; 0 <font color="#4169E1">THEN</font> FL:=1; <strong><font color="#4169E1">END</font></strong>;
+             G:=CINV(E); G:=COMP(GL,G); G:=INV(G); C:=DIPMCP(G,AL,C);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(C);
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> HDIFDI;
+ 
+
+<strong><font color="#4169E1">PROCEDURE INVPERM</font></strong>(perm: LIST):LIST;
+<font color="#B22222">(* inverse permutation. perm is a permutation. The inverse permutation
+is returned, i.e. LPERM(LPERM(x,p),INVPERM(p))=x. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> L, pos: LIST;
+	<strong><font color="#228B22">VAR</font></strong> i, n: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	n:=LENGTH(perm);	
+	L:=SIL;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* construct a list L=(1,...,n) *)</font>
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> n <font color="#4169E1">DO</font> L:=COMP(0,L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* construct the inverse permutation *)</font>
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> n <font color="#4169E1">DO</font>
+		ADV(perm,pos,perm);
+		SLELT(L,pos,i);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	RETURN L;
+<strong><font color="#4169E1">END</font></strong> INVPERM; 
+
+
+<strong><font color="#4169E1">PROCEDURE LBLXCO</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*List of beta integers lexicographical compare.
+U=(u1, ...,ur), V=(v1, ...vs) are lists of beta integers.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt,
+lt with respect to the lexicographical ordering of the
+beta integers. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, US, VL, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise and compare.*)</font> TL:=0; US:=U; VS:=V;
+      <font color="#4169E1">WHILE</font> (US &lt;&gt; SIL) <font color="#4169E1">AND</font> (VS &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV(US, UL,US); ADV(VS,
+            VL,VS);
+            <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*same length. *)</font>
+      <font color="#4169E1">IF</font> (US = SIL) <font color="#4169E1">AND</font> (VS = SIL) <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font> TL:=-1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> LBLXCO;
+
+
+<strong><font color="#4169E1">PROCEDURE LFCHECK</font></strong>(L, f: LIST): BOOLEAN;
+<font color="#B22222">(*Linear form check. L is a linear form for term comparison, 
+if L is empty EVORD is checked. f is a print flag, 
+if f &gt;0 then a message is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   LP, LS, LL, LU, p, ps, d, dp: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> <font color="#4169E1">IF</font> L = SIL <font color="#4169E1">THEN</font> L:=EVORD <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> L &lt;= SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> f &gt; 0 <font color="#4169E1">THEN</font> SWRITE("Nothing <font color="#4169E1">to</font> check."); BLINES(0) <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(TRUE) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*convert and degree.*)</font> d:=0; LS:=SIL; LP:=L; 
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, p,LP); ps:=DPFP(1,p); 
+            dp:=PDEG(p); <font color="#4169E1">IF</font> dp &gt; d <font color="#4169E1">THEN</font> d:=dp <strong><font color="#4169E1">END</font></strong>;  
+            LS:=COMP(ps,LS); <strong><font color="#4169E1">END</font></strong>;
+      LS:=INV(LS); 
+      LP:=LS; LS:=SIL; 
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, p,LP); ADV(p, dp, ps);  
+            <font color="#4169E1">WHILE</font> dp &lt; d <font color="#4169E1">DO</font> ps:=COMP(0,ps); dp:=dp+1 <strong><font color="#4169E1">END</font></strong>; 
+            LS:=COMP(ps,LS); <strong><font color="#4169E1">END</font></strong>;
+      LS:=INV(LS); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*LU decomposition.*)</font> LS:=RNMFIM(LS); RNMGELUD(LS, LL,LU);  
+      <font color="#4169E1">IF</font> LENGTH(LS) &gt; LENGTH(LU) <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> f &gt; 0 <font color="#4169E1">THEN</font> 
+            SWRITE("LFCHECK: LF linearly dependent."); BLINES(0) <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> f &gt; 0 <font color="#4169E1">THEN</font> 
+         SWRITE("LFCHECK: LF linearly independent."); BLINES(0) <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(TRUE); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> LFCHECK
+;
+
+
+<strong><font color="#4169E1">PROCEDURE PTERM</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial terms. A is a recursive polynomial in r
+variables. T is a list of beta-integers each counting the
+terms in the respective variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, L, RLS, SL, T, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or rl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (RL = 0) <font color="#4169E1">THEN</font> T:=BETA; RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font>
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> L:=LENGTH(A); L:=L DIV 2; T:=LIST1(L);
+         RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion.*)</font> RLS:=RL-1; ADV2(A, EL,AL,AS); L:=1;
+      TL:=PTERM(RLS,AL);
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AS, EL,AL,AS); SL:=PTERM(RLS,AL);
+            L:=L+1; TL:=EVSUM(TL,SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font> T:=COMP(L,TL); RETURN(T);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> PTERM;
+
+
+<strong><font color="#4169E1">PROCEDURE PTYP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial typ. A is a recursive polynomial in r variables.
+t is a rational number, t is the PTYP of A, 0 lt t lt 1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, P, PL, SL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or rl=0 or rl=1.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (RL &lt;= 1) <font color="#4169E1">THEN</font> TL:=LIST2(1,1); RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl gt 1.*)</font> SL:=PTERM(RL,A); P:=0;
+      <font color="#4169E1">REPEAT</font> ADV(SL, PL,SL); P:=ISUM(P,PL);
+             <font color="#4169E1">UNTIL</font> SL = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*normalise.*)</font> B:=IPROD(PL,RL); TL:=RNRED(P,B); RETURN(TL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> PTYP;
+
+
+<strong><font color="#4169E1">PROCEDURE PVDEMA</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Permutation vector for degree matrix. A is a degree matrix.
+P is a permutation vector. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B, BL, BP, BPP, F, G, I, J, K, P, RL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*init. *)</font> RL:=LENGTH(A); P:=BETA;
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>;
+      G:=LIST1(BETA); AP:=CINV(A);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search smallest element. *)</font>
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> K:=0; B:=BETA; F:=G; BP:=AP;
+          <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> ADV(BP, BL,BPP); TL:=LBLXCO(F,BL);
+              <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font> K:=J; B:=BP; F:=BL; <strong><font color="#4169E1">END</font></strong>;
+              BP:=BPP; <strong><font color="#4169E1">END</font></strong>;
+          P:=COMP(K,P); SFIRST(B,G); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(P); <strong><font color="#4169E1">END</font></strong> PVDEMA;
+
+
+<strong><font color="#4169E1">END</font></strong> DIPTOO.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,280 @@
+
+<html>
+<head>
+<title>./masnc/MASNC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:27+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASNC.mi,v 1.3 1992/10/15 16:29:46 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASNC.mi,v $
+ * Revision 1.3  1992/10/15  16:29:46  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:30  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:21  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASNC;
+
+<font color="#B22222">(* MAS Non-commutative Product Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, LENGTH, TIME,
+                    SRED, SFIRST, FIRST, RED, COMP, INV, ADV, LIST1;
+
+FROM MASERR IMPORT severe, harmless, ERROR;
+
+FROM SACLIST IMPORT AWRITE, ADV3, COMP3, LIST2, COMP2, ADV2, FIRST3, 
+                    OWRITE, LAST, CONC, CINV, RED2, SECOND, EQUAL;
+
+FROM MASBIOS IMPORT CREAD, CREADB, 
+                    DIBUFF, LETTER, DIGIT, 
+                    MASORD, BKSP, BLINES, SWRITE;
+
+FROM SACRN IMPORT RNINT, RNPROD, RNQ;
+
+FROM SACPOL IMPORT VLSRCH, VREAD;
+
+FROM DIPC IMPORT DIPMPV, DIPINV, DIPMAD, DIPNOV, DIPFMO, DIPEVL,
+                 DIPLPM, DIPLBC, DIPMCP, 
+                 VALIS, EVLCM, EVSIGN, EPREAD,
+                 EVMT, EVDIF, EVDOV, EVSUM, <font color="#B22222">(*EVZERO,*)</font> EVCADD, EVSU; 
+
+FROM MASRN IMPORT RNDRD, RNEXP;
+
+FROM DIPRN IMPORT DIRLWR, DIRPMC, DIRPON, DIRPDF, 
+                  DIRPNG, DIRPPR, DIRPRP, DIRPSM, DIRPWR; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASNC.mi,v 1.3 1992/10/15 16:29:46 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DINPPR</font></strong>(T,A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial non-commutative product.
+A and B are distributive polynomials. T is a table
+of distributive polynomials specifying the non-commutative
+relations. C=A*B, the non-commutative product of A and B.
+The table T may be modified. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, C1, C2, CL, CS, E1, E2, E3, E4, EL,
+     EL1, EL1S, EP, F1, F2, F3, FL, FL1, FL1S, FP, FS, GL, J1Y, N, O,
+     RL, XL, XL1, XL2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial cases. *)</font> C:=0; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> DIRPON(A) = 1 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> DIRPON(B) = 1 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      O:=RNINT(1); RL:=DIPNOV(A); N:=EVZERO(RL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on a and b. *)</font> AP:=A; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); BP:=B; 
+             <font color="#4169E1">REPEAT</font> DIPMAD(BP, BL,FL,BP); EP:=EVDOV(EL); EL1:=RL+1; 
+                    <font color="#4169E1">IF</font> EP &lt;&gt; SIL <font color="#4169E1">THEN</font> EL1:=FIRST(EP); <strong><font color="#4169E1">END</font></strong>; 
+                    FP:=EVDOV(FL); FL1:=0; 
+                    <font color="#4169E1">IF</font> FP &lt;&gt; SIL <font color="#4169E1">THEN</font> FS:=CINV(FP); FL1:=FIRST(FS); 
+                       <strong><font color="#4169E1">END</font></strong>; 
+                    J1Y:=RL+1; FL1S:=J1Y-FL1; J1Y:=RL+1; EL1S:=J1Y-EL1; 
+                    <font color="#4169E1">IF</font> EL1S &lt;= FL1S <font color="#4169E1">THEN</font> GL:=EVSUM(EL,FL); 
+                       CS:=DIPFMO(O,GL); 
+                       <font color="#4169E1">ELSE</font> <font color="#B22222">(* e1 * e2 = el, f1 * f2 = fl.*)</font> 
+                       EVSU(EL,EL1,0, E1,XL1); EVSU(FL,FL1,0,F1,XL2); 
+                       EVCADD(N,EL1,XL1, E2,XL); 
+                       EVCADD(N,FL1,XL2, F2,XL); 
+                       DINPTL(T,E2,F2,CS,E3,F3); 
+                       <font color="#4169E1">IF</font> F3 &lt;&gt; SIL <font color="#4169E1">THEN</font> C2:=DIPFMO(O,F3); 
+                          CS:=DINPPR(T,CS,C2); 
+                          <font color="#4169E1">IF</font> E3 = SIL <font color="#4169E1">THEN</font> E4:=E2; <font color="#4169E1">ELSE</font>
+                             E4:=EVDIF(E2,E3); <strong><font color="#4169E1">END</font></strong>; 
+                          DINPTU(T,E4,F2,CS); <strong><font color="#4169E1">END</font></strong>; 
+                       <font color="#4169E1">IF</font> E3 &lt;&gt; SIL <font color="#4169E1">THEN</font> C1:=DIPFMO(O,E3); 
+                          CS:=DINPPR(T,C1,CS); DINPTU(T,E2,F2,CS); <strong><font color="#4169E1">END</font></strong>; 
+                       C1:=DIPFMO(O,E1); C2:=DIPFMO(O,F1); 
+                       CS:=DINPPR(T,CS,C2); CS:=DINPPR(T,C1,CS); <strong><font color="#4169E1">END</font></strong>; 
+                    CL:=RNPROD(AL,BL); CS:=DIRPRP(CS,CL); 
+                    C:=DIRPSM(C,CS); 
+                    <font color="#4169E1">UNTIL</font> BP = SIL; 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> RETURN(C); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DINPPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINPTL</font></strong>(T,EL,FL: LIST;  <strong><font color="#228B22">VAR</font></strong> C,EP,FP: LIST); 
+<font color="#B22222">(*Distributive polynomial non-commutative product table lookup.
+e and f are exponent vectors. T is a table
+of distributive polynomials specifying the non-commutative
+relations. C is the non-commutative product of x**es and x**fs.
+ep and fp are exponent vectors with es+ep=e and fs+fp=f.
+If e=es or f=fs then ep=() or fp=(). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   GL, GL1, GL2, O, PP, Q1, Q2, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> PP:=T; EP:=SIL; FP:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search polynomials in pp. *)</font> 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font>
+            ADV3(PP, Q1,Q2,C,PP); GL1:=DIPEVL(Q1); GL2:=DIPEVL(Q2); 
+            SL:=EVMT(EL,GL1); TL:=EVMT(FL,GL2); 
+            <font color="#4169E1">IF</font> (SL*TL = 1) <font color="#4169E1">THEN</font> EP:=EVDIF(EL,GL1); 
+               FP:=EVDIF(FL,GL2); 
+               <font color="#4169E1">IF</font> EVSIGN(EP) = 0 <font color="#4169E1">THEN</font> EP:=BETA; <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> EVSIGN(FP) = 0 <font color="#4169E1">THEN</font> FP:=BETA; <strong><font color="#4169E1">END</font></strong>; 
+               RETURN; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*not found, use symmetric product. *)</font> GL:=EVSUM(EL,FL); 
+      O:=RNINT(1); C:=DIPFMO(O,GL); RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DINPTL; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINPTU</font></strong>(T,EL,FL,C: LIST); 
+<font color="#B22222">(*Distributive polynomial non-commutative product table update.
+e and f are exponent vectors. T is a table
+of distributive polynomials specifying the non-commutative
+relations. C is a distributive rational polynomial. The relation
+e * f = C is added to T. T is modified. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  C1, C2, GL1, GL2, O, PL, PP, Q1, Q2, SL, TL, TP, TS, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*generate polynomials corresponding to el and fl.*)</font> O:=RNINT(1); 
+      C1:=DIPFMO(O,EL); C2:=DIPFMO(O,FL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*optional message. *)</font> 
+      <font color="#4169E1">IF</font> VALIS &lt;&gt; SIL <font color="#4169E1">THEN</font> V:=VALIS; SWRITE("NEW RELATION = "); 
+         DIRPWR(C1,V,-1); SWRITE(" .*. "); DIRPWR(C2,V,-1); 
+         SWRITE(" = "); DIRPWR(C,V,-1); BLINES(0); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*search position in t. *)</font> TS:=SIL; PP:=T; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font>
+            ADV2(PP, Q1,Q2,PP); PP:=RED(PP); GL1:=DIPEVL(Q1); 
+            GL2:=DIPEVL(Q2); SL:=EVMT(GL1,EL); TL:=EVMT(GL2,FL); 
+            <font color="#4169E1">IF</font> (SL*TL = 1) <font color="#4169E1">THEN</font> TS:=PP; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*update ts. *)</font> 
+      <font color="#4169E1">IF</font> TS = SIL <font color="#4169E1">THEN</font> TS:=T; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> T = SIL <font color="#4169E1">THEN</font> ERROR(severe,"DINPTU empty relation table"); 
+         <font color="#B22222">(*this case cannot happen. *)</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      ADV(TS, PL,TP); TP:=COMP3(C2,C,PL,TP); SFIRST(TS,C1); SRED(TS,TP); 
+      RETURN; 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> DINPTU; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINPEX</font></strong>(T,A,NL: LIST): LIST; 
+<font color="#B22222">(*Distributive non-commutative polynomial exponentiation. A is a
+distributive rational polynomial, n is a non-negative beta-
+integer. T is a table of non-commutative relations.
+B=A**n. 0**0 is by definition a polynomial in zero variables. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BL, BLP, I, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=0.*)</font> 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> RL:=DIPNOV(A); BLP:=RNINT(1); 
+         BL:=DIPFMO(BLP,BETA); B:=DIPINV(BL,0,RL); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> B:=A; 
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> B:=DINPPR(T,B,A); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DINPEX; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINLRD</font></strong>(V,T: LIST): LIST; 
+<font color="#B22222">(*Distributive non-commutative polynomial list read. V is a
+variable list. T is a table of non-commutative relations.
+A list of distributive non-commutative polynomials
+in r variables, where r=length(V), r ge 0, is read from
+the input stream. Any blanks preceding A are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, C, IDUM: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*no list. *)</font> A:=BETA; C:=CREADB(); 
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> ERROR(harmless,"DINLRD, ( expected."); 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read polynomials. *)</font> 
+      <font color="#4169E1">REPEAT</font> C:=CREADB(); 
+             <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> C:=CREADB(); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> C &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font> BKSP; AL:=DINPRD(V,T); 
+                A:=COMP(AL,A); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> C = MASORD(")"); 
+      A:=INV(A); 
+<font color="#B22222">(*5*)</font> RETURN(A); <strong><font color="#4169E1">END</font></strong> DINLRD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINPRD</font></strong>(V,T: LIST): LIST; 
+<font color="#B22222">(*Distributive non-commutative polynomial read. V is a variable list.
+T is a table on non-commutative relations.
+A distributive rational polynomial A in r variables, where
+r=length(V), r ge 0, is read from the input stream. Any
+blanks preceding A are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, A1, A2, AL, AP, C, EL, ES, FL, IL, J1Y, JL, RL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font> A:=0; C:=CREADB(); 
+      <font color="#4169E1">IF</font> C = 0 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      BKSP; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialise.*)</font> C:=CREADB(); BKSP; 
+      <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> ERROR(harmless,"DINPRD, no , expected."); 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      FL:=0; 
+      <font color="#4169E1">IF</font> C = MASORD("(") <font color="#4169E1">THEN</font> C:=CREADB(); FL:=1; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> FL = 1 <font color="#4169E1">THEN</font> RETURN(A); 
+            <font color="#4169E1">ELSE</font> ERROR(harmless,"DINLRD, no ) expected.");  RETURN(A); 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RL:=LENGTH(V); ES:=BETA; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> ES:=COMP(0,ES); <strong><font color="#4169E1">END</font></strong>; 
+      J1Y:=RNINT(1); A1:=DIPFMO(J1Y,ES); AP:=A1; 
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*next input. determine next action. *)</font> C:=CREADB(); 
+      <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> FL = 0 <font color="#4169E1">THEN</font> BKSP; <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> BKSP; RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD("-") <font color="#4169E1">THEN</font> AP:=DIRPNG(AP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (C = MASORD("+")) <font color="#4169E1">OR</font> (C = MASORD("-")) <font color="#4169E1">THEN</font> C:=CREADB(); <strong><font color="#4169E1">END</font></strong>; 
+      BKSP; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*read coefficient.*)</font> 
+      <font color="#4169E1">IF</font> DIGIT(C) <font color="#4169E1">THEN</font> AL:=RNDRD(); EL:=EPREAD(); 
+         AL:=RNEXP(AL,EL); AP:=DIRPRP(AP,AL);  
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*read polynomial.*)</font> 
+   ELSIF C = MASORD("(") <font color="#4169E1">THEN</font> AL:=DINPRD(V,T); EL:=EPREAD(); 
+         AL:=DINPEX(T,AL,EL); AP:=DINPPR(T,AP,AL);  
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*read monic monomial.*)</font> 
+   ELSIF LETTER(C) <font color="#4169E1">THEN</font> VL:=VREAD(); JL:=VLSRCH(VL,V); 
+         <font color="#4169E1">IF</font> JL = 0 <font color="#4169E1">THEN</font> ERROR(harmless,"DINLRD, unknown variable."); 
+            RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+         EL:=EPREAD(); A2:=DIPMPV(A1,JL,EL); AP:=DINPPR(T,AP,A2);
+    <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*complete polynomial.*)</font> C:=CREADB(); BKSP; 
+      <font color="#4169E1">IF</font> (C = MASORD("+")) <font color="#4169E1">OR</font> (C = MASORD("-")) <font color="#4169E1">OR</font> (C = MASORD(")"))
+      <font color="#4169E1">OR</font> (C = MASORD(",")) <font color="#4169E1">THEN</font> A:=DIRPSM(A,AP); AP:=A1; <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*11*)</font> <strong><font color="#4169E1">END</font></strong> DINPRD; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVZERO</font></strong>(RL: LIST): LIST; 
+<font color="#B22222">(*Exponent vector zero. U is an exponent vector of length r,
+r ge 0 with all components zero. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, U: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> U:=BETA; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*fill vector. *)</font> 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> U:=COMP(0,U); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> RETURN(U); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVZERO; 
+
+
+<strong><font color="#4169E1">END</font></strong> MASNC.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

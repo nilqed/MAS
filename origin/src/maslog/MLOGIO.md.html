@@ -1,0 +1,116 @@
+
+<html>
+<head>
+<title>./maslog/MLOGIO.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MLOGIO.md,v 1.2 1994/11/28 21:04:14 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MLOGIO.md,v $
+ * Revision 1.2  1994/11/28  21:04:14  dolzmann
+ * New revision of the MASLOG system: New functions and bug fixes of old one.
+ *
+ * Revision 1.1  1993/12/17  17:12:14  dolzmann
+ * MASLOG is divided into three parts. (MLOGBASE, MLOGIO, MASLOG)
+ * Additional input procedures are added.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MLOGIO;
+<font color="#B22222">(* Maslog Input Output System Definition Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*				 M L O G I O				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: MODULA II (mocka or mtc are possible.)                            *
+* System:   Program for the computer algebra system MAS by Heinz Kredel.      *
+* Project:  MASLOG
+* Remark:   Libraries maskern, maslisp, maslog are used.                      *
+* Abstract: A package for the MAS computer algebra system by Heinz Kredel.    *
+*           This package implements input and outputroutins for formulas      *
+*	    in the format of the MASLOG library.                              *
+******************************************************************************)</font>
+
+FROM MASSTOR IMPORT LIST;
+FROM MASLISPU IMPORT PROCF0,PROCF1,PROCP1,PROCF3;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MLOGIO.md,v 1.2 1994/11/28 21:04:14 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1993 Universitaet Passau";
+
+
+<font color="#B22222">(******************************************************************************
+*			   P R E T T Y   P R I N T                            *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPPRT</font></strong>(phi: LIST; bbpprt:PROCP1);
+<font color="#B22222">(* formula pretty print. phi is a formula; bbpprt a bb-procedure to write a
+bb-formula to the output stream; phi is written formated to the output stream.
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPPVAR</font></strong>(<strong><font color="#228B22">var</font></strong>: LIST);
+<font color="#B22222">(* formula pretty print variable. var is a variable; var is formated written
+to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPPLVAR</font></strong>(lvar: LIST);
+<font color="#B22222">(* formula print lvar. L is an lvar object; lvar is formated written to the
+output stream. *)</font>
+
+
+<font color="#B22222">(******************************************************************************
+*			      T E X   W R I T E                               *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORTEXW</font></strong>(phi: LIST; bbtexw:PROCP1);
+<font color="#B22222">(* formula tex write. phi is a formula; bbtexw a bb-procedure to write a
+bb-formula in tex style to the outputstream; this procedure writes a formula
+in tex style to the outputstream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORTEXWVAR</font></strong>(<strong><font color="#228B22">var</font></strong>: LIST);
+<font color="#B22222">(* formula tex write variable. var is a variable; this procedure writes var in
+tex style to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORTEXWLVAR</font></strong>(lvar: LIST);
+<font color="#B22222">(* tex write list of varaiables. lvar is an lvar object; this procedure writes
+all variables in lvar in tex style to the outputstream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPREAD</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* formula prefix read. bbread is a bb-procedure to read a bb.formula from 
+the input stream. FORPREAD reads a formula in prefix notation from the 
+input stream and returns the read formula. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE KEYREAD</font></strong>(): LIST;
+<font color="#B22222">(*key read. A keyword or a symbol for a keyword is read. A keyword is a string
+of letters ore a string of special characters. The keyword or the symbol is 
+also terminated by the characters "()[]{}".
+This procedure is based on the procedure SREAD1 from the module MASSYM2 *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORRDVAR</font></strong>():LIST;
+<font color="#B22222">(* formula read variable. A description of a variable is read from the input 
+stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORRDLVAR</font></strong>():LIST;
+<font color="#B22222">(* formula read list of variables. One variable or a list of variables are 
+read from the input stream. A LVAR-object is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORIREAD</font></strong>(bbread:PROCF0):LIST;
+<font color="#B22222">(* formula infix read. bbread is a bb-procedure to read a bb.formula from the 
+input stream. This procedure reads a formula in infix notation 
+from the input stream and returns the read formula. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> MLOGIO.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

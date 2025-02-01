@@ -1,0 +1,398 @@
+
+<html>
+<head>
+<title>./masib/DIPDCIB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:50+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPDCIB.mi,v 1.1 1995/10/12 14:44:50 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPDCIB.mi,v $
+ * Revision 1.1  1995/10/12 14:44:50  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPDCIB;
+
+<font color="#B22222">(* DIP Decompositional Involutive Bases Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+FROM ADEXTRA	IMPORT 	ADLGinH;
+
+FROM DIPADOM 	IMPORT 	DILWR, DIPFAC, DIPSFF, DIWRIT;
+
+FROM DIPC 	IMPORT	DIPTDG, DIPEVL, VALIS, DIPLPM;
+
+FROM DIPCJ      IMPORT 	DIPPGL3, DILBBS, DIPSSM, DIPVL, DILBBS;
+
+FROM DIPIB      IMPORT 	ADPNFJ, DILISJ, DIPIRLJ2;
+
+FROM MASBIOS 	IMPORT 	SWRITE, BLINES;
+
+FROM MASERR	IMPORT 	harmless, severe, ERROR;
+
+FROM MASLISPU   IMPORT 	PROCF2;
+
+FROM MASSTOR 	IMPORT 	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, RED, SIL,
+			SFIRST, TIME;
+
+FROM SACI	IMPORT 	IWRITE;
+
+FROM SACLIST 	IMPORT 	EQUAL, SECOND, FIRST2, AWRITE, CINV,
+			LIST2, LIST4,  LIST5, LWRITE, OWRITE, CONC, CCONC;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPDCIB.mi,v 1.1 1995/10/12 14:44:50 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+
+<strong><font color="#228B22">VAR</font></strong> DCIBopt: RECORD
+               TraceLevel: INTEGER;
+               DecompProc: PROCF2;
+               VarOrdOpt : INTEGER;
+               depth    : INTEGER;
+             <strong><font color="#4169E1">END</font></strong>; 
+
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBopt</font></strong>(options: LIST);
+<font color="#B22222">(* Set decompositional involutive base options.
+   Input: a list of max. 4 options in the order: TraceLevel, DecomProc,
+   VarOrd, Depth of tree. *)</font>
+<strong><font color="#228B22">VAR</font></strong> opt: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(options, opt, options);
+                        SetDCIBTraceLevel(opt);
+     <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(options, opt, options);
+                          SetDCIBDecomp(opt);
+        <font color="#4169E1">IF</font> options&lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(options, opt, options);
+                              SetDCIBVarOrdOpt(opt);
+           <font color="#4169E1">IF</font> options&lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(options, opt, options);
+                                 SetDCIBdepth(opt);
+           <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDCIBopt;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBTraceLevel</font></strong>(TL: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base Trace Level.
+   TL is an integer with meaning:
+   0: default, no output, 
+  &gt;0: output of time,
+  &gt;1: output of messages about tree of computation,
+  &gt;2: detailed messages about tree of computation. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  DCIBopt.TraceLevel:=TL;
+<strong><font color="#4169E1">END</font></strong> SetDCIBTraceLevel;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBDecomp</font></strong>(DCP: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base decomposition.
+   Set the procedure which is used for decomposition.
+   1: complete factorisation
+   2: squarefree decomposition  *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">CASE</font> DCP <font color="#4169E1">OF</font> 
+       1: DCIBopt.DecompProc:=DIPFAC; |
+       2: DCIBopt.DecompProc:=DIPSFF;
+       <font color="#4169E1">ELSE</font> ERROR(harmless, "SetDecompProc: unknown Decomp option");
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDecomp;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBVarOrdOpt</font></strong>(VOO: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base variable order option.
+  VOO is an integer with meaning:
+  0: do not optimize,
+  1: optimize at factorization *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> (VOO&lt;0) <font color="#4169E1">OR</font> (VOO&gt;1) <font color="#4169E1">THEN</font> 
+             ERROR(harmless, "SetVarOrdOpt: unknown VarOrdOpt option"); <font color="#4169E1">ELSE</font>
+             DCIBopt.VarOrdOpt:=VOO; 
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDCIBVarOrdOpt;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBdepth</font></strong>(d: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base depth of tree.
+   Input: an integer with
+   &lt;0: unrestricted growth of tree
+    0: no computation possible,
+   &gt;0: depth of tree is restricted through d *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> d&lt;0 <font color="#4169E1">THEN</font> DCIBopt.depth:=-1;
+         <font color="#4169E1">ELSE</font> DCIBopt.depth:=d; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDCIBdepth;
+
+
+<strong><font color="#4169E1">PROCEDURE InvolutiveBases</font></strong>(G, V: LIST): LIST; 
+<font color="#B22222">(* Distributive polynomials decompositional involutive bases.
+   G is a list of polynomials in distributive representation
+   over an arbitrary domain,
+   returns a list (IB1,...,IBk) of involutive bases,
+   where Z(G) = Z(IB1) v ... v Z(IBk). *)</font>
+<strong><font color="#228B22">VAR</font></strong> IBList,T,t,Fcmp,counter,VL,le,FNodes: LIST;
+    nocb, depth, lc, eqn	: INTEGER;
+    dummy, Factorisation	: BOOLEAN;
+
+<strong><font color="#4169E1">PROCEDURE RECIB1</font></strong>(G,Fcmp: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> H,g,HTg,HTf,G1,F,IBList,IBL,IBLFirst,f,B: LIST;
+    c: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   H:=SIL; 
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font> 
+      ADV(G,g,G);  
+      <font color="#4169E1">IF</font> DIPTDG(g)=0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+            BLINES(0); SWRITE("** branch w.o. zeros "); nocb:=nocb+1; 
+         <strong><font color="#4169E1">END</font></strong>;
+         RETURN(SIL); 
+      <strong><font color="#4169E1">END</font></strong>;
+      G1:=CCONC(G,H); 
+      F:=newFactors(G1,g,Fcmp,V);
+      <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+            BLINES(0); SWRITE("** cancel branch"); nocb:=nocb+1;
+         <strong><font color="#4169E1">END</font></strong>;
+         RETURN(SIL); 
+      <strong><font color="#4169E1">END</font></strong>;
+      ADV(F,f,F);
+      <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+         HTg:=DIPEVL(g); HTf:=DIPEVL(f);
+         <font color="#4169E1">IF</font> EQUAL(HTg,HTf)=1 <font color="#4169E1">THEN</font> H:=COMP(f,H);	
+                             <font color="#4169E1">ELSE</font> DILISJ(COMP(f,G1),G,dummy); H:=SIL; <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">ELSE</font>
+         IBList:=SIL; IBLFirst:=SIL; IncCounter(counter,lc,0); 
+         LOOP <font color="#B22222">(* 1 *)</font>
+            DILISJ(COMP(f,G1),G,dummy);
+            <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> 
+               IncCounter(counter,lc,1);
+               BLINES(0); CounterWR(counter); 
+               SWRITE(" Factor: "); DIWRIT(f,V); 
+               BLINES(0); DILWR(G,V);
+            <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> depth&lt;&gt;lc <font color="#4169E1">THEN</font>  
+               IBList:=CONC(IBList,RECIB1(G,Fcmp));
+            <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> BLINES(0);
+                    SWRITE("** depth maximum reached; cancel branch"); 
+                 <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+            Fcmp:=COMP(f,Fcmp); 
+            ADV(F,f,F);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+         DecCounter(counter, lc); RETURN(IBList);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF F... *)</font> 
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE G... *)</font>
+   RETURN(RECIB2(H,Fcmp));
+<strong><font color="#4169E1">END</font></strong> RECIB1;
+
+
+<strong><font color="#4169E1">PROCEDURE RECIB2</font></strong>(G, Fcmp: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> S,h,F,f,H,B,K,g,GG: LIST;
+    red, reduced  : BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   K:=SIL; red:=FALSE;
+   <font color="#B22222">(* if no factorisation occured then remove last inserted node from FNodes *)</font>
+   <font color="#4169E1">IF</font> (FNodes&lt;&gt;SIL) <font color="#4169E1">AND</font> <font color="#4169E1">NOT</font>(Factorisation) <font color="#4169E1">THEN</font> FNodes:=RED(FNodes); <strong><font color="#4169E1">END</font></strong>;
+   LOOP 
+       <font color="#4169E1">IF</font> G=SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+       DIPSSM(G,FALSE,g,G); K:=COMP(g,K); B:=DIPPGL3(g,VL,le); H:=SIL;
+       <font color="#4169E1">WHILE</font> B&lt;&gt;SIL <font color="#4169E1">DO</font>
+             ADV(B,S,B); ADPNFJ(CCONC(G,K),S,h,reduced); 
+             <font color="#4169E1">IF</font> h&lt;&gt;0 <font color="#4169E1">THEN</font> red:=red <font color="#4169E1">OR</font> reduced;
+                          <font color="#4169E1">IF</font> DIPTDG(h)=0 <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+                          H:=COMP(h,H); 
+             <strong><font color="#4169E1">END</font></strong>; 
+       <strong><font color="#4169E1">END</font></strong>; 
+       <font color="#4169E1">IF</font> H&lt;&gt;SIL <font color="#4169E1">THEN</font> G:=CONC(H,G);
+                      DIPIRLJ2(G,K,reduced); red:=red <font color="#4169E1">OR</font> reduced;
+                      <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0);CounterWR(counter);
+                                          SWRITE(" Prolongation &amp; Reduction"); 
+                                          DILWR(CCONC(G,K),V); 
+                      <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">IF</font> depth&lt;&gt;lc <font color="#4169E1">THEN</font>  
+                               <font color="#4169E1">IF</font> red <font color="#4169E1">THEN</font> GG:=CCONC(G,K);
+                                     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(ADLGinH(FNodes, GG)) <font color="#4169E1">THEN</font>
+                                        FNodes:=COMP(GG,FNodes);
+                                        Factorisation:=FALSE;
+                                        RETURN(RECIB1(GG,Fcmp));
+                                        FNodes:=RED(FNodes);
+                                        EXIT;
+                                     <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> DCIBopt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+                                        BLINES(0);
+                                        SWRITE("** equal nodes found");
+                                        eqn:=eqn+1; <strong><font color="#4169E1">END</font></strong>;
+                                     <strong><font color="#4169E1">END</font></strong>;
+                               <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">ELSE</font> nocb:=nocb+1; BLINES(0); 
+                           SWRITE("** depth maximum reached; cancel branch"); 
+                           RETURN(SIL);
+                      <strong><font color="#4169E1">END</font></strong>;
+       <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF H... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP *)</font>
+   <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> BLINES(0);
+      SWRITE("= involutive base ="); BLINES(0);
+      <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> t:=TIME()-T; SWRITE("Time: "); IWRITE(t);
+         DILWR(K,V); BLINES(0);
+      <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>; 
+   RETURN(LIST1(K));
+<strong><font color="#4169E1">END</font></strong> RECIB2;
+
+
+<strong><font color="#4169E1">PROCEDURE newFactors</font></strong>(G,h,Fcmp,V: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> Fnew,F,hi,FL,g,h,G1: LIST;
+    reduced          : BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   Fnew:=SIL; 
+   F:=DCIBopt.DecompProc(h, DCIBopt.VarOrdOpt);	<font color="#B22222">(* factorization *)</font>
+   <font color="#4169E1">IF</font> LENGTH(F) &gt; 1 <font color="#4169E1">THEN</font> Factorisation:=TRUE; <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#B22222">(* set flag if factorisation took place *)</font>
+   F:=SortF(F); <font color="#B22222">(* sort factors in non-increasing order *)</font>
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(F,hi,F);
+      G1:=COMP(hi,G);
+      FL:=Fcmp;
+      LOOP <font color="#B22222">(* 1 *)</font>
+	 <font color="#4169E1">IF</font> FL=SIL <font color="#4169E1">THEN</font> Fnew:=COMP(hi,Fnew); Fcmp:=COMP(hi,Fcmp); EXIT; <strong><font color="#4169E1">END</font></strong>;
+	 ADV(FL,g,FL); ADPNFJ(G1,g,h,reduced);
+	 <font color="#4169E1">IF</font> h=0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+               BLINES(0); SWRITE("** cancel factor "); DIWRIT(g,V);
+               nocb:=nocb+1; 
+            <strong><font color="#4169E1">END</font></strong>;
+            EXIT; 
+         <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE F... *)</font>
+   RETURN(INV(Fnew));
+<strong><font color="#4169E1">END</font></strong> newFactors;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> G=SIL <font color="#4169E1">THEN</font> ERROR(severe,"IB1: undefined ideal"); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> ZeroPoly(G) <font color="#4169E1">THEN</font> ERROR(severe,"IB1: zero polynomial"); <strong><font color="#4169E1">END</font></strong>; 
+   T:=TIME(); VALIS:=V;
+   Fcmp:=SIL; counter:=SIL; lc:=0; nocb:=0; eqn:=0;  
+   depth:=DCIBopt.depth;
+   DILISJ(G,G,dummy); VL:=DIPVL(FIRST(G)); le:=LENGTH(VL)+1;
+   FNodes:=SIL; Factorisation:=FALSE; 
+   IBList:=RECIB1(G,Fcmp);
+   <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;0 <font color="#4169E1">THEN</font> t:=TIME()-T;
+      <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+         BLINES(0); SWRITE("Number <font color="#4169E1">of</font> canceled branches/factors: ");
+         IWRITE(nocb);
+         BLINES(0); IWRITE(eqn); SWRITE(" equal nodes found.");
+      <strong><font color="#4169E1">END</font></strong>;
+      BLINES(0); SWRITE("Time: "); IWRITE(t); SWRITE("ms ");
+      <font color="#4169E1">IF</font> DCIBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> IBLWR(IBList,V); <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>;
+   RETURN(IBList);
+<strong><font color="#4169E1">END</font></strong> InvolutiveBases;
+
+
+<strong><font color="#4169E1">PROCEDURE SortF</font></strong>(F: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> Fnew, ExpPol: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   Fnew:=SIL;
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font> 	<font color="#B22222">(* remove exponents *)</font>
+      ADV(F,ExpPol,F);
+      Fnew:=COMP(SECOND(ExpPol),Fnew);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE F... *)</font>
+   RETURN(INV(DIPLPM(Fnew)));	<font color="#B22222">(* sorting F into non-decreasing order *)</font>
+<strong><font color="#4169E1">END</font></strong> SortF;
+
+
+<strong><font color="#4169E1">PROCEDURE ZeroPoly</font></strong>(G: LIST): BOOLEAN;
+<font color="#B22222">(* test polynomial list G for zero-polynomial *)</font>
+<strong><font color="#228B22">VAR</font></strong> g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,g,G);
+      <font color="#4169E1">IF</font> g=0 <font color="#4169E1">THEN</font> RETURN(TRUE); <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while G... *)</font>
+   RETURN(FALSE);
+<strong><font color="#4169E1">END</font></strong> ZeroPoly;
+
+
+<strong><font color="#4169E1">PROCEDURE DecCounter</font></strong>(<strong><font color="#228B22">VAR</font></strong> counter: LIST; <strong><font color="#228B22">VAR</font></strong> length_of_counter: INTEGER);
+<font color="#B22222">(* Decrement counter.
+   counter is a list of integers, the first element of counter is removed *)</font>    <strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> length_of_counter&gt;0 <font color="#4169E1">THEN</font> counter:=RED(counter);
+                              length_of_counter:=length_of_counter-1;
+  <strong><font color="#4169E1">END</font></strong>;                 
+<strong><font color="#4169E1">END</font></strong> DecCounter;
+
+
+<strong><font color="#4169E1">PROCEDURE IncCounter</font></strong>(<strong><font color="#228B22">VAR</font></strong> counter: LIST; <strong><font color="#228B22">VAR</font></strong> loc: INTEGER; add: INTEGER);
+<font color="#B22222">(* Increment Counter.
+   Increment the first entry of the counter list or append a new element
+   Input: counter: a list of integers, 
+          add = 0: append a new element and increment counterlength loc, or
+          add&gt;0: increment the first element by add *)</font>
+<strong><font color="#228B22">VAR</font></strong> c: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> add=0 <font color="#4169E1">THEN</font> counter:=COMP(0,counter); 
+                 loc:=loc+1; 
+            <font color="#4169E1">ELSE</font> ADV(counter,c,counter);
+                 c:=c+add; 
+                 counter:=COMP(c,counter);
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> IncCounter;
+
+
+<strong><font color="#4169E1">PROCEDURE CounterWR</font></strong>(counter: LIST);
+<font color="#B22222">(* Counter Write. 
+   write the given list counter as the number of a reached node *)</font>
+<strong><font color="#228B22">VAR</font></strong> C,c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> counter&lt;&gt;SIL <font color="#4169E1">THEN</font> C:=CINV(counter); <font color="#4169E1">ELSE</font> C:=SIL; <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">WHILE</font> C&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(C,c,C);
+                  IWRITE(c);
+                  <font color="#4169E1">IF</font> C&lt;&gt;SIL <font color="#4169E1">THEN</font> SWRITE("."); <font color="#4169E1">ELSE</font> SWRITE(" "); <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> CounterWR;
+
+
+<strong><font color="#4169E1">PROCEDURE IBLWR</font></strong>(PP,V: LIST);
+<font color="#B22222">(* Involutive bases list write.
+   PP is a list of involutive bases in distributive representation.
+   V is a variable list 
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> ib: LIST;
+    i,j : INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  i:=0;
+  <font color="#4169E1">WHILE</font> PP&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(PP,ib,PP);
+                   i:=i+1;j:=LENGTH(ib); BLINES(0); 
+                   IWRITE(i); SWRITE(". IB with "); IWRITE(j);
+                   <font color="#4169E1">IF</font> j&gt;1 <font color="#4169E1">THEN</font> SWRITE(" polynoms");
+                          <font color="#4169E1">ELSE</font> SWRITE(" polynom"); <strong><font color="#4169E1">END</font></strong>;
+                   DILWR(ib,V);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> IBLWR;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#B22222">(* TraceLevel = 0, DecompProc = Factorisation, VarOrdOpt = off, 
+      Depth = unrestricted *)</font>
+   SetDCIBopt(LIST4(0,1,0,-1));
+<strong><font color="#4169E1">END</font></strong> DIPDCIB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

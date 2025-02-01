@@ -1,0 +1,860 @@
+
+<html>
+<head>
+<title>./maskern/MASSTOR.mip</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T18:26:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASSTOR.mip,v 1.6 1996/06/08 18:26:52 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASSTOR.mip,v $
+ * Revision 1.6  1996/06/08 18:26:52  pesch
+ * Removed unused code, minor corrections.
+ *
+ * Revision 1.5  1995/11/04 20:40:03  pesch
+ * Renamed massignal.m? to massig.m? because of conflict with MASSIGNAL.m?
+ * on certain OS.
+ *
+ * Revision 1.4  1995/10/13 16:02:13  pesch
+ * Fixed error: sigsetmask() at wrong places caused SIGUSR1 to be blocked
+ *              permanently.
+ *
+ * Revision 1.3  1995/09/12  17:51:53  pesch
+ * Changed mpsignal to massignal.
+ *
+ * Revision 1.2  1995/03/24  15:36:13  pesch
+ * Changed inital message.
+ *
+ * Revision 1.1  1995/03/06  16:23:42  pesch
+ * Replaced MASSTOR.mi by MASSTOR.mip.
+ * Modified to work with new reuse library, too.
+ * Modified procedure CLOCK.
+ * Modified procedure GC to be more portable. Constant stackoff
+ * is no longer needed (but local variables of GC are still not considered
+ * during garbage collection). GC will now probably work independent of
+ * direction of stack growth.
+ *
+ * Revision 1.9  1994/04/14  16:47:56  dolzmann
+ * Syntactical errors (founded by Mocka) corrected.
+ *
+ * Revision 1.8  1994/04/12  13:23:14  pesch
+ * Added comment to earlier revision (CLOCK has been modified).
+ *
+ * Revision 1.7  1994/03/30  11:34:59  pesch
+ * Renamed SIGMASK to SigMask. SIGMASK was already defined in AIX signal.h.
+ *
+ * Revision 1.6  1994/03/11  16:04:23  pesch
+ * Added support for SIGUSR1 as a method to get information about
+ * the status of a running program.
+ * Modified CLOCK to return only user-time (not user+system) in ms (not cs).
+ *
+ * Revision 1.5  1993/07/21  12:32:11  kredel
+ * Fix for HP port
+ *
+ * Revision 1.4  1992/10/16  13:47:55  kredel
+ * Errors found by Mocka
+ *
+ * Revision 1.3  1992/10/15  16:24:59  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:31:57  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:40  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASSTOR;
+
+<font color="#B22222">(* MAS Storage Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM clock	IMPORT	ClocK;
+
+FROM MASCONF	IMPORT	KBCell; 
+
+FROM MASELEM	IMPORT	GAMMAINT, MASEXP, MASMAX, MASODD;
+
+FROM MASERR	IMPORT	DebugProcessor, ERROR, ErrorHandler, confusion,
+			fatal, harmless, severe, spotless;
+
+FROM MASmtc	IMPORT	getstck, gettoc;
+
+FROM massig	IMPORT	SIGUSR1, SigMask, sigblock, signal, sigsetmask;
+
+FROM StdIO	IMPORT	ReadC, ReadI, WriteC, WriteFlush, WriteI, WriteN,
+			WriteNl, WriteS;
+
+FROM Strings	IMPORT	ArrayToString, Concatenate, IntToString,
+			StringToArray, tString;
+
+FROM SYSTEM	IMPORT	ADDRESS, ADR, BYTE, TSIZE;
+
+FROM Times	IMPORT	CpuTime;
+
+#ifdef OLD_MTC
+FROM SysCalls	IMPORT	Alloc;
+#<font color="#4169E1">else</font>
+FROM System	IMPORT	SysAlloc;
+#endif
+
+
+<strong><font color="#228B22">CONST</font></strong> maxerr   = 20;        <font color="#B22222">(* maximal number of errors allowed *)</font>
+
+      blocklen = 12*1024;   <font color="#B22222">(* not to small, but less than 64 K *)</font>
+  
+      proclen  = 12*1024;   <font color="#B22222">(* stack size, do not know how much is necessary *)</font>
+
+      sysres   = 160*1024;  <font color="#B22222">(* reserved for system &gt; 16K + editor *)</font>
+
+      tomax    = 10;        <font color="#B22222">(* allow 10 GC retries before halt *)</font>
+ 
+      rhomin   = 500;       <font color="#B22222">(* some free space must be provided *)</font> 
+
+      stackOK  = 1024;      <font color="#B22222">(* stack must have some rest to continue *)</font> 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASSTOR.mip,v 1.6 1996/06/08 18:26:52 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1995 Universitaet Passau";
+
+
+<strong><font color="#228B22">TYPE</font></strong> ADDRLW = POINTER <font color="#4169E1">TO</font> LONGCARD;
+
+     P1 = PROCEDURE(GAMMAINT);
+     PS = PROCEDURE(ARRAY <font color="#4169E1">OF</font> CHAR);
+
+
+<strong><font color="#228B22">VAR</font></strong>
+    <font color="#B22222">(*The cell fields FIRST and RED are implemented as follows
+
+    FIRST(I) = LIST((SPACE-BETA1)+I)$^$)
+    RED(I)   = LIST((SPACE-BETA)+I)$^$)
+    *)</font>
+
+    Csize, Lsize: GAMMAINT; <font color="#B22222">(* sizes of cells and lists *)</font>
+
+    BETA2, NUP: GAMMAINT;
+
+    AVAIL, Globalvars: LIST;
+
+    SPACEB, SPACEB1: GAMMAINT;
+
+    toview, eh, marks: GAMMAINT;
+
+    SPACE, SPACEEND,
+
+    STACK, STACKEND, Tstack: ADDRESS;
+
+
+<font color="#B22222">(*$S-  No stack check *)</font>
+<strong><font color="#4169E1">PROCEDURE FIRST</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*First.  L is a non-null list.  a is the first element of L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s: ADDRLW;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*DEBUG*)</font>  
+#ifndef NO_FIRST_ADDRESS_CHECK
+      <font color="#4169E1">IF</font> (L &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) <font color="#4169E1">THEN</font> WL; WI(L); 
+         ERROR(severe,"FIRST address out <font color="#4169E1">of</font> range, value = ");
+         RETURN(0);
+         <strong><font color="#4169E1">END</font></strong>;
+#endif 
+      <font color="#B22222">(*GUBED*)</font>
+<font color="#B22222">(*2*)</font> s:=ADDRESS(SPACEB1+L); RETURN(LIST(s^));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> FIRST;
+
+
+<strong><font color="#4169E1">PROCEDURE RED</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Reductum.  L is a non-null list.  Returns the reductum of L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s: ADDRLW;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*DEBUG*)</font>   
+#ifndef NO_RED_ADDRESS_CHECK
+      <font color="#4169E1">IF</font> (L &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) <font color="#4169E1">THEN</font> WL; WI(L);
+         ERROR(severe,"RED address out <font color="#4169E1">of</font> range, value = ");
+         RETURN(SIL);
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*GUBED*)</font>
+#endif
+<font color="#B22222">(*2*)</font> s:=ADDRESS(SPACEB+L); RETURN(LIST(s^));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RED;
+
+
+<strong><font color="#4169E1">PROCEDURE SFIRST</font></strong>(L,a: LIST);
+<font color="#B22222">(*Set first.  L is a non-null list.  a is an object.  The first
+element of L is changed to a. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s: ADDRLW;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*DEBUG*)</font>   
+#ifndef NO_SFIRST_ADDRESS_CHECK
+      <font color="#4169E1">IF</font> (L &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) <font color="#4169E1">THEN</font> WL; WI(L);
+         ERROR(severe,"SFIRST address out <font color="#4169E1">of</font> range, value = ");
+         RETURN;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*GUBED*)</font>   
+#endif
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*DEBUG     *)</font>
+#ifdef SFIRST_CONTENTS_ADDRESS_CHECK
+      <font color="#4169E1">IF</font> (a &lt; -BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= a) <font color="#4169E1">THEN</font> WL; WI(a);  
+	 ERROR(severe,"SFIRST contents out <font color="#4169E1">of</font> range, value = ");
+         RETURN;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*GUBED*)</font>
+#endif
+<font color="#B22222">(*3*)</font> s:=ADDRESS(SPACEB1+L); 
+      s^:=LONGCARD(a); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SFIRST;
+
+
+<strong><font color="#4169E1">PROCEDURE SRED</font></strong>(L,LP: LIST);
+<font color="#B22222">(*Set reductum.  L is a non-null list.  LP is a list.  The reductum
+of L is changed to LP. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s: ADDRLW;
+<strong><font color="#4169E1">BEGIN</font></strong>
+#ifdef SRED_ADDRESS_CHECK
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*DEBUG*)</font>   
+      <font color="#4169E1">IF</font> (L &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) <font color="#4169E1">THEN</font> WL; WI(L);
+         ERROR(severe,"SRED address out <font color="#4169E1">of</font> range, value = ");
+         RETURN;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*GUBED*)</font>   
+#endif
+<font color="#B22222">(*3*)</font> s:=ADDRESS(SPACEB+L);
+      s^:=LONGCARD(LP); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SRED;
+
+<font color="#B22222">(*$S+  Stack check on *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADV</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> a,LP: LIST);
+<font color="#B22222">(*Advance.  L is a non-null list.  a=FIRST(L) and LP=RED(L). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> a:=FIRST(L); LP:=RED(L); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ADV;
+
+
+<strong><font color="#4169E1">PROCEDURE ALLOCATESPACE</font></strong>(<strong><font color="#228B22">VAR</font></strong> S: ADDRESS; <strong><font color="#228B22">VAR</font></strong> AMNT: LONGINT); 
+<font color="#B22222">(*Allocate Space for list processing.
+S is the address, where the allocated space starts.
+AMNT is the desired number of bytes to be allocated, on return this
+parameter shows, how much space was actually allocated. 
+The intention of this procedure is to reflect the allocation 
+algorithms of the different Modula-2 run time packages. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   p2, d, amnt: LONGCARD;
+      a,i: CARDINAL;
+      SP: ADDRESS;
+      t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Initialize. *)</font> amnt:=0; 
+      <font color="#4169E1">IF</font> AMNT &gt; 0 <font color="#4169E1">THEN</font> amnt:=LONGCARD(AMNT) <strong><font color="#4169E1">END</font></strong>; 
+      p2:=blocklen;   
+      d:=(amnt DIV p2)+1; <font color="#B22222">(*ceiling*)</font> 
+      amnt:=d*p2; <font color="#B22222">(*d = number of blocks*)</font> 
+<font color="#B22222">(*
+(*2*)</font> <font color="#B22222">(*Find maximal available Heap. *)</font>
+      <font color="#4169E1">WHILE</font> (amnt &gt;= p2) <font color="#4169E1">AND</font> (<font color="#4169E1">NOT</font> CreateHeap(amnt,TRUE)) <font color="#4169E1">DO</font>
+            amnt:=amnt-p2; <font color="#B22222">(*may be slow ?*)</font>
+            <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#B22222">(*leave some space for system!!!!!*)</font>
+      amnt:=amnt-sysres;
+      t:=CreateHeap(amnt,TRUE);
+*)
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Allocate maximal chunk. *)</font>
+      <font color="#B22222">(* WS("Alloc, amnt "); WI(GAMMAINT(amnt)); WL; *)</font>
+#ifdef OLD_MTC
+      S:=Alloc(amnt); <font color="#B22222">(*base address and length*)</font>
+#<font color="#4169E1">else</font>
+      S:=SysAlloc(amnt); <font color="#B22222">(*base address and length*)</font>
+#endif
+      <font color="#B22222">(* WS("Alloc, S    "); WI(GAMMAINT(S)); WL; *)</font>
+      AMNT:=LONGINT(amnt);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ALLOCATESPACE;
+
+
+<strong><font color="#4169E1">PROCEDURE CELLS</font></strong>(): GAMMAINT;
+<font color="#B22222">(*Cells. Returns the used cells since storage initialization. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a,c: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Add currently used cells to previously used cells. *)</font>
+      a:=NU-LENGTH(AVAIL);  
+      c:=GCCC+a; RETURN(c);
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> CELLS;
+
+
+<strong><font color="#4169E1">PROCEDURE CLOCK</font></strong>(): GAMMAINT;
+<font color="#B22222">(*Clock. Returns the current CPU clock reading in milliseconds. 
+Intervalls are system dependent. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(GAMMAINT(ClocK()));
+<strong><font color="#4169E1">END</font></strong> CLOCK;
+
+
+<strong><font color="#4169E1">PROCEDURE COMP</font></strong>(a,L: LIST): LIST;
+<font color="#B22222">(*Composition.  a is an object.  L is a list.  Returns the 
+composition of a and L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   M: LIST;
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1 *)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Is AVAIL empty? *)</font> <font color="#4169E1">IF</font> AVAIL = SIL <font color="#4169E1">THEN</font> GC() <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Get new cell. *)</font> M:=AVAIL; AVAIL:=RED(M);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Store a and L. *)</font> SFIRST(M,a); SRED(M,L);
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN(M);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> COMP;
+
+
+<strong><font color="#4169E1">PROCEDURE DEQUE</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Dequeue.  L is a non empty queue representing list.  Returns a, the 
+first object from the queue. L is updated. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, M, MP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Get a. *)</font> M:=RED(L); ADV(M,a,MP);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Update L. *)</font> <font color="#4169E1">IF</font> MP = SIL <font color="#4169E1">THEN</font> SFIRST(L,L) <strong><font color="#4169E1">END</font></strong>;
+      SRED(L,MP); 
+      RETURN(a);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> DEQUE;
+
+
+<strong><font color="#4169E1">PROCEDURE ENQUE</font></strong>(a,L: LIST);
+<font color="#B22222">(*Enqueue.  a is an object.  L is a queue representing list. Appends a
+to the quque L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   M, MP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Compose tail. *)</font> M:=COMP(a,SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Update queue. *)</font> MP:=FIRST(L); 
+      SRED(MP,M); SFIRST(L,M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ENQUE;
+
+
+<strong><font color="#4169E1">PROCEDURE NEWQUE</font></strong>(): LIST;
+<font color="#B22222">(*New Queue.  Returns a new empty queue. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Compose anchor. *)</font> M:=COMP(0,SIL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Set pointer to last. *)</font> SFIRST(M,M);
+      RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> NEWQUE;
+
+
+<strong><font color="#4169E1">PROCEDURE EMPTYQUE</font></strong>(M: LIST): BOOLEAN;
+<font color="#B22222">(*Empty Queue.  Tests if a queue is empty. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Test reductum of anchor. *)</font> t:=( RED(M) = SIL ); 
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EMPTYQUE;
+
+
+<strong><font color="#4169E1">PROCEDURE GETLONGINT</font></strong>(A: LONGINT): LONGINT;
+<font color="#B22222">(*GET A LONG INTEGER FROM SPECIFIED ADDRESS. REGARDELESS
+IF ADDRESS IS ON A WORD BOUNDARY. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>    AL: LONGINT;
+       XP, YP: POINTER <font color="#4169E1">TO</font> BYTE;
+       EINZ: ADDRESS;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Initialize*)</font>  
+      XP:=ADR(AL); YP:=ADDRESS(A); EINZ:=ADDRESS(1); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Copy bytes*)</font>
+      <font color="#B22222">(*OVERLAY WITH VARIABLE ALLIGNED ON CORRECT BOUNDARY*)</font> 
+      XP^:=YP^; <font color="#B22222">(*1. BYTE*)</font> 
+      XP:=ADDRESS(XP)+EINZ; YP:=ADDRESS(YP)+EINZ;
+      XP^:=YP^; <font color="#B22222">(*2. BYTE*)</font>
+      XP:=ADDRESS(XP)+EINZ; YP:=ADDRESS(YP)+EINZ;
+      XP^:=YP^; <font color="#B22222">(*3. BYTE*)</font>
+      XP:=ADDRESS(XP)+EINZ; YP:=ADDRESS(YP)+EINZ;
+      XP^:=YP^; <font color="#B22222">(*4. BYTE*)</font>
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Finish.*)</font> RETURN(AL);
+<font color="#B22222">(*4*)</font>  <strong><font color="#4169E1">END</font></strong> GETLONGINT;
+
+
+<strong><font color="#4169E1">PROCEDURE GC</font></strong>();
+<font color="#B22222">(*Garbage collection.  All list cells accessible from stack are marked.
+Then a new available cell list is formed from the unmarked cells and
+the marks are removed.  If gcm=1 a report is written on ounit.  If the
+number of reclaimed cells is no more than nu/rho then a message is
+written on munit and a stop occurs. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   CSTACK, BS, ES: GAMMAINT;
+      a, I, J, K, L, LP, T, N, T1, I1, I2, I3: LIST;
+      m: INTEGER; 
+      <font color="#B22222">(* CSTACK must be first, m last variable in declaration,
+         to get correct stack position *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Initialize and information. *)</font> T1:=CLOCK();
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1 during gc *)</font>
+      <font color="#4169E1">IF</font> GCM = 1 <font color="#4169E1">THEN</font> 
+         ERROR(spotless,"Garbage collection ...");  
+	 <font color="#B22222">(*TEST   SysInfo;  Consistence;   TEST*)</font>
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*      CSTACK:=GAMMAINT(getstck())+stackoff;  *)</font>
+      BS:=SIL; ES:=SIL; AVAIL:=SIL; marks:=0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Mark cells accessible from Globalvars list. *)</font>
+      LP:=Globalvars;
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,I,LP);
+	    a:=GETLONGINT(I); MARK(a); <strong><font color="#4169E1">END</font></strong>;
+      LP:=Globalvars;
+      <font color="#4169E1">IF</font> LP &lt;&gt; SIL <font color="#4169E1">THEN</font> MARK(LP) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* Mark itself. *)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Mark cells accessible from global variables. *)</font>
+<font color="#B22222">(*      I1:=GAMMAINT(BasePageAddress^.BssBase);
+      I3:=I1+GAMMAINT(BasePageAddress^.BssLen);
+      MARKRANGE(I1,I3); 
+*)</font>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Mark cells accessible from current stack, last mark ! *)</font>
+      <font color="#4169E1">IF</font> ADR(CSTACK) &lt; STACKEND
+        <font color="#4169E1">THEN</font> <font color="#B22222">(* Stack grows to smaller adresses *)</font>
+            <font color="#4169E1">IF</font> ADR(CSTACK) &gt; ADR(m) <font color="#4169E1">THEN</font> CSTACK := GAMMAINT(ADR(CSTACK))+4;
+	                            <font color="#4169E1">ELSE</font> CSTACK := GAMMAINT(ADR(m))+4;
+     	    <strong><font color="#4169E1">END</font></strong>;
+      	    MARKRANGE(CSTACK,GAMMAINT(STACKEND));
+        <font color="#4169E1">ELSE</font> <font color="#B22222">(* Stack grows to greater adresses *)</font>
+            <font color="#4169E1">IF</font> ADR(CSTACK) &lt; ADR(m) <font color="#4169E1">THEN</font> CSTACK := GAMMAINT(ADR(CSTACK))-4;
+	                            <font color="#4169E1">ELSE</font> CSTACK := GAMMAINT(ADR(m))-4;
+            <strong><font color="#4169E1">END</font></strong>;
+      	    MARKRANGE(GAMMAINT(STACKEND),CSTACK);
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*Reclaim unmarked cells.*)</font> N:=0; 
+      I:=NUP-Csize; K:=Csize; 
+      <font color="#4169E1">WHILE</font> I &gt;= K <font color="#4169E1">DO</font>
+            J:=BETA+I; LP:=RED(J); 
+            <font color="#4169E1">IF</font> LP &gt; 0 <font color="#4169E1">THEN</font> SRED(J,AVAIL); AVAIL:=J; 
+			   <font color="#B22222">(*DEBUG*)</font> SFIRST(J,0); <font color="#B22222">(*GUBED*)</font>
+                           N:=N+1; 
+                      <font color="#4169E1">ELSE</font> SRED(J,-LP) <strong><font color="#4169E1">END</font></strong>;
+            I:=I-Csize;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*Increment counters.*)</font>  
+      T:=CLOCK()-T1; TAU:=TAU+T;
+      GCC:=GCC+1; GCCC:=GCCC+N;
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*Optional report.*)</font>
+      <font color="#B22222">(*TEST
+        WS("end of Reclaim."); WL; Consistence;
+        TEST*)</font> 
+      <font color="#4169E1">IF</font> GCM = 1 <font color="#4169E1">THEN</font> 
+         WS(" "); WI(N); WS(" cells, ");
+         WI(T); WS(" milliseconds.");   
+         <font color="#B22222">(*Escape;*)</font>
+         ERROR(spotless,"... GC completed.");
+         <strong><font color="#4169E1">END</font></strong>;
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <font color="#B22222">(*Stop ? *)</font>
+      <font color="#4169E1">IF</font> N &gt; (NU DIV RHO) <font color="#4169E1">THEN</font> 
+         toview:=0; RETURN <strong><font color="#4169E1">END</font></strong>;
+      toview:=toview+1;
+      <font color="#4169E1">IF</font> (toview &gt; tomax) <font color="#4169E1">OR</font> (N &lt; rhomin) 
+         <font color="#4169E1">THEN</font> ERROR(confusion,"Garbage Collection: No free cells reclaimed.");
+         <font color="#4169E1">ELSE</font> ERROR(fatal,"Garbage Collection: Too few cells reclaimed.");
+              <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*0*)</font> <strong><font color="#4169E1">END</font></strong> GC;
+
+
+<strong><font color="#4169E1">PROCEDURE InitSTOR</font></strong>(n: GAMMAINT);
+<font color="#B22222">(*Initialize storage system. n is the number of requested kilo bytes. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  i, j, k: GAMMAINT;
+     s, s1: tString;
+     sa: ARRAY[0..50] <font color="#4169E1">OF</font> CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Set parameters and message. *)</font>
+      RHO:=10; TAU:=0; GCC:=0; GCCC:=0; GCM:=1;
+      <font color="#B22222">(* WS("InitSTOR, n= "); WI(n); WL; *)</font>
+      <font color="#4169E1">IF</font> GCM = 1 <font color="#4169E1">THEN</font> 
+     	 IntToString(n,s);
+     	 ArrayToString("Storage initalization (",s1);
+     	 Concatenate(s1,s);
+     	 ArrayToString(" kB) ...",s);
+     	 Concatenate(s1,s);
+     	 StringToArray(s1,sa);
+         ERROR(spotless,sa);  
+         <strong><font color="#4169E1">END</font></strong>;
+      Lsize:=TSIZE(LIST); Csize:=2*Lsize;
+      BETA:=MASEXP(2,29); BETA1:=BETA-Lsize; SIL:=BETA;
+      TAU0:=CLOCK(); 
+      toview:=0;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Allocate space for cells and processes. *)</font> 
+      n:=n*1024; NU:=n DIV Csize; NUP:=NU*Csize; 
+      ALLOCATESPACE(SPACE,NUP);
+      <font color="#4169E1">IF</font> SPACE = NIL <font color="#4169E1">THEN</font> AVAIL:=BETA;
+	 ERROR(confusion,"No Storage Available.");
+	 RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Initialize range pointers. *)</font>
+      SPACEEND:=SPACE+ADDRESS(NUP);
+      NU:=NUP DIV Csize;
+      <font color="#4169E1">IF</font> NU &lt;= 0 <font color="#4169E1">THEN</font> AVAIL:=BETA; 
+         ERROR(confusion,"No Storage Available.");  
+         RETURN <strong><font color="#4169E1">END</font></strong>;
+      BETA2:=BETA+NUP; 
+      SPACEB:=GAMMAINT(SPACE)-BETA;
+      SPACEB1:=GAMMAINT(SPACE)-BETA1;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*Create available cell list. *)</font>  
+      AVAIL:=BETA+Csize;
+      i:=Csize; k:=NUP-Csize; 
+      <font color="#4169E1">WHILE</font> i &lt;= k <font color="#4169E1">DO</font>
+            j:=BETA+i; 
+            SRED(j,j+Csize); 
+	    <font color="#B22222">(*DEBUG*)</font>  SFIRST(j,0);  <font color="#B22222">(*GUBED*)</font>
+            i:=i+Csize; <strong><font color="#4169E1">END</font></strong>;
+      SRED(j,SIL);
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*Initialize process work list to current stack. *)</font>  
+      Globalvars:=SIL; 
+      Tstack:=STACKEND-proclen;
+      Tstack:=Tstack+stackOK;
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*TEST  
+      WS("Module MASSTOR initialized."); WL;
+      SysInfo; 
+        TEST*)</font>
+      <font color="#4169E1">IF</font> GCM = 1 <font color="#4169E1">THEN</font>  
+         ERROR(spotless,"... completed.");
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> InitSTOR;
+
+
+<strong><font color="#4169E1">PROCEDURE Consistence</font></strong>;
+<font color="#B22222">(*Check consistency of cell space. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   n, I, J, K, L, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* initialize *)</font> n:=0;
+      WL; WS("Cell consistence check ..."); WL;
+      I:=NUP-Csize; K:=Csize; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* consistency check *)</font>
+      <font color="#4169E1">WHILE</font> I &gt;= K <font color="#4169E1">DO</font>
+            J:=BETA+I; LP:=RED(J); L:=FIRST(J); 
+            <font color="#4169E1">IF</font> (LP &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= LP) <font color="#4169E1">THEN</font> n:=n+1;
+               WS("invalid reductum at "); WI(J); 
+               WS(" contents "); WI(L); WS(" "); WI(LP); WL; 
+               <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> (L &lt; -BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) <font color="#4169E1">THEN</font> n:=n+1;
+               WS("invalid first at "); WI(J); 
+               WS(" contents "); WI(L); WS(" "); WI(LP); WL; 
+               <strong><font color="#4169E1">END</font></strong>;
+            I:=I-Csize;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* message *)</font> WI(n); WS(" invalid value(s)."); WL;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> Consistence;
+
+
+<strong><font color="#4169E1">PROCEDURE INV</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Inverse.  L is a list.  The inverse of L is returned.  The list L is
+modified. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   M, MP, MPP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M:=BETA; MP:=L;
+      <font color="#4169E1">WHILE</font> MP &lt;&gt; SIL <font color="#4169E1">DO</font> MPP:=RED(MP); SRED(MP,M); M:=MP; MP:=MPP;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> INV;
+
+
+<strong><font color="#4169E1">PROCEDURE LENGTH</font></strong>(L: LIST): GAMMAINT;
+<font color="#B22222">(*Length.  L is a list.  Returns length(L). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   LP: LIST;
+      n: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> n:=0; LP:=L;
+      <font color="#4169E1">WHILE</font> LP &gt; SIL <font color="#4169E1">DO</font> LP:=RED(LP); n:=n+1; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(n);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LENGTH;
+
+
+<strong><font color="#4169E1">PROCEDURE LIST1</font></strong>(a: LIST): LIST;
+<font color="#B22222">(*List, 1 element.  a is an object.  L is the list (a). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> L:=COMP(a,SIL); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LIST1;
+
+
+<strong><font color="#4169E1">PROCEDURE LISTVAR</font></strong>(<strong><font color="#228B22">VAR</font></strong> L: LIST);
+<font color="#B22222">(*List variable.  L is a list.  The address of L is made accessible
+to the garbage collector. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> s:=GAMMAINT(ADR(L)); Globalvars:=COMP(s,Globalvars); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> LISTVAR;
+
+
+<strong><font color="#4169E1">PROCEDURE MARK</font></strong>(L: LIST);
+<font color="#B22222">(*Mark.  L is a non-null list such that every cell of L which is
+accessible from an already marked cell of L is itself already marked.
+Mark marks every unmarked cell of L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, LP, LS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check if in range. *)</font> 
+      <font color="#4169E1">IF</font> (L &lt;= BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) 
+         <font color="#4169E1">OR</font> ((L MOD Csize) &lt;&gt; 0) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;   
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*probably a list pointer. *)</font> LP:=L;
+      <font color="#B22222">(*TEST
+      WS("MARK = "); WH(L); WS(". ");
+	TEST*)</font>
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> LS:=RED(LP); 
+            <font color="#4169E1">IF</font> (LS &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= LS) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#B22222">(*IF LS &lt; 0 THEN RETURN; END;*)</font>
+	    SRED(LP,-LS); AL:=FIRST(LP);
+	    <font color="#B22222">(*TEST   marks:=marks+1;   TEST*)</font>
+            MARK(AL); LP:=LS; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MARK;
+
+
+<strong><font color="#4169E1">PROCEDURE MARKRANGE</font></strong>(B, E: LIST);
+<font color="#B22222">(*Mark range.  Mark all lists in range from B to E. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   I, E1, a: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> I:=B; E1:=E-Lsize;
+      <font color="#B22222">(*TEST  
+      WS("marking in range "); WI(I);
+      WS(" to "); WI(E1); WL;
+        TEST*)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*mark any lists. *)</font> 
+      <font color="#4169E1">WHILE</font> I &lt;= E1 <font color="#4169E1">DO</font> a:=GETLONGINT(I);
+	    <font color="#B22222">(* IF (a &gt; BETA) AND (BETA2 &gt; a)
+	       AND ((a MOD Csize) = 0) THEN
+	       WS("I, a = "); WH(I); WS(",  "); WH(a);
+	       (*WS(", len "); WI(LENGTH(a));*)</font> WL; <strong><font color="#4169E1">END</font></strong>; *)
+	    MARK(a);
+            <font color="#B22222">(* Must step by 1 because of CHARs and BYTes. *)</font>
+            I:=I+1; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*TEST  
+      WS("marks = "); WI(marks); WS(" end of mark range."); WL;
+        TEST*)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MARKRANGE;
+
+
+<strong><font color="#4169E1">PROCEDURE DumpStack</font></strong>;
+<font color="#B22222">(*Dump Stack.  Dump objects on current stack. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   I, E, a: LIST;
+      c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> 
+      I:=GAMMAINT(getstck()); E:=I+1000;
+      WL; WS("Stack Dump: "); WL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*dump objects. *)</font> 
+      <font color="#4169E1">WHILE</font> I &lt;= E <font color="#4169E1">DO</font> a:=GETLONGINT(I); 
+            WI(I); WS(" = "); DumpObj(a); 
+            WL; WS("(e)nd, &lt;ENTER&gt; ? ");
+            c:=InChar();
+            <font color="#4169E1">IF</font> (c = <font color="#666666">'e'</font>) <font color="#4169E1">OR</font> (c = <font color="#666666">'E'</font>) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#B22222">(* Must step by 1 because of CHARs and BYTes. *)</font>
+            I:=I+1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DumpStack;
+
+
+<strong><font color="#4169E1">PROCEDURE DumpObj</font></strong>(L: LIST);
+<font color="#B22222">(*Dump Object.  The object L is dumped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, LP, LS, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check if atom or in range to be list. *)</font> 
+      <font color="#4169E1">IF</font> (L &lt;= BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= L) 
+         <font color="#4169E1">THEN</font> WI(L); RETURN <strong><font color="#4169E1">END</font></strong>;   
+      <font color="#4169E1">IF</font> ((L MOD Csize) &lt;&gt; 0) <font color="#4169E1">THEN</font> WI(L); RETURN <strong><font color="#4169E1">END</font></strong>;   
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*probably a list pointer. *)</font> LP:=L; i:=0;
+      WS("(");
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> LS:=RED(LP); 
+            <font color="#4169E1">IF</font> (LS &lt; BETA) <font color="#4169E1">OR</font> (BETA2 &lt;= LS) <font color="#4169E1">THEN</font> 
+               RETURN; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#B22222">(*IF LS &lt; 0 THEN RETURN; END;*)</font>
+            AL:=FIRST(LP);
+            i:=i+1; <font color="#4169E1">IF</font> i &gt;= 5 <font color="#4169E1">THEN</font> i:=0; WL <strong><font color="#4169E1">END</font></strong>; 
+            DumpObj(AL);
+            <font color="#4169E1">IF</font> LS &lt;&gt; SIL <font color="#4169E1">THEN</font> WS(", ") <strong><font color="#4169E1">END</font></strong>;
+            LP:=LS; <strong><font color="#4169E1">END</font></strong>;
+      WS(")"); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DumpObj;
+
+
+<strong><font color="#4169E1">PROCEDURE SUBLIST</font></strong>(A,B: LIST): BOOLEAN;
+<font color="#B22222">(*Sub-list, check if A is equal to some reductum of B.
+Returns TRUE, if the test is true, else FALSE. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   BP: LIST;
+      t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Initialize*)</font> BP:=B; t:=FALSE;
+      <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> A = BP <font color="#4169E1">THEN</font> t:=TRUE; RETURN(t); <strong><font color="#4169E1">END</font></strong>;
+            BP:=RED(BP);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Finish.*)</font> RETURN(t);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> SUBLIST;
+
+
+<strong><font color="#4169E1">PROCEDURE TIME</font></strong>(): GAMMAINT;
+<font color="#B22222">(*Time. Returns the CLOCK minus the garbage collection time TAU.  
+Intervalls are system dependent. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> T:=CLOCK(); T:=T-TAU;
+      RETURN(T); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> TIME;
+
+
+<font color="#B22222">(* Test procedures *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SysInfo</font></strong>;
+<font color="#B22222">(*System Information. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, bp, i, c: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*general info. *)</font>
+      WI(NU); WS(" CELLS IN SPACE."); WL;
+      WS("NUMBER <font color="#4169E1">OF</font> BYTES ALLOCATED = "); WH(NUP); WL;
+      WS("ADDRESS <font color="#4169E1">OF</font> ALLOCATED AREA = "); 
+      WH(GAMMAINT(SPACE)); WL;
+      WS("BETA         = "); WH(BETA); WL;
+      WS("BETA2        = "); WH(BETA2); WL;
+<font color="#B22222">(*
+(*2*)</font> <font color="#B22222">(*global data info. *)</font>
+      b:=GAMMAINT(BasePageAddress^.BssBase); 
+      bp:=GAMMAINT(ADDRESS(b)+ADDRESS(BasePageAddress^.BssLen));
+      WS("BSS START    = "); WI(b); WL;
+      WS("BSS <strong><font color="#4169E1">END</font></strong>      = "); WI(bp); WL; 
+*)
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*storage info. *)</font>
+      WS("SPACE <strong><font color="#4169E1">BEGIN</font></strong>  = "); WH(GAMMAINT(SPACE)); WL;
+      WS("SPACE <strong><font color="#4169E1">END</font></strong>    = "); WH(GAMMAINT(SPACEEND)); WL;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*stack info. *)</font>
+      STACK:=ADDRESS(getstck());
+      WS("STACK <strong><font color="#4169E1">END</font></strong>    = "); WH(GAMMAINT(STACKEND)); WL;
+      WS("STACK A1     = "); WH(GAMMAINT(STACK)); WL;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*register info. *)</font>
+      a:=GAMMAINT(gettoc());
+      WS("TOC   A2     = "); WH(a); WL;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> SysInfo;
+
+
+<strong><font color="#4169E1">PROCEDURE WI</font></strong>(a: GAMMAINT);
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteI(a,1); <font color="#B22222">(*Dependes on MASELEM. *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> WI;
+
+
+<strong><font color="#4169E1">PROCEDURE WH</font></strong>(a: GAMMAINT);
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteI(a,1); WriteS("  "); WriteN(a,1,16); <font color="#B22222">(*Dependes on MASELEM. *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> WH;
+
+
+<strong><font color="#4169E1">PROCEDURE WS</font></strong>(s: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteS(s); WriteFlush;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> WS;
+
+
+<strong><font color="#4169E1">PROCEDURE WL</font></strong>();
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteNl; WriteFlush;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> WL;
+
+
+<strong><font color="#4169E1">PROCEDURE InChar</font></strong>(): CHAR;
+<strong><font color="#228B22">VAR</font></strong>   c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c:=ReadC();
+      <font color="#4169E1">IF</font> ORD(c) &lt;= 10 <font color="#4169E1">THEN</font> c:=ReadC() <strong><font color="#4169E1">END</font></strong>;
+      RETURN(c);
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> InChar;
+
+
+<strong><font color="#4169E1">PROCEDURE Escape</font></strong>;
+<strong><font color="#228B22">VAR</font></strong>   c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c:=ReadC();
+      <font color="#4169E1">IF</font> ORD(c) &lt;= 10 <font color="#4169E1">THEN</font> c:=ReadC(); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> ORD(c) = 27 <font color="#4169E1">THEN</font> ERROR(severe,"ESC key pressed.") <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> Escape;
+
+
+<font color="#B22222">(*TEST  
+
+PROCEDURE Summary();
+(*MASSTOR Summary. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   L, ML, NL, TL: LIST;
+      c: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WL;
+<font color="#B22222">(*2*)</font> ML:=GCC; NL:=GCCC; TL:=TAU;  
+      WI(ML); WS(" garbage collections, ");
+      WI(NL); WS(" cells reclaimed, in ");
+      WI(TL); WS(" milliseconds.");
+      WL; 
+<font color="#B22222">(*3*)</font> NL:=CELLS(); TL:=TIME()-TAU0;
+      WI(NL); WS(" cells used, in ");
+      WI(TL); WS(" milliseconds.");
+      WL; 
+<font color="#B22222">(*4*)</font> TL:=CLOCK()-TAU0;
+      WI(NU); WS(" cells allocated. ");
+      WS("Total time ");
+      WI(TL); WS(" milliseconds.");
+      WL;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> Summary;
+
+
+<strong><font color="#4169E1">PROCEDURE TestSTOR</font></strong>();
+<font color="#B22222">(*Test Storage. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   L: LIST;
+      i, a, b: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> L:=SIL; b:=NU-1000;
+      <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> b <font color="#4169E1">DO</font> L:=COMP(i,L); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> LENGTH(L) &lt;&gt; b <font color="#4169E1">THEN</font>
+         WS("Error in MASSTOR."); WL;
+         <strong><font color="#4169E1">END</font></strong>;
+      i:=b; 
+      <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L,a,L);
+            <font color="#4169E1">IF</font> i &lt;&gt; a <font color="#4169E1">THEN</font>
+               WS("Error in MASSTOR."); WL;
+	       WI(i); WS(" "); WI(a); WS(" "); WI(L); WL;
+               <strong><font color="#4169E1">END</font></strong>;
+            i:=i-1; <strong><font color="#4169E1">END</font></strong>;
+      WS("Test 1 in MASSTOR ended."); WL;         
+<font color="#B22222">(*2*)</font> L:=SIL; 
+      <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> b <font color="#4169E1">DO</font> L:=COMP(i,L); <strong><font color="#4169E1">END</font></strong>; 
+      i:=b; 
+      <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L,a,L);
+            <font color="#4169E1">IF</font> i &lt;&gt; a <font color="#4169E1">THEN</font>
+               WS("Error in MASSTOR."); WL;
+	       WI(i); WS(" "); WI(a); WS(" "); WI(L); WL;
+               <strong><font color="#4169E1">END</font></strong>;
+            i:=i-1; <strong><font color="#4169E1">END</font></strong>;
+      WS("Test 2 in MASSTOR ended."); WL;         
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> TestSTOR;
+
+  TEST*)
+
+
+
+<font color="#B22222">(* MASSTOR module initialization.  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetSTACKEND</font></strong>();
+<font color="#B22222">(* Set STACKEND. The global variable STACKEND is set.*)</font>
+<strong><font color="#228B22">VAR</font></strong> s: ADDRESS;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     s:=ADR(s); STACKEND:=s
+<strong><font color="#4169E1">END</font></strong> SetSTACKEND;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font><font color="#B22222">(* STACKEND:=getstck();*)</font> <font color="#B22222">(*remember stack address*)</font>
+      SetSTACKEND;
+<font color="#B22222">(*2*)</font> InitSTOR(KBCell);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*TEST  
+      eh:=ErrorHandler(TestSTOR);
+      WS("nach error handler 1"); WL;
+      SysInfo;
+      eh:=ErrorHandler(TestSTOR);
+      WS("nach error handler 2"); WL;
+      SysInfo; Summary;
+        TEST*)</font>
+<strong><font color="#4169E1">END</font></strong> MASSTOR.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

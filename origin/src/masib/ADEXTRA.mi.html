@@ -1,0 +1,199 @@
+
+<html>
+<head>
+<title>./masib/ADEXTRA.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:44+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: ADEXTRA.mi,v 1.1 1995/10/12 14:44:44 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: ADEXTRA.mi,v $
+ * Revision 1.1  1995/10/12 14:44:44  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE ADEXTRA;
+<font color="#B22222">(* Arbitrary Domain Extra Tools*)</font>
+              
+FROM DIPC 	IMPORT 	DIPMAD, DIPMCP;
+
+FROM DIPCJ 	IMPORT 	DILBBS;
+
+FROM DIPGB 	IMPORT 	DIPNOR;
+
+FROM DIPIB	IMPORT	ADPNFJ;
+
+FROM MASADOM 	IMPORT 	ADGCD, ADNEG, ADQR, ADSIGN;
+
+FROM MASBIOS 	IMPORT 	SWRITE;
+
+FROM MASSTOR 	IMPORT 	ADV, INV, LENGTH, LIST, SIL;
+
+FROM SACLIST 	IMPORT 	EQUAL;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: ADEXTRA.mi,v 1.1 1995/10/12 14:44:44 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";      
+
+
+<strong><font color="#4169E1">PROCEDURE ADPCP</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary Domain polynomial content and primitive part.
+  A is an arbitrary domain polynomial, 
+  The result is the positive primitive part of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, DL, EL, SL, AP, CL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+      DIPMAD(A, DL,EL,AP); SL:=ADSIGN(DL); 
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> DL:=ADNEG(DL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (DL &lt;&gt; 1) <font color="#4169E1">DO</font> 
+            DIPMAD(AP, AL,EL,AP); DL:=ADGCD(DL,AL); 
+      <strong><font color="#4169E1">END</font></strong>;
+      CL:=DL; AP:=A;
+      <font color="#4169E1">IF</font> DL = 1 <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> CL:=-DL; AP:=ADPNEG(A); <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> CL:=ADNEG(DL); <strong><font color="#4169E1">END</font></strong>;
+                     AP:=ADPIQ(A,CL); 
+      <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AP); 
+<strong><font color="#4169E1">END</font></strong> ADPCP; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADPNEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary domain polynomial negative. 
+  Input: an arbritrary domain polynomial A,
+  Output: -A *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, BL, EL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      AS:=A; B:=SIL;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); BL:=ADNEG(AL); B:=DIPMCP(EL,BL,B);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+      B:=INV(B); RETURN(B);
+<strong><font color="#4169E1">END</font></strong> ADPNEG;   
+
+
+<strong><font color="#4169E1">PROCEDURE ADPIQ</font></strong>(A,b: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain polynomial integer quotient. 
+   Input: A is an arbitrary domain polynomial, b is a nonzero integer,
+          and b divides any coefficient of A. 
+   Output: C=A/b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, EL, QL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+      C:=SIL; AP:=A;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); ADQR(AL,b, QL,RL);
+             C:=DIPMCP(EL,QL,C);
+      <font color="#4169E1">UNTIL</font> AP = SIL;
+      C:=INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADPIQ;  
+
+
+<strong><font color="#4169E1">PROCEDURE ADLGinH</font></strong>(H, G: LIST): BOOLEAN;
+<font color="#B22222">(* Arbitrary domain polynomial list G in H.
+   Input: H is a list of lists of arbitrary domain polynomials,
+          G is a list of arbitrary domain polynomials.
+   Output: TRUE iff ex. h in H s.t. G = h, FALSE else. *)</font>
+<strong><font color="#228B22">VAR</font></strong> GG, h: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  <font color="#4169E1">IF</font> H = SIL <font color="#4169E1">THEN</font> RETURN(FALSE); <strong><font color="#4169E1">END</font></strong>;
+  GG:=G; DILBBS(GG);
+  <font color="#4169E1">WHILE</font> (H&lt;&gt;SIL) <font color="#4169E1">DO</font>
+        ADV(H,h,H); DILBBS(h);
+        <font color="#4169E1">IF</font> ADLGeqH(h,GG) <font color="#4169E1">THEN</font> RETURN(TRUE); <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(FALSE);
+<strong><font color="#4169E1">END</font></strong> ADLGinH;
+
+
+<strong><font color="#4169E1">PROCEDURE ADLGeqH</font></strong>(H, G: LIST): BOOLEAN;
+<font color="#B22222">(* Arbitrary domain polynomial list G equal H.
+   Input: H and G are lists of arbitrary domain polynomials,
+   Ouput: TRUE iff H=G, FALSE else. *)</font>
+<strong><font color="#228B22">VAR</font></strong> h,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  <font color="#4169E1">IF</font> LENGTH(H) &lt;&gt; LENGTH(G) <font color="#4169E1">THEN</font> RETURN(FALSE); <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">WHILE</font> H &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(H,h,H); ADV(G,g,G);
+        <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(ADPFeqG(h,g)) <font color="#4169E1">THEN</font> RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(TRUE);
+<strong><font color="#4169E1">END</font></strong> ADLGeqH;
+
+
+<strong><font color="#4169E1">PROCEDURE ADPFeqG</font></strong>(F, G: LIST): BOOLEAN;
+<font color="#B22222">(* Arbitrary domain polynomial F equal G.
+   Input: arbitrary domain polynomials F and G,
+   Ouput: TRUE iff g = h, FALSE else. *)</font>
+<strong><font color="#228B22">VAR</font></strong> f,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  <font color="#4169E1">IF</font> LENGTH(F)&lt;&gt;LENGTH(G) <font color="#4169E1">THEN</font> RETURN(FALSE); <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>
+        ADV(F,f,F); ADV(G,g,G);
+        <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(EQUAL(f,g)) <font color="#4169E1">THEN</font> RETURN(FALSE); <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(TRUE);
+<strong><font color="#4169E1">END</font></strong> ADPFeqG;
+
+
+<strong><font color="#4169E1">PROCEDURE ADIredG</font></strong>(I,G: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain polynomial set I reducible modulo G.
+   Input: arbitrary domain polynomial sets I &amp; G.
+   Output: 0 iff all i in I are reducible modulo G to zero, 
+           a reduced polynomial p else *)</font>
+<strong><font color="#228B22">VAR</font></strong> II,f,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  II:=I; p:=0;
+  <font color="#4169E1">WHILE</font> II&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(II,f,II);
+                  p:=DIPNOR(G,f);
+                  <font color="#4169E1">IF</font> p&lt;&gt;0 <font color="#4169E1">THEN</font> RETURN(p) <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(0);
+<strong><font color="#4169E1">END</font></strong> ADIredG;
+
+
+<strong><font color="#4169E1">PROCEDURE ADGJredI</font></strong>(G,I: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain polynomial G Janet-reducible modulo I.
+   Input: arbitrary domain polynomial sets G &amp; I.
+   Output: 0 iff all g in G are Janet-reducible modulo I to zero, 
+           a reduced polynomial p else *)</font>
+<strong><font color="#228B22">VAR</font></strong> GG,f,p: LIST;
+    red   : BOOLEAN;		
+<strong><font color="#4169E1">BEGIN</font></strong>
+  GG:=G; p:=0;
+  <font color="#4169E1">WHILE</font> GG&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(GG,f,GG);
+                   ADPNFJ(I,f,p,red);
+                   <font color="#4169E1">IF</font> p&lt;&gt;0 <font color="#4169E1">THEN</font> RETURN(p) <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(0);
+<strong><font color="#4169E1">END</font></strong> ADGJredI;               
+
+
+<strong><font color="#4169E1">PROCEDURE IBeqGB</font></strong>(G,I: LIST): LIST;
+<font color="#B22222">(* Inovlutive Base equal Groebner Base.
+   Input: Groebner Base G and involutive Base I,
+   Output: 0 iff Id(G) = Id(I), a reduced polynomial p else *)</font>
+<strong><font color="#228B22">VAR</font></strong> i,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  i:=ADIredG(I,G);
+  <font color="#4169E1">IF</font> i&lt;&gt;0 <font color="#4169E1">THEN</font> RETURN(i) <strong><font color="#4169E1">END</font></strong>;
+  g:=ADGJredI(G,I);
+  <font color="#4169E1">IF</font> g&lt;&gt;0 <font color="#4169E1">THEN</font> RETURN(g) <font color="#4169E1">ELSE</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> IBeqGB;
+
+<strong><font color="#4169E1">END</font></strong> ADEXTRA.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

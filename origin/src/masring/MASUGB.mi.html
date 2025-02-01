@@ -1,0 +1,1919 @@
+
+<html>
+<head>
+<title>./masring/MASUGB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:40+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASUGB.mi,v 1.3 1995/11/05 09:12:10 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASUGB.mi,v $
+ * Revision 1.3  1995/11/05 09:12:10  kredel
+ * Improved error handling and cosmetic.
+ *
+ * Revision 1.2  1994/03/11  15:47:31  pesch
+ * Corrections suggested by A. Dolzmann.
+ * Correct number of arguments in procedure calls, etc.
+ *
+ * Revision 1.1  1993/05/11  10:11:17  kredel
+ * Initial Revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASUGB;
+
+<font color="#B22222">(* Universal Groebner Bases Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Author: T. Belkahia, Uni Passau, 1992. *)</font>
+
+
+FROM MASSTOR IMPORT ADV, FIRST, LIST, LIST1, RED, SIL, LENGTH, 
+                    INV, COMP, SRED, SFIRST, BETA;
+
+FROM MASERR  IMPORT severe, ERROR;
+
+FROM MASBIOS IMPORT SWRITE, BLINES, CREADB, MASORD, LETTER, 
+                    SIUNIT, BKSP, LISTS;
+
+FROM SACLIST IMPORT ADV2, AWRITE, LWRITE, CCONC, CINV, COMP2, LIST5, 
+                    EQUAL, MEMBER, LIST4, THIRD, FOURTH, FIRST2, 
+                    SECOND, LAST, OREAD, OWRITE, LIST3, LIST2;
+
+FROM SACRN   IMPORT RNINT, RNQ, RNPROD, RNINV, RNDIF, RNSUM, 
+                    RNSIGN, RNCOMP, RNABS, RNNEG;
+
+FROM MASRN   IMPORT RNMAX;
+
+FROM SACI    IMPORT IQR, IPROD, ILCM, IMAX;
+
+FROM SACPOL  IMPORT VLREAD; 
+
+FROM SACSET  IMPORT USUN;
+
+FROM DIPC    IMPORT DIPEVL, DIPFMO, DIPMAD, EVDEL, EVDIF, EVLCM, EVMT, 
+                    EVIGLC, EVILCP, EVORD, EVSUM, DIPTDG, 
+                    DIPINV, DIPLBC, DIPMPV, DIPLPM, DILBSO, DIPMCP,
+                    VALIS, LEX, INVLEX, GRLEX, IGRLEX;
+
+FROM DIPRN   IMPORT DIRPDF, DIRPNG, DIRPPR, DIRPQ, DIRPRP, DIRPSM, 
+                    DIRPMC, DIRLWR, DIRLRD;
+
+FROM DIPRNGB IMPORT DIRPNF, DIRPGB, EVPLM, EVPLSO;
+
+FROM MASSYM2 IMPORT SREAD1;
+
+FROM MASELEM IMPORT GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASUGB.mi,v 1.3 1995/11/05 09:12:10 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1993 Universitaet Passau";
+
+
+<font color="#B22222">(*Note: a linear form is represented as a vector of rational numbers, 
+        instead as a vector of univariate recursive integral polynomials 
+        in the DIPC module. *)</font>
+ 
+
+<strong><font color="#4169E1">PROCEDURE UGBBIN</font></strong>(); 
+<font color="#B22222">(*UGB input, execute and output. 
+Diese hauptprozedur liest die eingabedatei ein (die
+polynome, die variablen und ihre anzahl durch pread, den
+parameter durch rdpar und die option durch execrd). Die
+funktion exeugb wird anschliessend aufgerufen.
+UGBBIN wird vom hauptprogramm main aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   I, L, OPT, PAR, V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PREAD(L,I,V); OPREAD(PAR,OPT); EXEUGB(L,I,V,PAR,OPT); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> UGBBIN; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXEUGB</font></strong>(L,I,V,PAR,OPT: LIST); 
+<font color="#B22222">(*UGB execute. 
+Diese prozedur ruft, abhaengig von der option opt  die 
+prozeduren lf, plf, ugb und pugb. Diese prozeduren 
+realisieren die verschiedenen optionen, die im abschnitt 
+benutzerschnittstelle besprochen wurden.
+Die prozedur wird von der hauptprozedur ugbbin aufgerufen. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> MEMBER(1,OPT) = 1 <font color="#4169E1">THEN</font> LF(L,I,V,PAR,OPT); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> MEMBER(2,OPT) = 1 <font color="#4169E1">THEN</font> PLF(L,I,V,PAR,OPT); <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> MEMBER(3,OPT) = 1 <font color="#4169E1">THEN</font> UGB(L,I,V,PAR,OPT); <font color="#4169E1">ELSE</font> 
+               <font color="#4169E1">IF</font> MEMBER(4,OPT) = 1 <font color="#4169E1">THEN</font> PUGB(L,I,V,PAR,OPT); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> EXEUGB; 
+
+
+<strong><font color="#4169E1">PROCEDURE LF</font></strong>(L,I,V,PAR,OPT: LIST);  
+<font color="#B22222">(*UGB linear form. 
+Die prozedur berechnet die linearformen nach der option
+LF. Vergleiche benutzerschnittstelle und 5.1.6. 
+Die prozedur wird von exeugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DIFALT, KALT, NEUFLF, NURLF, OLDL, P, PALT, Q, STAKK: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("Option ... LF"); BLINES(1); Q:=EXPTU(L);  
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("Die Liste der Terme als ganzzahlige Tupel ist "); 
+         BLINES(1); OWRITE(Q); BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+      P:=MAKERN(Q); PALT:=SIL; DIFALT:=SIL; 
+      OLDL:=LIST3(SIL,SIL,SIL); KALT:=SIL;  
+      STAKK:=PROJEC(PALT,P,DIFALT,OLDL,I,PAR);  
+      ALLELN(STAKK,L,KALT,I,PAR, NEUFLF,NURLF); 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Die Linearformen sind"); BLINES(1); 
+         OWRITE(NEUFLF); BLINES(2); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> LF;  
+
+
+<strong><font color="#4169E1">PROCEDURE PLF</font></strong>(L,I,V,PAR,OPT: LIST); 
+<font color="#B22222">(*UGB linear form with precomputed linear forms. 
+Die prozedur berechnet die linearformen nach der option
+plf. Vergleiche benutzerschnittstelle und 5.1.7.
+Die prozedur wird von exeugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DEG, DIFALT, IP, KALT, LFP, LFQ, NEWLF, NP, OLDL,
+      PALT, Q, Q2: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("Option ... PLF"); BLINES(1); SUNIT1(I); 
+<font color="#B22222">(*2*)</font> IP:=I; Q:=EXPTU(L); 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("Die Liste der Terme als ganzzahlige Tupel ist "); 
+         BLINES(1); OWRITE(Q); BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+      Q:=MAKERN(Q); PALT:=SIL; DIFALT:=SIL; 
+      OLDL:=LIST3(SIL,SIL,SIL); KALT:=SIL;  
+      PROJ(PALT,Q,DIFALT,OLDL,I, NP,Q2,DEG); 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("Gradschranke dieser Dimension ist "); 
+         OWRITE(2*DEG); BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+      SWRITE("Datei einlesen ..."); BLINES(1); LFQ:=OREAD(); 
+      <font color="#4169E1">IF</font> I &lt;&gt; 3 <font color="#4169E1">THEN</font> DEG:=2*DEG; <strong><font color="#4169E1">END</font></strong>; 
+      LFP:=LFGET(DEG,LFQ); IP:=IP-1; 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> OWRITE(LENGTH(LFP)); 
+         SWRITE(" eingelesene Linearformen  "); BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+      SWRITE("Berechnung der Linearformen ... "); BLINES(1); 
+      NEWLF:=MKLF1(LFP,Q2,NP,IP);  
+      SWRITE("Die berechneten Linearformen sind   "); 
+      OWRITE(LENGTH(NEWLF)); BLINES(1);  
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Die Linearformen sind"); BLINES(1); 
+         OWRITE(NEWLF); BLINES(2); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> PLF; 
+
+
+<strong><font color="#4169E1">PROCEDURE UGB</font></strong>(L,I,V,PAR,OPT: LIST); 
+<font color="#B22222">(*Universal Groebner base. 
+Die prozedur berechnet eine universelle groebner basis 
+nach der option ugb. Vergleiche benutzerschnittstelle
+und 5.2.4.
+Die prozedur wird von exeugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DIFALT, G, GB, KALT, NEUFLF, NURLF, OLDL, P, PALT, Q, STAKK, UL:
+      LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("Option ... UGB"); BLINES(1); 
+      <font color="#4169E1">IF</font> I = 1 <font color="#4169E1">THEN</font> G:=DIRPGB(L,0); 
+         SWRITE("*************************************."); BLINES(1); 
+         SWRITE("es gibt nur eine zulaessige Ordnung  ."); BLINES(1); 
+         SWRITE("     die Linearform ist (1)          ."); BLINES(1); 
+         SWRITE("*************************************."); BLINES(1); 
+         WRUGB(G,V); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      Q:=EXPTU(L); 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("Die Liste der Terme als ganzzahlige Tupel ist "); 
+         BLINES(1); OWRITE(Q); BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+      P:=MAKERN(Q); PALT:=SIL; DIFALT:=SIL; 
+      OLDL:=LIST3(SIL,SIL,SIL); KALT:=SIL;  
+      STAKK:=PROJEC(PALT,P,DIFALT,OLDL,I,PAR); LFALL(STAKK,L,KALT,I,
+      NEUFLF,NURLF); GB:=UG(NEUFLF,I,V,STAKK,L,NURLF,PAR); 
+      UL:=WRUGF(GB,V,PAR); BLINES(2); WRUGB(UL,V); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> UGB; 
+
+
+<strong><font color="#4169E1">PROCEDURE PUGB</font></strong>(L,I,V,PAR,OPT: LIST); 
+<font color="#B22222">(*Universal Groebner base with precomputed linear forms. 
+Die prozedur berechnet eine universelle groebner basis 
+nach der option pugb. Vergleiche benutzerschnittstelle 
+und 5.2.5.
+Die prozedur wird von exeugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DEG, GB, LF, LFLIST, LFQ, NURLF, R, UL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("Option ... PUGB"); BLINES(1); SUNIT2(I); DEG:=LDEG(L);  
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Grad der Polynome ... "); 
+         OWRITE(DEG); BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+      SWRITE("Lese Linearfomen ... "); BLINES(1);  
+      <font color="#4169E1">IF</font> I = 2 <font color="#4169E1">THEN</font> IQR(DEG,2, DEG,R); 
+         <font color="#4169E1">IF</font> R &lt;&gt; 0 <font color="#4169E1">THEN</font> DEG:=DEG+1; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      LFQ:=OREAD(); LF:=LFGET(DEG,LFQ); LF:=DO1(LF); 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> OWRITE(LENGTH(LF)); 
+         SWRITE(" eingelesene Linearformen"); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+      MKLIST(LF,L, LFLIST,NURLF);  
+      GB:=PUG(LFLIST,I,V,L,DEG,NURLF,PAR,LFQ); UL:=WRUGF(GB,V,PAR); 
+      BLINES(1); WRUGB(UL,V); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> PUGB; 
+
+
+<strong><font color="#4169E1">PROCEDURE SUNIT1</font></strong>(I: LIST); 
+<font color="#B22222">(*UGB set input unit 1. 
+Diese prozedur stellt bei der option plf die richtige
+datei zum einlesen von linearformen bereit. I ist
+die anzahl der variablen. Die vorberechneten lineraformen
+sind je nach der anzahl der variablen in verschiedenen 
+dateien gespeichert. Diese prozedur wird von der prozedur
+plf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong> r: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*ISLM:=2; ISIZE:=80;*)</font> r:=0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> (I = 1) <font color="#4169E1">OR</font> (I = 2) <font color="#4169E1">THEN</font>
+         SWRITE("Diese Option ist ab 3 Variablen sinnvoll.");  
+         BLINES(1); RETURN; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> I = 3 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade1"); <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> I = 4 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade2"); <font color="#4169E1">ELSE</font>
+               <font color="#4169E1">IF</font> I = 5 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade3"); <font color="#4169E1">ELSE</font> 
+                  <font color="#4169E1">IF</font> I &gt;= 6 <font color="#4169E1">THEN</font>
+                     SWRITE("Anzahl der Variablen zu hoch."); BLINES(1); 
+                     RETURN; <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> r &lt;&gt; 0 <font color="#4169E1">THEN</font> ERROR(severe,"SUNIT1: Cannot open file."); <strong><font color="#4169E1">END</font></strong>;   
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> SUNIT1; 
+
+
+<strong><font color="#4169E1">PROCEDURE SUNIT2</font></strong>(I: LIST); 
+<font color="#B22222">(*UGB set input unit 2.
+Diese prozedur stellt bei der option pugb die richtige 
+datei zum einlesen von linearformen bereit. I ist
+die anzahl der variablen. Die vorberechneten lineraformen
+sind je nach der anzahl der variablen in verschiedenen 
+dateien gespeichert. Diese prozedur wird von der prozedur
+pugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong> r: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* ISLM:=2; ISIZE:=80; *)</font> r:=0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> I = 1 <font color="#4169E1">THEN</font>
+         SWRITE("Diese Option ist ab 2 Variablen sinnvoll.");  
+         BLINES(1); RETURN; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> I = 2 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade1"); <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> I = 3 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade2"); <font color="#4169E1">ELSE</font>
+               <font color="#4169E1">IF</font> I = 4 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade3"); <font color="#4169E1">ELSE</font> 
+                  <font color="#4169E1">IF</font> I = 5 <font color="#4169E1">THEN</font> r:=SIUNIT("ugblade/linform.lade4"); <font color="#4169E1">ELSE</font> 
+                     <font color="#4169E1">IF</font> I &gt;= 6 <font color="#4169E1">THEN</font>
+                        SWRITE("Anzahl der Variablen zu hoch.");  
+                        BLINES(1); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+                     <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> r &lt;&gt; 0 <font color="#4169E1">THEN</font> ERROR(severe,"SUNIT2: Cannot open file."); <strong><font color="#4169E1">END</font></strong>;   
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> SUNIT2; 
+
+
+<strong><font color="#4169E1">PROCEDURE PREAD</font></strong>( <strong><font color="#228B22">VAR</font></strong> L,I,V: LIST);  
+<font color="#B22222">(*UGB polynomial read. 
+Die polynome werden von der eingabedatei eingelesen.
+Diese funktion wird von der hauptprozedur ugbbin
+aufgerufen. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> V:=VLREAD(); L:=DIRLRD(V); I:=LENGTH(V); 
+      SWRITE("Die eingegebenen Polynome sind "); BLINES(1); 
+      DIRLWR(L,V,-1); BLINES(1); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> PREAD;  
+
+
+<strong><font color="#4169E1">PROCEDURE OPREAD</font></strong>( <strong><font color="#228B22">VAR</font></strong> PAR,OPT: LIST);  
+<font color="#B22222">(*UGB options and parameter read. 
+Diese prozedur liest von der eingabedatei den parameter
+par (zustaendig fuer zwischenausgaben) durch die prozedur
+rdpar und die option opt (steht fuer lf, plf, ugb, pugb) 
+durch die prozedur execrd.
+Diese prozedur wird von der hauptprozedur ugbbin
+aufgerufen. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PAR:=RDPAR();  
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Zwischenausgaben ... JA"); 
+         BLINES(1); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> PAR = 9 <font color="#4169E1">THEN</font> SWRITE("Zwischenausgaben ... NEIN"); 
+            BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      OPT:=EXECRD(); 
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> OPREAD; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXPTU</font></strong>(L: LIST): LIST; 
+<font color="#B22222">(*UGB extract exponent vector list from polynomial list. 
+Aus den polynomen wird die liste der terme berechnet.
+Da jeder term mit dem tupel seiner exponenten 
+identifizert werden kann, wird die liste der
+exponententupel ausgegeben. 
+Diese funktion wird von den prozeduren mklist, newdif, 
+isneu, ug, pug, lf, plf, ugb und pugb. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, E, J1Y, LP, Q: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> Q:=SIL; LP:=L;  
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, A,LP); 
+            <font color="#4169E1">IF</font> A &lt;&gt; 0 <font color="#4169E1">THEN</font>
+               <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(A, B,E,A); J1Y:=LIST1(E);  
+                     Q:=USUN(J1Y,Q); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> Q:=INV(Q); 
+<font color="#B22222">(*5*)</font> RETURN(Q); <strong><font color="#4169E1">END</font></strong> EXPTU; 
+
+
+<strong><font color="#4169E1">PROCEDURE MAKERN</font></strong>(Q: LIST): LIST;  
+<font color="#B22222">(*UGB rational exponent vector list from integer ev list. 
+Makern transformiert die ganzzahlige struktur der 
+exponententupel in eine rationalzahlige struktur
+diese funktion wird von den funktionen mklist, neulf
+und newdif aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, A1, B, C, L1, P, QP: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> QP:=Q; P:=SIL; L1:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, A,QP); A1:=SIL; 
+            <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(A, B,A); C:=RNINT(B); 
+                  A1:=COMP(C,A1); <strong><font color="#4169E1">END</font></strong>; 
+            A1:=INV(A1); L1:=COMP(A1,L1); <strong><font color="#4169E1">END</font></strong>;  
+      P:=INV(L1); 
+<font color="#B22222">(*5*)</font> RETURN(P); <strong><font color="#4169E1">END</font></strong> MAKERN;  
+
+
+<strong><font color="#4169E1">PROCEDURE SCMULT</font></strong>(I,U: LIST): LIST; 
+<font color="#B22222">(*UGB rational exponent vector rational number product. 
+Hilfsfunktion zur berechnung vom skalarprodukt zwischen 
+rationalzahligen vektoren. 
+Diese funktion wird von der funktion mkset aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, IP, SKTU, T, UP, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UP:=U; IP:=I; V:=SIL; SKTU:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> UP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(UP, A,UP); T:=RNPROD(A,IP);  
+            V:=COMP(T,V); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*3*)</font> SKTU:=INV(V);  
+<font color="#B22222">(*6*)</font> RETURN(SKTU); <strong><font color="#4169E1">END</font></strong> SCMULT; 
+
+
+<strong><font color="#4169E1">PROCEDURE PDIF</font></strong>(R,S,DIFALT: LIST): LIST; 
+<font color="#B22222">(*UGB rational exponent vector list difference list, incremental. 
+Berechnet (r-s) vereinigt mit (s-s).Diese prozedur ist
+im hinblick auf die berechnung von universellen groebner
+basen geschrieben. S entspricht der menge der neuen terme, 
+die nach der reduktion entstehen. R enspricht der alten 
+menge von termen. Da r-r in einem vorherigen schritt
+schon berechnet wurde, berechnet die prozedur nur r-r 
+vereinigt mit s-s.
+Diese funktion wird von den funktionen projec, proj und 
+newdif aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, C, C1, D, RP, SP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RP:=R; SP:=S; B:=DIFF1(RP,SP); D:=DIFF(SP); C1:=USUN(B,D);  
+      C:=USUN(C1,DIFALT); 
+<font color="#B22222">(*4*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> PDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKSET</font></strong>(R: LIST;  <strong><font color="#228B22">VAR</font></strong> P2,P3,RR: LIST); 
+<font color="#B22222">(*UGB rational exponent vector list difference list. 
+Berechnet die mengen p1, p2, p3 und die reduzierte menge
+von p - p wie sie im theoretischen teil der diplomarbeit
+beschrieben ist. Die eingabe ist r. P1 und p2 sind die
+projektionen. P3 ist die vereinigung von p1 und p2.
+Rr entspricht der reduzierten menge von p - p. 
+Nur p2, p3 und rr werden zurueckgegeben. 
+Diese funktion wird von den funktionen projec und proj
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, C, EE, J1Y, P1, P1P, P2P, RP, XP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RP:=R; RR:=SIL; P1:=SIL; P2:=SIL; P3:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> RP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(RP, A,RP); XP:=A; ADV(A, B,A); 
+            <font color="#4169E1">IF</font> NULRNV(A) &lt;&gt; 1 <font color="#4169E1">THEN</font> 
+               <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font>
+                  <font color="#4169E1">IF</font> MEMBER(A,P1) &lt;&gt; 1 <font color="#4169E1">THEN</font> RR:=COMP(XP,RR);  
+                     P1:=COMP(A,P1); <strong><font color="#4169E1">END</font></strong>; 
+                  <font color="#4169E1">ELSE</font> B:=RNINV(B); C:=SCMULT(B,A);  
+                  <font color="#4169E1">IF</font> MEMBER(C,P2) &lt;&gt; 1 <font color="#4169E1">THEN</font> RR:=COMP(XP,RR);  
+                     P2:=COMP(C,P2); <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+      P1P:=P1; P2P:=P2; 
+      <font color="#4169E1">WHILE</font> P1P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P1P, A,P1P); J1Y:=-1;  
+            J1Y:=LIST2(J1Y,1); EE:=SCMULT(J1Y,A); 
+            <font color="#4169E1">IF</font> (MEMBER(EE,P2P) &lt;&gt; 1) <font color="#4169E1">AND</font> (MEMBER(A,P2P) &lt;&gt; 1)
+               <font color="#4169E1">THEN</font> P2P:=COMP(A,P2P); <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+      P3:=P2P; P3:=CINV(P3);  
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> MKSET;  
+
+
+<strong><font color="#4169E1">PROCEDURE PROJEC</font></strong>(R,S,DIFALT,OLDL,I,PAR: LIST): LIST; 
+<font color="#B22222">(*UGB projection to dimension 1. 
+Berechnet die projektionen der eingabemenge r bis zur
+dimension 1. Die ausgabe ist ein stapel der tupel der
+form (p2,p) verschiedener dimensionen enthaelt.
+P2 wird in jeder dimension zur berechnung der schnitte 
+und p zum vergleich von ordnungen benutzt.
+Diese prozedur ruft die prozeduren pdif und mkset auf. 
+Die prozedur degre bestimmt fuer jede projektion den 
+maximalen totalgrad der terme. 
+Diese funktion wird von den funktionen lf, plf, ugb und
+newdif aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, C, D, DEG, E, IP, M, RP, RS, SERIE, STAKK: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("Projektionen ... "); BLINES(1); RS:=S; RP:=R;  
+      STAKK:=SIL; SERIE:=SIL; IP:=I; M:=IP; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M &gt;= 2 <font color="#4169E1">DO</font> M:=M-1;  
+            <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Dimension ... "); OWRITE(M); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+            EVLRNBSO(RS); D:=PDIF(RP,RS,DIFALT); MKSET(D, B,C,D); 
+            DEG:=DEGRE(C); DEG:=2*DEG;  
+            <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+               SWRITE("Gradschranke dieser Dimension ist "); 
+               OWRITE(DEG); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            E:=LIST2(D,B); STAKK:=COMP(E,STAKK); RP:=SIL; RS:=C; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(STAKK); <strong><font color="#4169E1">END</font></strong> PROJEC; 
+
+
+<strong><font color="#4169E1">PROCEDURE PROJ</font></strong>(R,S,DIFALT,OLDL,I: LIST;  <strong><font color="#228B22">VAR</font></strong> D,B,DEG: LIST); 
+<font color="#B22222">(*UGB projection, one dimension. 
+Berechnet die projektion der eingabemenge r auf eine 
+niedrigere dimension. Die ausgabe besteht aus b
+(entspricht p2 in definition 2.2.1), d (entspricht der 
+reduzierten differenz r - r), sowie deg.
+Diese prozedur ruft die prozeduren pdif und mkset auf. 
+Die prozedur degre bestimmt den maximalen totalgrad deg
+der terme der projektion. 
+Diese funktion wird von der funktion plf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, IP, M, RP, RS, SERIE, STAKK: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RS:=S; RP:=R; STAKK:=SIL; SERIE:=SIL; IP:=I; M:=IP; 
+<font color="#B22222">(*2*)</font> EVLRNBSO(RS); D:=PDIF(RP,RS,DIFALT); MKSET(D, B,C,D); DEG:=DEGRE(C); 
+      STAKK:=COMP2(D,B,STAKK);  
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> PROJ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIFF</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*UGB difference set for rational exponent vector list. 
+Diese prozedur berechnet fuer die eingabemenge von
+tupel r die reduzierte menge r - r. das ergebnis wird 
+in r zurueckgegeben.
+diese funktion wird von den funktionen mklist und pdif
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AP, B, E, EE, ELT, ERG, RP, SP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RP:=R; ERG:=SIL; 
+      <font color="#4169E1">IF</font> RP = SIL <font color="#4169E1">THEN</font> RETURN(ERG); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> SP:=RED(R); ELT:=SIL;
+      <font color="#4169E1">WHILE</font> RP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(RP, A,RP);  
+            <font color="#4169E1">WHILE</font> SP &lt;&gt; SIL <font color="#4169E1">DO</font> AP:=A; ADV(SP, B,SP); 
+                  E:=RNVDIF(AP,B); EE:=RNVDIF(B,AP);  
+                  <font color="#4169E1">IF</font> (MEMBER(E,ERG) &lt;&gt; 1) <font color="#4169E1">AND</font> (MEMBER(EE,ERG) &lt;&gt; 1) 
+                     <font color="#4169E1">THEN</font> ERG:=COMP(E,ERG); <strong><font color="#4169E1">END</font></strong>;  
+                  <strong><font color="#4169E1">END</font></strong>; 
+            SP:=RED(RP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(ERG); <strong><font color="#4169E1">END</font></strong> DIFF;  
+
+
+<strong><font color="#4169E1">PROCEDURE DIFF1</font></strong>(R,S: LIST): LIST; 
+<font color="#B22222">(*UGB difference set for two rational exponent vector list. 
+Berechnet fuer die eingabemengen r und s von exponeneten
+tupel die reduzierte menge r - s. das ergebnis wird in
+erg zurueckgegeben. 
+diese funktion wird von der funktion pdif aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AP, B, ELT, ERG, RP, SP: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RP:=R; SP:=S; ELT:=SIL; ERG:=SIL; 
+      <font color="#4169E1">IF</font> (RP = SIL) <font color="#4169E1">OR</font> (SP = SIL) <font color="#4169E1">THEN</font> RETURN(ERG); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> RP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(RP, A,RP); SP:=S; 
+            <font color="#4169E1">WHILE</font> SP &lt;&gt; SIL <font color="#4169E1">DO</font> AP:=A; ADV(SP, B,SP); 
+                  ELT:=RNVDIF(AP,B);  
+                  <font color="#4169E1">IF</font> MEMBER(ELT,ERG) &lt;&gt; 1 <font color="#4169E1">THEN</font>
+                     ERG:=COMP(ELT,ERG); <strong><font color="#4169E1">END</font></strong>;  
+                  <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> RETURN(ERG); <strong><font color="#4169E1">END</font></strong> DIFF1; 
+
+
+<strong><font color="#4169E1">PROCEDURE RNVDIF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*UGB rational exponent vector difference. 
+Berechnet die komponentenweise differenz von zwei
+rationalzahligen vektoren. die differenz von zwei
+rationalzahlen wird durch die prozedur rndif berechnet.
+diese funktion wird von den funktionen diff und diff1
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AA, AQ, BB, BQ, C, CC: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=SIL; AQ:=A; BQ:=B;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> AQ &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AQ, AA,AQ); ADV(BQ, BB,BQ);  
+            CC:=RNDIF(AA,BB); C:=COMP(CC,C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> C:=INV(C); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> RNVDIF;  
+
+
+<strong><font color="#4169E1">PROCEDURE SCPROD</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*UGB rational exponent vector scalar product. 
+Berechnet das skalarprodukt von zwei rationalzahligen
+vektoren. die prozedur rnprod berechnet das produkt
+zweier rationalzahlen. die prozedur rnsum berechnet die
+summe von zwei rationalzahlen. das ergebnis wird in c
+zurueckgegeben.
+diese funktion wird von den funktionen cq2, cp2, pkegel
+und cspur aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AA, AP, BB, BP, C, CC: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; BP:=B; C:=0; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AA,AP); ADV(BP, BB,BP);  
+            CC:=RNPROD(AA,BB); C:=RNSUM(CC,C); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> SCPROD;  
+
+
+<strong><font color="#4169E1">PROCEDURE SKPRO2</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*UGB rational exponent vector scalar product with integer ev. 
+Diese funktion ist eine spezielle skalarprodukt-funktion.
+da die ausgerechneten linearformen rationahlzahlig sind
+und die exponententupel ganzzahlig sind, werden diese
+zunaechst als rationahlzahlen dargestellt und dann das 
+skalarprodukt gebildet. 
+diese funktion wird von evlfcp aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   AA, AP, BB, BP, C, CC: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; BP:=B; C:=0; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AA,AP); ADV(BP, BB,BP);  
+            BB:=RNINT(BB); CC:=RNPROD(AA,BB); C:=RNSUM(CC,C); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> SKPRO2;  
+
+  
+<strong><font color="#4169E1">PROCEDURE LRNBMS</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*List of rational numbers bubble-merge sort.  L is an arbitrary list of
+rational numbers, possibly with repetitions.  M is the result of sorting
+L into non-decreasing order.  A combination of bubble-sort and merge-
+sort is used.  The list L is modified to produce M.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BP, C, IL, J1Y, JL, KL, L1, L2, LP, LPP, LPPP, M, ML, NL, QL,
+     QLP, RL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*short list.*)</font> TL:=10; NL:=LENGTH(L);
+      <font color="#4169E1">IF</font> NL &lt; TL <font color="#4169E1">THEN</font> LRNBS(L); M:=L; RETURN(M); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare for merge.*)</font> KL:=0; ML:=1; QL:=NL;
+      <font color="#4169E1">REPEAT</font> KL:=KL+1; ML:=ML+ML; QL:=QL DIV 2;
+             <font color="#4169E1">UNTIL</font> QL &lt; TL;
+      J1Y:=ML*QL; RL:=NL-J1Y; B:=SIL; LP:=L;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ML <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> IL &lt;= RL <font color="#4169E1">THEN</font> QLP:=QL; <font color="#4169E1">ELSE</font> QLP:=QL-1; <strong><font color="#4169E1">END</font></strong>;
+          LPP:=LP;
+          <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> QLP <font color="#4169E1">DO</font> LPP:=RED(LPP); <strong><font color="#4169E1">END</font></strong>;
+          LPPP:=RED(LPP); SRED(LPP,SIL); LRNBS(LP); B:=COMP(LP,B);
+          LP:=LPPP; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*merge.*)</font>
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> KL <font color="#4169E1">DO</font> C:=SIL; BP:=B;
+          <font color="#4169E1">REPEAT</font> ADV2(BP,L1,L2,BP); L1:=LRNM(L1,L2); C:=COMP(L1,C);
+                 <font color="#4169E1">UNTIL</font> BP = SIL;
+          B:=C; <strong><font color="#4169E1">END</font></strong>;
+      M:=FIRST(B); RETURN(M);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> LRNBMS;
+
+
+<strong><font color="#4169E1">PROCEDURE LRNBS</font></strong>(L: LIST);
+<font color="#B22222">(*List of rational numbers bubble sort.  L is an arbitrary list of
+rational numbers, with possible repetitions.  L is sorted into
+non-decreasing order by the bubble-sort method.  The list L, though not
+its location, is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, ALPP, LP, LPP, M, MP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial case.*)</font>
+      <font color="#4169E1">IF</font> L = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> M:=SIL;
+      <font color="#4169E1">REPEAT</font> LP:=L; LPP:=RED(LP); ALP:=FIRST(LP); MP:=SIL;
+             <font color="#4169E1">WHILE</font> LPP &lt;&gt; M <font color="#4169E1">DO</font> ALPP:=FIRST(LPP);
+                   <font color="#4169E1">IF</font> RNCOMP(ALP,ALPP) &gt; 0 <font color="#4169E1">THEN</font> SFIRST(LP,ALPP);
+                      SFIRST(LPP,ALP); MP:=LPP; 
+                      <font color="#4169E1">ELSE</font> ALP:=ALPP; <strong><font color="#4169E1">END</font></strong>;
+                   LP:=LPP; LPP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+             M:=MP;
+             <font color="#4169E1">UNTIL</font> M = SIL;
+      RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> LRNBS;
+
+
+<strong><font color="#4169E1">PROCEDURE LRNM</font></strong>(L1,L2: LIST): LIST;
+<font color="#B22222">(*List of rational numbers merge.  L1 and L2 are arbitrary lists of
+rational numbers in non-decreasing order.  L is the merge of L1 and L2.
+L1 and L2 are modified to produce L.*)</font>
+<font color="#B22222">(*goto-free version of LRNM from ALDES implementation guide,
+by R. Loos. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, L, LP, LS, LP1, LP2, LPP1, LPP2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> LP1:=L1; LP2:=L2; L:=SIL; LS:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*merge l1 and l2. *)</font> 
+      <font color="#4169E1">WHILE</font> (LP1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (LP2 &lt;&gt; SIL) <font color="#4169E1">DO</font> 
+            ADV(LP1,AL1,LPP1); ADV(LP2,AL2,LPP2);
+            <font color="#4169E1">IF</font> RNCOMP(AL1,AL2) &lt; 0 <font color="#4169E1">THEN</font> LP:=LP1; LP1:=LPP1;
+                         <font color="#4169E1">ELSE</font> LP:=LP2; LP2:=LPP2; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> LS = SIL <font color="#4169E1">THEN</font> LS:=LP; L:=LP;
+                        <font color="#4169E1">ELSE</font> SRED(LS,LP); LS:=LP; <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> <font color="#4169E1">IF</font> LP2 &lt;&gt; SIL <font color="#4169E1">THEN</font> LP1:=LP2; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> LS = SIL <font color="#4169E1">THEN</font> L:=LP;
+                  <font color="#4169E1">ELSE</font> SRED(LS,LP1); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LRNM;                                                 
+
+
+<strong><font color="#4169E1">PROCEDURE COMPLF</font></strong>(C,D,KLIST,NP,JP,M: LIST; <strong><font color="#228B22">VAR</font></strong> LFORM,KLISTP,J: LIST); 
+<font color="#B22222">(*UGB compute linear form from difference set. 
+Diese prozedur berechnet fuer die linearform c und die
+menge der schnitte d die neuen linearformen. klist
+enthaelt die spuren der schon berechneten linearformen
+np entspricht der reduzierten menge  p - p und wird
+dazu verwendet um die neuen spuren zu berechnen.
+lform enthaelt als ausgabe alle bisher berechneten
+linearformen. klistp die dazugehoerigen spuren. alle
+spuren sind verschieden.
+die funktion wird von der funktion mklf1 aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, DP, K, KALT, KLISTH, U: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> DP:=D; LFORM:=SIL; J:=JP; KLISTP:=KLIST; KALT:=SIL; 
+      KLISTH:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> DP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(DP, A,DP); 
+            <font color="#4169E1">IF</font> M &lt;&gt; 1 <font color="#4169E1">THEN</font> A:=COMP(A,C); K:=PKEGEL(A,NP,KALT);  
+               U:=COMPA1(K,KLISTP); 
+               <font color="#4169E1">IF</font> U &lt;&gt; 1 <font color="#4169E1">THEN</font> KLISTH:=COMP(K,KLISTH);  
+                  LFORM:=COMP(A,LFORM); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> A:=LIST1(A); LFORM:=COMP(A,LFORM); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      KLISTP:=CCONC(KLISTP,KLISTH); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> COMPLF; 
+
+
+<strong><font color="#4169E1">PROCEDURE CQ2</font></strong>(C,Q2,M: LIST): LIST; 
+<font color="#B22222">(*UGB linear form product with rational exponent vector list. 
+Diese prozedur berechnet fuer eine linearform c und eine 
+liste q2, beide der gleichen dimension, das produkt c * q2. 
+die elemente von c * q2 bestehen aus dem skalarprodukt von
+c mit den einzelnen elementen von q2. da diese menge dazu
+verwendet wird, um die schnitte zu bilden, werden nur die
+negativen elemente gespeichert.
+die funktion wird von der funktion mklf1 aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AA, CP, J1Y, Q2P, TR: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CP:=C; Q2P:=Q2; TR:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> Q2P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Q2P, A,Q2P);  
+            <font color="#4169E1">IF</font> M &lt;&gt; 1 <font color="#4169E1">THEN</font> AA:=SCPROD(C,A); J1Y:=LASTEL(A); 
+                           AA:=RNSUM(AA,J1Y); 
+               <font color="#4169E1">ELSE</font> AA:=FIRST(A); <strong><font color="#4169E1">END</font></strong>;  
+            <font color="#4169E1">IF</font> (RNCOMP(AA,0) &lt;= -1) <font color="#4169E1">AND</font> (MEMBER(AA,TR) &lt;&gt; 1)
+               <font color="#4169E1">THEN</font> TR:=COMP(AA,TR); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(TR); <strong><font color="#4169E1">END</font></strong> CQ2; 
+
+
+<strong><font color="#4169E1">PROCEDURE RNVABS</font></strong>(A: LIST): LIST;  
+<font color="#B22222">(*Rational number list absolute values. 
+Diese prozedur berechnet fuer die liste a von rational- 
+zahlen den absolutbetrag ihrer komponenten. die prozedur
+rnabs berechnet den absolutbetrag einer rationalzahl. 
+das ergebnis wird in der liste b zurueckgegeben.
+die funktion wird von den funktionen mklf1, mklf2 und 
+mklf3 aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AA, AP, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; B:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AA,AP); AA:=RNABS(AA); 
+            B:=COMP(AA,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=INV(B); 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> RNVABS;  
+
+
+<strong><font color="#4169E1">PROCEDURE CUT</font></strong>(TR: LIST): LIST; 
+<font color="#B22222">(*UGB set of cuts. 
+Berechnet fuer die eingabemenge tr die menge der 
+schnitte d. fuer die inneren punkte wird das
+algebraische mittel gebildet. fuer die aeusseren punkte
+wird 1 addiert beziehungsweise die zahl halbiert.
+die funktion wird von den funktionen mklf1, mklf2 und
+mklf3 aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, D, ERST, G, H, J, J1Y, J2Y, MITTE, ND, TRACEP, Z: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> TRACEP:=TR; D:=SIL; G:=FIRST(TRACEP); J1Y:=RNINT(0); 
+      H:=RNSUM(G,J1Y); J:=LAST(TRACEP); J:=FIRST(J); 
+<font color="#B22222">(*2*)</font> J1Y:=RNINT(2); ERST:=RNQ(H,J1Y); J1Y:=RNINT(1); ND:=RNSUM(J,J1Y); 
+      D:=COMP(ERST,D); Z:=LENGTH(TRACEP);  
+<font color="#B22222">(*3*)</font> <font color="#4169E1">WHILE</font> Z &gt;= 2 <font color="#4169E1">DO</font> A:=FIRST(TRACEP); B:=SECOND(TRACEP); 
+            TRACEP:=RED(TRACEP); Z:=LENGTH(TRACEP); J1Y:=RNSUM(A,B);  
+            J2Y:=RNINT(2); MITTE:=RNQ(J1Y,J2Y); D:=COMP(MITTE,D); <strong><font color="#4169E1">END</font></strong>; 
+      D:=COMP(ND,D); 
+<font color="#B22222">(*6*)</font> RETURN(D); <strong><font color="#4169E1">END</font></strong> CUT; 
+
+
+<strong><font color="#4169E1">PROCEDURE ALLELN</font></strong>(STAKK,L,KALT,I,PAR: LIST;  <strong><font color="#228B22">VAR</font></strong> LF,NURLF: LIST); 
+<font color="#B22222">(*UGB all linear forms from stack of projections. 
+Diese funktion berechnet aus dem stapel der projektionen
+stakk alle linearformen nurlf. die prozedur mklf1 wird 
+aufgerufen.
+diese funktion wird von der prozedur lf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, IP, J1Y, LFX, LY, M, N, NEWLF, Q2, STAKKP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("Rekursive Berechnung der Linearformen ... "); BLINES(1); 
+      STAKKP:=STAKK; M:=1; IP:=I;  
+<font color="#B22222">(*2*)</font> J1Y:=RNINT(1); LFX:=LIST1(J1Y); LY:=SIL; LF:=LIST1(LFX); 
+      IP:=IP-1; NEWLF:=SIL;  
+      <font color="#4169E1">WHILE</font> M &lt;= IP <font color="#4169E1">DO</font> ADV(STAKKP, A,STAKKP); N:=FIRST(A); 
+            Q2:=SECOND(A); 
+            <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Dimension ..."); OWRITE(M+1); 
+               BLINES(1); SWRITE("Die Spur hat "); OWRITE(LENGTH(N)); 
+               SWRITE(" Elemente"); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            NURLF:=MKLF1(LF,Q2,N,M); 
+            <font color="#4169E1">IF</font> (PAR = 8) <font color="#4169E1">AND</font> (M &lt;&gt; IP) <font color="#4169E1">THEN</font> 
+               SWRITE("Die bisher rekursiv berechneten Linearformen sind "); 
+               OWRITE(LENGTH(NURLF)); 
+               SWRITE(" Linearformen  "); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            M:=M+1; LF:=NURLF; <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE("Die berechneten Linearformen sind "); OWRITE(LENGTH(LF)); 
+      SWRITE(" Linearformen  "); BLINES(1); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ALLELN; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKLF1</font></strong>(LFP,Q2,NP,M: LIST): LIST;  
+<font color="#B22222">(*UGB make new linear forms 1. 
+Diese prozedur berechnet fuer eine liste von linearformen
+lfp die neuen linearformen newlf. die menge q2 wird dazu 
+verwendet, die schnitte zu berechnen. die menge np 
+dient dazu, die ueberfluessigen linearformen zu eliminieren.
+diese funktion wird von der prozedur plf und alleln
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, D, J, J1Y, KLIST, LF, NEWLF, TR: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LF:=LFP; NEWLF:=SIL; KLIST:=SIL; J:=0;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LF &lt;&gt; SIL <font color="#4169E1">DO</font> D:=SIL; ADV(LF, B,LF); 
+            <font color="#4169E1">IF</font> Q2 = SIL <font color="#4169E1">THEN</font> J1Y:=LIST2(1,1); D:=LIST1(J1Y); 
+               <font color="#4169E1">ELSE</font> TR:=CQ2(B,Q2,M); TR:=RNVABS(TR); TR:=LRNBMS(TR); 
+                    D:=CUT(TR); <strong><font color="#4169E1">END</font></strong>; 
+            COMPLF(B,D,KLIST,NP,J,M, A,KLIST,J); NEWLF:=USUN(A,NEWLF); 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(NEWLF); <strong><font color="#4169E1">END</font></strong> MKLF1; 
+
+
+<strong><font color="#4169E1">PROCEDURE NULRNV</font></strong>(A: LIST): LIST;  
+<font color="#B22222">(*Rational number vector null test.  
+Diese prozedur ueberprueft ob ein vektor a der nullvektor
+ist. i ist 1 falls a der nullvektor ist ansonsten 0.
+diese funktion wird von der funktion mkset aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, B, I: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; I:=1; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, B,AP); 
+            <font color="#4169E1">IF</font> B &lt;&gt; 0 <font color="#4169E1">THEN</font> I:=0; RETURN(I); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(I); <strong><font color="#4169E1">END</font></strong> NULRNV;  
+
+
+<strong><font color="#4169E1">PROCEDURE PKEGEL</font></strong>(C,N,KALT: LIST): LIST; 
+<font color="#B22222">(*UGB trace for linear form. 
+Diese funktion berechnet die spur k bezueglich der linear-
+form c und der menge n in kodierter form. die spur wird
+nach der methode der wortkodierung (abschnitt 5.1.4)
+gebildet. 
+diese funktion wird von der funktion complf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AA, B, B2, D, I, J1Y, K, NP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=KALT; NP:=N; K:=SIL; I:=0; B:=0; B2:=BETA DIV 2; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> NP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(NP, AA,NP); D:=SCPROD(C,AA); 
+            J1Y:=LASTEL(AA); D:=RNSUM(D,J1Y); D:=RNSIGN(D); 
+            <font color="#4169E1">IF</font> D = -1 <font color="#4169E1">THEN</font> D:=0; <strong><font color="#4169E1">END</font></strong>;  
+            J1Y:=2*B; B:=J1Y+D; 
+            <font color="#4169E1">IF</font> B &gt;= B2 <font color="#4169E1">THEN</font> K:=COMP(B,K); B:=0; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> B &lt; B2 <font color="#4169E1">THEN</font> K:=COMP(B,K); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(K); <strong><font color="#4169E1">END</font></strong> PKEGEL;  
+
+
+<strong><font color="#4169E1">PROCEDURE COMPA1</font></strong>(K,KLIST: LIST): LIST;  
+<font color="#B22222">(*UGB trace member in trace list. 
+Diese funktion stellt fest ob eine spur k in einer liste von
+spuren vorhanden ist. j ist gleich 1 falls k in klist liegt,
+ansonsten 0.
+diese funktion wird von den funktionen complf, clf2, clf3
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, J, KLISTP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> KLISTP:=KLIST; J:=0; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> KLISTP = SIL <font color="#4169E1">THEN</font> J:=0; 
+         <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">WHILE</font> KLISTP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(KLISTP, A,KLISTP); 
+               J:=COMPA2(K,A);  
+               <font color="#4169E1">IF</font> J = 1 <font color="#4169E1">THEN</font> RETURN(J); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;  
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(J); <strong><font color="#4169E1">END</font></strong> COMPA1;  
+
+
+<strong><font color="#4169E1">PROCEDURE COMPA2</font></strong>(K,A: LIST): LIST; 
+<font color="#B22222">(*UGB trace compare. 
+Diese funktion ueberprueft zwei spuren k und a auf 
+gleichheit. u ist gleich 1 falls a und k gleich sind,
+ansonsten 0.
+diese funktion wird von den funktionen compa1, dfp, dipmc2, 
+zulfo und isneu aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, B, C, KP, U: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> KP:=K; U:=1; AP:=A; U:=1; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> (KP &lt;&gt; SIL) <font color="#4169E1">AND</font> (AP &lt;&gt; SIL) <font color="#4169E1">DO</font> 
+            ADV(KP, B,KP); ADV(AP, C,AP); 
+            <font color="#4169E1">IF</font> B &lt;&gt; C <font color="#4169E1">THEN</font> U:=0; RETURN(U); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (KP &lt;&gt; SIL) <font color="#4169E1">OR</font> (AP &lt;&gt; SIL) <font color="#4169E1">THEN</font> U:=0; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(U); <strong><font color="#4169E1">END</font></strong> COMPA2;  
+
+
+<strong><font color="#4169E1">PROCEDURE LASTEL</font></strong>(Y: LIST): LIST;  
+<font color="#B22222">(*Last element. 
+X ist das letzte element der liste y. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, YP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> YP:=LAST(Y); X:=FIRST(YP); 
+<font color="#B22222">(*4*)</font> RETURN(X); <strong><font color="#4169E1">END</font></strong> LASTEL;  
+
+
+<strong><font color="#4169E1">PROCEDURE EVLRNBSO</font></strong>(A: LIST); 
+<font color="#B22222">(*Rational exponent vector list bubble sort. a is a list of
+rational exponent vectors, a is sorted 
+with respect to the termordering defined in EVORD 
+by the bubble-sort method, two exponent vectors with equal
+exponents will lead to an error. the
+list a but not its location, is modified.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, B, BP, ELP, ELPP, TL, DUMMY, evo: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Trivial case.*)</font>  
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;  
+      evo:=EVORD; EVORD:=GRLEX; <font color="#B22222">(*???????, others not implem.*)</font> 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*General case.*)</font> B:=SIL;  
+      <font color="#4169E1">REPEAT</font> AP:=A; ADV(AP, ELP,APP); BP:=SIL; 
+             <font color="#4169E1">WHILE</font> APP &lt;&gt; B <font color="#4169E1">DO</font> ADV(APP, ELPP,DUMMY); <font color="#B22222">(*DIPMAD???*)</font> 
+                   TL:=EVRNC(ELP,ELPP);  
+                   <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*GO TO 3;*)</font>
+                      <font color="#B22222">(*3*)</font> <font color="#B22222">(*To equal exponent vectors.*)</font> 
+                      ERROR(severe,"RNLBSO: <font color="#4169E1">To</font> equal exponent vectors"); 
+                      EVORD:=evo; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> TL &gt; 0 <font color="#4169E1">THEN</font> SFIRST(AP,ELPP); SFIRST(APP,ELP); 
+                      BP:=APP; <font color="#4169E1">ELSE</font> ELP:=ELPP; <strong><font color="#4169E1">END</font></strong>;  
+                   AP:=APP; APP:=RED(AP); <strong><font color="#4169E1">END</font></strong>;  
+             B:=BP;  
+             <font color="#4169E1">UNTIL</font> B = SIL; 
+      EVORD:=evo; RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVLRNBSO; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVRNGL</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Rational exponent vector inverse graded lexicographical compare.
+u=(ul1, ..., ulrl), v=(vl1, ..., vlrl) are rational exponent vectors.
+tl=0 if u eq v. tl=1 if u gt v. tl=-1 if u lt v. eq, gt, lt
+with respect to the inverse graded lexicographical ordering
+of the exponent vectors. rl is the length of u and v.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   SL, TL, UL, ULP, US, VL, VLP, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*lexicographical compare.*)</font> TL:=0; US:=U; VS:=V;
+      LOOP <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           ADV(US, UL,US); ADV(VS, VL,VS);
+           SL:=RNCOMP(UL,VL);
+           <font color="#4169E1">IF</font> SL &gt; 0 <font color="#4169E1">THEN</font> TL:=1; EXIT; <font color="#4169E1">ELSE</font>
+              <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> TL:=-1; EXIT; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> RETURN(TL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*graduaded compare.*)</font>
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, ULP,US); ADV(VS, VLP,VS); 
+            UL:=RNSUM(UL,ULP); VL:=RNSUM(VL,VLP); <strong><font color="#4169E1">END</font></strong>;
+      SL:=RNCOMP(UL,VL);
+      <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> TL:=SL; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(TL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVRNGL;
+
+
+<strong><font color="#4169E1">PROCEDURE EVRNC</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Rational exponent vector compare. u=(ul1, ...,ulrl), v=(vl1, ...,vlrl)
+are exponent vectors. rl is the length of u and v.
+tl=0 if u eq v. tl=1 if u gt v. tl=-1 if u lt v. eq, gt, lt
+with respect to the ordering of the exponent vectors specified
+in the global variable EVORD. lexicographical, inverse
+lexicographical, graded lexicograhpical, inverse graded
+lexicographical orderings are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   TL: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Compare.*)</font>  
+      <font color="#4169E1">CASE</font> EVORD <font color="#4169E1">OF</font>
+           GRLEX : TL:=EVRNGL(U,V); TL:=-TL; | 
+           IGRLEX : TL:=EVRNGL(U,V); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> EVRNC;  
+
+
+<strong><font color="#4169E1">PROCEDURE DEGRE</font></strong>(Q: LIST): LIST; 
+<font color="#B22222">(*UGB total degree of a list of rational exponent vectors. 
+Q ist eine liste von rationalzahligen tupeln. der maximale
+totalgrad der in q vorkommt wird berechnet.
+diese prozedur wird von den funktionen projec und proj 
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, D, D1, H, J1Y, Q1, Q1P, QP, T: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> D:=0; QP:=Q; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> H:=1; ADV(QP, Q1,QP); Q1P:=Q1; 
+            <font color="#4169E1">WHILE</font> Q1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Q1, A,Q1); 
+                  <font color="#4169E1">IF</font> A &lt;&gt; 0 <font color="#4169E1">THEN</font> J1Y:=SECOND(A); H:=ILCM(H,J1Y); <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+            H:=RNINT(H); D1:=0; 
+            <font color="#4169E1">WHILE</font> Q1P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Q1P, B,Q1P); T:=RNPROD(B,H); 
+                  T:=RNABS(T); D1:=RNSUM(T,D1); <strong><font color="#4169E1">END</font></strong>; 
+            D:=RNMAX(D1,D); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> D &lt;&gt; 0 <font color="#4169E1">THEN</font> D:=FIRST(D) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(D); <strong><font color="#4169E1">END</font></strong> DEGRE; 
+
+
+<strong><font color="#4169E1">PROCEDURE RDPAR</font></strong>(): LIST; 
+<font color="#B22222">(*UGB read parameter. 
+Diese funktion liest aus der eingabedatei den parameter
+par. zulaessige werte sind y oder n. bei y werden zwischen
+berechnungen ausgegeben, bei n nicht.
+diese funktion wird von der prozedur opread aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PAR: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PAR:=CREADB(); 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> PAR = MASORD("Y") <font color="#4169E1">THEN</font> PAR:=8; <font color="#4169E1">ELSE</font> 
+         <font color="#4169E1">IF</font> PAR = MASORD("N") <font color="#4169E1">THEN</font> PAR:=9; <font color="#4169E1">ELSE</font>
+            SWRITE("***  Fehler bei Parameterangabe"); BLINES(1); 
+            SWRITE("***  Bitte nur Y oder N angeben"); BLINES(1); 
+            PAR:=9; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(PAR); <strong><font color="#4169E1">END</font></strong> RDPAR; 
+
+
+<strong><font color="#4169E1">PROCEDURE EXECRD</font></strong>(): LIST;  
+<font color="#B22222">(*UGB execution options read. 
+Diese funktion liest aus der eingabedatei die 
+auszufuehrende option. moegliche optionen sind lf  plf  ugb 
+und pugb. vor der option muss das wort exec stehen. die
+option ist mit einem punkt abzuschliessen.
+beispiel  exec ugb.
+diese funktion wurde mit geringfuegigen aenderungen aus
+der aldes-bibliothek entnommen.
+diese funktion wird von der hauptprozedur ugbbin aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, C, NP, NR, NRLIST, S: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=CREADB(); 
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD(".") <font color="#4169E1">THEN</font> 
+         ERROR(severe,"EXECRD: . expected."); 
+         RETURN(NRLIST); <strong><font color="#4169E1">END</font></strong>; 
+      NRLIST:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* Read exec .*)</font> C:=CREADB(); NP:=SIL;  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* Check options .*)</font> 
+      <font color="#4169E1">IF</font> LETTER(C) <font color="#4169E1">THEN</font> BKSP; S:=SREAD1();  
+         <font color="#4169E1">IF</font> EQUAL(S,LISTS("EXEC")) = 1 <font color="#4169E1">THEN</font> 
+            <font color="#4169E1">REPEAT</font> C:=CREADB(); 
+                   <font color="#4169E1">IF</font> C &lt;&gt; MASORD(".") <font color="#4169E1">THEN</font> BKSP; A:=SREAD1(); 
+                      SEENR(A, NR); 
+                      <font color="#4169E1">IF</font> NR &lt;&gt; SIL <font color="#4169E1">THEN</font> NRLIST:=COMP(NR,NRLIST); 
+                      <strong><font color="#4169E1">END</font></strong>; 
+                      <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">UNTIL</font> C = MASORD("."); 
+            <font color="#4169E1">ELSE</font> ERROR(severe,"EXECRD: EXEC expected.");  
+            RETURN(NRLIST); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#4169E1">IF</font> NRLIST = SIL <font color="#4169E1">THEN</font> 
+         ERROR(severe,"EXECRD: no options found.");  
+         <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*7*)</font> RETURN(NRLIST); <strong><font color="#4169E1">END</font></strong> EXECRD;  
+
+
+<strong><font color="#4169E1">PROCEDURE SEENR</font></strong>(AC: LIST;  <strong><font color="#228B22">VAR</font></strong> NR: LIST);  
+<font color="#B22222">(*UGB number of option. 
+Diese funktion ermittelt fuer eine option ac eine
+schluesselzahl nr. die funktion stammt bis auf einige
+aenderungen aus der aldes-bibliothek.
+diese funktion wird von der funktion execrd aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   NM: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Berechnung der linearformen.*)</font> NM:=LISTS("LF");  
+      <font color="#4169E1">IF</font> EQUAL(AC,NM) = 1 <font color="#4169E1">THEN</font> NR:=1; RETURN; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Berechnung der linearformen mittels preprocessing*)</font>  
+      NM:=LISTS("PLF"); 
+      <font color="#4169E1">IF</font> EQUAL(AC,NM) = 1 <font color="#4169E1">THEN</font> NR:=2; RETURN; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Universelle groebner basis.*)</font> NM:=LISTS("UGB"); 
+      <font color="#4169E1">IF</font> EQUAL(AC,NM) = 1 <font color="#4169E1">THEN</font> NR:=3; RETURN; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Universelle groebner basis mittels preprocessing.*)</font>  
+      NM:=LISTS("PUGB"); 
+      <font color="#4169E1">IF</font> EQUAL(AC,NM) = 1 <font color="#4169E1">THEN</font> NR:=4; RETURN; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*Error .*)</font> ERROR(severe,"SEENR: unknown option.");
+<font color="#B22222">(*11*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> SEENR; 
+
+
+<strong><font color="#4169E1">PROCEDURE LFGET</font></strong>(DEG,LF: LIST): LIST;  
+<font color="#B22222">(*UGB get linear form from list of linear forms. 
+Diese funktion holt aus der liste lf der gespeicherten 
+linearformen, abhaengig vom grad deg, die benoetigten
+linearformen.
+diese funktion wird von den funktionen plf, pugb und pug 
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, LFP, LFQ: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LFP:=LF; D:=0; 
+      <font color="#4169E1">IF</font> DEG &gt; LENGTH(LF) <font color="#4169E1">THEN</font>
+         SWRITE("******************************"); BLINES(1); 
+         SWRITE(" Berechnung nicht Fortsetzbar "); BLINES(1); 
+         SWRITE("        Grad zu hoch          "); BLINES(1); 
+         SWRITE("******************************"); BLINES(1); 
+         RETURN(SIL); 
+      <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> D &lt; DEG <font color="#4169E1">DO</font> ADV(LFP, LFQ,LFP); D:=D+1; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(LFQ); <strong><font color="#4169E1">END</font></strong> LFGET; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKLF2</font></strong>(LFP,Q2,NP,M,L: LIST;  <strong><font color="#228B22">VAR</font></strong> NEWLF,LISTLF: LIST); 
+<font color="#B22222">(*UGB make new linear forms 2. 
+Diese funktion ist genau analog zu mklf1. die linear-
+formen werden im gegensatz zu onenlf auch mit der zahl 1 
+als letzte komponente der linearformen berechnet.
+diese funktion wird von der funktion lfall aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AA, B, D, J, J1Y, KLIST, LF, TR: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LF:=LFP; NEWLF:=SIL; KLIST:=SIL; J:=0; LISTLF:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LF &lt;&gt; SIL <font color="#4169E1">DO</font> D:=SIL; ADV(LF, B,LF); 
+            <font color="#4169E1">IF</font> Q2 = SIL 
+               <font color="#4169E1">THEN</font> J1Y:=LIST2(1,1); D:=LIST1(J1Y); 
+               <font color="#4169E1">ELSE</font> TR:=CP2(B,Q2); TR:=RNVABS(TR); 
+                    TR:=LRNBMS(TR); D:=CUT(TR); <strong><font color="#4169E1">END</font></strong>;  
+            CLF2(B,D,KLIST,NP,J,M,L, A,KLIST,J,AA);  
+            NEWLF:=USUN(A,NEWLF); LISTLF:=USUN(AA,LISTLF); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> MKLF2;  
+
+
+<strong><font color="#4169E1">PROCEDURE CLF2</font></strong>(C,D,KLIST,NP,JP,M,L: LIST; <strong><font color="#228B22">VAR</font></strong> LFORM,KLISTP,J,RECLF: LIST);  
+<font color="#B22222">(*UGB compute linear form from difference set 2.
+Diese funktion funktionniert genauso wie complf, mit dem 
+unterschied, dass das element 1 als letzte komponente
+der linearform gespeichert wird. 
+diese funktion wird von der funktion mklf2 aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, DP, J1Y, K, KALT, KLISTH, U: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> DP:=D; LFORM:=SIL; J:=JP; KLISTP:=KLIST; KALT:=SIL; 
+      KLISTH:=SIL; RECLF:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> DP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(DP, A,DP); A:=COMP(A,C);  
+            K:=CSPUR(A,NP,KALT); 
+            <font color="#4169E1">IF</font> M &lt;&gt; 1 <font color="#4169E1">THEN</font> U:=COMPA1(K,KLISTP);  
+               <font color="#4169E1">IF</font> U &lt;&gt; 1 <font color="#4169E1">THEN</font> KLISTH:=COMP(K,KLISTH);  
+                  J1Y:=LIST4(A,L,K,NP); RECLF:=COMP(J1Y,RECLF); 
+                  LFORM:=COMP(A,LFORM); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> LFORM:=COMP(A,LFORM); J1Y:=LIST4(A,L,K,NP); 
+               RECLF:=COMP(J1Y,RECLF); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      KLISTP:=CCONC(KLISTP,KLISTH); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> CLF2; 
+
+
+<strong><font color="#4169E1">PROCEDURE CP2</font></strong>(C,Q2: LIST): LIST;  
+<font color="#B22222">(*UGB linear form product with rational exponent vector list 2. 
+Diese funktion funktionniert genauso wie cq2, mit dem
+unterschied, dass das element 1 als letzte komponente
+der linearform gespeichert wird. 
+diese funktion wird von den funktionen mklf2 und mklf3 
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AA, CP, Q2P, TR: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CP:=C; Q2P:=Q2; TR:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> Q2P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Q2P, A,Q2P); AA:=SCPROD(C,A); 
+            <font color="#4169E1">IF</font> (RNCOMP(AA,0) &lt;= -1) <font color="#4169E1">AND</font> (MEMBER(AA,TR) &lt;&gt; 1)
+               <font color="#4169E1">THEN</font> TR:=COMP(AA,TR); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(TR); <strong><font color="#4169E1">END</font></strong> CP2; 
+
+
+<strong><font color="#4169E1">PROCEDURE CSPUR</font></strong>(C,N,KALT: LIST): LIST;  
+<font color="#B22222">(*UGB trace for linear form 2. 
+Diese funktion funktionniert genauso wie pkegel, mit dem 
+unterschied, dass das element 1 als letzte komponente
+der linearform gespeichert wird. 
+diese funktion wird von den funktionen clf2, clf3 und zulfo 
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, AA, B, B2, D, I, J1Y, K, NP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=KALT; NP:=N; K:=SIL; I:=0; B:=0; B2:=SIL DIV 2; 
+<font color="#B22222">(*3*)</font> <font color="#4169E1">WHILE</font> NP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(NP, AA,NP); D:=SCPROD(C,AA); 
+            D:=RNSIGN(D); 
+            <font color="#4169E1">IF</font> D = -1 <font color="#4169E1">THEN</font> D:=0; <strong><font color="#4169E1">END</font></strong>;  
+            J1Y:=2*B; B:=J1Y+D; 
+            <font color="#4169E1">IF</font> B &gt;= B2 <font color="#4169E1">THEN</font> K:=COMP(B,K); B:=0; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#4169E1">IF</font> B &lt; B2 <font color="#4169E1">THEN</font> K:=COMP(B,K); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*7*)</font> RETURN(K); <strong><font color="#4169E1">END</font></strong> CSPUR; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKNEWP</font></strong>(P,POL,PRS: LIST): LIST; 
+<font color="#B22222">(*UGB make new critical pairs. 
+Diese funktion aktualisiert die menge der paare prs der
+polynomliste p um die paare der form (pol,f) wobei f aus 
+p und pol ein polynom ist. das ergebnis ist ppairs.
+das buchberger-kriterium ist implementiert.
+diese funktion wird von der funktion gs2 aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, COL1, COL2, DL, EL, ELI, ELJ, PAIRS, PLI, PP, PPAIRS, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PP:=P; PPAIRS:=SIL; PAIRS:=PRS; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Update pairs .*)</font> COL1:=POL; ELI:=DIPEVL(COL1);  
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PLI,PP); COL2:=PLI; 
+            ELJ:=DIPEVL(COL2); EL:=EVLCM(ELI,ELJ); SL:=EVSUM(ELI,ELJ); 
+            C:=EQUAL(EL,SL);  
+            <font color="#4169E1">IF</font> C &lt;&gt; 1 <font color="#4169E1">THEN</font> DL:=LIST3(EL,POL,PLI); 
+               PPAIRS:=COMP(DL,PPAIRS); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> PPAIRS:=EVPLSO(PPAIRS); 
+      <font color="#4169E1">IF</font> PAIRS &lt;&gt; SIL <font color="#4169E1">THEN</font> PAIRS:=INV(CINV(PAIRS)); <font color="#B22222">(*copy*)</font> 
+         PPAIRS:=EVPLM(PAIRS,PPAIRS); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*6*)</font> RETURN(PPAIRS); <strong><font color="#4169E1">END</font></strong> MKNEWP;  
+
+
+<strong><font color="#4169E1">PROCEDURE MKPAIR</font></strong>(PP: LIST;  <strong><font color="#228B22">VAR</font></strong> PAIRS: LIST);  
+<font color="#B22222">(*UGB make critical pairs for polynomial list. 
+Diese funktion berechnet aus der liste pp von polynomen 
+die menge der paare pairs. das buchberger-kriterium ist
+implementiert. 
+diese funktion wird von der funktion gs1 aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   C, COL1, COL2, DL, EL, ELI, ELJ, PI, PJ, PSS, Q, QP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PAIRS:=SIL; 
+      <font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Construct pairs. *)</font> PSS:=PP;  
+      <font color="#4169E1">REPEAT</font> ADV(PSS, PI,QP); COL1:=PI; ELI:=DIPEVL(COL1); 
+             <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, PJ,QP); COL2:=PJ; 
+                   ELJ:=DIPEVL(COL2); EL:=EVLCM(ELI,ELJ);  
+                   SL:=EVSUM(ELI,ELJ); C:=EQUAL(EL,SL);  
+                   <font color="#4169E1">IF</font> C &lt;&gt; 1 <font color="#4169E1">THEN</font> DL:=LIST3(EL,PI,PJ); 
+                      PAIRS:=COMP(DL,PAIRS); Q:=COMP(PJ,Q); <strong><font color="#4169E1">END</font></strong>;  
+                   <strong><font color="#4169E1">END</font></strong>; 
+             PSS:=RED(PSS); 
+             <font color="#4169E1">UNTIL</font> PSS = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> PAIRS &lt;&gt; SIL <font color="#4169E1">THEN</font> PAIRS:=EVPLSO(PAIRS); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> MKPAIR; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKSP1</font></strong>(X,L,PAIRS,I,V: LIST;  <strong><font color="#228B22">VAR</font></strong> D,PAIRSP: LIST); 
+<font color="#B22222">(*UGB compute next non-zero reduced S-polynomial.  
+Diese funktion bildet bezueglich der linearform x und der
+polynommenge l aus der liste von paaren pairs solange
+ein s-polynom (dirpsp) und fuehrt es zu normalform (dirrnf) 
+bis das s-polynom d nicht null ist oder die liste der paare 
+pairsp leer ist.
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, B1, B2, B3, C: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PAIRSP:=PAIRS; D:=0; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> (PAIRSP &lt;&gt; SIL) <font color="#4169E1">AND</font> (D = 0) <font color="#4169E1">DO</font> 
+            ADV(PAIRSP,B,PAIRSP); FIRST2(RED(B),B2,B3); 
+            C:=DIRPSP(B2,B3,X); D:=DIRRNF(L,C,X,V); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> MKSP1;  
+
+
+<strong><font color="#4169E1">PROCEDURE GS1</font></strong>(LF,V,PAR: LIST): LIST;  
+<font color="#B22222">(*UGB generate stack of sorted polynomials and critical pairs 1. 
+Lf ist ein tupel der form (a,l,k,n). dabei ist a eine linear-
+form, l eine liste von polynomen, k die dazugehoerige
+spur und n die reduzierte differenz p - p der 
+entsprechenden menge von exponententupel. 
+diese prozedur ordnet die polynome nach den linearformen 
+und berechnet die menge der dazugehoerigen paare b.
+die ausgabe stak besteht aus tupeln der form (a,l,k,n,b).
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   A, B, J1Y, J2Y, LFP, LP, PAIRS, STAK, X, evo: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LFP:=LF; STAK:=SIL; evo:=EVORD; 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("Ordne die Polynome nach den Linearformen"); BLINES(1); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LFP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LFP, A,LFP); FIRST2(A,B,LP); 
+            EVORD:=B; LP:=POLCOP(LP); DILBSO(LP);  
+            MKPAIR(LP, PAIRS); J1Y:=THIRD(A); J2Y:=FOURTH(A); 
+            X:=LIST5(B,LP,J1Y,J2Y,PAIRS); J1Y:=LIST1(X); 
+            STAK:=USUN(J1Y,STAK); <strong><font color="#4169E1">END</font></strong>; 
+      EVORD:=evo;
+<font color="#B22222">(*5*)</font> RETURN(STAK); <strong><font color="#4169E1">END</font></strong> GS1;  
+
+
+<strong><font color="#4169E1">PROCEDURE MERGE</font></strong>(STALT,STNEU: LIST): LIST;  
+<font color="#B22222">(*UGB merge stacks. 
+Diese funktion mischt die zwei stapel stalt und stneu zu 
+einem stapel stak wie in 5.2.3 beschrieben ist. 
+diese funktion wird von der funktion neulf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, C, D, J1Y, J2Y, STAK, STALTP, STNEUP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> STALTP:=STALT; STNEUP:=STNEU; STAK:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> STALTP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(STALTP, A,STALTP); 
+            ADV(STNEUP, B,STNEUP); J1Y:=FIRST(A); J2Y:=FIRST(B); 
+            D:=USUN(J1Y,J2Y); 
+            J1Y:=SECOND(A); J2Y:=SECOND(B); C:=USUN(J1Y,J2Y); 
+            J1Y:=LIST2(D,C); STAK:=COMP(J1Y,STAK); STAK:=INV(STAK); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(STAK); <strong><font color="#4169E1">END</font></strong> MERGE;  
+
+
+<strong><font color="#4169E1">PROCEDURE WRUGF</font></strong>(X,V,PAR: LIST): LIST; 
+<font color="#B22222">(*Write universal Groebner family. 
+Diese funktion gibt eine berechnete universelle 
+groebnerfamilie  auf dem ausgabegeraet aus. es wird
+jeweils eine linearform und die dazugehoerige polynommenge
+ausgegeben. 
+diese funktion wird von den prozeduren ugb und pugb
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   evo, A, L, LP, p, UL, XP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> XP:=X; UL:=SIL; 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("        ************************************"); BLINES(1); 
+         SWRITE("             Universelle Groebnerfamilie"); BLINES(1);  
+         SWRITE("        ************************************"); BLINES(2); 
+         <strong><font color="#4169E1">END</font></strong>;
+      evo:=EVORD; EVORD:=INVLEX; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP, A,XP); 
+            <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+               SWRITE("-----------------------------"); BLINES(1); 
+               OWRITE(FIRST(A)); BLINES(1); 
+               SWRITE("-----------------------------"); BLINES(1); 
+               DIRLWR(SECOND(A),V,-1); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            L:=SECOND(A); L:=POLCOP(L); DILBSO(L);   
+            LP:=L; 
+            <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> p:=DIRPMC(FIRST(LP)); 
+                  SFIRST(LP,p); LP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;      
+            UL:=USUN(L,UL); <strong><font color="#4169E1">END</font></strong>; 
+      UL:=DIPLPM(UL); EVORD:=evo;
+<font color="#B22222">(*5*)</font> RETURN(UL); <strong><font color="#4169E1">END</font></strong> WRUGF;  
+
+
+<strong><font color="#4169E1">PROCEDURE WRUGB</font></strong>(UL,V: LIST);  
+<font color="#B22222">(*Write universal Groebner base. 
+Diese funktion gibt eine berechnete universelle 
+groebnerbasis ul auf dem ausgabegeraet aus.
+diese prozedur wird von den prozeduren ugb und pugb
+aufgerufen. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("       ************************************"); BLINES(1); 
+      SWRITE("              Universelle Groebnerbasis"); BLINES(1); 
+      SWRITE("       ************************************"); BLINES(1); 
+      DIRLWR(UL,V,-1);  
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> WRUGB;  
+
+
+<strong><font color="#4169E1">PROCEDURE POLCOP</font></strong>(L: LIST): LIST;  
+<font color="#B22222">(*Two level list copy. 
+Diese funktion macht eine kopie p der polynomliste l.
+diese funktion wird von den funktionen gs1, gs2 und wrugf
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, J1Y, LP, P: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=L; P:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, A,LP); B:=INV(CINV(A)); 
+            P:=COMP(B,P); <strong><font color="#4169E1">END</font></strong>;  
+      P:=INV(P); 
+<font color="#B22222">(*5*)</font> RETURN(P); <strong><font color="#4169E1">END</font></strong> POLCOP;  
+
+
+<strong><font color="#4169E1">PROCEDURE DFP</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*UGB distributive rational polynomial difference. 
+Diese funktion bildet aus den beiden polynomen a und b 
+die distributive differenz a - b. das ergebnis ist cp. 
+diese funktion unterscheidet sich von der in der aldes 
+bibliothek vorhandenen funktion. sie berechnet die 
+differenz bezueglich der in der globalen variablen 
+EVORD gesetzten ordnung.
+diese funktion wird von den funktionen dirrnf und dirpsp 
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, APP, BL, BP, C, CL, CP, CPP, EL, FL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=DIRPNG(B); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=SIL; 
+      <font color="#4169E1">REPEAT</font> EL:=DIPEVL(AP); FL:=DIPEVL(BP); 
+             SL:=EVCOMP(EL,FL); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> SL:=EVILCP(EL,FL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> DIPMAD(AP, AL,EL,AP); 
+                CP:=DIPMCP(EL,AL,CP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> SL = -1 <font color="#4169E1">THEN</font> DIPMAD(BP, BL,FL,BP); 
+                   CL:=RNNEG(BL); CP:=DIPMCP(FL,CL,CP); 
+                   <font color="#4169E1">ELSE</font> DIPMAD(AP,AL,EL,AP); DIPMAD(BP, BL,FL,BP); 
+                   CL:=RNDIF(AL,BL); 
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=DIPMCP(EL,CL,CP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> APP:=AP; 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> BP &lt;&gt; SIL <font color="#4169E1">THEN</font> APP:=DIRPNG(BP); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=APP; <font color="#4169E1">ELSE</font> CPP:=CP; C:=INV(CP); 
+         SRED(CPP,APP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DFP; 
+
+
+<strong><font color="#4169E1">PROCEDURE SFP</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*UGB distributive rational polynomial sum. 
+Diese funktion bildet aus den beiden polynomen a und b 
+die distributive summe a + b. das ergebnis ist cp. 
+diese funktion unterscheidet sich von der in der aldes 
+bibliothek vorhandenen funktion. sie berechnet die 
+differenz bezueglich der in der globalen variablen 
+EVORD gesetzten ordnung.
+diese funktion wird von den funktionen dirrnf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, APP, BL, BP, C, CL, CP, CPP, EL, FL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=SIL; 
+      <font color="#4169E1">REPEAT</font> EL:=DIPEVL(AP); FL:=DIPEVL(BP); 
+             SL:=EVCOMP(EL,FL); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> SL:=EVILCP(EL,FL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> DIPMAD(AP, AL,EL,AP); 
+                CP:=DIPMCP(EL,AL,CP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> SL = -1 <font color="#4169E1">THEN</font> DIPMAD(BP, BL,FL,BP); 
+                   CP:=DIPMCP(FL,BL,CP); 
+                   <font color="#4169E1">ELSE</font> DIPMAD(AP,AL,EL,AP); DIPMAD(BP, BL,FL,BP); 
+                   CL:=RNSUM(AL,BL); 
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=DIPMCP(EL,CL,CP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> APP:=AP; 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> BP &lt;&gt; SIL <font color="#4169E1">THEN</font> APP:=BP; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=APP; <font color="#4169E1">ELSE</font> CPP:=CP; C:=INV(CP); 
+         SRED(CPP,APP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> SFP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVLFCP</font></strong>(L,U,V: LIST): LIST;  
+<font color="#B22222">(*UGB exponent vector linear form compare. 
+Diese funktion vergleicht die exponententupel u und v
+zweier terme bezueglich der linearform l. das ergebnis 
+t ist gleich 1 falls u groesser als v ist, 0 falls sie 
+gleich sind  und -1 ansonsten.
+diese funktion wird von der funktion evcomp aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, T: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=SKPRO2(L,U); B:=SKPRO2(L,V); T:=RNCOMP(A,B); 
+<font color="#B22222">(*4*)</font> RETURN(T); <strong><font color="#4169E1">END</font></strong> EVLFCP;  
+
+
+<strong><font color="#4169E1">PROCEDURE PCOMP</font></strong>(X,Y: LIST): LIST; 
+<font color="#B22222">(*UGB distributive polynomial composition. 
+Diese funktion bildet aus den beiden polynomen x und y 
+ein polynom z, sodass das polynom x der ersten teil, und 
+y der zweite teil ist.
+diese funktion wird von den funktionen dfp und dipmc2
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, C, XP, Z: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> XP:=X; Z:=Y; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> Z:=Y; RETURN(Z); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> Y = SIL <font color="#4169E1">THEN</font> Z:=X; RETURN(Z); <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(XP, A,C,XP); Z:=DIPMCP(A,C,Z); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(Z); <strong><font color="#4169E1">END</font></strong> PCOMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVCOMP</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*UGB exponent vector compare. 
+Diese funktion vergleicht die exponententupel u und v
+zweier terme bezueglich der termordnung, die in der
+globalen variable EVORD gespeichert ist. das ergebnis
+tl ist gleich 1 falls u groesser als v ist, 0 falls sie
+gleich sind  und -1 ansonsten. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   TL: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Compare with linear form.*)</font> 
+      <font color="#4169E1">IF</font> EVORD &gt; SIL <font color="#4169E1">THEN</font> TL:=EVLFCP(EVORD,U,V); RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Compare with evord.*)</font>  
+      <font color="#4169E1">CASE</font> EVORD <font color="#4169E1">OF</font>
+           LEX    : TL:=EVILCP(U,V); TL:=-TL |
+           INVLEX : TL:=EVILCP(U,V); |
+           GRLEX  : TL:=EVIGLC(U,V); TL:=-TL | 
+           IGRLEX : TL:=EVIGLC(U,V); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> EVCOMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMC2</font></strong>(A,C,P: LIST): LIST;  
+<font color="#B22222">(*UGB distributive polynomial composition 2. 
+Diese funktion bildet aus dem koeffizient a, dem term c
+und dem polynom p ein neues polynom dp.
+diese funktion wird von der funktione dirrnf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AA, AP, CC, DP, PP, U: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> PP:=P; DP:=SIL; U:=0; AP:=A; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (U &lt;&gt; 1) <font color="#4169E1">DO</font> DIPMAD(PP, AA,CC,PP);  
+            U:=COMPA2(CC,C);  
+            <font color="#4169E1">IF</font> U = 1 <font color="#4169E1">THEN</font> AP:=RNSUM(AP,AA); 
+               <font color="#4169E1">ELSE</font> DP:=DIPMCP(AA,CC,DP); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      DP:=PCOMP(PP,DP); 
+      <font color="#4169E1">IF</font> AP &lt;&gt; 0 <font color="#4169E1">THEN</font> DP:=DIPMCP(AP,C,DP); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(DP); <strong><font color="#4169E1">END</font></strong> DIPMC2; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRRNF</font></strong>(P,S,X,V: LIST): LIST;  
+<font color="#B22222">(*UGB distributive polynomial normalform. 
+Diese funktion berechnet die normalform r eines polynoms 
+s mit rationalen koeffizienten bezueglich der liste von
+polynomen p und der ordnung, die von der linearform x
+induziert wird.
+diese funktion wird von der funktione mksp1 aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, PP, Q, QA, QE, QP, R, RP, SL, SP, TA, TE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*S=0. *)</font> 
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> R:=S; RETURN(R); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Reduction step.*)</font> R:=0; SP:=S;  
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE,SP); 
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>;  
+             PP:=P;  
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); DIPMAD(Q, QA,QE,QP); SL:=EVMT(TE,QE); 
+                    <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RP:=DIPFMO(TA,TE); R:=SFP(R,RP); 
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); BL:=RNQ(TA,QA); 
+                   AP:=DIPFMO(BL,FL); APP:=DIRPPR(QP,AP);  
+                   SP:=DFP(SP,APP); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> SP = 0; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Finish.*)</font> 
+<font color="#B22222">(*6*)</font> RETURN(R); <strong><font color="#4169E1">END</font></strong> DIRRNF;  
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSP</font></strong>(A,B,X: LIST): LIST;  
+<font color="#B22222">(*UGB distributive polynomial S-polynomial. 
+Diese funktion berechnet das s-polynom c der polynome a
+und b bezueglich der ordnung, die von der linearform x 
+induziert wird.
+diese funktion wird von der funktion mksp1 aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   evo, AL, AP, APP, BL, BP, BPP, C, CL, EL, EL1, FL, FL1, GL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=0;  
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      DIPMAD(A, AL,EL,AP); DIPMAD(B, BL,FL,BP); 
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Reduction. *)</font> GL:=EVLCM(EL,FL); 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> FL1:=EVDIF(GL,FL); CL:=RNNEG(AL); 
+         BPP:=DIPFMO(CL,FL1); C:=DIRPPR(BP,BPP); RETURN(C); <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> BP = SIL <font color="#4169E1">THEN</font> EL1:=EVDIF(GL,EL); APP:=DIPFMO(BL,EL1); 
+         C:=DIRPPR(AP,APP); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*General case. *)</font> evo:=EVORD; EVORD:=X; 
+      EL1:=EVDIF(GL,EL); FL1:=EVDIF(GL,FL); 
+      APP:=DIPFMO(BL,EL1); BPP:=DIPFMO(AL,FL1); APP:=DIRPPR(AP,APP); 
+      BPP:=DIRPPR(BP,BPP); C:=DFP(APP,BPP); <font color="#B22222">(*????*)</font>
+      EVORD:=evo;
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DIRPSP;  
+
+
+<strong><font color="#4169E1">PROCEDURE UG</font></strong>(LF,I,V,STAP,P,NURLF,PAR: LIST): LIST;  
+<font color="#B22222">(*Universal Groebner base. 
+Diese funktion berechnet eine universelle groebner-
+familie ugf. lf sind tupel der form (a,l,k,n), wobei l 
+die eingabemenge von polynomen, a eine von allen
+dazugehoerigen linearformen, k die spur und n die
+reduzierte differenz der eingabemenge der exponententupel
+ist. die berechnung realisiert die option ugb.
+diese funktion wird von der funktion ugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   evo, D, DS, DSUM, FLAG, J1Y, J2Y, J3Y, L, LFALT, LFEND, LFNEU, LFP, 
+      LFTEMP, LNEU, LSUM, PAARE, PAIRS, SEMA, STAPP, U, UGF, X: LIST; 
+      fin: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UGF:=SIL; LFP:=LF; STAPP:=STAP; LFTEMP:=SIL; LFEND:=SIL; 
+<font color="#B22222">(*2*)</font> LFP:=GS1(LFP,V,PAR); LSUM:=EXPTU(P); DSUM:=SIL; LFALT:=NURLF; 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Reduktionsschritt"); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+      evo:=EVORD; 
+<font color="#4169E1">REPEAT</font>  
+<font color="#B22222">(*3*)</font> LSUM:=USUN(LSUM,DSUM); LFTEMP:=SIL; FLAG:=0; DSUM:=SIL; 
+      <font color="#4169E1">WHILE</font> LFP &lt;&gt; SIL <font color="#4169E1">DO</font> DS:=SIL; ADV(LFP, X,LFP); 
+            EVORD:=FIRST(X); L:=SECOND(X); PAIRS:=LASTEL(X);  
+            MKSP1(FIRST(X),L,PAIRS,I,V, D,PAARE); 
+            <font color="#4169E1">IF</font> D = 0 <font color="#4169E1">THEN</font> UGF:=COMP(X,UGF); J1Y:=FIRST(X); 
+                          LFEND:=COMP(J1Y,LFEND); 
+               <font color="#4169E1">ELSE</font> LNEU:=COMP(D,L);  
+               J1Y:=LIST1(D); DSUM:=USUN(J1Y,DSUM); J1Y:=FIRST(X);  
+               J2Y:=THIRD(X); J3Y:=FOURTH(X); 
+               J1Y:=LIST5(J1Y,LNEU,J2Y,J3Y,PAARE); 
+               LFTEMP:=COMP(J1Y,LFTEMP); FLAG:=1; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+LOOP fin:=FALSE; 
+      <font color="#4169E1">IF</font> FLAG = 1 <font color="#4169E1">THEN</font> ISNEU(DSUM,LSUM,PAR, SEMA,DSUM);  
+         <font color="#4169E1">IF</font> SEMA = 1 <font color="#4169E1">THEN</font> NEULF(STAPP,DSUM,LSUM,I,V,PAR,LFNEU,STAPP); 
+            U:=ISNEUL(LFNEU,LFALT,PAR); LFALT:=LFNEU; 
+            <font color="#4169E1">IF</font> U = 0 <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Keine neuen Linearformen"); 
+                  BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+               LFP:=NONEWL(LFTEMP); LFP:=GS2(LFP,V,PAR); BLINES(1); 
+               EXIT; <font color="#B22222">(*GO TO 3*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> U = 1 <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+                  SWRITE("Neue Linearformen entstanden "); BLINES(1); 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               LFP:=NEWL(LFTEMP,LFNEU,LFEND); BLINES(1); 
+               LFP:=GS2(LFP,V,PAR); EXIT; <font color="#B22222">(*GO TO 3*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> SEMA = 0 <font color="#4169E1">THEN</font> LFP:=NONEWL(LFTEMP); LFP:=GS2(LFP,V,PAR); 
+            BLINES(1); EXIT; <font color="#B22222">(*GO TO 3*)</font> <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+fin:=TRUE; EXIT <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#4169E1">UNTIL</font> fin;
+      EVORD:=evo;
+<font color="#B22222">(*6*)</font> RETURN(UGF); <strong><font color="#4169E1">END</font></strong> UG; 
+
+
+<strong><font color="#4169E1">PROCEDURE PUG</font></strong>(LF,I,V,P,DEGP,NURLF,PAR,LFQ: LIST): LIST; 
+<font color="#B22222">(*Universal Groebner base using precomputation.
+Diese funktion berechnet eine universelle groebner-
+familie ugf. lf sind tupel der form (a,l,k,n), wobei l 
+die eingabemenge von polynomen, a eine von allen
+dazugehoerigen linearformen, k die spur und n die
+reduzierte differenz der eingabemenge der exponententupel
+ist.
+die berechnung realisiert die option pugb.
+diese funktion wird von der funktion pugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   evo, D, DEG, DEG1, DS, DSUM, DSUM1, FLAG, J1Y, J2Y, J3Y, L, LFALT,
+      LFEND, LFNEU, LFP, LFTEMP, LNEU, LSUM, PAARE, PAIRS, R, SEMA, U,
+      UGF, X: LIST; 
+      fin: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UGF:=SIL; LFP:=LF; LFTEMP:=SIL; LFEND:=SIL; DEG:=DEGP; 
+<font color="#B22222">(*2*)</font> LFP:=GS1(LFP,V,PAR); LSUM:=EXPTU(P); DSUM:=SIL; LFALT:=NURLF; 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Reduktionsschritt"); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+      evo:=EVORD; 
+<font color="#4169E1">REPEAT</font>  
+<font color="#B22222">(*3*)</font> LSUM:=USUN(LSUM,DSUM); LFTEMP:=SIL; FLAG:=0; DSUM:=SIL; 
+      <font color="#4169E1">WHILE</font> LFP &lt;&gt; SIL <font color="#4169E1">DO</font> DS:=SIL; ADV(LFP, X,LFP); 
+            EVORD:=FIRST(X); L:=SECOND(X); PAIRS:=LASTEL(X);  
+            MKSP1(FIRST(X),L,PAIRS,I,V, D,PAARE); 
+            <font color="#4169E1">IF</font> D = 0 <font color="#4169E1">THEN</font> UGF:=COMP(X,UGF); J1Y:=FIRST(X); 
+                          LFEND:=COMP(J1Y,LFEND); 
+               <font color="#4169E1">ELSE</font> LNEU:=COMP(D,L);  
+               J1Y:=LIST1(D); DSUM:=USUN(J1Y,DSUM); J1Y:=FIRST(X);  
+               J2Y:=THIRD(X); J3Y:=FOURTH(X); 
+               J1Y:=LIST5(J1Y,LNEU,J2Y,J3Y,PAARE); 
+               LFTEMP:=COMP(J1Y,LFTEMP); FLAG:=1; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+LOOP fin:=FALSE; 
+      <font color="#4169E1">IF</font> FLAG = 1 <font color="#4169E1">THEN</font> DSUM1:=DSUM; ISNEU(DSUM,LSUM,PAR,SEMA,DSUM); 
+         <font color="#4169E1">IF</font> SEMA = 1 <font color="#4169E1">THEN</font> DEG1:=LDEG(DSUM1); 
+            <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Grad der Polynome  ");  
+               OWRITE(DEG1); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> DEG1 &gt; DEG <font color="#4169E1">THEN</font> SWRITE("Lese Linearfomen ... ");  
+               <font color="#4169E1">IF</font> I = 2 <font color="#4169E1">THEN</font> IQR(DEG1,2, DEG1,R); 
+                  <font color="#4169E1">IF</font> R &lt;&gt; 0 <font color="#4169E1">THEN</font> DEG1:=DEG1+1; <strong><font color="#4169E1">END</font></strong>;  
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+               LFNEU:=LFGET(DEG1,LFQ); LFNEU:=DO1(LFNEU);  
+               U:=ISNEUL(LFNEU,LFALT,PAR); DEG:=DEG1; 
+               <font color="#4169E1">ELSE</font> U:=0; LFNEU:=LFALT; <strong><font color="#4169E1">END</font></strong>;  
+            LFALT:=LFNEU; 
+            <font color="#4169E1">IF</font> U = 0 <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> SWRITE("Keine neuen Linearformen"); 
+                  BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+               LFP:=NONEWL(LFTEMP); LFP:=GS2(LFP,V,PAR); BLINES(1); 
+               EXIT; <font color="#B22222">(*GO TO 3*)</font> <strong><font color="#4169E1">END</font></strong>;  
+            <font color="#4169E1">IF</font> U = 1 <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+                  SWRITE("Neue linearformen entstanden "); BLINES(1); 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               LFP:=NEWL(LFTEMP,LFNEU,LFEND); BLINES(1); 
+               LFP:=GS2(LFP,V,PAR); EXIT; <font color="#B22222">(*GO TO 3*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> SEMA = 0 <font color="#4169E1">THEN</font> LFNEU:=LFALT; LFP:=NONEWL(LFTEMP); 
+            BLINES(1); LFP:=GS2(LFP,V,PAR); BLINES(1); 
+            EXIT; <font color="#B22222">(*GO TO 3*)</font> <strong><font color="#4169E1">END</font></strong>;  
+         <strong><font color="#4169E1">END</font></strong>; 
+fin:=TRUE; EXIT <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#4169E1">UNTIL</font> fin;
+      EVORD:=evo;
+<font color="#B22222">(*6*)</font> RETURN(UGF); <strong><font color="#4169E1">END</font></strong> PUG; 
+
+
+<strong><font color="#4169E1">PROCEDURE NEWL</font></strong>(LFTEMP,LFNEU,LFEND: LIST): LIST;  
+<font color="#B22222">(*UGB update linear forms from new terms. 
+Lfneu ist die menge der linearformen auf der neuen menge 
+von termen. die funktion stellt fest welche von diesen 
+linearformen die alten fortsetzen und aktualisiert 
+das zwischenergebnis lftemp durch lfp. 
+die funktion wird auch nur aufgerufen wenn neue 
+linearformen enstanden sind.
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   LF, LFNEUP, LFP, LL, SP, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SP:=LFTEMP; LFNEUP:=LFNEU; LL:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> SP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(SP, X,SP); 
+            ZULFO(LFNEUP,X,LL,LFEND,LFP,LF); 
+            LFNEUP:=LF; LL:=LFP; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(LFP); <strong><font color="#4169E1">END</font></strong> NEWL;  
+
+
+<strong><font color="#4169E1">PROCEDURE ZULFO</font></strong>(LFNEU,X,LL,LFEND: LIST;  <strong><font color="#228B22">VAR</font></strong> LFP,LF: LIST);  
+<font color="#B22222">(*UGB find admissible extensions of linear forms. 
+Diese funktion stellt fest, welche linearformen aus lfneu
+die linearform von x fortsetzen. diese linearformen mit
+den aktualisierten daten (spur, paare) ersetzen dann x 
+in ll. das ergebnis ist lfp.
+diese funktion wird von der funktion newl aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, D, DIFNEU, J1Y, K1, KALT, L, LFNEU1, LFNEUP, LNEU, NEWKEG, U: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LFNEUP:=LFNEU; KALT:=SIL; LFNEU1:=SIL; LFP:=LL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LFNEUP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LFNEUP, A,LFNEUP); J1Y:=FOURTH(X); 
+            K1:=CSPUR(A,J1Y,KALT); J1Y:=THIRD(X); U:=COMPA2(J1Y,K1); 
+            <font color="#4169E1">IF</font> U = 1 <font color="#4169E1">THEN</font> LNEU:=SECOND(X); ADV(LNEU, D,L); 
+               J1Y:=FOURTH(X); DIFNEU:=NEWDIF(L,D,J1Y);  
+               NEWKEG:=CSPUR(A,DIFNEU,KALT); J1Y:=LASTEL(X);  
+               J1Y:=LIST5(A,LNEU,NEWKEG,DIFNEU,J1Y); LFP:=COMP(J1Y,LFP); 
+               <font color="#4169E1">ELSE</font> LFNEU1:=COMP(A,LFNEU1); <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+      LF:=LFNEU1; 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ZULFO;  
+
+
+<strong><font color="#4169E1">PROCEDURE NONEWL</font></strong>(LFTEMP: LIST): LIST; 
+<font color="#B22222">(*UGB update linear forms without new terms. 
+Diese funktion wird aufgerufen wenn keine linearformen 
+entstanden sind. sie aktualisiert lftemp durch lfp.
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, DIFNEU, J1Y, J2Y, KALT, L, LFP, LFTEP, LNEU, NEWKEG, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LFTEP:=LFTEMP; KALT:=SIL; LFP:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LFTEP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LFTEP, X,LFTEP); LNEU:=SECOND(X);  
+            ADV(LNEU, D,L); J1Y:=FOURTH(X); DIFNEU:=NEWDIF(L,D,J1Y); 
+            J1Y:=FIRST(X); NEWKEG:=CSPUR(J1Y,DIFNEU,KALT); 
+            J1Y:=FIRST(X); J2Y:=LASTEL(X);  
+            J1Y:=LIST5(J1Y,LNEU,NEWKEG,DIFNEU,J2Y); LFP:=COMP(J1Y,LFP); 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(LFP); <strong><font color="#4169E1">END</font></strong> NONEWL;  
+
+
+<strong><font color="#4169E1">PROCEDURE ISNEUL</font></strong>(LFALT,LFNEU,PAR: LIST): LIST; 
+<font color="#B22222">(*UGB new linear form test.
+Lfalt ist die alte liste von linearformen, lfneu die
+neue. diese funktion stellt fest ob neue linearformen
+entstanden sind (u gleich 1) oder nicht (u gleich 0).
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   I, J, U: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> I:=LENGTH(LFALT); J:=LENGTH(LFNEU);  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> I = J <font color="#4169E1">THEN</font> U:=0; <font color="#4169E1">ELSE</font> U:=1; <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(U); <strong><font color="#4169E1">END</font></strong> ISNEUL;  
+
+
+<strong><font color="#4169E1">PROCEDURE NEULF</font></strong>(STAP,DSUM,LSUM,I,V,PAR: LIST; <strong><font color="#228B22">VAR</font></strong> LFNEU,NEUST: LIST); 
+<font color="#B22222">(*UGB compute new linear forms from new terms. 
+Diese funktion berechnet, nachdem neue terme entstanden
+sind, die neuen linearformen. die berechnung basiert
+auf die bereits beschriebenen funktionen und prozeduren
+zur berechnung von linearformen. 
+dsum ist die liste der neuen s-polynome, lsum die liste
+der alten polynome, stap der alte stapel der projektionen.
+das ergebnis ist die liste der neuen linearformen lfneu
+und der neue stapel von projektionen neust.
+diese funktion wird von der funktion ug aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DIFALT, E, KALT, OLDL, PSUM: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> E:=DSUM; E:=MAKERN(E); DIFALT:=SIL; OLDL:=SIL; KALT:=SIL;  
+<font color="#B22222">(*2*)</font> PSUM:=LSUM; PSUM:=MAKERN(PSUM); NEUST:=SIL; 
+      OLDL:=LIST3(SIL,SIL,SIL); 
+<font color="#B22222">(*3*)</font> NEUST:=PROJEC(PSUM,E,DIFALT,OLDL,I,PAR);  
+<font color="#B22222">(*4*)</font> NEUST:=MERGE(STAP,NEUST); 
+<font color="#B22222">(*5*)</font> LFNEU:=ALLLF(NEUST,KALT,I);  
+<font color="#B22222">(*8*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> NEULF;  
+
+
+<strong><font color="#4169E1">PROCEDURE ISNEU</font></strong>(DSUM,LSUM,PAR: LIST;  <strong><font color="#228B22">VAR</font></strong> SEMA,DD: LIST); 
+<font color="#B22222">(*UGB new terms test. 
+Diese funktion stellt fest, ob neue terme in dusm entstanden
+sind. 
+dsum ist die liste der neuen s-polynome in normalform, 
+lsum die alte liste von polynomen. die ausgabe sema ist
+gleich 1 falls neue terme entstanden sind. ansonsten 0.
+dd ist die liste der neuen terme.
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, D, LP, TEMP, U, COUNT: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=LSUM; D:=EXPTU(DSUM); COUNT:=0; DD:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> D &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(D, A,D); TEMP:=SIL; U:=0; 
+            <font color="#4169E1">WHILE</font> (LP &lt;&gt; SIL) <font color="#4169E1">AND</font> (U &lt;&gt; 1) <font color="#4169E1">DO</font> ADV(LP, B,LP); 
+                  U:=COMPA2(A,B);  
+                  <font color="#4169E1">IF</font> U &lt;&gt; 1 <font color="#4169E1">THEN</font> TEMP:=COMP(B,TEMP); <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+            LP:=TCOMP(TEMP,LP); 
+            <font color="#4169E1">IF</font> U &lt;&gt; 1 <font color="#4169E1">THEN</font> COUNT:=COUNT+1; DD:=COMP(A,DD); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> COUNT &gt; 0 <font color="#4169E1">THEN</font> SEMA:=1;  
+         <font color="#4169E1">IF</font> (COUNT = 1) <font color="#4169E1">AND</font> (PAR = 8) <font color="#4169E1">THEN</font> 
+            SWRITE("Es ist nur ein neuer Term entstanden"); BLINES(1); 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> (COUNT &gt;= 2) <font color="#4169E1">AND</font> (PAR = 8) <font color="#4169E1">THEN</font> 
+            SWRITE("es sind "); OWRITE(COUNT); 
+            SWRITE(" neue Terme entstanden"); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> COUNT = 0 <font color="#4169E1">THEN</font> SEMA:=0;  
+         <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font> 
+            SWRITE("es ist kein neuer Term entstanden"); BLINES(1); 
+         <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ISNEU;  
+
+
+<strong><font color="#4169E1">PROCEDURE TCOMP</font></strong>(X,Y: LIST): LIST; 
+<font color="#B22222">(*UGB list constructive conc. ??CCONC??
+X und y sind zwei listen. diese prozedur konkatiniert sie
+zu einer liste z.
+diese funktion wird von der funktion isneu aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, XP, Z: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> XP:=X; Z:=Y; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> Z:=Y; RETURN(Z); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> Y = SIL <font color="#4169E1">THEN</font> Z:=X; RETURN(Z); <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP, A,XP); Z:=COMP(A,Z); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(Z); <strong><font color="#4169E1">END</font></strong> TCOMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE NEWDIF</font></strong>(L,D,DIFALT: LIST): LIST;  
+<font color="#B22222">(*UGB exponent vector list difference from polynomials. 
+Diese funktion liest durch die funktion exptu die
+exponententupel der terme von l und d und berechnet mit
+hilfe der funktion pdif die differenz. fuer die 
+berechnung der neuen differenz wird das schon berechnete 
+ergebnis genutzt.
+diese funktion wird von den funktionen zulfo und nonewl
+aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   D1, D2, DIFALP, DIFNEU, J1Y, L1, L2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> L2:=EXPTU(L); L1:=MAKERN(L2); J1Y:=LIST1(D); D2:=EXPTU(J1Y);  
+      D1:=MAKERN(D2); DIFALP:=DIFALT;  
+<font color="#B22222">(*2*)</font> DIFNEU:=PDIF(L1,D1,DIFALP);  
+<font color="#B22222">(*5*)</font> RETURN(DIFNEU); <strong><font color="#4169E1">END</font></strong> NEWDIF;  
+
+
+<strong><font color="#4169E1">PROCEDURE GS2</font></strong>(LF,V,PAR: LIST): LIST;  
+<font color="#B22222">(*UGB generate stack of sorted polynomials and critical pairs 2.
+Diese funktion funktioniert aehnlich zu gs1. sie ist wegen
+der uebersichtlichkeit getrennt geschrieben. die funktion
+aktualisiert die zwischenergebnisse lf (tupel der form 
+(a,l,k,n,b) wie die ausgabe von gs1), d.h sie ordnet
+die polynome neu und aktualisiert die mengen von paaren. 
+diese funktion wird von den funktionen ug und pug
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   evo, A, B, J1Y, J2Y, J3Y, LFP, LP, LP1, PAIRS, STAK, X: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LFP:=LF; STAK:=SIL; evo:=EVORD; 
+      <font color="#4169E1">IF</font> PAR = 8 <font color="#4169E1">THEN</font>
+         SWRITE("Ordne die Polynome nach den neuen Linearformen"); 
+         BLINES(1); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LFP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LFP, A,LFP); B:=FIRST(A); 
+            LP:=SECOND(A); EVORD:=B; LP:=POLCOP(LP); DILBSO(LP);  
+            LP1:=LP; J1Y:=RED(LP); J2Y:=FIRST(LP); J3Y:=LASTEL(A);  
+            PAIRS:=MKNEWP(J1Y,J2Y,J3Y); J1Y:=THIRD(A); J2Y:=FOURTH(A); 
+            X:=LIST5(B,LP1,J1Y,J2Y,PAIRS); J1Y:=LIST1(X);  
+            STAK:=USUN(J1Y,STAK); <strong><font color="#4169E1">END</font></strong>; 
+      EVORD:=evo; 
+<font color="#B22222">(*5*)</font> RETURN(STAK); <strong><font color="#4169E1">END</font></strong> GS2;  
+
+
+<strong><font color="#4169E1">PROCEDURE ALLLF</font></strong>(STAKK,KALT,I: LIST): LIST; 
+<font color="#B22222">(*UGB all linear forms from stack of projections and print. 
+Die funktion funktionniert genauso wie lfall. hier 
+werden nur die linearformen berechnet und ausgegeben.
+diese funktion wird von der funktion neulf aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, IP, J1Y, LENG, LF, LFX, LISTLF, LY, M, N, NEWLF, NURLF, Q2, 
+      STAKKP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> STAKKP:=STAKK; M:=1; IP:=I; LISTLF:=SIL; 
+<font color="#B22222">(*2*)</font> J1Y:=RNINT(1); LFX:=LIST1(J1Y); LY:=SIL; LF:=LIST1(LFX); 
+      IP:=IP-1; NEWLF:=SIL;  
+      <font color="#4169E1">WHILE</font> M &lt;= IP <font color="#4169E1">DO</font> ADV(STAKKP, A,STAKKP); N:=FIRST(A); 
+            Q2:=SECOND(A); NURLF:=MKLF3(LF,Q2,N,M); M:=M+1; LF:=NURLF; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE("Die disjunkten Linearformen sind "); OWRITE(LENGTH(NURLF)); 
+      SWRITE(" Linearformen  "); BLINES(1); NURLF:=LF;  
+<font color="#B22222">(*5*)</font> RETURN(NURLF); <strong><font color="#4169E1">END</font></strong> ALLLF; 
+
+
+<strong><font color="#4169E1">PROCEDURE LFALL</font></strong>(STAKK,L,KALT,I: LIST; <strong><font color="#228B22">VAR</font></strong> LISTLF,NURLF: LIST); 
+<font color="#B22222">(*UGB all linear forms from stack of projections 1. 
+Diese funktion funktionniert genauso wie alleln, mit dem 
+unterschied, dass das element 1 als letzte komponente
+der linearform gespeichert wird. 
+diese funktion wird von der funktion ugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, IP, J1Y, LF, LFX, LY, M, N, NEWLF, Q2, STAKKP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> STAKKP:=STAKK; M:=1; IP:=I; LISTLF:=SIL; 
+<font color="#B22222">(*2*)</font> J1Y:=RNINT(1); LFX:=LIST1(J1Y); LY:=SIL; LF:=LIST1(LFX); 
+      IP:=IP-1; NEWLF:=SIL;  
+      <font color="#4169E1">WHILE</font> M &lt;= IP <font color="#4169E1">DO</font> ADV(STAKKP, A,STAKKP); N:=FIRST(A); 
+            Q2:=SECOND(A); MKLF2(LF,Q2,N,M,L, NURLF,LISTLF); M:=M+1; 
+            LF:=NURLF; <strong><font color="#4169E1">END</font></strong>; 
+      NURLF:=LF; SWRITE("Die berechneten Linearformen sind "); 
+      OWRITE(LENGTH(NURLF)); BLINES(1);  
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> LFALL;  
+
+
+<strong><font color="#4169E1">PROCEDURE MKLF3</font></strong>(LFP,Q2,NP,M: LIST): LIST;  
+<font color="#B22222">(*UGB make new linear forms 3.
+Diese funktionniert genauso wie mklf2. hier werden nur 
+die linearformen (newlf) berechnet und ausgegeben. 
+diese funktion wird von der funktion alllf aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   A, B, D, J, J1Y, KLIST, LF, LISTLF, NEWLF, TR: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LF:=LFP; NEWLF:=SIL; KLIST:=SIL; J:=0; LISTLF:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LF &lt;&gt; SIL <font color="#4169E1">DO</font> D:=SIL; ADV(LF, B,LF); 
+            <font color="#4169E1">IF</font> Q2 = SIL <font color="#4169E1">THEN</font> J1Y:=LIST2(1,1); D:=LIST1(J1Y); 
+               <font color="#4169E1">ELSE</font> TR:=CP2(B,Q2); TR:=RNVABS(TR); TR:=LRNBMS(TR); 
+                    D:=CUT(TR); <strong><font color="#4169E1">END</font></strong>;  
+            CLF3(B,D,KLIST,NP,J,M, A,KLIST,J); NEWLF:=USUN(A,NEWLF); 
+      <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(NEWLF); <strong><font color="#4169E1">END</font></strong> MKLF3; 
+
+
+<strong><font color="#4169E1">PROCEDURE CLF3</font></strong>(C,D,KLIST,NP,JP,M: LIST;  <strong><font color="#228B22">VAR</font></strong> LFORM,KLISTP,J: LIST); 
+<font color="#B22222">(*UGB compute linear form from difference set 3.
+Diese funktionniert genauso wie clf2. hier werden nur
+die linearformen (lform) berechnet und ausgegeben. 
+diese funktion wird von der funktion mklf3 aufgerufen. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   A, DP, K, KALT, KLISTH, U: LIST;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> DP:=D; LFORM:=SIL; J:=JP; KLISTP:=KLIST; KALT:=SIL; 
+      KLISTH:=SIL;  
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> DP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(DP, A,DP); A:=COMP(A,C);  
+            K:=CSPUR(A,NP,KALT); 
+            <font color="#4169E1">IF</font> M &lt;&gt; 1 <font color="#4169E1">THEN</font> U:=COMPA1(K,KLISTP);  
+               <font color="#4169E1">IF</font> U &lt;&gt; 1 <font color="#4169E1">THEN</font> KLISTH:=COMP(K,KLISTH);  
+                  LFORM:=COMP(A,LFORM); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> LFORM:=COMP(A,LFORM); <strong><font color="#4169E1">END</font></strong>;  
+            <strong><font color="#4169E1">END</font></strong>; 
+      KLISTP:=CCONC(KLISTP,KLISTH); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> CLF3; 
+
+
+<strong><font color="#4169E1">PROCEDURE DO1</font></strong>(LFP: LIST): LIST; 
+<font color="#B22222">(*UGB add last component to exponent vector. 
+Um speicherplatz zu sparen wurden die linearformen ohne
+das 1 element als letzte komponente gespeichert. diese 
+funktion fuegt fuer die liste der linearformen lfp das 
+element 1 ein. das ergebnis ist lf1. 
+diese funktion wird von der funktion pugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, LF, LF1, E: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LF:=LFP; LF1:=SIL; E:=LIST1(RNINT(1)); 
+      <font color="#4169E1">WHILE</font> LF &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LF, A,LF); A:=CCONC(A,E); 
+            LF1:=COMP(A,LF1); <strong><font color="#4169E1">END</font></strong>; 
+      LF1:=INV(LF1); 
+<font color="#B22222">(*4*)</font> RETURN(LF1); <strong><font color="#4169E1">END</font></strong> DO1; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKLIST</font></strong>(LF,L: LIST;  <strong><font color="#228B22">VAR</font></strong> LFLIST,NURLF: LIST);  
+<font color="#B22222">(*UGB make trace and cuts. 
+Diese funktion wird aufgerufen bei der option pugb. die
+liste der eingelesenen linearformen lf ist groesser als
+noetig. diese funktion reduziert diese linearformen,
+sodass bezueglich der menge p von polynomen verschiedene 
+ordnungen ergeben. nurlf ist dann das ergebnis. listlf 
+besteht aus tupel der form (a,l,k,n) wie das ergebnis von
+lfall.
+diese funktion wird von der funktion pugb aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, J1Y, K, KALT, KLIST, LFP, P, Q: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LFP:=LF; KALT:=SIL; KLIST:=SIL; NURLF:=SIL; LFLIST:=SIL;  
+      Q:=EXPTU(L); P:=MAKERN(Q); 
+<font color="#B22222">(*2*)</font> P:=DIFF(P); 
+<font color="#B22222">(*3*)</font> <font color="#4169E1">WHILE</font> LFP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LFP, A,LFP); K:=CSPUR(A,P,KALT);  
+            NURLF:=COMP(A,NURLF); J1Y:=LIST4(A,L,K,P); 
+            LFLIST:=COMP(J1Y,LFLIST); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> MKLIST; 
+
+
+<strong><font color="#4169E1">PROCEDURE LDEG</font></strong>(L: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial list total degree. 
+Diese funktion bestimmt fuer eine liste von polynomen l
+den maximalen totalgrad, der darin auftaucht. 
+diese funktion wird von den funktionen pug und pugb
+aufgerufen. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DEG, DEG1, L1, LP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=L; DEG:=0; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, L1,LP); DEG1:=DIPTDG(L1); 
+            DEG:=IMAX(DEG,DEG1); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*5*)</font> RETURN(DEG); <strong><font color="#4169E1">END</font></strong> LDEG;  
+
+
+
+<strong><font color="#4169E1">END</font></strong> MASUGB.
+</pre>
+</body>
+
+</html>

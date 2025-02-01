@@ -1,0 +1,364 @@
+
+<html>
+<head>
+<title>./masarith/SACRN.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:22+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACRN.mi,v 1.3 1992/10/15 16:28:21 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACRN.mi,v $
+ * Revision 1.3  1992/10/15  16:28:21  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  13:19:18  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:46  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACRN;
+
+<font color="#B22222">(* SAC Rational Number Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASABS;
+
+FROM MASBIOS IMPORT SWRITE, CWRITE, CREADB, MASORD, BKSP, BLINES;
+
+FROM MASSTOR IMPORT LIST, ADV, COMP, FIRST;
+
+FROM SACLIST IMPORT OWRITE, SECOND, FIRST2, LIST2, AWRITE;
+
+FROM SACI IMPORT IQR, ISIGNF, ISUM, IPROD, ICOMP, INEG, 
+                 IEXP, IDPR, IWRITE, IREAD, IFCL2, IABSF,
+                 IGCDCF, IRAND, IGCD, IQ, IMP2;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACRN.mi,v 1.3 1992/10/15 16:28:21 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE RIRNP</font></strong>(I,CL: LIST): LIST;
+<font color="#B22222">(*Rational interval rational number product.  I is an interval with
+rational endpoints.  c is a rational number.  J is the interval I*c.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, BL, BLP, J: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> FIRST2(I,AL,BL); ALP:=RNPROD(AL,CL); BLP:=RNPROD(BL,CL);
+      <font color="#4169E1">IF</font> RNSIGN(CL) &gt;= 0 <font color="#4169E1">THEN</font> J:=LIST2(ALP,BLP); <font color="#4169E1">ELSE</font>
+         J:=LIST2(BLP,ALP); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(J);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RIRNP;
+
+
+<strong><font color="#4169E1">PROCEDURE RNABS</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number absolute value.  R is a rational number.  S is the
+absolute value of R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> RNSIGN(R) &gt;= 0 <font color="#4169E1">THEN</font> S:=R; <font color="#4169E1">ELSE</font> S:=RNNEG(R); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNABS;
+
+
+<strong><font color="#4169E1">PROCEDURE RNCEIL</font></strong>(RL: LIST): LIST;
+<font color="#B22222">(*Rational number, ceiling of.  r is a rational number.  a=CEILING(r), 
+an integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, RL1, RL2, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> AL:=0; RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl ne 0.*)</font> FIRST2(RL,RL1,RL2); IQR(RL1,RL2,AL,BL);
+      SL:=ISIGNF(BL);
+      <font color="#4169E1">IF</font> SL &gt; 0 <font color="#4169E1">THEN</font> AL:=ISUM(AL,SL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RNCEIL;
+
+
+<strong><font color="#4169E1">PROCEDURE RNCOMP</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number comparison.  R and S are rational numbers.
+t=SIGN(R-S).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, J2Y, R1, R2, RL, S1, S2, SL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*r or s zero.*)</font>
+      <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> J1Y:=RNSIGN(S); TL:=-J1Y; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> TL:=RNSIGN(R); RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*opposite signs.*)</font> FIRST2(R,R1,R2); FIRST2(S,S1,S2);
+      RL:=ISIGNF(R1); SL:=ISIGNF(S1); J1Y:=RL-SL; TL:=J1Y DIV 2;
+      <font color="#4169E1">IF</font> TL &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*same sign.*)</font> J1Y:=IPROD(R1,S2); J2Y:=IPROD(R2,S1);
+      TL:=ICOMP(J1Y,J2Y); RETURN(TL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> RNCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE RNDEN</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number denominator.  R is a rational number.  b is the
+denominator of R, a positive integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> BL:=1; <font color="#4169E1">ELSE</font> BL:=SECOND(R); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(BL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNDEN;
+
+
+<strong><font color="#4169E1">PROCEDURE RNDIF</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number difference.  R and S are rational numbers.  T=R-S.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RNNEG(S); T:=RNSUM(R,J1Y); RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE RNDWR</font></strong>(R,NL: LIST);
+<font color="#B22222">(*Rational number decimal write.  R is a rational number.  n is a
+non-negative integer.  R is approximated by a decimal fraction D with
+n decimal digits following the decimal point and D is written in the
+output stream.  The inaccuracy of the approximation is at most
+(1/2)*10**-n.  If ABS(D) is greater than ABS(R) then the last digit is
+followed by a minus sign, if ABS(D) is less than ABS(R) then by a
+plus sign.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, D, DL, F, IL, M, SL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute approximation.*)</font>
+      <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> A:=0; B:=1; <font color="#4169E1">ELSE</font> FIRST2(R,A,B); <strong><font color="#4169E1">END</font></strong>;
+      SL:=ISIGNF(A);
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> A:=INEG(A); <strong><font color="#4169E1">END</font></strong>;
+      M:=IEXP(10,NL); A:=IPROD(A,M); IQR(A,B,D,F); F:=IDPR(F,2);
+      <font color="#4169E1">IF</font> F = 0 <font color="#4169E1">THEN</font> TL:=0; <font color="#4169E1">ELSE</font> TL:=ICOMP(B,F);
+         <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font> D:=ISUM(D,1); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*convert and write.*)</font>
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> SWRITE("-"); <strong><font color="#4169E1">END</font></strong>;
+      IQR(D,M,D,F); IWRITE(D); SWRITE(".");
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> F:=IDPR(F,10); IQR(F,M,DL,F); CWRITE(DL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> TL &gt; 0 <font color="#4169E1">THEN</font> SWRITE("+"); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font> SWRITE("-"); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RNDWR;
+
+
+<strong><font color="#4169E1">PROCEDURE RNFCL2</font></strong>(AL: LIST; <strong><font color="#228B22">VAR</font></strong> ML,NL: LIST);
+<font color="#B22222">(*Rational number floor and ceiling of logarithm, base 2.  a is a non-
+zero rational number.  m=FLOOR(LOG2(ABS(a))) and n=CEILING(LOG2(ABS(a))) 
+are gamma-integers.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, ALP1, CL, DL, J1Y, ML1, ML2, NL1, NL2, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*apply ifcl2 to numerator and denominator.*)</font> FIRST2(AL,AL1,AL2);
+      IFCL2(AL1,ML1,NL1); IFCL2(AL2,ML2,NL2); ML:=ML1-NL2; NL:=NL1-ML2;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*nl le ml+1.*)</font>
+      <font color="#4169E1">IF</font> NL &lt;= ML+1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*resolve uncertainty.*)</font> ALP1:=IABSF(AL1);
+      <font color="#4169E1">IF</font> ML+1 &gt;= 0 <font color="#4169E1">THEN</font> CL:=ALP1; J1Y:=ML+1; DL:=IMP2(AL2,J1Y); <font color="#4169E1">ELSE</font>
+         J1Y:=-ML; J1Y:=J1Y-1; CL:=IMP2(ALP1,J1Y); DL:=AL2; <strong><font color="#4169E1">END</font></strong>;
+      SL:=ICOMP(CL,DL);
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> NL:=NL-1; <font color="#4169E1">ELSE</font> ML:=ML+1; <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> RNFCL2;
+
+
+<strong><font color="#4169E1">PROCEDURE RNFLOR</font></strong>(RL: LIST): LIST;
+<font color="#B22222">(*Rational number, floor of.  r is a rational number.  a=FLOOR(r),
+an integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, RL1, RL2, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> AL:=0; RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl ne 0.*)</font> FIRST2(RL,RL1,RL2); IQR(RL1,RL2,AL,BL);
+      SL:=ISIGNF(BL);
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> AL:=ISUM(AL,SL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RNFLOR;
+
+
+<strong><font color="#4169E1">PROCEDURE RNINT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Rational number from integer.  A is an integer.  R is the rational
+number A/1.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> R:=0; <font color="#4169E1">ELSE</font> R:=LIST2(A,1); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNINT;
+
+
+<strong><font color="#4169E1">PROCEDURE RNINV</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number inverse.  R is a non-zero rational number.  S=1/R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  R1, R2, S, S1, S2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> FIRST2(R,R1,R2);
+      <font color="#4169E1">IF</font> ISIGNF(R1) &gt; 0 <font color="#4169E1">THEN</font> S1:=R2; S2:=R1; <font color="#4169E1">ELSE</font> S1:=INEG(R2);
+         S2:=INEG(R1); <strong><font color="#4169E1">END</font></strong>;
+      S:=LIST2(S1,S2); RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNINV;
+
+
+<strong><font color="#4169E1">PROCEDURE RNNEG</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number negative.  R is a rational number.  S=-R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  R1, RP, RP1, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> S:=0; <font color="#4169E1">ELSE</font> ADV(R,R1,RP); RP1:=INEG(R1);
+         S:=COMP(RP1,RP); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNNEG;
+
+
+<strong><font color="#4169E1">PROCEDURE RNNUM</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number numerator.  R is a rational number.  a is the
+numerator of R, an integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> AL:=FIRST(R); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNNUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNPROD</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number product.  R and S are rational numbers.  T=R*S.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D1, D2, R1, R2, RB1, RB2, S1, S2, SB1, SB2, T, T1, T2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*r=0 or s=0.*)</font>
+      <font color="#4169E1">IF</font> (R = 0) <font color="#4169E1">OR</font> (S = 0) <font color="#4169E1">THEN</font> T:=0; RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*obtain numerators and denominators.*)</font> FIRST2(R,R1,R2);
+      FIRST2(S,S1,S2);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*r and s integers.*)</font>
+      <font color="#4169E1">IF</font> (R2 = 1) <font color="#4169E1">AND</font> (S2 = 1) <font color="#4169E1">THEN</font> T1:=IPROD(R1,S1);
+         T:=LIST2(T1,1); RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*r or s an integer.*)</font>
+      <font color="#4169E1">IF</font> R2 = 1 <font color="#4169E1">THEN</font> IGCDCF(R1,S2,D1,RB1,SB2); T1:=IPROD(RB1,S1);
+         T:=LIST2(T1,SB2); RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S2 = 1 <font color="#4169E1">THEN</font> IGCDCF(S1,R2,D2,SB1,RB2); T1:=IPROD(SB1,R1);
+         T:=LIST2(T1,RB2); RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*general case.*)</font> IGCDCF(R1,S2,D1,RB1,SB2);
+      IGCDCF(S1,R2,D2,SB1,RB2); T1:=IPROD(RB1,SB1); T2:=IPROD(RB2,SB2);
+      T:=LIST2(T1,T2); RETURN(T);
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> RNPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNP2</font></strong>(KL: LIST): LIST;
+<font color="#B22222">(*Rational number power of 2.  k is a gamma-integer.  r=2**k, a
+rational number.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, HL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> HL:=MASABS(KL); AL:=IMP2(1,HL);
+      <font color="#4169E1">IF</font> KL &gt;= 0 <font color="#4169E1">THEN</font> RL:=LIST2(AL,1); <font color="#4169E1">ELSE</font> RL:=LIST2(1,AL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(RL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNP2;
+
+
+<strong><font color="#4169E1">PROCEDURE RNQ</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number quotient.  R and S are rational numbers, S non-zero.
+T=R/S.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=0; <font color="#4169E1">ELSE</font> J1Y:=RNINV(S); T:=RNPROD(R,J1Y); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNQ;
+
+
+<strong><font color="#4169E1">PROCEDURE RNRAND</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Rational number, random.  n is a positive beta-integer.  Random
+integers A and B are generated using IRAND(n).  Then R=A/(ABS(B)+1),
+reduced to lowest terms.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=IRAND(NL); B:=IRAND(NL); B:=IABSF(B); B:=ISUM(B,1);
+      R:=RNRED(A,B); RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNRAND;
+
+
+<strong><font color="#4169E1">PROCEDURE RNREAD</font></strong>(): LIST;
+<font color="#B22222">(*Rational number read.  The rational number R is read from the input
+stream.  Any preceding blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, IDUM, R, R1, R2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> R1:=IREAD(); C:=CREADB();
+      <font color="#4169E1">IF</font> C = MASORD("/") <font color="#4169E1">THEN</font> R2:=IREAD(); <font color="#4169E1">ELSE</font> R2:=1; BKSP; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> R1 = 0 <font color="#4169E1">THEN</font> R:=0; <font color="#4169E1">ELSE</font> R:=LIST2(R1,R2); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE RNRED</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Rational number reduction to lowest terms.  A and B are integers,
+B non-zero.  R is the rational number A/B in canonical form.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AB, BB, C, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> R:=0; RETURN(R); <strong><font color="#4169E1">END</font></strong>;
+      C:=IGCD(A,B); AB:=IQ(A,C); BB:=IQ(B,C);
+      <font color="#4169E1">IF</font> ISIGNF(B) &lt; 0 <font color="#4169E1">THEN</font> AB:=INEG(AB); BB:=INEG(BB); <strong><font color="#4169E1">END</font></strong>;
+      R:=LIST2(AB,BB); RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNRED;
+
+
+<strong><font color="#4169E1">PROCEDURE RNSIGN</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number sign.  R is a rational number.  s=SIGN(R).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> SL:=0; <font color="#4169E1">ELSE</font> J1Y:=FIRST(R); SL:=ISIGNF(J1Y); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(SL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNSIGN;
+
+
+<strong><font color="#4169E1">PROCEDURE RNSUM</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number sum.  R and S are rational numbers.  T=R+S.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D, E, J1Y, J2Y, R1, R2, RB2, S1, S2, SB2, T, T1, T2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*r=0 or s=0.*)</font>
+      <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=S; RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*obtain numerators and denominators.*)</font> FIRST2(R,R1,R2);
+      FIRST2(S,S1,S2);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*r and s integers.*)</font>
+      <font color="#4169E1">IF</font> (R2 = 1) <font color="#4169E1">AND</font> (S2 = 1) <font color="#4169E1">THEN</font> T1:=ISUM(R1,S1);
+         <font color="#4169E1">IF</font> T1 = 0 <font color="#4169E1">THEN</font> T:=0; <font color="#4169E1">ELSE</font> T:=LIST2(T1,1); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*r or s an integer.*)</font>
+      <font color="#4169E1">IF</font> R2 = 1 <font color="#4169E1">THEN</font> T1:=IPROD(R1,S2); T1:=ISUM(T1,S1);
+         T:=LIST2(T1,S2); RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S2 = 1 <font color="#4169E1">THEN</font> T1:=IPROD(R2,S1); T1:=ISUM(T1,R1);
+         T:=LIST2(T1,R2); RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*general case.*)</font> IGCDCF(R2,S2,D,RB2,SB2); J1Y:=IPROD(R1,SB2);
+      J2Y:=IPROD(RB2,S1); T1:=ISUM(J1Y,J2Y);
+      <font color="#4169E1">IF</font> T1 = 0 <font color="#4169E1">THEN</font> T:=0; RETURN(T); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> D &lt;&gt; 1 <font color="#4169E1">THEN</font> E:=IGCD(T1,D);
+         <font color="#4169E1">IF</font> E &lt;&gt; 1 <font color="#4169E1">THEN</font> T1:=IQ(T1,E); R2:=IQ(R2,E); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      T2:=IPROD(R2,SB2); T:=LIST2(T1,T2); RETURN(T);
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> RNSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE RNWRIT</font></strong>(R: LIST);
+<font color="#B22222">(*Rational number write. R is a rational number.  R is converted 
+to decimal and written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  R1, R2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); <font color="#4169E1">ELSE</font> FIRST2(R,R1,R2); IWRITE(R1);
+         <font color="#4169E1">IF</font> R2 &lt;&gt; 1 <font color="#4169E1">THEN</font> SWRITE("/"); IWRITE(R2); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RNWRIT;
+
+
+<strong><font color="#4169E1">END</font></strong> SACRN.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

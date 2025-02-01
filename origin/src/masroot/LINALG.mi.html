@@ -1,0 +1,432 @@
+
+<html>
+<head>
+<title>./masroot/LINALG.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-03-06T15:23:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: LINALG.mi,v 1.1 1994/03/11 15:21:46 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: LINALG.mi,v $
+ * Revision 1.1  1994/03/11  15:21:46  pesch
+ * Counting real roots of multivariate polynomials, Diplomarbeit F. Lippold
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE LINALG;
+<font color="#B22222">(* Linear algebra implementation module *)</font>
+
+<font color="#B22222">(* Import lists and declarations *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, COMP, INV, ADV, LENGTH, FIRST, LIST1, RED;
+
+FROM SACLIST IMPORT LELT, SUFFIX;
+
+FROM MASADOM IMPORT ADFI, ADPROD, ADSUM, ADSIGN, ADNEG, ADQUOT, ADWRIT;
+
+FROM SACI IMPORT ISUM, IQ, ISIGNF, INEG;
+
+FROM MASBIOS IMPORT BLINES, SWRITE;
+
+FROM LINALGI IMPORT IVSPROD, IMPROD;
+
+FROM LINALGRN IMPORT MTRANS;
+
+FROM MASI IMPORT IPROD;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: LINALG.mi,v 1.1 1994/03/11 15:21:46 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<font color="#B22222">(* ---------------------------------------------------------------------- *)</font>
+<font color="#B22222">(* Arbitrary domain linear algebra *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADUM</font></strong>(D,n: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain unit matrix. 
+   n is an integer. The (n x n) unit matrix of domain D is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> C,c,i,j,e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  C := SIL; i := 0;
+  <font color="#4169E1">WHILE</font> i &lt; n <font color="#4169E1">DO</font>
+    c := SIL; i := i + 1; j := 0;
+    <font color="#4169E1">WHILE</font> j &lt; n <font color="#4169E1">DO</font>
+      j := j + 1;
+      <font color="#4169E1">IF</font> i = j <font color="#4169E1">THEN</font> e := ADFI(D,1) <font color="#4169E1">ELSE</font> e := ADFI(D,0) <strong><font color="#4169E1">END</font></strong>;
+      c := COMP(e,c);
+    <strong><font color="#4169E1">END</font></strong>;
+    c := INV(c); C := COMP(c,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADUM;
+
+<strong><font color="#4169E1">PROCEDURE ADVSPROD</font></strong>(D,A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain vector scalar product. 
+   A and B are vectors of the domain D. The arbitrary domain value 
+   C = a1*b1 + ... + an*bn is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a,b,c,C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  C := ADFI(D,0);
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    ADV(B, b, B);
+    c := ADPROD(a,b);
+    C := ADSUM(c,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADVSPROD;
+
+<strong><font color="#4169E1">PROCEDURE ADVSVPROD</font></strong>(A,b: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain vector scalar vector product. 
+   A is an arbitrary domain vector and b is a number of the same domain. 
+   The arbitrary domain vector C = (a1*b, ..., an*b) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a,c,C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  C := SIL;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    c := ADPROD(a,b);
+    C := COMP(c,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADVSVPROD;
+
+<strong><font color="#4169E1">PROCEDURE ADVVSUM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain vector vector sum. 
+   A and B are arbitrary domain vectors. The arbitrary domain vector 
+   C = (a1+b1, ..., an+bn) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a,b,c,C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  C := SIL;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    ADV(B, b, B);
+    c := ADSUM(a,b);
+    C := COMP(c,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADVVSUM;
+
+<strong><font color="#4169E1">PROCEDURE ADSMPROD</font></strong>(A,b: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain scalar and matrix product.
+   A is a arbitrary domain matrix. b is a arbitrary domain number. 
+   The arbitrary domain matrix C = A * b is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a,c,C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+  C := SIL;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    c := ADVSVPROD(a,b);
+    C := COMP(c,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADSMPROD;
+
+<strong><font color="#4169E1">PROCEDURE ADMSUM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix sum. 
+   A and B are arbitrary domain matrices. The arbitrary domain matrix 
+   C = A + B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a,b,c,C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+  C := SIL;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    ADV(B, b, B);
+    c := ADVVSUM(a,b);
+    C := COMP(c,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADMSUM;
+
+<strong><font color="#4169E1">PROCEDURE ADMPROD</font></strong>(D,A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix product. 
+   A and B are matrices of domain D. The matrix C = A * B of domain D is 
+   returned, if the number of columns of A is equal to the number of rows 
+   of B, otherwise the empty matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> H1,H2,C,C1,a,c,BP,BT,b: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  C := SIL;
+  <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+  H1 := LENGTH(FIRST(A));
+  H2 := LENGTH(B);
+  <font color="#4169E1">IF</font> H1 &lt;&gt; H2 <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+  BT:=MTRANS(B);
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(A, a, A);
+    C1:=SIL; BP:=BT;
+    <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BP,b,BP);
+      c:=ADVSPROD(D,a,b);   
+      C1:=COMP(c,C1);
+    <strong><font color="#4169E1">END</font></strong>;
+    C1 := INV(C1); C := COMP(C1,C);
+  <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C); RETURN(C);
+<strong><font color="#4169E1">END</font></strong> ADMPROD;
+
+<strong><font color="#4169E1">PROCEDURE ADVWRITE</font></strong>(A: LIST);
+<font color="#B22222">(* Arbitrary domain vector write. 
+   A is an arbitrary domain vector. A is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  SWRITE("(");
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    ADWRIT(a);
+    <font color="#4169E1">IF</font> A &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(",") <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>; 
+  SWRITE(")");
+<strong><font color="#4169E1">END</font></strong> ADVWRITE;
+
+<strong><font color="#4169E1">PROCEDURE ADMWRITE</font></strong>(A: LIST);
+<font color="#B22222">(*Arbitrary domain matrix write. 
+  A is an arbitrary domain  matrix. A is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  BLINES(0); SWRITE("(");
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A, a, A);
+    ADVWRITE(a);
+    <font color="#4169E1">IF</font> A &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", "); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  SWRITE(")"); BLINES(0);
+<strong><font color="#4169E1">END</font></strong> ADMWRITE;
+
+<strong><font color="#4169E1">PROCEDURE ADMTRACE</font></strong>(D,A: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix trace. 
+   A is a matrix of domain D. The trace of A is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> tr,i,a: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tr := ADFI(D,0); i := 0;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A,a,A); i := i + 1;
+    tr := ADSUM(tr,LELT(a,i));
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(tr);
+<strong><font color="#4169E1">END</font></strong> ADMTRACE;
+
+<strong><font color="#4169E1">PROCEDURE ADMPTRACE</font></strong>(D,A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix product trace. 
+   A and B are matrices of domain D. The trace of A*B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> tr,a,b,H1,H2,BT: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tr := ADFI(D,0);
+  <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (B = SIL) <font color="#4169E1">THEN</font> RETURN(tr) <strong><font color="#4169E1">END</font></strong>;
+  H1 := LENGTH(FIRST(A));
+  H2 := LENGTH(B);
+  <font color="#4169E1">IF</font> H1 &lt;&gt; H2 <font color="#4169E1">THEN</font> RETURN(tr) <strong><font color="#4169E1">END</font></strong>;
+  BT:=MTRANS(B);
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> 
+    ADV(A, a, A);
+    ADV(BT,b,BT);
+    tr := ADSUM(tr,ADVSPROD(D,a,b));   
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(tr);
+<strong><font color="#4169E1">END</font></strong> ADMPTRACE;
+
+<strong><font color="#4169E1">PROCEDURE ADCHARPOL</font></strong>(D,Q: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain characteristic polynomial. 
+   Q is a p x p Matrix of domain D. The list al=(a(0),...,a(p)) is created 
+   such that a(i) from D is the coefficient of X^(p-i) in det(XE-Q). *)</font>
+<strong><font color="#228B22">VAR</font></strong> L,l,A,B,sl,s,al,a,k,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  al := LIST1(ADFI(D,1));
+  <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> RETURN(al) <strong><font color="#4169E1">END</font></strong>;
+  p := LENGTH(Q);
+  L := SIL; A := Q;
+  k := 1;
+  s := ADMTRACE(D,A);
+  sl := LIST1(s); 
+  a := ADNEG(s);
+  al := SUFFIX(al,a);
+  <font color="#4169E1">WHILE</font> k*k &lt; p <font color="#4169E1">DO</font>
+    k := k+1;
+    L := COMP(A,L);
+    A := ADMPROD(D,A,Q);
+    s := ADMTRACE(D,A);
+    sl := COMP(s,sl);
+    a := ADQUOT(ADVSPROD(D,sl,al), ADFI(D,-k));
+    al := SUFFIX(al,a);
+  <strong><font color="#4169E1">END</font></strong>;
+  B := A;
+  L := INV(L);
+  l := L;
+  <font color="#4169E1">WHILE</font> k &lt; p <font color="#4169E1">DO</font>
+    k := k+1;
+    <font color="#4169E1">IF</font> l = SIL <font color="#4169E1">THEN</font>
+      B := ADMPROD(D,B,A);
+      s := ADMTRACE(D,B);
+      l := L;
+    <font color="#4169E1">ELSE</font>
+      s := ADMPTRACE(D,B,FIRST(l));
+      l := RED(l);
+    <strong><font color="#4169E1">END</font></strong>;
+    sl := COMP(s,sl);
+    a := ADQUOT(ADVSPROD(D,sl,al), ADFI(D,-k));
+    al := SUFFIX(al,a);
+  <strong><font color="#4169E1">END</font></strong>; 
+  RETURN(al); 
+<strong><font color="#4169E1">END</font></strong> ADCHARPOL;
+
+<strong><font color="#4169E1">PROCEDURE ADSIG</font></strong>(D,Q: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain signature. 
+   Q is a symmetric p x p Matrix of domain D. The signature of Q ist returned.
+   ADCHARPOL is used. *)</font>
+<strong><font color="#228B22">VAR</font></strong> al,p,n,a,s,sp,sn,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  p := 0; n := 0;
+  al := ADCHARPOL(D,Q);
+  ADV(al,a,al);
+  sp := ADSIGN(a); sn := sp; t := 1;
+  <font color="#4169E1">WHILE</font> al &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(al,a,al); t := -t; s := ADSIGN(a);
+    <font color="#4169E1">IF</font> s &lt;&gt; 0 <font color="#4169E1">THEN</font>
+      <font color="#4169E1">IF</font> sp &lt;&gt; s   <font color="#4169E1">THEN</font> p := p + 1; sp := s   <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> sn &lt;&gt; s*t <font color="#4169E1">THEN</font> n := n + 1; sn := s*t <strong><font color="#4169E1">END</font></strong>; 
+    <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(p-n);
+<strong><font color="#4169E1">END</font></strong> ADSIG;
+
+<font color="#B22222">(* ---------------------------------------------------------------------- *)</font>
+<font color="#B22222">(* Integer linear algebra *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IMTRACE</font></strong>(A: LIST): LIST;
+<font color="#B22222">(* Integral matrix trace. 
+   A is an integral matrix. The trace of A is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> tr,i,a: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tr := 0; i := 0;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A,a,A); i := i + 1;
+    tr := ISUM(tr,LELT(a,i));
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(tr);
+<strong><font color="#4169E1">END</font></strong> IMTRACE;
+
+<strong><font color="#4169E1">PROCEDURE IMPTRACE</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Integral matrix product trace. 
+   A and B are integral matrices. The trace of the matrix A*B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> tr,a,b,H1,H2,BT: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tr := 0;
+  <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (B = SIL) <font color="#4169E1">THEN</font> RETURN(tr) <strong><font color="#4169E1">END</font></strong>;
+  H1 := LENGTH(FIRST(A));
+  H2 := LENGTH(B);
+  <font color="#4169E1">IF</font> H1 &lt;&gt; H2 <font color="#4169E1">THEN</font> RETURN(tr) <strong><font color="#4169E1">END</font></strong>;
+  BT:=MTRANS(B);
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> 
+    ADV(A, a, A);
+    ADV(BT,b,BT);
+    tr := ISUM(tr,IVSPROD(a,b));   
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(tr);
+<strong><font color="#4169E1">END</font></strong> IMPTRACE;
+
+<strong><font color="#4169E1">PROCEDURE ICHARPOL</font></strong>(Q: LIST): LIST;
+<font color="#B22222">(* Integral matrix characteristic polynomial. 
+   Q is an integral p x p Matrix. The list al = (a(0),...,a(p)) of integers 
+   is created with a(i) is the coefficient of X^(p-i) in det(XE-Q). *)</font>
+<strong><font color="#228B22">VAR</font></strong> L,l,A,B,sl,s,al,a,k,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  al := LIST1(1);
+  <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> RETURN(al) <strong><font color="#4169E1">END</font></strong>;
+  p := LENGTH(Q);
+  L := SIL; A := Q;
+  k := 1;
+  s := IMTRACE(A);
+  sl := LIST1(s); 
+  a := INEG(s);
+  al := SUFFIX(al,a);
+  <font color="#4169E1">WHILE</font> k*k &lt; p <font color="#4169E1">DO</font>
+    k := k+1;
+    L := COMP(A,L);
+    A := IMPROD(A,Q);
+    s := IMTRACE(A);
+    sl := COMP(s,sl);
+    a := IQ(IVSPROD(sl,al),-k);
+    al := SUFFIX(al,a);
+  <strong><font color="#4169E1">END</font></strong>;
+  B := A;
+  L := INV(L);
+  l := L;
+  <font color="#4169E1">WHILE</font> k &lt; p <font color="#4169E1">DO</font>
+    k := k+1;
+    <font color="#4169E1">IF</font> l = SIL <font color="#4169E1">THEN</font>
+      B := IMPROD(B,A);
+      s := IMTRACE(B);
+      l := L;
+    <font color="#4169E1">ELSE</font>
+      s := IMPTRACE(B,FIRST(l));
+      l := RED(l);
+    <strong><font color="#4169E1">END</font></strong>;
+    sl := COMP(s,sl);
+    a := IQ(IVSPROD(sl,al),-k);
+    al := SUFFIX(al,a);
+  <strong><font color="#4169E1">END</font></strong>; 
+  RETURN(al); 
+<strong><font color="#4169E1">END</font></strong> ICHARPOL;
+
+<strong><font color="#4169E1">PROCEDURE ISIG</font></strong>(Q: LIST): LIST;
+<font color="#B22222">(* Integral matrix signature. 
+   Q is a symmetric integral p x p Matrix. The signature of Q ist returned.
+   ICHARPOL is used *)</font>
+<strong><font color="#228B22">VAR</font></strong> al,p,n,a,s,sp,sn,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  p := 0; n := 0;
+  al := ICHARPOL(Q);
+  ADV(al,a,al);
+  sp := ISIGNF(a); sn := sp; t := 1;
+  <font color="#4169E1">WHILE</font> al &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(al,a,al); t := -t; s := ISIGNF(a);
+    <font color="#4169E1">IF</font> s &lt;&gt; 0 <font color="#4169E1">THEN</font>
+      <font color="#4169E1">IF</font> sp &lt;&gt; s   <font color="#4169E1">THEN</font> p := p + 1; sp := s   <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> sn &lt;&gt; s*t <font color="#4169E1">THEN</font> n := n + 1; sn := s*t <strong><font color="#4169E1">END</font></strong>; 
+    <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(p-n);
+<strong><font color="#4169E1">END</font></strong> ISIG;
+
+<strong><font color="#4169E1">PROCEDURE IMRTPROD</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Integral matrix right tensor product. 
+   A and B are integral matrices. The matrix C is constructed by 
+   replacing every entry a(i,j) of A by the matrix a(i,j)*B. *)</font> 
+<strong><font color="#228B22">VAR</font></strong> C,c,a,ar,ars,Bs,b,br,brs: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  C := SIL;
+  <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (B = SIL) <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(A,ar,A);
+    Bs := B;
+    <font color="#4169E1">WHILE</font> Bs &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(Bs,br,Bs);
+      c := SIL;
+      ars := ar;
+      <font color="#4169E1">WHILE</font> ars &lt;&gt; SIL <font color="#4169E1">DO</font>
+        ADV(ars,a,ars);
+        brs := br;
+        <font color="#4169E1">WHILE</font> brs &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(brs,b,brs);
+          c := COMP(IPROD(a,b),c);
+      <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+      c := INV(c); C := COMP(c,C);
+  <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+  C := INV(C);
+  RETURN(C);
+<strong><font color="#4169E1">END</font></strong> IMRTPROD;
+
+<strong><font color="#4169E1">END</font></strong> LINALG.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

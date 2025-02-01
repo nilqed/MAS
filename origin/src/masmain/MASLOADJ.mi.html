@@ -1,0 +1,97 @@
+
+<html>
+<head>
+<title>./masmain/MASLOADJ.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:43:43+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASLOADJ.mi,v 1.1 1995/10/12 14:43:43 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASLOADJ.mi,v $
+ * Revision 1.1  1995/10/12 14:43:43  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASLOADJ;
+
+<font color="#B22222">(*MAS Load Implementation Module J. *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM ADEXTRA IMPORT	IBeqGB;
+
+FROM DIPDCIB IMPORT	IBLWR, InvolutiveBases, SetDCIBopt, SetDCIBTraceLevel,
+			SetDCIBDecomp, SetDCIBVarOrdOpt, SetDCIBdepth;
+
+FROM DIPIB IMPORT	ADPNFJ, DIPIB, DIPIB2, DIPIB3, DIPIB4, DILISJ,
+			SetDIPIBopt, SetDIPIBTraceLevel, SetDIPIBCancel, 
+			SetDIPIBSelect, SetDIPIBISJ, SetDomainNFJ,
+			SetDIPIBCrit, ADCAN;
+
+FROM DIPIIB IMPORT 	DIILISJ, DIIPIB, DIIPIB2, DIIPIB3, DIIPNFJ;
+
+FROM DIPRNIB IMPORT	DIRPNFJ, DIRLISJ, DIRPIB, DIRPIB2;
+
+FROM MASLISPU IMPORT 	Declare,  
+			Compiledp0, Compiledp1, Compiledp2,
+			Compiledf1, Compiledf2, Compiledf3,
+			Compiledp2v2, Compiledp1v3, Compiledp1v2;
+
+FROM MASSTOR IMPORT 	LIST, LENGTH;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASLOADJ.mi,v 1.1 1995/10/12 14:43:43 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE InitExternalsJ</font></strong>;
+<font color="#B22222">(* Initialize external compiled procedures *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+		SetDomainNFJ();
+<font color="#B22222">(* ADEXTRA *)</font>	Compiledf2(IBeqGB, "IBeqGB");
+<font color="#B22222">(* ADNORJ *)</font>	Compiledp2v2(ADPNFJ, "ADPNFJ");
+<font color="#B22222">(* DIPIB *)</font>	Compiledp1v2(DILISJ, "DILISJ");
+		Compiledf1(DIPIB, "DIPIB");
+		Compiledf1(DIPIB2, "DIPIB2");
+		Compiledf1(DIPIB3, "DIPIB3");
+		Compiledf1(DIPIB4, "DIPIB4");
+		Compiledp1(SetDIPIBopt, "SetDIPIBopt");
+		Compiledp1(SetDIPIBTraceLevel, "SetDIPIBTraceLevel");
+		Compiledp1(SetDIPIBCancel, "SetDIPIBCancel");
+		Compiledp1(SetDIPIBSelect, "SetDIPIBSelect");
+		Compiledp1(SetDIPIBISJ, "SetDIPIBISJ");
+		Compiledp1(SetDIPIBCrit, "SetDIPIBCrit");
+		Compiledf1(ADCAN, "ADCAN");
+<font color="#B22222">(*DIPIIB*)</font>	Compiledf3(DIIPNFJ, "DIIPNFJ");
+      		Compiledf1(DIILISJ, "DIILISJ");
+      		Compiledf1(DIIPIB, "DIIPIB");
+      		Compiledf1(DIIPIB2, "DIIPIB2");
+		Compiledf1(DIIPIB3, "DIIPIB3");
+<font color="#B22222">(*DIPRNIB*)</font>	Compiledf3(DIRPNFJ, "DIRPNFJ");
+		Compiledf1(DIRLISJ, "DIRLISJ");
+		Compiledf1(DIRPIB, "DIRPIB");
+		Compiledf1(DIRPIB2, "DIRPIB2");
+<font color="#B22222">(* DIPDCIB *)</font>	Compiledf2(InvolutiveBases, "IB");
+		Compiledp2(IBLWR, "IBLWR");
+		Compiledp1(SetDCIBopt, "SetDCIBopt");
+                Compiledp1(SetDCIBTraceLevel, "SetDCIBTraceLevel");
+		Compiledp1(SetDCIBDecomp, "SetDCIBDecomp");
+		Compiledp1(SetDCIBVarOrdOpt, "SetDCIBVarOrdOpt");
+		Compiledp1(SetDCIBdepth, "SetDCIBdepth");
+<strong><font color="#4169E1">END</font></strong> InitExternalsJ;
+
+<strong><font color="#4169E1">END</font></strong> MASLOADJ.
+</pre>
+</body>
+
+</html>

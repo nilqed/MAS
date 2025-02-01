@@ -1,0 +1,94 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT4.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:49+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT4.md,v 1.2 1992/02/12 17:34:49 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT4.md,v $
+ * Revision 1.2  1992/02/12  17:34:49  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:30  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACEXT4;
+
+<font color="#B22222">(* SAC Extensions 4 Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACEXT4.md,v 1.2 1992/02/12 17:34:49 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IPINT</font></strong>(RL,A,BL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial integration.  A is a non-zero integral
+polynomial in r variables, r ge 1, such that the integral of a with
+respect to its main variable is an integral polynomial.  b is an
+integral polynomial in r-1 variables.  B eq B(x sub 1 , ..., x sub r )
+is the integral of a with respect to its main variable, such that
+B(x sub 1 , ..., x sub r-1 ,0) eq b.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IUPIHT</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial integer homothetic transformation.
+A is a non-zero univariate integral polynomial.  n is a non-zero
+integer.  B(x) is the primitive part of A(nx).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PCONST</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Polynomial constant.  A(x sub 1 ,  ..., x sub r ) is a polynomial
+in r variables, r ge 1.  b eq 1 if a is a constant polynomial,
+otherwise b eq 0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PSDSV</font></strong>(RL,A,IL,NL: LIST): LIST; 
+<font color="#B22222">(*Polynomial special decomposition, specified variable.  A is a
+polynomial in r variables.  1 le i le r and n is a beta-integer such
+that each exponent of x sub i occurring in a is divisible by n.
+B is A with each exponent e of x sub i replaced by e/n.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PUNT</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Polynomial univariate test.  A eq A(x sub 1 , ..., x sub r ) is a
+polynomial in r variables, r ge 1.  b eq 2 if A has degree zero in all
+variables.  b eq 1 if A has degree zero in x sub 2 , ..., x sub r, but
+positive degree in x sub 1.  otherwise b eq 0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPDMV</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Rational polynomial derivative, main variable.  A is a rational
+polynomial in r variables.  B is the derivative of A with respect to
+its main variable.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPMAIP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Rational polynomial monic associate of integral polynomial.
+A is an integral polynomial in r variables, r ge 1.  If A eq 0
+then B eq 0.  if A ne 0, let the integer a be the leading base
+coefficient of A.  Then B eq (1/a) A, a monic rational polynomial.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT4.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

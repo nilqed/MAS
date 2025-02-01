@@ -1,0 +1,951 @@
+
+<html>
+<head>
+<title>./maslisp/MASSPEC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASSPEC.mi,v 1.4 1995/11/05 08:58:48 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASSPEC.mi,v $
+ * Revision 1.4  1995/11/05 08:58:48  kredel
+ * Small letter exit, more trace infos and correction.
+ *
+ * Revision 1.3  1992/10/15  16:27:52  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:30  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:26  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASSPEC;
+
+<font color="#B22222">(* MAS Specification Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT BETA, SIL, LIST, LENGTH, 
+                    LIST1, ADV, FIRST, RED, COMP, INV, SFIRST, SRED;
+
+FROM MASERR IMPORT ERROR, severe, harmless, spotless;
+
+FROM MASBIOS IMPORT LISTS, BLINES, SWRITE;
+
+FROM MASBIOSU IMPORT CLTIS;
+
+FROM SACLIST IMPORT EQUAL, RED2, CINV, CONC, CCONC,
+                    FIRST3, LIST3, LIST4, FIRST4, SECOND, THIRD, RED3,
+                    FIRST2, ADV2, LIST2, COMP2, COMP3;
+
+FROM MASSYM2 IMPORT SYMBOL, ASSOC, ASSOCQ, GET, PUT, SUBLIS; 
+
+FROM MASSYM IMPORT ATOM, ELEMP, UWRITE, UWRIT1, 
+                   UNIFY, GENARRAY, ARRAYDEC;
+
+FROM MASLISPU IMPORT EXTYP, ARITY, SUBR, EXPR, PROCP,
+                     CallCompiled, Signature;
+
+FROM MASLISP IMPORT FEXPR, MACRO, GENERIC,
+                    REP, FER, FERx, FEL, FELx,
+                    CONVVAL, CONVDES, 
+                    trace, stricttyping,
+                    TDEF, DEFAULT, ARROW, <font color="#B22222">(*indicators*)</font>
+                    ENV, <font color="#B22222">(*global environement (alist)*)</font>
+                    NULL, WT, SCHLUSS, schluss, TINFO,   
+
+                    EQS, NEQS, GTS, LTS, GEQ, LEQ, NOTS, UND, ODER,   
+                    ADD, SUB, MUL, QUOT, REM, POW,
+
+                    QUOTE, SETQ, COND, LISTX, 
+                    ASSIGN, READ, WRITE, DECREAD, DECWRITE, 
+    
+                    PROGN, VARS, IFS, WHL, RPT, STRNG, DE, DF, DM, DG,  
+                    PROGA, GTO, LBEL, ARY, SETAV, ATM, RTN, ANY,
+
+                    UNIT, EXPOS, SPEC, SORT, SIG, IMPRT, IMPL, 
+                    MODEL, MAP, AXIOM, RULE, WHEN, 
+   
+                    LAMBDA, FLAMBDA, MLAMBDA, GLAMBDA,
+                    SPECIALFORM, LAMBDAP, SEXPRP,
+
+                    SETV, EXTENDENV, COPYTOENV, 
+                    DEFE, DEFF, DEFM, 
+                    DEFMAP, DEFRULE, DEFPROC, DSPEC, DMIA, 
+
+                    TYPEOF, TAG, VALOFTAG, DECOFTAG, TYPOFTAG,
+                    ECENV, DCENV, GENPL, GENTE;
+
+
+<strong><font color="#228B22">VAR</font></strong>  unwind: BOOLEAN;
+     goto: LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASSPEC.mi,v 1.4 1995/11/05 08:58:48 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE APPLY</font></strong>(F, X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Apply function. F is a function symbol or lambda expression.
+X is a list of un-evaluated arguments. F is applied to X. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z, L, X1, X2, FP, A, B, EP, ES, I, O, OP: LIST;
+      t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; 
+      <font color="#4169E1">IF</font> ELEMP(F) <font color="#4169E1">THEN</font> UWRITE(F); 
+         ERROR(severe,"APPLY: invalid <strong><font color="#4169E1">function object</font></strong>."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("APPLY:  "); UWRITE(COMP(F,X)) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*branch on special function. *)</font> 
+      <font color="#4169E1">IF</font> SYMBOL(F) <font color="#4169E1">THEN</font> X:=EVLIS(X,ENV);
+      <font color="#4169E1">IF</font> F = ADD  <font color="#4169E1">THEN</font> ADV(X,Z,XP);
+                       <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,X1,XP);
+                             Z:=Z+X1 <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = SUB  <font color="#4169E1">THEN</font> ADV(X,Z,XP);
+                       <font color="#4169E1">IF</font> XP = SIL <font color="#4169E1">THEN</font> Z:=-Z; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+                       <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,X1,XP);
+                             Z:=Z-X1 <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = NEQS <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); <font color="#4169E1">IF</font> X1 &lt;&gt; X2 <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = GTS  <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); <font color="#4169E1">IF</font> X1 &gt; X2 <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = LTS  <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); <font color="#4169E1">IF</font> X1 &lt; X2 <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = LEQ  <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); <font color="#4169E1">IF</font> X1 &lt;= X2 <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = GEQ  <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); <font color="#4169E1">IF</font> X1 &gt;= X2 <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = EQS  <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); <font color="#4169E1">IF</font> X1 = X2 <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = MUL  <font color="#4169E1">THEN</font> ADV(X,Z,XP);
+                       <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,X1,XP);
+                             Z:=Z*X1 <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = QUOT <font color="#4169E1">THEN</font> ADV(X,Z,XP);
+                       <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,X1,XP);
+                             Z:=Z DIV X1 <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = REM  <font color="#4169E1">THEN</font> ADV(X,Z,XP);
+                       <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,X1,XP);
+                             Z:=Z MOD X1 <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = NOTS <font color="#4169E1">THEN</font> ADV(X,Z,XP);
+                       <font color="#4169E1">IF</font> Z = SIL <font color="#4169E1">THEN</font> Z:=WT <font color="#4169E1">ELSE</font> Z:=SIL <strong><font color="#4169E1">END</font></strong>;
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = UND  <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); 
+                       <font color="#4169E1">IF</font> (X1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (X2 &lt;&gt; SIL) <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = ODER <font color="#4169E1">THEN</font> FIRST2(X,X1,X2); 
+                       <font color="#4169E1">IF</font> (X1 &lt;&gt; SIL) <font color="#4169E1">OR</font> (X2 &lt;&gt; SIL) <font color="#4169E1">THEN</font> Z:=WT <strong><font color="#4169E1">END</font></strong>; 
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = RTN  <font color="#4169E1">THEN</font> Z:=FIRST(X);  
+                       unwind:=TRUE; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = FEL  <font color="#4169E1">THEN</font> EP:=LIST2(QUOTE,ENV); EP:=LIST1(EP);
+                       X:=CCONC(X,EP); X:=COMP(FELx,X);
+                       Z:=EVALUATE(X,ENV);    
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = FER  <font color="#4169E1">THEN</font> EP:=LIST2(QUOTE,ENV); EP:=LIST1(EP);
+                       X:=CCONC(X,EP); X:=COMP(FERx,X);
+                       Z:=EVALUATE(X,ENV);    
+                       RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = CONVVAL <font color="#4169E1">THEN</font> Z:=CONVvalue(X,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = CONVDES <font color="#4169E1">THEN</font> Z:=CONVdesc(X,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = GTO  <font color="#4169E1">THEN</font> Z:=FIRST(X); goto:=Z; 
+                       unwind:=TRUE; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(* UWRITE(F); ERROR(severe,"APPLY: invalid function object.");*)</font>
+      Z:=COMP(F,X); RETURN(Z); 
+      <strong><font color="#4169E1">END</font></strong>;
+      ADV(F,L,FP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*typeinfo tag. *)</font> 
+      <font color="#4169E1">IF</font> L = TINFO <font color="#4169E1">THEN</font> Z:=COMP(F,X); <font color="#B22222">(*reconstruct list*)</font> 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*lambda expression. *)</font>  
+      <font color="#4169E1">IF</font> L = LAMBDA <font color="#4169E1">THEN</font> FIRST2(FP,A,B); FIRST2(A,I,O);
+         EP:=ENV; t:=unwind; unwind:=FALSE;
+         <font color="#4169E1">IF</font> EXTENDVARENV(I,O,X,EP) <font color="#4169E1">THEN</font> ES:=EP;
+            Z:=EVALUATE(B,EP); 
+            XP:=CINV(X); OP:=O; 
+            <font color="#4169E1">WHILE</font> OP &lt;&gt; SIL <font color="#4169E1">DO</font> OP:=RED(OP); ADV(XP,X1,XP);
+                  ES:=RED(ES); ADV(ES,X2,ES);
+                  SETV(X1,X2,ENV) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+         unwind:=t;
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*glambda expression. *)</font>  
+      <font color="#4169E1">IF</font> L = GLAMBDA <font color="#4169E1">THEN</font> X:=EVLIS(X,ENV); 
+         Z:=EVGEN(FP,X,ENV); FIRST2(Z,XP,EP); EP:=DCENV(EP); 
+         t:=unwind; unwind:=FALSE;
+         Z:=EVALUATE(XP,EP);
+         unwind:=t;
+         RETURN(Z);
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*not known.*)</font>
+      UWRITE(F); ERROR(severe,"APPLY: invalid <strong><font color="#4169E1">function object</font></strong>.");
+      RETURN(Z); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> APPLY;
+
+
+<strong><font color="#4169E1">PROCEDURE APPLYCOMP</font></strong>(F, A: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Apply compiled function. F is a symbol of a compiled function.
+X is a list of evaluated arguments. F is applied to X.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, Z, I, O, PI, PO, V: LIST;
+      b, c, v, i: LIST;
+      def, fu: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; 
+      Signature(F,I,O,def);
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> def <font color="#4169E1">THEN</font> UWRITE(F); 
+         ERROR(severe,"APPLYCOMP: unbound compiled procedure."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> O &lt; 0 <font color="#4169E1">THEN</font> O:=0 <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare input parameters. *)</font> 
+      <font color="#4169E1">IF</font> LENGTH(A) &lt; I <font color="#4169E1">THEN</font> UWRITE(F);
+         ERROR(severe,"APPLYCOMP: too few input parameters."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      B:=A; PI:=SIL; i:=1;
+      <font color="#4169E1">WHILE</font> i &lt;= I <font color="#4169E1">DO</font> i:=i+1; ADV(B,b,B); 
+            c:=EVALUATE(b,ENV);
+            PI:=COMP(c,PI) <strong><font color="#4169E1">END</font></strong>;
+      PI:=INV(PI); V:=B;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*prepare output parameters. *)</font> 
+      <font color="#4169E1">IF</font> LENGTH(B) &lt; O <font color="#4169E1">THEN</font> UWRITE(F);
+         ERROR(severe,"APPLYCOMP: too few output parameters."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      PO:=SIL; i:=1;
+      <font color="#4169E1">WHILE</font> i &lt;= O <font color="#4169E1">DO</font> i:=i+1; ADV(B,b,B); 
+            c:=ASSOC(b,ENV); <font color="#4169E1">IF</font> c &lt;&gt; SIL <font color="#4169E1">THEN</font> c:=FIRST(c) <strong><font color="#4169E1">END</font></strong>;
+            PO:=COMP(c,PO) <strong><font color="#4169E1">END</font></strong>;
+      PO:=INV(PO); 
+      <font color="#4169E1">IF</font> B &lt;&gt; SIL <font color="#4169E1">THEN</font> UWRITE(F);
+         ERROR(severe,"APPLYCOMP: too many parameters."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*call compiled procedure. *)</font> 
+      <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("EXTERN: "); UWRITE(COMP(F,CCONC(PI,PO))) <strong><font color="#4169E1">END</font></strong>;
+      CallCompiled(F,PI,PO,fu);
+      <font color="#4169E1">IF</font> fu <font color="#4169E1">THEN</font> Z:=PO; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*prepare output parameters. *)</font> 
+      <font color="#4169E1">WHILE</font> PO &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PO,b,PO); ADV(V,v,V);
+            SETV(v,b,ENV) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(Z); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> APPLYCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE EVALUATE</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Lisp evaluator. X is a S-expression. ENV is a 
+binding environment. *)</font>
+<strong><font color="#228B22">VAR</font></strong> F, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*atoms or symbols. *)</font>
+      <font color="#4169E1">IF</font> ELEMP(X) <font color="#4169E1">THEN</font> RETURN(X) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> SYMBOL(X) <font color="#4169E1">THEN</font> Z:=ASSOC(X,ENV);
+         <font color="#4169E1">IF</font> Z = SIL <font color="#4169E1">THEN</font> Z:=X 
+                    <font color="#4169E1">ELSE</font> ERROR(spotless,"s c"); <font color="#B22222">(*stack check*)</font>
+                         Z:=FIRST(Z); Z:=EVALUATE(Z,ENV) <strong><font color="#4169E1">END</font></strong>;
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*S-expressions. *)</font>
+      <font color="#4169E1">IF</font> X &gt; BETA <font color="#4169E1">THEN</font> ADV(X, F,Y);
+         <font color="#4169E1">IF</font> LAMBDAP(F) <font color="#4169E1">THEN</font> RETURN(X) <strong><font color="#4169E1">END</font></strong>; 
+         ERROR(spotless,"s c"); <font color="#B22222">(*stack check*)</font>
+         F:=EVALUATE(F,ENV);
+         <font color="#4169E1">IF</font> SPECIALFORM(F) 
+            <font color="#4169E1">THEN</font> Z:=COMP(F,Y); Z:=EVALSPFORM(Z,ENV);
+            <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> PROCP(F) <font color="#4169E1">THEN</font> Z:=APPLYCOMP(F,Y,ENV) 
+                             <font color="#4169E1">ELSE</font> Z:=APPLY(F,Y,ENV) <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>;
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*not known.*)</font> UWRITE(X);
+      ERROR(severe,"EVALUATE: invalid form.");  
+      RETURN(Z);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVALUATE;
+
+
+<strong><font color="#4169E1">PROCEDURE EVALSPFORM</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate special form. X is an S-expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong> M, XP, F, A, B, FP, Y, Z, EP, W, T, L: LIST;
+    t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; ADV(X,F,XP);
+      <font color="#4169E1">IF</font> ELEMP(F) <font color="#4169E1">THEN</font> UWRITE(F);  
+         ERROR(severe,"EVALSPFORM: invalid as <strong><font color="#4169E1">function object</font></strong>."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("SPFORM: "); UWRITE(X) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*branch on special function. *)</font>  
+      <font color="#4169E1">IF</font> SYMBOL(F) <font color="#4169E1">THEN</font>
+      <font color="#4169E1">IF</font> F = ASSIGN  <font color="#4169E1">THEN</font> Z:=EVASS(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = TINFO   <font color="#4169E1">THEN</font> RETURN(X) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = PROGN   <font color="#4169E1">THEN</font> Z:=EVPROGN(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = IFS     <font color="#4169E1">THEN</font> ADV(XP,Z,XP); ADV(XP,Y,XP); 
+                          Z:=EVALUATE(Z,ENV);
+                          <font color="#4169E1">IF</font> Z = WT <font color="#4169E1">THEN</font> Z:=EVALUATE(Y,ENV) 
+                             ELSIF XP &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+                                   Z:=EVALUATE(FIRST(XP),ENV) <strong><font color="#4169E1">END</font></strong>;  
+                          RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = WHL     <font color="#4169E1">THEN</font> Z:=EVWHL(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = RPT     <font color="#4169E1">THEN</font> Z:=EVRPT(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = QUOTE   <font color="#4169E1">THEN</font> Z:=FIRST(XP); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = STRNG   <font color="#4169E1">THEN</font> Z:=XP; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = LISTX   <font color="#4169E1">THEN</font> Z:=EVLIS(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = SETQ    <font color="#4169E1">THEN</font> ADV(XP,Y,XP); W:=FIRST(XP);
+                          Z:=EVALUATE(W,ENV); SETV(Y,Z,ENV); 
+                          RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = SETAV   <font color="#4169E1">THEN</font> ADV(XP,Y,XP); W:=FIRST(XP);
+                          Z:=EVALUATE(W,ENV); SETaldesV(Y,Z,ENV); 
+                          RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+
+      <font color="#4169E1">IF</font> F = REP     <font color="#4169E1">THEN</font> RETURN(X) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = VARS    <font color="#4169E1">THEN</font> Z:=EVVAR(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = DE      <font color="#4169E1">THEN</font> Z:=DEFE(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = DF      <font color="#4169E1">THEN</font> Z:=DEFF(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = DM      <font color="#4169E1">THEN</font> Z:=DEFM(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = ARY     <font color="#4169E1">THEN</font> XP:=FIRST(XP); FIRST2(XP,Y,W); W:=EVLIS(W,ENV); 
+                          XP:=LIST2(Y,W); Z:=GENARRAY(XP); 
+                          Z:=EVALUATE(Z,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+
+      <font color="#4169E1">IF</font> F = SPEC    <font color="#4169E1">THEN</font> Z:=DSPEC(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = IMPL    <font color="#4169E1">THEN</font> Z:=DMIA(X,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = MODEL   <font color="#4169E1">THEN</font> Z:=DMIA(X,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = AXIOM   <font color="#4169E1">THEN</font> Z:=DMIA(X,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = EXPOS   <font color="#4169E1">THEN</font> Z:=EVUNIT(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = UNIT    <font color="#4169E1">THEN</font> RETURN(X) <strong><font color="#4169E1">END</font></strong>;
+
+      <font color="#4169E1">IF</font> F = COND    <font color="#4169E1">THEN</font> Z:=EVCOND(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = PROGA   <font color="#4169E1">THEN</font> Z:=EVPROGA(XP,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = LBEL    <font color="#4169E1">THEN</font> Z:=FIRST(XP); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (F = SCHLUSS) <font color="#4169E1">OR</font> (F = schluss) <font color="#4169E1">THEN</font> RETURN(F) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*UWRITE(F); ERROR(severe,"EVALSPFORM: unknown function.");*)</font>
+      Z:=X; RETURN(Z); 
+      <strong><font color="#4169E1">END</font></strong>;
+      ADV(F,L,FP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*mlambda expression. *)</font>  
+      <font color="#4169E1">IF</font> L = MLAMBDA <font color="#4169E1">THEN</font> FIRST2(FP,A,B); 
+         XP:=LIST1(LIST2(QUOTE,X));
+         EP:=ENV; t:=unwind; unwind:=FALSE;
+         <font color="#4169E1">IF</font> EXTENDENV(A,XP,EP) <font color="#4169E1">THEN</font> Z:=EVALUATE(B,EP); 
+            Z:=EVALUATE(Z,EP);
+            <strong><font color="#4169E1">END</font></strong>; 
+         unwind:=t; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*flambda expression. *)</font>  
+      <font color="#4169E1">IF</font> L = FLAMBDA <font color="#4169E1">THEN</font> FIRST2(FP,A,B); 
+         XP:=LIST1(LIST2(QUOTE,XP));
+         EP:=ENV; t:=unwind; unwind:=FALSE; 
+         <font color="#4169E1">IF</font> EXTENDENV(A,XP,EP) <font color="#4169E1">THEN</font> Z:=EVALUATE(B,EP) <strong><font color="#4169E1">END</font></strong>; 
+         unwind:=t; RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*not known.*)</font>
+      UWRITE(F); ERROR(severe,"EVALSPFORM: unknown function."); 
+      RETURN(Z); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVALSPFORM;
+
+
+<strong><font color="#4169E1">PROCEDURE EVCOND</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate condition. X is the reductum of a COND S-expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong> XP, Y, Z, C, D: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; XP:=X;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on list of pairs. *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,Y,XP); ADV(Y,C,D);
+            C:=EVALUATE(C,ENV);
+            <font color="#4169E1">IF</font> C &lt;&gt; SIL <font color="#4169E1">THEN</font> Z:=EVPROGN(D,ENV); RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;             
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVCOND;
+
+
+<strong><font color="#4169E1">PROCEDURE EVPROGN</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate statement sequence. X is the reductum of a 
+PROGN S-expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong> XP, Z, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; XP:=X;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on list. *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,Y,XP); 
+            Z:=EVALUATE(Y,ENV);
+            <font color="#4169E1">IF</font> unwind <font color="#4169E1">THEN</font> RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVPROGN;
+
+
+<strong><font color="#4169E1">PROCEDURE EVWHL</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate while. *)</font>
+<strong><font color="#228B22">VAR</font></strong> C, B, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> C:=FIRST(X); 
+      B:=SECOND(X); Z:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop if condition is true. *)</font>
+      <font color="#4169E1">WHILE</font> EVALUATE(C,ENV) &lt;&gt; SIL <font color="#4169E1">DO</font>
+            Z:=EVALUATE(B,ENV);
+            <font color="#4169E1">IF</font> unwind <font color="#4169E1">THEN</font> RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVWHL;
+
+
+<strong><font color="#4169E1">PROCEDURE EVRPT</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate repeat. *)</font>
+<strong><font color="#228B22">VAR</font></strong> C, B, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> B:=FIRST(X); 
+      C:=SECOND(X); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop if condition is true. *)</font>
+      <font color="#4169E1">REPEAT</font> Z:=EVALUATE(B,ENV);
+             <font color="#4169E1">IF</font> unwind <font color="#4169E1">THEN</font> RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> EVALUATE(C,ENV) &lt;&gt; SIL;
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVRPT;
+
+
+<strong><font color="#4169E1">PROCEDURE EVLIS</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate list. *)</font>
+<strong><font color="#228B22">VAR</font></strong> XP, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; XP:=X; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on list. *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,Y,XP);  
+            Y:=EVALUATE(Y,ENV);
+            Z:=COMP(Y,Z) <strong><font color="#4169E1">END</font></strong>;
+      Y:=INV(Z); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVLIS;
+
+
+<strong><font color="#4169E1">PROCEDURE EVASS</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate assignment statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>    XP, Z, Y, T, TP, W: LIST;
+       nofu: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> 
+      ADV(X,Y,XP); W:=FIRST(XP); nofu:=TRUE;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generic assignment ? *)</font>
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(W) <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> FIRST(W) = STRNG <font color="#4169E1">THEN</font> T:=GET(Y,TDEF); 
+            <font color="#4169E1">IF</font> T &lt;&gt; SIL <font color="#4169E1">THEN</font> TP:=FIRST(T) <font color="#4169E1">ELSE</font> TP:=SIL <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> (TP # SIL)   <font color="#4169E1">AND</font> (TP # LISTX) <font color="#4169E1">AND</font> 
+               (TP # STRNG) <font color="#4169E1">AND</font> (TP # ANY) <font color="#4169E1">THEN</font> 
+               Z:=CONVERT(T,READ,W,ENV);
+               SETV(Y,Z,ENV); 
+               RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">ELSE</font> nofu:=FALSE <font color="#B22222">(*function calls are allowed*)</font> <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> stricttyping <font color="#4169E1">AND</font> nofu <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"EVASS: no <strong><font color="#228B22">type</font></strong> information available.");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*normal evaluate *)</font>  
+      Z:=EVALUATE(W,ENV); SETV(Y,Z,ENV); 
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVASS;
+
+
+<strong><font color="#4169E1">PROCEDURE CONVERT</font></strong>(T,P,S: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate generic conversion. T is the type of the target 
+of the conversion. S is the conversion string. P is the 
+conversion generic procedure. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   x, D, Z, TP, W, L, F, A, EP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; F:=SIL; 
+      <font color="#4169E1">IF</font> ELEMP(T) <font color="#4169E1">THEN</font> UWRITE(T); 
+         ERROR(severe,"CONVERT: invalid as <strong><font color="#228B22">type</font></strong>."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>; 
+      TP:=TAG(SIL,T); TP:=LIST1(TP);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*get actual procedure *)</font>
+      L:=ASSOC(P,ENV);
+      <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> L:=FIRST(L) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* (glambda n M I E) *)</font>
+      <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> L:=RED(L) <strong><font color="#4169E1">END</font></strong>;
+      W:=EVGEN(L,TP,ENV);     
+      FIRST2(W,W,EP); EP:=DCENV(EP); 
+      <font color="#4169E1">IF</font> FIRST(W) = QUOTE <font color="#4169E1">THEN</font> UWRITE(T);
+         ERROR(severe,"CONVERT: unbound generic <strong><font color="#4169E1">procedure for</font></strong> signature."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate actual call *)</font> A:=S;
+      <font color="#4169E1">IF</font> FIRST(A) = STRNG <font color="#4169E1">THEN</font> A:=RED(A) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* remove string inidicator *)</font>
+      A:=CCONC(A,LISTS(" ")); <font color="#B22222">(* add terminator *)</font>
+      CLTIS(A);               <font color="#B22222">(* put to input stream for read *)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*evaluate *)</font>  
+      Z:=EVALUATE(W,EP); 
+      RETURN(Z);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CONVERT;
+
+
+<strong><font color="#4169E1">PROCEDURE CONVvalue</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate conversion parse. X=(T,S), T is the type of the target 
+of the conversion. S is the conversion string. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   TP, T, S: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      FIRST2(X,T,S);
+<font color="#B22222">(*2*)</font> TP:=CONVERT(T,READ,S,ENV);
+      RETURN(TP);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CONVvalue;
+
+
+<strong><font color="#4169E1">PROCEDURE CONVdesc</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate conversion descriptor. X=(T,S), T is the type of the target 
+of the conversion. S is the conversion string. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   TP, T, S: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      FIRST2(X,T,S);
+<font color="#B22222">(*2*)</font> TP:=CONVERT(LIST2(T,SIL),DECREAD,S,ENV);
+      TP:=VALOFTAG(TP); 
+      RETURN(TP);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CONVdesc;
+
+
+<strong><font color="#4169E1">PROCEDURE EVVAR</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate var statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, XPP, Y, T, TS, S, V, v, vd, Z, n, i, s: LIST;
+      t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL;
+      FIRST2(X, XP, T); 
+      T:=EVALUATE(T,ENV); 
+      TS:=T; <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(TS) <font color="#4169E1">THEN</font> TS:=FIRST(TS) <strong><font color="#4169E1">END</font></strong>;
+      V:=SIL; XPP:=SIL; v:=LIST2(DEFAULT,T);  v:=EVALUATE(v,ENV);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on variable list. *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,Y,XP); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(Y) <font color="#4169E1">THEN</font>  
+                  <font color="#4169E1">IF</font> SYMBOL(Y) <font color="#4169E1">THEN</font> PUT(Y,TDEF,T);  
+                                    V:=COMP(v,V); XPP:=COMP(Y,XPP); 
+               ELSIF FIRST(Y) = ARY <font color="#4169E1">THEN</font> Y:=SECOND(Y); FIRST2(Y,n,i); 
+                     i:=EVLIS(i,ENV); s:=LIST2(n,i);
+                     s:=ARRAYDEC(s);
+                     <font color="#4169E1">WHILE</font> s &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(s,Y,s);
+                           PUT(Y,TDEF,T);  
+                           V:=COMP(v,V); XPP:=COMP(Y,XPP);
+                           <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">ELSE</font> UWRITE(T);
+                     ERROR(severe,"EVVAR: invalid as variable."); 
+                     <strong><font color="#4169E1">END</font></strong>;    
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+      V:=INV(V); XPP:=INV(XPP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*put into environment as local(!!!) variables *)</font>
+      t:=EXTENDENV(XPP,V,ENV);
+      RETURN(TS);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVVAR;
+
+
+<strong><font color="#4169E1">PROCEDURE EVSORT</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate sort statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Z, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; XP:=X; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on sort list. *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,Y,XP); 
+            Y:=EVALUATE(Y,ENV);
+            <font color="#4169E1">IF</font> SYMBOL(Y) <font color="#4169E1">THEN</font> 
+               PUT(Y,SORT,WT); <font color="#B22222">(* note sort indicator *)</font> 
+               <font color="#4169E1">ELSE</font> UWRITE(Y);
+                    ERROR(severe,"EVSORT: invalid as sort name."); 
+                    <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(SIL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVSORT;
+
+
+<strong><font color="#4169E1">PROCEDURE EVIMPRT</font></strong>(X, SP, EP: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate import statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, F, FP, XP, Z, N, V, U, UP, D, S, ES: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get specification. *)</font> ADV(X,N,S); ADV(N,N,P); Z:=SIL;
+      P:=FIRST(P); P:=EVLIS(P,ENV);
+      <font color="#4169E1">IF</font> S &lt;&gt; SIL <font color="#4169E1">THEN</font> S:=FIRST(S) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(N) <font color="#4169E1">THEN</font> UWRITE(N);
+         ERROR(severe,"EVIMPRT: invalid as name."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      D:=EVALUATE(N,ENV);
+      <font color="#4169E1">IF</font> SYMBOL(D) <font color="#4169E1">THEN</font> D:=EVALUATE(D,EP) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*search in global env *)</font>
+      <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> UWRITE(N); UWRITE(D);
+         ERROR(severe,"EVIMPRT: unknown unit."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> FIRST(D) &lt;&gt; UNIT <font color="#4169E1">THEN</font> UWRITE(N); UWRITE(D);
+         ERROR(severe,"EVIMPRT: unknown unit."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;  
+      D:=RED2(D); FIRST2(D,F,D); <font color="#B22222">(*unit name parm spec ... *)</font>
+      ES:=ENV;
+      <font color="#4169E1">IF</font> EXTENDENV(F,P,ES) <font color="#4169E1">THEN</font> <font color="#B22222">(* ok *)</font> <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*parms for spec, global *)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*substitute renamings *)</font> S:=CCONC(SP,S);
+      <font color="#4169E1">IF</font> S &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=SUBLIS(S,D) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("SPEC: "); UWRITE(D) <strong><font color="#4169E1">END</font></strong>;
+      XP:=RED2(D); ADV(XP,FP,XP); <font color="#B22222">(*spec name parm body *)</font> 
+      <font color="#B22222">(* assert F = FP *)</font> 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*evaluate specification *)</font> 
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,U,XP); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(U) <font color="#4169E1">THEN</font> ADV(U,UP,V); 
+                  <font color="#4169E1">IF</font> UP = IMPRT <font color="#4169E1">THEN</font> V:=EVIMPRT(V,S,EP,ES); 
+                                     Z:=CONC(CINV(V),Z); 
+               ELSIF UP = SORT  <font color="#4169E1">THEN</font> V:=EVSORT(V,ES); 
+               ELSIF UP = SIG   <font color="#4169E1">THEN</font> V:=EVSIG(V,ES); Z:=COMP(V,Z);
+                <font color="#4169E1">ELSE</font> UWRITE(UP);
+                     ERROR(severe,"EVIMPRT: unknown function."); 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> UWRITE(U);
+                    ERROR(severe,"EVIMPRT: atom invalid as function."); 
+                    <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      Z:=INV(Z); 
+      RETURN(Z);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVIMPRT;
+
+
+<strong><font color="#4169E1">PROCEDURE EVUNIT</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate and expose unit. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ZP, F, P, YP, EP, DS, D, XP, Z, Y, XPP, U, 
+      UP, V, g, DP, n, d, dp, l: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font>  
+      ADV(X, ZP, XP); ADV(ZP,Z,XP); P:=FIRST(XP); <font color="#B22222">(* (name actual-parms) *)</font> 
+      P:=EVLIS(P,ENV);
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Z) <font color="#4169E1">THEN</font> UWRITE(Z);
+         ERROR(severe,"EVUNIT: invalid as unit name."); 
+         RETURN(Z); <strong><font color="#4169E1">END</font></strong>;
+      YP:=ASSOC(Z,ENV);
+      <font color="#4169E1">IF</font> YP = SIL <font color="#4169E1">THEN</font> UWRITE(Z);
+         ERROR(severe,"EVUNIT: no unit defined."); 
+         RETURN(Z); <strong><font color="#4169E1">END</font></strong>;
+      YP:=FIRST(YP); <font color="#B22222">(*unit name formal-parms body *)</font>
+      <font color="#4169E1">IF</font> FIRST(YP) &lt;&gt; UNIT <font color="#4169E1">THEN</font> UWRITE(Z);
+         ERROR(severe,"EVUNIT: no unit defined."); 
+         RETURN(Z); <strong><font color="#4169E1">END</font></strong>;
+      XP:=RED2(YP); ADV(XP,F,XP); <font color="#B22222">(*formal-parms *)</font>  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*specification *)</font> ADV(XP,U,XP);
+      <font color="#4169E1">IF</font> ATOM(U) <font color="#4169E1">THEN</font> UWRITE(U);
+         ERROR(severe,"EVUNIT: atom invalid as specification."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+      ADV(U,UP,V); 
+      <font color="#4169E1">IF</font> UP &lt;&gt; SPEC <font color="#4169E1">THEN</font> UWRITE(UP);
+         ERROR(severe,"EVUNIT: no specification defined."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      EP:=SIL; <font color="#B22222">(*new scope block *)</font>
+      <font color="#4169E1">IF</font> EXTENDENV(F,P,EP) <font color="#4169E1">THEN</font> <font color="#B22222">(* ok *)</font> <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*parms for spec *)</font>
+      D:=LIST2(ZP,SIL); 
+      DP:=EVIMPRT(D,SIL,ENV,EP); <font color="#B22222">(*own specification *)</font>
+      DS:=DP; COPYTOENV(DS,ENV,EP);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*prepare for global visiblity, loop on procedure names *)</font> 
+      g:=LIST3(SIL,SIL,SIL);
+      <font color="#4169E1">WHILE</font> DP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(DP,n,DP); 
+            d:=ASSOC(n,EP);
+            <font color="#4169E1">IF</font> d = SIL <font color="#4169E1">THEN</font> l:=GET(n,EXTYP);
+               <font color="#4169E1">IF</font> (l = SIL) <font color="#4169E1">OR</font> (l = GENERIC) <font color="#4169E1">THEN</font> 
+                  d:=COMP2(GLAMBDA,n,g); dp:=d; PUT(n,EXTYP,GENERIC);
+                  <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">ELSE</font> dp:=FIRST(d) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* () &lt;&gt; SIL *)</font>
+            <font color="#4169E1">IF</font> d &lt;&gt; SIL <font color="#4169E1">THEN</font> SETV(n,dp,EP) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*to local env *)</font>
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*loop on body *)</font> 
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,U,XP); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(U) <font color="#4169E1">THEN</font> ADV(U,UP,V); 
+                  <font color="#4169E1">IF</font> UP = MODEL <font color="#4169E1">THEN</font> V:=EVMOD(V,ENV,EP) 
+               ELSIF UP = IMPL  <font color="#4169E1">THEN</font> V:=EVIMPL(V,ENV,EP)
+               ELSIF UP = AXIOM <font color="#4169E1">THEN</font> V:=EVAXIOM(V,ENV,EP)
+                <font color="#4169E1">ELSE</font> UWRITE(UP);
+                     ERROR(severe,"EVUNIT: unknown function."); 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> UWRITE(U);
+                    ERROR(severe,"EVUNIT: atom invalid as function."); 
+                    <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*copy to global env. *)</font> 
+      COPYTOENV(DS,EP,ENV);
+      RETURN(Z);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> EVUNIT;
+
+
+<strong><font color="#4169E1">PROCEDURE EVMOD</font></strong>(X, EP: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate model statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, XP, Z, Y, XPP, U, UP, V, g, DP, n, d, l: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font>  
+      ADV(X, Z, XP); <font color="#B22222">(*name parm body *)</font> 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Z) <font color="#4169E1">THEN</font> UWRITE(Z);
+         ERROR(severe,"EVMOD: invalid as model name."); 
+         RETURN(Z); <strong><font color="#4169E1">END</font></strong>;
+      XP:=RED(XP); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop on body *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,U,XP); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(U) <font color="#4169E1">THEN</font> ADV(U,UP,V); 
+                  <font color="#4169E1">IF</font> UP = IMPRT <font color="#4169E1">THEN</font> V:=EVIMPRT(V,SIL,EP,ENV); 
+                                COPYTOENV(V,EP,ENV);
+               ELSIF UP = SORT  <font color="#4169E1">THEN</font> V:=EVSORT(V,ENV); 
+               ELSIF UP = MAP   <font color="#4169E1">THEN</font> V:=DEFMAP(V,ENV)
+                <font color="#4169E1">ELSE</font> UWRITE(UP);
+                     ERROR(severe,"EVMOD: unknown function."); 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> UWRITE(U);
+                    ERROR(severe,"EVMOD: atom invalid as function."); 
+                    <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(Z);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVMOD;
+
+
+<strong><font color="#4169E1">PROCEDURE EVAXIOM</font></strong>(X, EP: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate axiom statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   g, n, d, l, DP, D, XP, Z, Y, XPP, U, UP, V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font>  
+      ADV(X, Z, XP); <font color="#B22222">(*name parms body *)</font>
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Z) <font color="#4169E1">THEN</font> UWRITE(Z);
+         ERROR(severe,"EVMOD: invalid as axioms name."); 
+         RETURN(Z); <strong><font color="#4169E1">END</font></strong>;
+      XP:=RED(XP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop on body *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,U,XP); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(U) <font color="#4169E1">THEN</font> ADV(U,UP,V); 
+                  <font color="#4169E1">IF</font> UP = IMPRT <font color="#4169E1">THEN</font> V:=EVIMPRT(V,SIL,EP,ENV); 
+                                COPYTOENV(V,EP,ENV);
+               ELSIF UP = SORT  <font color="#4169E1">THEN</font> V:=EVSORT(V,ENV); 
+               ELSIF UP = RULE  <font color="#4169E1">THEN</font> V:=DEFRULE(V,ENV)
+                <font color="#4169E1">ELSE</font> UWRITE(UP);
+                     ERROR(severe,"EVAXIOM: unknown function."); 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> UWRITE(U);
+                    ERROR(severe,"EVAXIOM: atom invalid as function."); 
+                    <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(Z);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVAXIOM;
+
+
+<strong><font color="#4169E1">PROCEDURE EVIMPL</font></strong>(X, EP: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate implementation statement. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, XP, Z, Y, XPP, U, UP, V, g, DP, n, d, l: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font>  
+      ADV(X, Z, XP); <font color="#B22222">(*name parm body. *)</font>
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Z) <font color="#4169E1">THEN</font> UWRITE(Z);
+         ERROR(severe,"EVMOD: invalid as implementation name."); 
+         RETURN(Z); <strong><font color="#4169E1">END</font></strong>;
+      XP:=RED(XP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop on body *)</font>
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,U,XP); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(U) <font color="#4169E1">THEN</font> ADV(U,UP,V); 
+                  <font color="#4169E1">IF</font> UP = IMPRT <font color="#4169E1">THEN</font> V:=EVIMPRT(V,SIL,EP,ENV); 
+                                COPYTOENV(V,EP,ENV);
+               ELSIF UP = SORT  <font color="#4169E1">THEN</font> V:=EVSORT(V,ENV); 
+               ELSIF UP = VARS  <font color="#4169E1">THEN</font> V:=EVVAR(V,ENV)
+               ELSIF UP = DE    <font color="#4169E1">THEN</font> V:=DEFPROC(V,ENV)
+                <font color="#4169E1">ELSE</font> V:=EVALUATE(U,ENV) <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> UWRITE(U);
+                    ERROR(severe,"EVIMPL: atom invalid as function."); 
+                    <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(Z);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVIMPL;
+
+
+<strong><font color="#4169E1">PROCEDURE EVGEN</font></strong>(L, X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate generic function. L=(N, M,I,E), where N is the name of the 
+generic function, M is a association list of signatures and function 
+names. I is a closure, E is a set of rewrite rules. 
+X is a list of actual parameters. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   V, T, A, Y, Z, W, C, XS, XP, EP, D, N, M, I, E, LH, RH, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; FIRST4(L,N,M,I,E);   
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generic function defined ?. *)</font>
+      <font color="#4169E1">IF</font> M &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+            <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("parms: "); UWRITE(X); <strong><font color="#4169E1">END</font></strong>;
+         A:=TYPEOF(X); FIRST3(A,V,T,D); 
+            <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("typeof: "); UWRITE(A); <strong><font color="#4169E1">END</font></strong>;
+         W:=ASSOCQ(T,M);
+            <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("assoc: "); UWRITE(W); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> W:=FIRST(W); <font color="#B22222">(* (mod func, cond) *)</font> 
+            <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("MAP: "); UWRITE(W); <strong><font color="#4169E1">END</font></strong>;
+            ADV(W,W,C); Z:=WT;
+            <font color="#4169E1">IF</font> C &lt;&gt; SIL <font color="#4169E1">THEN</font> C:=FIRST(C); 
+               ADV(C,Y,XP); XP:=FIRST(XP); 
+               XS:=GENPL(XP,V,T,D); <font color="#B22222">(*combine descriptors and values*)</font>
+               Z:=COMP(Y,XS); <font color="#B22222">(*real condition. *)</font>
+               Z:=EVALUATE(Z,ENV);
+               <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+               ADV(W,Y,XP); XP:=FIRST(XP); 
+               XS:=GENPL(XP,V,T,D); <font color="#B22222">(*combine descriptors and values*)</font>
+               Z:=COMP(Y,XS); <font color="#B22222">(*real expression. *)</font>  
+               <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=FIRST(D) <strong><font color="#4169E1">END</font></strong>;
+               Z:=GENTE(Z,Y,D); <font color="#B22222">(*build new typed expression. *)</font>
+               Z:=LIST2(Z,ECENV(ENV)); RETURN(Z);
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*closure defined ? *)</font>
+      <font color="#4169E1">IF</font> I &lt;&gt; SIL <font color="#4169E1">THEN</font> FIRST2(I,XP,EP);  
+         Z:=COMP(XP,X); 
+         Z:=LIST2(Z,EP); RETURN(Z);
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*rewrite rule defined ? *)</font>
+      <font color="#4169E1">IF</font> E &lt;&gt; SIL <font color="#4169E1">THEN</font> Z:=COMP(N,X); 
+         <font color="#4169E1">WHILE</font> E &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(E,XP,E);
+               ADV2(XP,LH,RH,XP); S:=SIL;
+               <font color="#4169E1">IF</font> UNIFY(Z,LH,S) <font color="#4169E1">THEN</font> T:=WT;
+                  <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("UNIFY: "); UWRITE(RH); <strong><font color="#4169E1">END</font></strong>;
+                  <font color="#4169E1">IF</font> XP &lt;&gt; SIL <font color="#4169E1">THEN</font> XP:=FIRST(XP); 
+                     XP:=SUBLIS(S,XP); 
+                     T:=EVALUATE(XP,ENV); <strong><font color="#4169E1">END</font></strong>;
+                  <font color="#4169E1">IF</font> T &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+                     Z:=SUBLIS(S,RH); 
+                     Z:=LIST2(Z,ECENV(ENV)); RETURN(Z);
+                     <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;             
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*8*)</font> <font color="#B22222">(* unbound generic procedure, return term *)</font> 
+      Z:=COMP(N,X); Z:=LIST2(QUOTE,Z); 
+      Z:=LIST2(Z,ECENV(ENV)); RETURN(Z);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> EVGEN;
+
+
+<strong><font color="#4169E1">PROCEDURE EVSIG</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate signature declaration. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, S, T, YP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> ADV2(X,Y,S,XP); T:=FIRST(XP);  
+      <font color="#B22222">(*evaluate Y once ! *)</font>
+      YP:=ASSOC(Y,ENV); <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> YP:=FIRST(YP) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> SYMBOL(YP) <font color="#4169E1">THEN</font> Y:=YP <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y); 
+         ERROR(severe,"EVSIG: invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*evaluate source and target. *)</font>
+      <font color="#4169E1">IF</font> SYMBOL(S) <font color="#4169E1">THEN</font> S:=LIST1(S) <strong><font color="#4169E1">END</font></strong>; 
+      S:=EVLIS(S,ENV); 
+      <font color="#4169E1">IF</font> SYMBOL(T) <font color="#4169E1">THEN</font> T:=LIST1(T) <strong><font color="#4169E1">END</font></strong>; 
+      T:=EVLIS(T,ENV); 
+      XP:=LIST3(S,Y,T);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*define arrow. *)</font>
+      PUT(Y,ARROW,XP); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVSIG;
+
+
+<strong><font color="#4169E1">PROCEDURE EXTENDVARENV</font></strong>(A, O, X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): BOOLEAN;
+<font color="#B22222">(*Extend var environement. A and O are lists of symbols. 
+X is a list of values. The environment ENV is extented by the bindings
+of the symbols in A and O to the values in X.
+The values bound to elements of A are evaluated, 
+the values bound to elements of O are not evaluated, 
+If the binding is possible, then TRUE is returned else FALSE. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, AP, OP, Y, Z, B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=ENV; XP:=X; AP:=A; OP:=O;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on input lists. *)</font>
+      <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (XP &lt;&gt; SIL) <font color="#4169E1">DO</font> 
+            ADV(AP,B,AP); ADV(XP,Y,XP); Y:=EVALUATE(Y,ENV);
+            Z:=COMP2(B,Y,Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop on output lists. *)</font>
+      <font color="#4169E1">WHILE</font> (OP &lt;&gt; SIL) <font color="#4169E1">AND</font> (XP &lt;&gt; SIL) <font color="#4169E1">DO</font> 
+            ADV(OP,B,OP); ADV(XP,Y,XP); 
+            Z:=COMP2(B,Y,Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*argument number mismatch. *)</font>
+      <font color="#4169E1">IF</font> (AP &lt;&gt; SIL) <font color="#4169E1">OR</font> (OP &lt;&gt; SIL) <font color="#4169E1">OR</font> (XP &lt;&gt; SIL) <font color="#4169E1">THEN</font> 
+         UWRITE(AP); UWRITE(OP); UWRITE(XP); 
+         ERROR(severe,"EXTENDVARENV: argument number mismatch.");
+         RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>;  
+      ENV:=Z; RETURN(TRUE);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EXTENDVARENV;
+
+
+<font color="#B22222">(*Special part for ALDES. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE EVPROGA</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Evaluate aldes statement sequence. X is the reductum of a 
+PROGA S-expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Z, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=SIL; XP:=X;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on list. *)</font>
+      LOOP goto:=SIL;
+           Z:=EVPROGN(XP,ENV);
+           <font color="#4169E1">IF</font> goto = SIL <font color="#4169E1">THEN</font> RETURN(Z) <strong><font color="#4169E1">END</font></strong>;
+           unwind:=FALSE;
+           XP:=X;
+           LOOP 
+                <font color="#4169E1">IF</font> XP = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+                ADV(XP,L,XP);
+                <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(L) <font color="#4169E1">THEN</font>
+                   <font color="#4169E1">IF</font> FIRST(L) = LBEL <font color="#4169E1">THEN</font> 
+                      <font color="#4169E1">IF</font> SECOND(L) = goto <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+                      <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+           <font color="#4169E1">IF</font> XP = SIL <font color="#4169E1">THEN</font> 
+              SWRITE("Goto "); UWRITE(goto); BLINES(0);
+              ERROR(severe,"Undefined step number.");
+              EXIT <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>;
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVPROGA;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFA</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define array. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   x, s, a, n, i, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+      a:=LIST1(ANY);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*generate names and define names. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,x,X); FIRST2(x,n,i); 
+            i:=EVLIS(i,ENV); x:=LIST2(n,i);
+            s:=ARRAYDEC(x); s:=COMP(s,a);
+            Y:=EVVAR(s,ENV);      
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFA;
+
+
+<strong><font color="#4169E1">PROCEDURE SETaldesV</font></strong>(V, A: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST);
+<font color="#B22222">(*Set ALDES variable. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EP, Z, t, n: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*See if defined*)</font> 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(V) <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ATOM(V) <font color="#4169E1">THEN</font> 
+            <font color="#4169E1">IF</font> FIRST(V) = ARY <font color="#4169E1">THEN</font> FIRST2(SECOND(V),n,t); 
+               t:=EVLIS(t,ENV); t:=LIST2(n,t); 
+               V:=GENARRAY(t) <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(V) <font color="#4169E1">THEN</font> 
+            UWRIT1(V); SWRITE(":="); UWRITE(A); 
+            ERROR(severe,"SETV: invalid as variable."); 
+            RETURN <font color="#B22222">(*setv makes no sense in this case*)</font> <strong><font color="#4169E1">END</font></strong> 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> SETV(V,A,ENV);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> SETaldesV;
+
+
+<strong><font color="#4169E1">END</font></strong> MASSPEC.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

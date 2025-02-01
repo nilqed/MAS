@@ -1,0 +1,150 @@
+
+<html>
+<head>
+<title>./masdom/ADTOOLS.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:32+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: ADTOOLS.mi,v 1.2 1994/11/28 20:43:11 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: ADTOOLS.mi,v $
+ * Revision 1.2  1994/11/28  20:43:11  dolzmann
+ * Constructors and destructors for some domain descriptors introduced.
+ *
+ * Revision 1.1  1994/04/14  18:01:57  dolzmann
+ * Introduced new modules ADTOOLS and DIPTOOLS.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+  
+IMPLEMENTATION MODULE ADTOOLS;
+<font color="#B22222">(* Arbitrary Domain Tools Implementation Module *)</font>
+
+
+FROM DOMIP	IMPORT	DOMIPD;
+FROM DOMRF	IMPORT	DOMRFD;
+FROM DIPRF	IMPORT	RFFIP;
+FROM DOMI	IMPORT	DOMINT;
+FROM MASADOM	IMPORT	ADCONV, ADDDREAD, ADDDWRIT, ADFI, SetConvFunc;
+FROM MASBIOS	IMPORT	LISTS;
+FROM MASBIOSU	IMPORT	CLTIS;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, LISTVAR,
+			RED, SFIRST, SIL, SRED;
+FROM SACLIST	IMPORT	ADV2, ADV3, ADV4, AWRITE, CCONC, CINV, CLOUT, COMP2,
+			CONC, EQUAL, FIRST3, FIRST4, FOURTH, LIST10, LIST2,
+			LIST3, LIST4, LIST5, MEMBER, RED2, SECOND, THIRD;
+
+
+<strong><font color="#4169E1">PROCEDURE ADRFFADIP</font></strong>(adip:LIST):LIST;
+<font color="#B22222">(* arbitrary domain rational function from arbitrary domain intgeral
+polynomial. adip is an arbitrary domain integral polynomial. adip is 
+converted to an arbitrary domain rational function. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> ip,r,vlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FIRST3(adip,ip,r,vlist);
+	RETURN LIST2(RFFIP(r,ip),vlist);
+<strong><font color="#4169E1">END</font></strong> ADRFFADIP;
+
+<strong><font color="#4169E1">PROCEDURE ADDDFSTR</font></strong>(s:ARRAY <font color="#4169E1">OF</font> CHAR):LIST;
+<font color="#B22222">(* arbitrary domain domain descriptor from string. s is an string. 
+The string must finish with a blank character. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	CLTIS(LISTS(s));
+	RETURN ADDDREAD();
+<strong><font color="#4169E1">END</font></strong> ADDDFSTR;
+
+<strong><font color="#4169E1">PROCEDURE ADCAST</font></strong>(e,dd:LIST):LIST;
+<font color="#B22222">(* arbitraray domain cast. e is an element, dd is an 
+arbitrary domain descriptor. The domain informations of the domain dd
+is added to e. No conversion is done. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result,red,add:LIST;	
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* take the domain id from dd *)</font>
+	result:=LIST1(FIRST(dd));
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* take the data from e *)</font>
+	result:=COMP(e,result);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* add all additionally descriptor informations of dd to the result *)</font>
+	add:=RED2(dd);
+	<font color="#4169E1">WHILE</font> add&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(add,red,add);
+		result:=COMP(red,result);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* reorder the result and return it *)</font>
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> ADCAST;
+
+<strong><font color="#4169E1">PROCEDURE ADRMDD</font></strong>(e: LIST):LIST;
+<font color="#B22222">(* arbitrary domain remove domain descriptor informations. 
+e is an arbitrary domain element. The domain descriptor informations 
+are removed from the element e, the result is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN SECOND(e);
+<strong><font color="#4169E1">END</font></strong> ADRMDD;
+
+<strong><font color="#4169E1">PROCEDURE AdLoadConvFunc</font></strong>();
+<font color="#B22222">(* arbitrary domain load conversion functions. This procedure is called from 
+the module MASLOADE after all domains are loaded. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	SetConvFunc(DOMRFD,DOMIPD,ADRFFADIP);
+<strong><font color="#4169E1">END</font></strong> AdLoadConvFunc;
+
+<font color="#B22222">(******************************************************************************
+*                      D O M A I N   D E S C R I P T O R                      *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE RFDDFIPDD</font></strong>(ipdd:LIST):LIST;
+<font color="#B22222">(* rational function domain descriptor from integral polynomial domain
+descriptor. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> ipid,p,r,vlist:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FIRST4(ipdd,ipid,p,r,vlist);
+	RETURN LIST3(DOMRFD,LIST2(r,0),vlist);
+<strong><font color="#4169E1">END</font></strong> RFDDFIPDD;
+
+<strong><font color="#4169E1">PROCEDURE IPDDCMP</font></strong>(vlist:LIST):LIST;
+<font color="#B22222">(* integral polynomial domain descriptor composition. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST4(DOMIPD,0,LENGTH(vlist),vlist);
+<strong><font color="#4169E1">END</font></strong> IPDDCMP;
+
+<strong><font color="#4169E1">PROCEDURE IPDECMP</font></strong>(e,vlist:LIST):LIST;
+<font color="#B22222">(* integral polynomial domain element composition. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST4(DOMIPD,e,LENGTH(vlist),vlist);
+<strong><font color="#4169E1">END</font></strong> IPDECMP;
+
+<strong><font color="#4169E1">PROCEDURE INTDDCMP</font></strong>():LIST;
+<font color="#B22222">(* integer domain descriptor composition. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST2(DOMINT,0);
+<strong><font color="#4169E1">END</font></strong> INTDDCMP;
+
+<strong><font color="#4169E1">PROCEDURE IPDDADV</font></strong>(p: LIST;  <strong><font color="#228B22">VAR</font></strong> q,r,vl:LIST);
+<font color="#B22222">(* integral polynomial domain descriptor advance *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dnr: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FIRST4(p, dnr,q,r,vl);
+<strong><font color="#4169E1">END</font></strong> IPDDADV;
+
+<strong><font color="#4169E1">PROCEDURE RFDDADV</font></strong>(e: LIST; <strong><font color="#228B22">VAR</font></strong> rat, vl: LIST);
+<font color="#B22222">(* rational function domain descriptor advance. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dnr: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FIRST3(e,dnr,rat,vl);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> RFDDADV;			   
+
+<strong><font color="#4169E1">END</font></strong> ADTOOLS.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

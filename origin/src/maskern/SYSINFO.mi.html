@@ -1,0 +1,150 @@
+
+<html>
+<head>
+<title>./maskern/SYSINFO.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T20:32:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYSINFO.mi,v 1.1 1994/11/28 20:32:53 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: SYSINFO.mi,v $
+ * Revision 1.1  1994/11/28  20:32:53  dolzmann
+ * New modules SYSINFO.md, SYSINFO.mi, LISTTOOLS.md, and LISTTOOLS.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SYSINFO;
+<font color="#B22222">(* System Informations Implementation Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*		    S Y S T E M   I N F O R M A T I O N	S	      	      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Remark:   Only mas kernel algorithms are used.                              *
+*           The computation of the number of used cells is time expensive.    *
+*           So the number of used cells is not reported normally.             *
+* Abstract: This module implements procedures for system resource statistics. *
+*           It uses the type SYSINFO to store the information over the        *
+*           resources. It is possible to record statistical dates on one      *
+*           time and print theses data later.                                 *
+******************************************************************************)</font>
+
+FROM MASBIOS	IMPORT	BLINES, SWRITE;
+FROM MASELEM	IMPORT	GAMMAINT;
+FROM MASSTOR	IMPORT	CELLS, GCC, GCCC, NU, TAU, TIME;
+FROM SACLIST	IMPORT	AWRITE; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SYSINFO.mi,v 1.1 1994/11/28 20:32:53 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE SysInfoStart</font></strong>(<strong><font color="#228B22">VAR</font></strong> s:SYSINFO);
+<font color="#B22222">(* system information start. The variable s needs no initialization.
+All data in s are lost.
+Informations over the usage of system resources are stored. 
+Use this procedure to start the recording of statistical data over system 
+resource usage. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH s <font color="#4169E1">DO</font>
+		Time:=TIME();
+		GarbageCollections:=GCC;
+		ReclaimedCells:=GCCC;
+		<font color="#4169E1">IF</font> Cells <font color="#4169E1">THEN</font> UsedCells:=CELLS(); <strong><font color="#4169E1">END</font></strong>;
+		GarbageCollectionTime:=TAU;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SysInfoStart;
+
+<strong><font color="#4169E1">PROCEDURE SysInfoStop</font></strong>(<strong><font color="#228B22">VAR</font></strong> s:SYSINFO);
+<font color="#B22222">(* system information stop. The variable s contains informations over system
+resources. The usage of this resources between the time of the initialization 
+of s and now are stored in s.
+Use this procedure to stop the recording of statistical data over system 
+resource usage. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH s <font color="#4169E1">DO</font>
+		Time:=TIME()-Time;
+		GarbageCollections:=GCC-GarbageCollections;
+		ReclaimedCells:=GCCC-ReclaimedCells;
+		<font color="#4169E1">IF</font> Cells <font color="#4169E1">THEN</font> UsedCells:=CELLS()-UsedCells; <strong><font color="#4169E1">END</font></strong>;
+		GarbageCollectionTime:=TAU-GarbageCollectionTime;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SysInfoStop;
+
+<strong><font color="#4169E1">PROCEDURE SysInfoSum</font></strong>(a,b:SYSINFO; <strong><font color="#228B22">VAR</font></strong> s:SYSINFO);
+<font color="#B22222">(* system information sum. The variable s needs no initialization.
+The sum of all data in a and b are stored in s. 
+Use this procedure to join statistical data of two registration period. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH s <font color="#4169E1">DO</font>
+		Time:=a.Time+b.Time;
+		GarbageCollections:=a.GarbageCollections+b.GarbageCollections;
+		ReclaimedCells:=a.ReclaimedCells+b.ReclaimedCells;
+		<font color="#4169E1">IF</font> Cells <font color="#4169E1">THEN</font> UsedCells:=a.UsedCells+b.UsedCells <strong><font color="#4169E1">END</font></strong>;
+		GarbageCollectionTime:=a.GarbageCollectionTime+
+						b.GarbageCollectionTime;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SysInfoSum;
+
+<strong><font color="#4169E1">PROCEDURE SysInfoWrite</font></strong>(s: SYSINFO);
+<font color="#B22222">(* system information write. The variable s contains informations over system
+resources. All informations in s are written out. 
+Use this procedure to write out the statistical data of a registration *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH s <font color="#4169E1">DO</font>
+		SWRITE("SysInfo: Time: ");
+		AWRITE(Time);
+		<font color="#4169E1">IF</font> GarbageCollections&gt;0 <font color="#4169E1">THEN</font> 
+			SWRITE(" ms plus ");
+			AWRITE(GarbageCollectionTime);
+			SWRITE(" ms garbage collection time. ");
+		<font color="#4169E1">ELSE</font>
+			SWRITE(" ms.");
+		<strong><font color="#4169E1">END</font></strong>;
+		BLINES(0);
+		<font color="#4169E1">IF</font> Cells <font color="#4169E1">THEN</font>
+			SWRITE("         "); 
+			SWRITE("Cells: ");
+			AWRITE(UsedCells);
+			SWRITE(" cells used <font color="#4169E1">of</font> "); 
+			AWRITE(NU);
+			SWRITE(" cells.");
+			BLINES(0);
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">IF</font> GarbageCollections&gt;0 <font color="#4169E1">THEN</font> 
+			SWRITE("         ");
+			SWRITE("GC: ");
+			AWRITE(ReclaimedCells);
+			SWRITE(" cells reclaimed in ");
+			AWRITE(GarbageCollectionTime);
+			SWRITE(" ms with ");
+			AWRITE(GarbageCollections);
+			<font color="#4169E1">IF</font> GarbageCollections&gt;1 <font color="#4169E1">THEN</font>
+				SWRITE(" gc<font color="#666666">'s.");
+			ELSE
+				SWRITE(" gc.");
+			END;
+			BLINES(0);
+		END;
+	END;
+END SysInfoWrite;
+
+BEGIN
+	Cells:=FALSE;
+END SYSINFO.
+
+(* -EOF- *)
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,1143 @@
+
+<html>
+<head>
+<title>./masdom/DIPDCGB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:37+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPDCGB.mi,v 1.3 1994/11/28 20:52:53 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPDCGB.mi,v $
+ * Revision 1.3  1994/11/28  20:52:53  dolzmann
+ * Syntactical errors corrected.
+ * Usage of predefined procedure types.
+ *
+ * Revision 1.2  1994/11/03  14:40:56  pfeil
+ * added procedures SetTraceLevel, SetDecompProc, SetUpdateProc, SetVarOrdOpt,
+ * SetFacSugar, SetReduceExp, SetBranchProc, WriteDCGBopt.
+ * modified procedure GroebnerBases1 for sugar.
+ * added procedure EQIEQ (Graebe/Lassner) for procedure GrobnerBases2
+ *
+ * Revision 1.1  1994/08/31  13:27:50  pfeil
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPDCGB;
+
+<font color="#B22222">(* DIP Decompositional Groebner Bases Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASBIOS 	IMPORT SWRITE, BLINES;
+
+FROM MASSTOR 	IMPORT LIST, SIL, COMP, ADV, FIRST, RED,
+		       SFIRST, LIST1, INV, TIME, LENGTH;
+
+FROM MASERR	IMPORT severe, ERROR;
+
+FROM MASLISPU IMPORT PROCF1, PROCF2, PROCP1V2, PROCP0V2; 
+
+FROM SACLIST 	IMPORT EQUAL, SECOND, FIRST2, AWRITE,
+		       LIST2, LIST5, LWRITE, OWRITE, CONC, CCONC;
+
+FROM SACRN	IMPORT RNINT;
+
+FROM DIPC 	IMPORT DIPTDG, DIPEVL, VALIS, DILPERM, DIPLPM;
+
+FROM DIPADOM 	IMPORT DIWRIT, DIPFAC, DIPSFF, DIPNF, DIPS, DIPEXP,
+		       DIPIRL;
+
+FROM DIPTOO	IMPORT DIPVOPP, INVPERM;
+
+FROM DIPAGB	IMPORT ECPPOLY1, ECPPOLY2, ECPSELECT, EDIPEVL, EDIPNOR,
+		       EDIPSP, EDIPSUGAR, EDIPSUGCON, EDIPUNEXTEND,
+		       EDIPWRITE, LDIPEXTEND, LECPWRITE, LEDIPUNEXTEND,
+		       LEDIPWRITE, SetDIPAGBStrategy, UpdateVariableWeight,
+		       UPDATE;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPDCGB.mi,v 1.3 1994/11/28 20:52:53 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1994 Universitaet Passau";
+
+
+<strong><font color="#228B22">VAR</font></strong> DCGBopt: RECORD
+		TraceLevel: INTEGER;
+		DecompProc: PROCF2;	DPNo:       INTEGER;
+		UpdateProc: PROCP1V2;	UPNo:       INTEGER;
+		VarOrdOpt:  INTEGER;
+		FacSugar:   INTEGER;
+		ReduceExp:  INTEGER;
+		BranchProc: PROCF1;	BPNo:       INTEGER;
+	     <strong><font color="#4169E1">END</font></strong>;
+
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *
+ * 0. option procedures							    *
+ * ------------------------------------------------------------------------ *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetTraceLevel</font></strong>(TL: INTEGER);
+<font color="#B22222">(* Set Trace-Level for decompositional groebner bases:
+      0 = no output, except with VOOB,
+     &gt;0 = output of time and result after computation,
+     &gt;1 = output of messages about tree of computation:
+	  number of canceled branches/factors, "cancel factor",
+          "cancel branch", "groebner base", "branch w.o. zeros",
+     &gt;2 = output of s-polynomials and normalforms,
+     &gt;3 = output of parameters of local procedures
+          and of time and groebner bases during computation. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   DCGBopt.TraceLevel:=TL;
+<strong><font color="#4169E1">END</font></strong> SetTraceLevel;
+
+<strong><font color="#4169E1">PROCEDURE SetDecompProc</font></strong>(DCP: INTEGER);
+<font color="#B22222">(* Set Decomposition-Procedure for decompositional groebner bases:
+      1 = DIPFAC,
+      2 = DIPSFF. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">CASE</font> DCP <font color="#4169E1">OF</font>
+      1: DCGBopt.DecompProc:=DIPFAC; |
+      2: DCGBopt.DecompProc:=DIPSFF; 
+   <font color="#4169E1">ELSE</font>
+      ERROR(severe,"SetDecompProc: unknown DecompProc option");
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE DCP... *)</font>
+   DCGBopt.DPNo:=DCP;
+<strong><font color="#4169E1">END</font></strong> SetDecompProc;
+
+<strong><font color="#4169E1">PROCEDURE SetUpdateProc</font></strong>(UP: INTEGER);
+<font color="#B22222">(* Set Update-Procedure for decompositional groebner bases: 
+      1 = UPDATE from module DIPAGB. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>   
+   <font color="#4169E1">CASE</font> UP <font color="#4169E1">OF</font>
+      1: DCGBopt.UpdateProc:=UPDATE; 
+   <font color="#4169E1">ELSE</font>
+      ERROR(severe,"SetUpdateProc: unknown UpdateProc option");
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE UP... *)</font>
+   DCGBopt.UPNo:=UP;
+<strong><font color="#4169E1">END</font></strong> SetUpdateProc;
+
+<strong><font color="#4169E1">PROCEDURE SetVarOrdOpt</font></strong>(VOO: INTEGER);
+<font color="#B22222">(* Set Variable-Order-Optimization for decompositional groebner bases: 
+      0 = don`t optimize,
+      1 = optimize at begin only,
+      2 = optimize factorization only,
+      3 = optimize at begin and factorization *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (VOO&lt;0) <font color="#4169E1">OR</font> (VOO&gt;3) <font color="#4169E1">THEN</font>
+      ERROR(severe,"SetVarOrdOpt: unknown VarOrdOpt option"); <strong><font color="#4169E1">END</font></strong>;
+   DCGBopt.VarOrdOpt:=VOO;   
+<strong><font color="#4169E1">END</font></strong> SetVarOrdOpt;
+
+<strong><font color="#4169E1">PROCEDURE SetFacSugar</font></strong>(FS: INTEGER);
+<font color="#B22222">(* Set Factor-Sugar for procedure GroebnerBases1: 
+      0 = normal strategy (no sugar)
+      1 = sugar of factor is total degree of factor,
+      2 = sugar of factor is old sugar *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (FS&lt;0) <font color="#4169E1">OR</font> (FS&gt;2) <font color="#4169E1">THEN</font>
+      ERROR(severe,"SetFacSugar: unknown FacSugar option"); <strong><font color="#4169E1">END</font></strong>;
+   DCGBopt.FacSugar:=FS;
+<strong><font color="#4169E1">END</font></strong> SetFacSugar;
+
+<strong><font color="#4169E1">PROCEDURE SetReduceExp</font></strong>(RE: INTEGER);
+<font color="#B22222">(* Set Reduce-Exponent for procedure GroebnerBases2:
+      1 = reduce (no power of) polynomial
+     &gt;1 = reduce corresponding power of polynomial *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> RE&lt;1 <font color="#4169E1">THEN</font>
+      ERROR(severe,"SetReduceExp: unknown ReduceExp option"); <strong><font color="#4169E1">END</font></strong>;
+   DCGBopt.ReduceExp:=RE;
+<strong><font color="#4169E1">END</font></strong> SetReduceExp;
+
+<strong><font color="#4169E1">PROCEDURE SetBranchProc</font></strong>(BP: INTEGER);
+<font color="#B22222">(* Set Branch-Procedure for procedure GroebnerBases2:
+      1 = SSCO  - new branch for each subset of factors,
+      2 = EQIEQ - new branch for each factor *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">CASE</font> BP <font color="#4169E1">OF</font>
+      1: DCGBopt.BranchProc:=SSCO; |
+      2: DCGBopt.BranchProc:=EQIEQ;
+   <font color="#4169E1">ELSE</font>
+      ERROR(severe,"SetBranchProc: unknown BranchProc option");
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE BP... *)</font>
+   DCGBopt.BPNo:=BP;
+<strong><font color="#4169E1">END</font></strong> SetBranchProc;
+
+<strong><font color="#4169E1">PROCEDURE SetDCGBopt</font></strong>(options: LIST);
+<font color="#B22222">(* Set options for decompositional groebner bases.
+   options is a list of 7 or less elements in following order:
+   1. Trace-Level (0-4),
+   2. No. of Decomposition-Procedure (1,2),
+   3. No. of Update-Procedure (1),
+   4. Optimization of variable order (0,1,2,3),
+   5. Sugar of factors for Procedure GroebnerBases1 (0,1,2),
+   6. Reduce-Exponent for procedure GroebnerBases2 (&gt;0),
+   7. No. of Branch-Procedure in GroebnerBases2 (1,2).
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> TL,DCP,UP,VOO,RE,FS,BP: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,TL,options);
+      SetTraceLevel(TL);
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,DCP,options);
+      SetDecompProc(DCP);
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,UP,options);
+      SetUpdateProc(UP);
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,VOO,options);
+      SetVarOrdOpt(VOO);
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,FS,options);
+      SetFacSugar(FS);
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,RE,options);
+      SetReduceExp(RE);
+   <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font>
+      ADV(options,BP,options);
+      SetBranchProc(BP);
+   <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDCGBopt;
+
+<strong><font color="#4169E1">PROCEDURE WriteDCGBopt</font></strong>;
+<font color="#B22222">(* write decompositional groebner bases options *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   SWRITE("TraceLevel : "); AWRITE(DCGBopt.TraceLevel); BLINES(0);
+   SWRITE("DecompProc : "); 
+   <font color="#4169E1">CASE</font> DCGBopt.DPNo <font color="#4169E1">OF</font>
+      1: SWRITE("DIPFAC"); |
+      2: SWRITE("DIPSFF");
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font> BLINES(0);
+   SWRITE("UpdateProc : ");
+   <font color="#4169E1">CASE</font> DCGBopt.UPNo <font color="#4169E1">OF</font>
+      1: SWRITE("UPDATE");
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font> BLINES(0);
+   SWRITE("VarOrdOpt  : "); AWRITE(DCGBopt.VarOrdOpt);  BLINES(0);
+   SWRITE("FacSugar   : "); AWRITE(DCGBopt.FacSugar);   BLINES(0);
+   SWRITE("ReduceExp  : "); AWRITE(DCGBopt.ReduceExp);  BLINES(0);
+   SWRITE("BranchProc : ");
+   <font color="#4169E1">CASE</font> DCGBopt.BPNo <font color="#4169E1">OF</font>
+      1: SWRITE("SSCO"); |
+      2: SWRITE("EQIEQ");
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font> BLINES(0);
+<strong><font color="#4169E1">END</font></strong> WriteDCGBopt;
+
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *
+ * 1. The main function GroebnerBases1                                      *
+ * ------------------------------------------------------------------------ *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GroebnerBases1</font></strong>(G: LIST): LIST; 
+<font color="#B22222">(* Distributive polynomials decompositional groebner bases.
+   G is a list of polynomials in distributive representation
+   over an arbitrary domain,
+   returns a list (GB1,...,GBk) of groebner bases,
+   where Z(G) = Z(GB1) v ... v Z(GBk). *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> GBList,T,t,OldVarL,PermV,invPV,VOOF,VOOB: LIST;
+    nocb: INTEGER;
+    CS: BOOLEAN; 
+
+<strong><font color="#4169E1">PROCEDURE RECGB1</font></strong>(G,Fcmp: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> H,g,HTg,HTf,G1,F,GBList,f,B: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+      SWRITE("R1"); BLINES(0); PWrite(1,G); PWrite(4,Fcmp); BLINES(1); <strong><font color="#4169E1">END</font></strong>;
+   H:=SIL;
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,g,G);
+      <font color="#4169E1">IF</font> DIPTDG(g)=0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+	    SWRITE("= branch w.o. zeros ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	 RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      G1:=CCONC(G,H);
+      F:=newFactors(G1,g,Fcmp);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> PWrite(2,F); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+	 <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+            SWRITE("= cancel branch ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	 RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      ADV(F,f,F);
+      <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+         HTg:=DIPEVL(g);
+         HTf:=DIPEVL(f);
+         <font color="#4169E1">IF</font> EQUAL(HTg,HTf)=1 <font color="#4169E1">THEN</font>
+            H:=COMP(f,H);
+         <font color="#4169E1">ELSE</font>
+            G:=COMP(f,G1);
+            DIPIRL(G,CS);
+            H:=SIL;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF EQUAL... *)</font>
+      <font color="#4169E1">ELSE</font>
+         GBList:=SIL;
+         LOOP <font color="#B22222">(* 1 *)</font>
+            G:=COMP(f,G1);
+            DIPIRL(G,CS);
+            GBList:=CONC(GBList,RECGB1(G,Fcmp));
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+            Fcmp:=COMP(f,Fcmp);
+            ADV(F,f,F);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+         RETURN(GBList);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF F... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE G... *)</font>
+   Init(H,B);
+   RETURN(RECGB2(H,B,Fcmp));
+<strong><font color="#4169E1">END</font></strong> RECGB1;
+
+<strong><font color="#4169E1">PROCEDURE RECGB2</font></strong>(G,B,Fcmp: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> CP,g1,g2,S,h,F,oldG,oldB,f,GBList: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+      SWRITE("R2"); BLINES(0); PWrite(1,G); PPWrite(B);
+      PWrite(4,Fcmp); BLINES(1); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">WHILE</font> B&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(B,CP,B);
+      FIRST2(CP,g1,g2);
+      S:=DIPS(g1,g2);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> DIWRIT(S,VALIS); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S&lt;&gt;0 <font color="#4169E1">THEN</font>
+         h:=DIPNF(G,S);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> DIWRIT(h,VALIS); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> h&lt;&gt;0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DIPTDG(h)=0 <font color="#4169E1">THEN</font>
+	       <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+       	          SWRITE("= branch w.o. zeros ="); nocb:=nocb+1;
+		  BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	       RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            F:=newFactors(G,h,Fcmp);
+            <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> PWrite(2,F); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+	       <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+                  SWRITE("= cancel branch ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	       RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            ADV(F,f,F);
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> 
+               DCGBopt.UpdateProc(f,G,B);
+            <font color="#4169E1">ELSE</font>
+               GBList:=SIL; oldG:=G; oldB:=B;
+               LOOP <font color="#B22222">(* 1 *)</font>
+                  G:=oldG; B:=oldB;
+                  DCGBopt.UpdateProc(f,G,B);
+                  GBList:=CONC(GBList,RECGB2(G,B,Fcmp));
+                  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                  Fcmp:=COMP(f,Fcmp);
+                  ADV(F,f,F);
+               <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+               RETURN(GBList);
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF F... *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF h... *)</font>
+      <font color="#4169E1">ELSE</font> 
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF S... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE B... *)</font>
+   DIPIRL(G,CS);
+   <font color="#4169E1">IF</font> CS <font color="#4169E1">THEN</font> RETURN(RECGB1(G,Fcmp));
+   <font color="#4169E1">ELSE</font> 
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+         SWRITE("= groebner base ="); BLINES(0);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+            t:=TIME()-T; SWRITE("Time :"); AWRITE(t); 
+            PWrite(0,G); BLINES(0);
+	 <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      RETURN(LIST1(G));
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF CS... *)</font>
+<strong><font color="#4169E1">END</font></strong> RECGB2;
+
+<strong><font color="#4169E1">PROCEDURE newFactors</font></strong>(G,h,Fcmp: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> Fnew,F,ExpPol,hi,FL,g,G1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   Fnew:=SIL;
+   F:=DCGBopt.DecompProc(h,VOOF);	<font color="#B22222">(* factorization *)</font>
+   F:=SortF(F);	<font color="#B22222">(* sort factors in non-increasing order *)</font>
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(F,hi,F);
+      G1:=COMP(hi,G);
+      FL:=Fcmp;
+      LOOP <font color="#B22222">(* 1 *)</font>
+	 <font color="#4169E1">IF</font> FL=SIL <font color="#4169E1">THEN</font> Fnew:=COMP(hi,Fnew); Fcmp:=COMP(hi,Fcmp); EXIT; <strong><font color="#4169E1">END</font></strong>;
+	 ADV(FL,g,FL);
+	 <font color="#4169E1">IF</font> DIPNF(G1,g)=0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+               SWRITE("= cancel factor ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            EXIT; <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE F... *)</font>
+   RETURN(INV(Fnew));
+<strong><font color="#4169E1">END</font></strong> newFactors;
+
+<strong><font color="#4169E1">PROCEDURE REC1</font></strong>(G,Fcmp1: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> H,g,h,HTg,HTf,G1,F,GBList,f,B: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+      SWRITE("R1"); BLINES(0); LEDIPWRITE(G);
+      PWrite(4,Fcmp1); BLINES(1); <strong><font color="#4169E1">END</font></strong>;
+   H:=SIL;
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,g,G);
+      <font color="#4169E1">IF</font> DIPTDG(EDIPPOLY(g))=0 <font color="#4169E1">THEN</font> <font color="#B22222">(* g constant *)</font>
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+	    SWRITE("= branch w.o. zeros ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	 RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      G1:=CCONC(G,H);
+      F:=EnewFactors(G1,g,Fcmp1);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+	 SWRITE("F = "); BLINES(0);
+	 LEDIPWRITE(F); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+	 <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+            SWRITE("= cancel branch ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	 RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      ADV(F,f,F);
+      <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+         HTg:=EDIPEVL(g);
+         HTf:=EDIPEVL(f);
+         <font color="#4169E1">IF</font> EQUAL(HTg,HTf)=1 <font color="#4169E1">THEN</font>
+            H:=COMP(f,H);
+         <font color="#4169E1">ELSE</font>
+            G:=COMP(f,G1);
+            EDIPIRL(G,CS);
+            H:=SIL;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF EQUAL... *)</font>
+      <font color="#4169E1">ELSE</font>
+         GBList:=SIL;
+         LOOP <font color="#B22222">(* 1 *)</font>
+            G:=COMP(f,G1);
+            EDIPIRL(G,CS);
+            GBList:=CONC(GBList,REC1(G,Fcmp1));
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+            Fcmp1:=COMP(EDIPPOLY(f),Fcmp1);
+            ADV(F,f,F);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+         RETURN(GBList);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF F... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE G... *)</font>
+   Init(H,B);
+   RETURN(REC2(H,B,Fcmp1));
+<strong><font color="#4169E1">END</font></strong> REC1;
+
+<strong><font color="#4169E1">PROCEDURE REC2</font></strong>(G,B,Fcmp2: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> CP,g1,g2,S,h,h1,F,oldG,oldB,f,GBList: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+      SWRITE("R2"); BLINES(0); LEDIPWRITE(G);
+      LECPWRITE(B); PWrite(4,Fcmp2); BLINES(1); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">WHILE</font> B&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ECPSELECT(B,CP,B);
+      g1:=ECPPOLY1(CP); g2:=ECPPOLY2(CP);
+      S:=EDIPSP(g1,g2);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> EDIPWRITE(S); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> FIRST(S)&lt;&gt;0 <font color="#4169E1">THEN</font>
+         h:=EDIPNOR(G,S);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> EDIPWRITE(h); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+         h1:=EDIPPOLY(h);
+         <font color="#4169E1">IF</font> h1&lt;&gt;0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DIPTDG(h1)=0 <font color="#4169E1">THEN</font> <font color="#B22222">(* h1 constant *)</font>
+	       <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+       	          SWRITE("= branch w.o. zeros ="); nocb:=nocb+1;
+		  BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	       RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            F:=EnewFactors(G,h,Fcmp2);
+            <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> 
+		SWRITE("F = "); BLINES(0);
+		LEDIPWRITE(F); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font>
+	       <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+                  SWRITE("= cancel branch ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	       RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            ADV(F,f,F);
+            <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> 
+               DCGBopt.UpdateProc(f,G,B);
+            <font color="#4169E1">ELSE</font>
+               GBList:=SIL; oldG:=G; oldB:=B;
+               LOOP <font color="#B22222">(* 1 *)</font>
+                  G:=oldG; B:=oldB;
+                  DCGBopt.UpdateProc(f,G,B);
+                  GBList:=CONC(GBList,REC2(G,B,Fcmp2));
+                  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                  Fcmp2:=COMP(EDIPPOLY(f),Fcmp2);
+                  ADV(F,f,F);
+               <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+               RETURN(GBList);
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF F... *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF h... *)</font>
+      <font color="#4169E1">ELSE</font> 
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF S... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE B... *)</font>
+   EDIPIRL(G,CS);
+   <font color="#4169E1">IF</font> CS <font color="#4169E1">THEN</font> RETURN(REC1(G,Fcmp2));
+   <font color="#4169E1">ELSE</font> 
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+         SWRITE("= groebner base ="); BLINES(0);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+            t:=TIME()-T; SWRITE("Time :"); AWRITE(t); BLINES(0);
+            LEDIPWRITE(G); BLINES(0);
+	 <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      RETURN(LIST1(G));
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF CS... *)</font>
+<strong><font color="#4169E1">END</font></strong> REC2;
+
+<strong><font color="#4169E1">PROCEDURE EnewFactors</font></strong>(G,h,Fcmp: LIST): LIST;
+<font color="#B22222">(* G is a list of extended polynomials in distributive
+   representation,
+   Fcmp is a list of polynomials in distributive representation, 
+   h is an extended polynomial in distributive representation *)</font>
+<strong><font color="#228B22">VAR</font></strong> Fnew,Sugar,F,ExpPol,hi,FL,g,G1,h1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   Fnew:=SIL; 
+   FIRST2(h,h1,Sugar);
+   G:=LEDIPUNEXTEND(G); 
+   F:=DCGBopt.DecompProc(h1,VOOF);	<font color="#B22222">(* factorization *)</font>
+   F:=SortF(F);	<font color="#B22222">(* sort factors in non-increasing order *)</font>
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(F,hi,F);
+      G1:=COMP(hi,G);
+      FL:=Fcmp;
+      LOOP <font color="#B22222">(* 1 *)</font>
+	 <font color="#4169E1">IF</font> FL=SIL <font color="#4169E1">THEN</font> 
+	    Fcmp:=COMP(hi,Fcmp); 
+            <font color="#4169E1">CASE</font> DCGBopt.FacSugar <font color="#4169E1">OF</font>
+	       1: Fnew:=COMP(LIST2(hi,RNINT(DIPTDG(hi))),Fnew); |
+               2: Fnew:=COMP(LIST2(hi,Sugar),Fnew);
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font>
+	    EXIT;
+	 <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* if FL... *)</font>
+	 ADV(FL,g,FL);
+	 <font color="#4169E1">IF</font> DIPNF(G1,g)=0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+               SWRITE("= cancel factor ="); BLINES(0);
+	       nocb:=nocb+1; <strong><font color="#4169E1">END</font></strong>;
+            EXIT;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DIPNF... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* LOOP 1 *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE F... *)</font>
+   RETURN(INV(Fnew));
+<strong><font color="#4169E1">END</font></strong> EnewFactors;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">CASE</font> DCGBopt.FacSugar <font color="#4169E1">OF</font>
+        0: SetDIPAGBStrategy(0); |	<font color="#B22222">(* strategy = normal *)</font>
+      1,2: SetDIPAGBStrategy(1);	<font color="#B22222">(* strategy = normal with sugar *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font>
+   <font color="#4169E1">IF</font> G=SIL <font color="#4169E1">THEN</font> ERROR(severe,"GB1: undefined ideal"); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> ZeroPoly(G) <font color="#4169E1">THEN</font> ERROR(severe,"GB1: zero polynomial"); <strong><font color="#4169E1">END</font></strong>; 
+   T:=TIME();
+   <font color="#4169E1">CASE</font> DCGBopt.VarOrdOpt <font color="#4169E1">OF</font> 
+      1: VOOB:=1; VOOF:=0; |
+      2: VOOB:=0; VOOF:=1; |
+      3: VOOB:=1; VOOF:=1; 
+   <font color="#4169E1">ELSE</font>
+      VOOB:=0; VOOF:=0;
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* DCGBopt... *)</font>
+   <font color="#4169E1">IF</font> VOOB=1 <font color="#4169E1">THEN</font> 
+      OldVarL:=VALIS;
+      DIPVOPP(G,OldVarL,G,VALIS,PermV);
+      invPV:=INVPERM(PermV);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF VOOB... *)</font>
+   nocb:=0;
+   <font color="#4169E1">CASE</font> DCGBopt.FacSugar <font color="#4169E1">OF</font>
+        0: DIPIRL(G,CS);
+           GBList:=RECGB1(G,SIL); |
+      1,2: UpdateVariableWeight;
+           G:=LDIPEXTEND(G);
+           EDIPIRL(G,CS);
+           GBList:=LLEDIPUNEXTEND(REC1(G,SIL));
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font>
+   <font color="#4169E1">IF</font> VOOB=1 <font color="#4169E1">THEN</font>
+      VALIS:=OldVarL;
+      BLINES(1); SWRITE("= changed variable order =");
+      GBList:=SGBLwrtVO1(GBList,invPV);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF VOOB... *)</font> 
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;0 <font color="#4169E1">THEN</font>
+      t:=TIME()-T;
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+	 BLINES(0); SWRITE("Number <font color="#4169E1">of</font> canceled branches/factors : ");
+	 AWRITE(nocb); <strong><font color="#4169E1">END</font></strong>;
+      BLINES(1); SWRITE("Time : "); AWRITE(t); SWRITE(" ms");
+      SWRITE(" with <strong><font color="#4169E1">program</font></strong> GB1 :");
+      CWrite1(GBList);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+   RETURN(GBList);
+<strong><font color="#4169E1">END</font></strong> GroebnerBases1;
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SGBLwrtVO1</font></strong>(GBL,invPV: LIST): LIST;
+<font color="#B22222">(* sort groebner bases list w.r.t. variable order *)</font>
+<strong><font color="#228B22">VAR</font></strong> GBLnew,G: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   GBLnew:=SIL;
+   <font color="#4169E1">WHILE</font> GBL&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(GBL,G,GBL);
+      G:=DILPERM(G,invPV);
+      GBLnew:=COMP(G,GBLnew);
+   <strong><font color="#4169E1">END</font></strong>;
+   RETURN(GBLnew);
+<strong><font color="#4169E1">END</font></strong> SGBLwrtVO1;
+
+<strong><font color="#4169E1">PROCEDURE CWrite1</font></strong>(gbl: LIST);
+<strong><font color="#228B22">VAR</font></strong> i: INTEGER;
+    G: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   BLINES(1); i:=1;
+   <font color="#4169E1">WHILE</font> gbl&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(gbl,G,gbl);
+      AWRITE(i); SWRITE(". GB with ");
+      AWRITE(LENGTH(G)); SWRITE(" equation(s)");
+      BLINES(0); PWrite(0,G);
+      BLINES(1);
+      i:=i+1;
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> CWrite1;
+
+<strong><font color="#4169E1">PROCEDURE LLEDIPUNEXTEND</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* List of lists of extended distributive polynomials un-extend.
+   P is a list of lists of extended distributive polynomials.
+   LLEDIPUNEXTEND(P) is the list of lists of the appropriate
+   distributive polynomials. *)</font>
+<strong><font color="#228B22">VAR</font></strong> Pnew,PL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   Pnew:=SIL;
+   <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(P,PL,P);
+      Pnew:=COMP(LEDIPUNEXTEND(PL),Pnew);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while P... *)</font>
+   RETURN(Pnew);
+<strong><font color="#4169E1">END</font></strong> LLEDIPUNEXTEND;
+
+<strong><font color="#4169E1">PROCEDURE EDIPPOLY</font></strong>(PS: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial *)</font>
+<strong><font color="#228B22">VAR</font></strong> p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">CASE</font> DCGBopt.FacSugar <font color="#4169E1">OF</font>
+        0: p:=PS; |
+      1,2: p:=FIRST(PS);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font>
+   RETURN(p);
+<strong><font color="#4169E1">END</font></strong> EDIPPOLY;
+
+<strong><font color="#4169E1">PROCEDURE EDIPIRL</font></strong>(<strong><font color="#228B22">VAR</font></strong> P: LIST; <strong><font color="#228B22">VAR</font></strong> CS: BOOLEAN);
+<font color="#B22222">(* Extended distributive polynomials interreduced list of polynomials.
+   P is a list of extended polynomials in distributive representation
+   over an arbitrary domain,
+   CS is a flag, CS = TRUE iff P is changed,
+   returns a interreduced list of polynomials R=(p1,...,pk),
+   R is the result of reducing each pi modulo R-(pi)
+   until no further reductions are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong> H,f,f1,HTf1,HTg1,g,g1: LIST;
+    NewHT: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   CS:=FALSE;
+   <font color="#4169E1">REPEAT</font>
+      H:=SIL; NewHT:=FALSE;
+      <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+	 ADV(P,f,P);
+	 f1:=EDIPPOLY(f);
+	 HTf1:=DIPEVL(f1);
+	 g:=EDIPNOR(CCONC(P,H),f);
+	 g1:=EDIPPOLY(g);
+	 <font color="#4169E1">IF</font> g1&lt;&gt;0 <font color="#4169E1">THEN</font>
+	    HTg1:=DIPEVL(g1);
+            <font color="#4169E1">IF</font> EQUAL(HTf1,HTg1)=1 <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> EQUAL(f1,g1)&lt;&gt;1 <font color="#4169E1">THEN</font> CS:=TRUE; <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">ELSE</font>
+	       NewHT:=TRUE; CS:=TRUE;
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF EQUAL... *)</font>
+	    H:=COMP(g,H);
+	 <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF g1&lt;&gt;0... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE ... *)</font>
+      P:=H;
+   <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font>(NewHT);
+<strong><font color="#4169E1">END</font></strong> EDIPIRL;
+
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *
+ * 2. The main function GroebnerBases2                                      *
+ * ------------------------------------------------------------------------ *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GroebnerBases2</font></strong>(G,U: LIST): LIST; 
+<font color="#B22222">(* Distributive polynomials decompositional groebner bases 2.
+   G and U are lists of polynomials in distributive representation
+   over an arbitrary domain,
+   returns a list ((GB1,U1),...,(GBk,Uk)) of pairs (Gi,Ui), where
+   Gi is a groebner bases, Ui is a list of polynomials and
+   Z(G) n D(U) = (Z(GB1) n D(U1)) v ... v (Z(GBk) n D(Uk)). *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> GBList,T,t,OldVarL,PermV,invPV,VOOF,VOOB: LIST;
+    nocb: INTEGER;
+    CS: BOOLEAN;
+
+<strong><font color="#4169E1">PROCEDURE RECGB1</font></strong>(G,U: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> H,g,HTg,HTf,G1,F,GBList,f,B,SCL,SC,U1,G2: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> 
+      SWRITE("R1"); BLINES(0); PWrite(1,G); PWrite(3,U); <strong><font color="#4169E1">END</font></strong>;
+   H:=SIL;
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,g,G);
+      <font color="#4169E1">IF</font> DIPTDG(g)=0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+	    SWRITE("= branch w.o. zeros ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	 RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      G1:=CCONC(G,H);
+      F:=DCGBopt.DecompProc(g,VOOF);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> PWrite(5,F); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RED(F)=SIL <font color="#4169E1">THEN</font>
+         HTg:=DIPEVL(g);
+         f:=SECOND(FIRST(F));
+         HTf:=DIPEVL(f);
+         <font color="#4169E1">IF</font> EQUAL(HTg,HTf)=1 <font color="#4169E1">THEN</font>
+            H:=COMP(f,H);
+         <font color="#4169E1">ELSE</font>
+            G:=COMP(f,G1);
+            DIPIRL(G,CS);
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(TEII(U,G)) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            H:=SIL;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF EQUAL... *)</font>
+      <font color="#4169E1">ELSE</font>
+         SCL:=DCGBopt.BranchProc(F);
+         GBList:=SIL;
+         <font color="#4169E1">WHILE</font> SCL&lt;&gt;SIL <font color="#4169E1">DO</font>
+            ADV(SCL,SC,SCL);
+            FIRST2(SC,G2,U1);
+            G2:=CCONC(G2,G1);
+            U1:=CCONC(U1,U);
+            DIPIRL(G2,CS);
+            <font color="#4169E1">IF</font> TEII(U1,G2) <font color="#4169E1">THEN</font> GBList:=CONC(GBList,RECGB1(G2,U1)); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE SCL... *)</font>
+         RETURN(GBList);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF RED(F)... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE G... *)</font>
+   Init(H,B);
+   RETURN(RECGB2(H,U,B));
+<strong><font color="#4169E1">END</font></strong> RECGB1;
+
+<strong><font color="#4169E1">PROCEDURE RECGB2</font></strong>(G,U,B: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> CP,g1,g2,S,h,F,oldG,oldB,SCL,SC,G1,U1,f,GBList: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+      SWRITE("R2"); BLINES(0); PWrite(1,G); PWrite(3,U); PPWrite(B); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">WHILE</font> B&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(B,CP,B);
+      FIRST2(CP,g1,g2);
+      S:=DIPS(g1,g2);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> DIWRIT(S,VALIS); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S&lt;&gt;0 <font color="#4169E1">THEN</font>
+         h:=DIPNF(G,S);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> DIWRIT(h,VALIS); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> h&lt;&gt;0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DIPTDG(h)=0 <font color="#4169E1">THEN</font>
+	       <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+       	          SWRITE("= branch w.o. zeros ="); nocb:=nocb+1;
+		  BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	       RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            F:=DCGBopt.DecompProc(h,VOOF);
+            <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> PWrite(5,F); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> RED(F)=SIL <font color="#4169E1">THEN</font>
+               f:=SECOND(FIRST(F));                  
+               DCGBopt.UpdateProc(f,G,B);
+               <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(TEII(U,G)) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">ELSE</font>
+               SCL:=DCGBopt.BranchProc(F);
+               oldG:=G; oldB:=B; GBList:=SIL;
+               <font color="#4169E1">REPEAT</font>
+                  ADV(SCL,SC,SCL);
+                  FIRST2(SC,G1,U1);
+                  G:=oldG; B:=oldB;
+                  <font color="#4169E1">WHILE</font> G1&lt;&gt;SIL <font color="#4169E1">DO</font>
+                     ADV(G1,f,G1);
+                     DCGBopt.UpdateProc(f,G,B);
+                  <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE G1... *)</font>
+                  U1:=CCONC(U1,U);
+                  <font color="#4169E1">IF</font> TEII(U1,G) <font color="#4169E1">THEN</font> GBList:=CONC(GBList,RECGB2(G,U1,B)); <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">UNTIL</font> SCL=SIL;
+               RETURN(GBList);
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF RED... *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF h... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF S... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE B... *)</font>
+   DIPIRL(G,CS);
+   <font color="#4169E1">IF</font> CS <font color="#4169E1">THEN</font>
+      <font color="#4169E1">IF</font> TEII(U,G) <font color="#4169E1">THEN</font> RETURN(RECGB1(G,U)); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(SIL);
+   <font color="#4169E1">ELSE</font>
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+         SWRITE("= groebner base ="); BLINES(0);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+            t:=TIME()-T; SWRITE("Time :"); AWRITE(t); 
+            PWrite(0,G); PWrite(0,U); BLINES(0);
+	 <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      RETURN(LIST1(LIST2(G,U)));
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF CS... *)</font>
+<strong><font color="#4169E1">END</font></strong> RECGB2;
+
+<strong><font color="#4169E1">PROCEDURE REC1</font></strong>(G,U: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> H,g,HTg,HTf,G1,F,GBList,f,B,SCL,SC,U1,G2: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> 
+      SWRITE("R1"); BLINES(0); PWrite(1,G); PWrite(3,U); <strong><font color="#4169E1">END</font></strong>;
+   H:=SIL;
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,g,G);
+      <font color="#4169E1">IF</font> DIPTDG(g)=0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+	    SWRITE("= branch w.o. zeros ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	 RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      G1:=CCONC(G,H);
+      F:=DCGBopt.DecompProc(g,VOOF);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> PWrite(5,F); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RED(F)=SIL <font color="#4169E1">THEN</font>
+         HTg:=DIPEVL(g);
+         f:=SECOND(FIRST(F));
+         HTf:=DIPEVL(f);
+         <font color="#4169E1">IF</font> EQUAL(HTg,HTf)=1 <font color="#4169E1">THEN</font>
+            H:=COMP(f,H);
+         <font color="#4169E1">ELSE</font>
+            G:=COMP(f,G1);
+            DIPIRL(G,CS);
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(TEII(U,G)) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            H:=SIL;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF EQUAL... *)</font>
+      <font color="#4169E1">ELSE</font>
+         SCL:=DCGBopt.BranchProc(F);
+         GBList:=SIL;
+         <font color="#4169E1">WHILE</font> SCL&lt;&gt;SIL <font color="#4169E1">DO</font>
+            ADV(SCL,SC,SCL);
+            FIRST2(SC,g,U1);
+            G2:=COMP(g,G1);
+            U1:=CCONC(U1,U);
+            DIPIRL(G2,CS);
+            <font color="#4169E1">IF</font> TEII(U1,G2) <font color="#4169E1">THEN</font> GBList:=CONC(GBList,REC1(G2,U1)); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE SCL... *)</font>
+         RETURN(GBList);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF RED(F)... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE G... *)</font>
+   Init(H,B);
+   RETURN(REC2(H,U,B));
+<strong><font color="#4169E1">END</font></strong> REC1;
+
+<strong><font color="#4169E1">PROCEDURE REC2</font></strong>(G,U,B: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> CP,g1,g2,S,h,F,oldG,oldB,SCL,SC,U1,f,GBList: LIST;
+    CS: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+      SWRITE("R2"); BLINES(0); PWrite(1,G); PWrite(3,U); PPWrite(B); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">WHILE</font> B&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(B,CP,B);
+      FIRST2(CP,g1,g2);
+      S:=DIPS(g1,g2);
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> DIWRIT(S,VALIS); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S&lt;&gt;0 <font color="#4169E1">THEN</font>
+         h:=DIPNF(G,S);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> DIWRIT(h,VALIS); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> h&lt;&gt;0 <font color="#4169E1">THEN</font>
+            <font color="#4169E1">IF</font> DIPTDG(h)=0 <font color="#4169E1">THEN</font>
+	       <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+       	          SWRITE("= branch w.o. zeros ="); nocb:=nocb+1;
+		  BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+	       RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            F:=DCGBopt.DecompProc(h,VOOF);
+            <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font> PWrite(5,F); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> RED(F)=SIL <font color="#4169E1">THEN</font>
+               f:=SECOND(FIRST(F));                  
+               DCGBopt.UpdateProc(f,G,B);
+               <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(TEII(U,G)) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">ELSE</font>
+               SCL:=DCGBopt.BranchProc(F);
+               oldG:=G; oldB:=B; GBList:=SIL;
+               <font color="#4169E1">REPEAT</font>
+                  ADV(SCL,SC,SCL);
+                  FIRST2(SC,f,U1);
+                  G:=oldG; B:=oldB;
+                  DCGBopt.UpdateProc(f,G,B);
+                  U1:=CCONC(U1,U);
+                  <font color="#4169E1">IF</font> TEII(U1,G) <font color="#4169E1">THEN</font> GBList:=CONC(GBList,REC2(G,U1,B)); <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">UNTIL</font> SCL=SIL;
+               RETURN(GBList);
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF RED... *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF h... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF S... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE B... *)</font>
+   DIPIRL(G,CS);
+   <font color="#4169E1">IF</font> CS <font color="#4169E1">THEN</font>
+      <font color="#4169E1">IF</font> TEII(U,G) <font color="#4169E1">THEN</font> RETURN(REC1(G,U)); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(SIL);
+   <font color="#4169E1">ELSE</font>
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+         SWRITE("= groebner base ="); BLINES(0);
+         <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;3 <font color="#4169E1">THEN</font>
+            t:=TIME()-T; SWRITE("Time :"); AWRITE(t); 
+            PWrite(0,G); PWrite(0,U); BLINES(0);
+	 <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+      RETURN(LIST1(LIST2(G,U)));
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF CS... *)</font>
+<strong><font color="#4169E1">END</font></strong> REC2;
+
+<strong><font color="#4169E1">PROCEDURE TEII</font></strong>(U,G: LIST): BOOLEAN;
+<font color="#B22222">(* Test equations and inequations for inconsistence *)</font>
+<strong><font color="#228B22">VAR</font></strong> u: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DCGBopt.ReduceExp=1 <font color="#4169E1">THEN</font>
+      <font color="#4169E1">WHILE</font> U&lt;&gt;SIL <font color="#4169E1">DO</font>
+         ADV(U,u,U);
+         <font color="#4169E1">IF</font> DIPNF(G,u)=0 <font color="#4169E1">THEN</font> 
+	    <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+	       SWRITE("= cancel branch ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            RETURN(FALSE);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DIPNF... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE U... *)</font>
+   <font color="#4169E1">ELSE</font>
+      <font color="#4169E1">WHILE</font> U&lt;&gt;SIL <font color="#4169E1">DO</font>
+         ADV(U,u,U);
+         u:=DIPEXP(u,DCGBopt.ReduceExp);
+         <font color="#4169E1">IF</font> DIPNF(G,u)=0 <font color="#4169E1">THEN</font> 
+	    <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+	       SWRITE("= cancel branch ="); nocb:=nocb+1; BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            RETURN(FALSE);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DIPNF... *)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE U... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+   RETURN(TRUE);
+<strong><font color="#4169E1">END</font></strong> TEII;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+   SetDIPAGBStrategy(0);	<font color="#B22222">(* strategy = normal *)</font>
+   <font color="#4169E1">IF</font> G=SIL <font color="#4169E1">THEN</font> ERROR(severe,"GB2: undefined ideal"); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> ZeroPoly(G) <font color="#4169E1">THEN</font> ERROR(severe,"GB2: zero polynomial"); <strong><font color="#4169E1">END</font></strong>; 
+   T:=TIME();
+   <font color="#4169E1">CASE</font> DCGBopt.VarOrdOpt <font color="#4169E1">OF</font> 
+      1: VOOB:=1; VOOF:=0; |
+      2: VOOB:=0; VOOF:=1; |
+      3: VOOB:=1; VOOF:=1; 
+   <font color="#4169E1">ELSE</font>
+      VOOB:=0; VOOF:=0;
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* DCGBopt... *)</font>
+   <font color="#4169E1">IF</font> VOOB=1 <font color="#4169E1">THEN</font> 
+      OldVarL:=VALIS;
+      DIPVOPP(G,OldVarL,G,VALIS,PermV);
+      invPV:=INVPERM(PermV);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF VOOB... *)</font>
+   GBList:=SIL; nocb:=0;
+   DIPIRL(G,CS);
+   <font color="#4169E1">IF</font> TEII(U,G) <font color="#4169E1">THEN</font> 
+      <font color="#4169E1">CASE</font> DCGBopt.BPNo <font color="#4169E1">OF</font>
+         1: GBList:=RECGB1(G,U); |
+         2: GBList:=REC1(G,U);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* CASE ... *)</font>
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF TEII... *)</font>
+   <font color="#4169E1">IF</font> VOOB=1 <font color="#4169E1">THEN</font>
+      VALIS:=OldVarL;
+      BLINES(1); SWRITE("= changed variable order =");
+      GBList:=SGBLwrtVO2(GBList,invPV);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF VOOB... *)</font>
+   <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;0 <font color="#4169E1">THEN</font>
+      t:=TIME()-T;
+      <font color="#4169E1">IF</font> DCGBopt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+	 BLINES(0); SWRITE("Number <font color="#4169E1">of</font> canceled branches : ");
+	 AWRITE(nocb); <strong><font color="#4169E1">END</font></strong>;
+      BLINES(1); SWRITE("Time : "); AWRITE(t); SWRITE(" ms");
+      SWRITE(" with <strong><font color="#4169E1">program</font></strong> GB2 :");
+      CWrite2(GBList);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF DCGBopt... *)</font>
+   RETURN(GBList);
+<strong><font color="#4169E1">END</font></strong> GroebnerBases2;
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SSCO</font></strong>(M: LIST): LIST;
+<font color="#B22222">(* compute subsets and their complements *)</font>
+<strong><font color="#228B22">VAR</font></strong> ML,CS,f,SSL,A,SS,CO,S1,S2,ExpPol: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   ML:=SIL; CS:=SIL;
+   <font color="#4169E1">WHILE</font> M&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(M,ExpPol,M);
+      f:=SECOND(ExpPol);
+      SSL:=LIST1(LIST2(LIST1(f),CS));
+      <font color="#4169E1">WHILE</font> ML&lt;&gt;SIL <font color="#4169E1">DO</font>
+	 ADV(ML,A,ML);
+	 FIRST2(A,SS,CO);
+	 S1:=LIST2(COMP(f,SS),CO);
+	 SSL:=COMP(S1,SSL);
+	 S2:=LIST2(SS,COMP(f,CO));
+	 SSL:=COMP(S2,SSL);
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE ML... *)</font>
+   CS:=COMP(f,CS);
+   ML:=SSL;
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE M... *)</font>
+   RETURN(SSL);
+<strong><font color="#4169E1">END</font></strong> SSCO;
+
+<strong><font color="#4169E1">PROCEDURE EQIEQ</font></strong>(M: LIST): LIST;
+<font color="#B22222">(* compute equalities and inequalities *)</font>
+<strong><font color="#228B22">VAR</font></strong> ML,CS,f: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   M:=SortF(M);	<font color="#B22222">(* sort factors into non-increasing order *)</font>
+   ML:=SIL; CS:=SIL;
+   <font color="#4169E1">WHILE</font> M&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(M,f,M);
+      ML:=COMP(LIST2(f,CS),ML);
+      CS:=COMP(f,CS);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while M... *)</font>
+   RETURN(ML);
+<strong><font color="#4169E1">END</font></strong> EQIEQ;
+
+<strong><font color="#4169E1">PROCEDURE SGBLwrtVO2</font></strong>(GBL,invPV: LIST): LIST;
+<font color="#B22222">(* sort groebner bases list w.r.t. variable order *)</font>
+<strong><font color="#228B22">VAR</font></strong> GBLnew,GU,G,U: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   GBLnew:=SIL;
+   <font color="#4169E1">WHILE</font> GBL&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(GBL,GU,GBL);
+      FIRST2(GU,G,U);
+      G:=DILPERM(G,invPV);
+      U:=DILPERM(U,invPV);
+      GU:=LIST2(G,U);
+      GBLnew:=COMP(GU,GBLnew);
+   <strong><font color="#4169E1">END</font></strong>;
+   RETURN(GBLnew);
+<strong><font color="#4169E1">END</font></strong> SGBLwrtVO2;
+
+<strong><font color="#4169E1">PROCEDURE CWrite2</font></strong>(gbl: LIST);
+<strong><font color="#228B22">VAR</font></strong> i: INTEGER;
+    gb,G,U: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   BLINES(1); i:=1;
+   <font color="#4169E1">WHILE</font> gbl&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(gbl,gb,gbl);
+      FIRST2(gb,G,U);
+      AWRITE(i); SWRITE(". GB with ");
+      AWRITE(LENGTH(G)); SWRITE(" equation(s)");
+      BLINES(0); PWrite(0,G);
+      SWRITE("   <font color="#4169E1">and</font> ");
+      AWRITE(LENGTH(U)); SWRITE(" inequation(s).");
+      BLINES(0); PWrite(0,U);
+      BLINES(1);
+      i:=i+1;
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> CWrite2;
+
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *
+ * 3. utilities                                                             *
+ * ------------------------------------------------------------------------ *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SortF</font></strong>(F: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> Fnew, ExpPol: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   Fnew:=SIL;
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font> 	<font color="#B22222">(* remove exponents *)</font>
+      ADV(F,ExpPol,F);
+      Fnew:=COMP(SECOND(ExpPol),Fnew);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE F... *)</font>
+   RETURN(INV(DIPLPM(Fnew)));	<font color="#B22222">(* sorting F into non-increasing order *)</font>
+<strong><font color="#4169E1">END</font></strong> SortF;
+
+
+<strong><font color="#4169E1">PROCEDURE ZeroPoly</font></strong>(G: LIST): BOOLEAN;
+<font color="#B22222">(* test polynomial list G for zero-polynomial *)</font>
+<strong><font color="#228B22">VAR</font></strong> g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,g,G);
+      <font color="#4169E1">IF</font> g=0 <font color="#4169E1">THEN</font> RETURN(TRUE); <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while G... *)</font>
+   RETURN(FALSE);
+<strong><font color="#4169E1">END</font></strong> ZeroPoly;
+      
+
+<strong><font color="#4169E1">PROCEDURE Init</font></strong>(<strong><font color="#228B22">VAR</font></strong> G,B: LIST); 
+<font color="#B22222">(* initialize critical pair list B and list
+   of generating polynomials G. *)</font>
+<strong><font color="#228B22">VAR</font></strong> f,D: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+   D:=SIL; B:=SIL;
+   <font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(G,f,G);
+      DCGBopt.UpdateProc(f,D,B);
+   <strong><font color="#4169E1">END</font></strong>;
+   G:=D;
+<strong><font color="#4169E1">END</font></strong> Init; 
+
+
+<strong><font color="#4169E1">PROCEDURE PWrite</font></strong>(S,P: LIST);
+<font color="#B22222">(* write list of polynomials *)</font>
+<strong><font color="#228B22">VAR</font></strong> p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> S=1 <font color="#4169E1">THEN</font> SWRITE(" List <font color="#4169E1">of</font> polynomials:"); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> (S=2) <font color="#4169E1">OR</font> (S=5) <font color="#4169E1">THEN</font> SWRITE(" List <font color="#4169E1">of</font> factors:"); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> S=3 <font color="#4169E1">THEN</font> SWRITE(" List <font color="#4169E1">of</font> inequations:"); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> S=4 <font color="#4169E1">THEN</font> SWRITE(" List <font color="#4169E1">of</font> branches <font color="#4169E1">to</font> compare:"); <strong><font color="#4169E1">END</font></strong>;
+   BLINES(0);
+   <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(P,p,P);
+      <font color="#4169E1">IF</font> S=5 <font color="#4169E1">THEN</font> p:=SECOND(p); <strong><font color="#4169E1">END</font></strong>;
+      SWRITE(" ");
+      DIWRIT(p,VALIS);
+      BLINES(0);
+   <strong><font color="#4169E1">END</font></strong>;
+   BLINES(0);
+<strong><font color="#4169E1">END</font></strong> PWrite;
+
+
+<strong><font color="#4169E1">PROCEDURE PPWrite</font></strong>(PP: LIST);
+<font color="#B22222">(* write list of polynomial pairs *)</font>
+<strong><font color="#228B22">VAR</font></strong> CP,g1,g2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   SWRITE(" List <font color="#4169E1">of</font> critical pairs:");
+   BLINES(0);
+   <font color="#4169E1">WHILE</font> PP&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(PP,CP,PP);
+      FIRST2(CP,g1,g2);
+      SWRITE(" &lt; "); DIWRIT(g1,VALIS); SWRITE(" , ");
+      DIWRIT(g2,VALIS); SWRITE(" &gt;");
+      BLINES(0);
+   <strong><font color="#4169E1">END</font></strong>;
+   BLINES(0);
+<strong><font color="#4169E1">END</font></strong> PPWrite;
+
+<font color="#B22222">(* ------------------------------------------------------------------------ *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+ 
+   DCGBopt.TraceLevel:=0;
+   DCGBopt.DecompProc:=DIPFAC; DCGBopt.DPNo:=1;
+   DCGBopt.UpdateProc:=UPDATE; DCGBopt.UPNo:=1;
+   DCGBopt.VarOrdOpt :=0;
+   DCGBopt.FacSugar  :=0;
+   DCGBopt.ReduceExp :=1;
+   DCGBopt.BranchProc:=SSCO;   DCGBopt.BPNo:=1;
+
+<strong><font color="#4169E1">END</font></strong> DIPDCGB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

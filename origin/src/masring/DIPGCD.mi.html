@@ -1,0 +1,98 @@
+
+<html>
+<head>
+<title>./masring/DIPGCD.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:42+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPGCD.mi,v 1.3 1992/10/15 16:29:34 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPGCD.mi,v $
+ * Revision 1.3  1992/10/15  16:29:34  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:18  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:52  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPGCD;
+
+<font color="#B22222">(* DIP GCD Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, ADV, COMP, INV;
+
+FROM SACLIST IMPORT FIRST2, LIST2;
+
+FROM SACIPOL IMPORT IPABS, IPPROD;
+
+FROM SACPGCD IMPORT IPGCDC;
+
+FROM SACPFAC IMPORT IPFAC;
+
+FROM DIPC IMPORT PFDIP, DIPFP;    
+
+FROM DIPI IMPORT DIIFRP;
+
+FROM DIPRN IMPORT DIRFIP;
+     
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPGCD.mi,v 1.3 1992/10/15 16:29:34 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIRFAC</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial factorisation.
+P is a distributive rational polynomial.
+PP=((e1,P1), ...,(en,Pn)), where P=P1**e1+ ... +Pn**en. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, EL, PL, PLP, PP, Q, QL, QLP, QLS, RL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to recursive integral. *)</font> PP:=BETA; 
+      <font color="#4169E1">IF</font> P = 0 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      PL:=DIIFRP(P); PFDIP(PL, RL,PL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*factorize. *)</font> IPFAC(RL,PL, SL,CL,Q); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*convert factors to distributive rational polynomial. *)</font> 
+      <font color="#4169E1">WHILE</font> Q &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Q, QLS,Q); FIRST2(QLS, EL,QLP); 
+            PLP:=DIPFP(RL,QLP); PLP:=DIRFIP(PLP); QL:=LIST2(EL,PLP); 
+            PP:=COMP(QL,PP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish. *)</font> PP:=INV(PP); 
+<font color="#B22222">(*7*)</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong> DIRFAC; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPLCM</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial least common multiple. A and B are integal
+polynomials. C=LCM(A,B), a nonnegative integral polynomial.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, BP, BPP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b eq 0.*)</font> AP:=IPABS(RL,A); BP:=IPABS(RL,B); 
+      <font color="#4169E1">IF</font> AP = 0 <font color="#4169E1">THEN</font> C:=BP; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> BP = 0 <font color="#4169E1">THEN</font> C:=AP; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a and b nonzero.*)</font> IPGCDC(RL,AP,BP, CP,APP,BPP); 
+      C:=IPPROD(RL,APP,BP); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> IPLCM; 
+
+
+<strong><font color="#4169E1">END</font></strong> DIPGCD.
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

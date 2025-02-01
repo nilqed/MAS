@@ -1,0 +1,397 @@
+
+<html>
+<head>
+<title>./masarith/SACPRIM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:12:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACPRIM.mi,v 1.4 1995/11/05 08:45:56 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACPRIM.mi,v $
+ * Revision 1.4  1995/11/05 08:45:56  kredel
+ * Cosmetic Changes.
+ *
+ * Revision 1.2  1994/10/06  11:34:52  kredel
+ * Cosmetic changes
+ *
+ * Revision 1.1.1.1  1993/06/11  12:54:12  kredel
+ * Initial Version 0.7 of MAS from University of Passau
+ *
+ * Revision 1.3  1992/10/15  16:28:20  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  13:19:17  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:44  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACPRIM;
+
+<font color="#B22222">(* SAC Factorization and Prime Number Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import Lists and Declarations. *)</font>
+
+FROM MASELEM IMPORT MASEVEN, MASREM, MASQREM;
+
+FROM MASBIOS IMPORT SWRITE, BLINES;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, LISTVAR,
+                    COMP, SFIRST, LIST1, 
+                    LENGTH, ADV, INV, FIRST, RED;
+
+FROM MASERR IMPORT ERROR, severe;
+
+FROM SACLIST IMPORT LIST2, LIST3, LSRCH;
+
+FROM SACSET IMPORT LBIBMS;             
+
+FROM SACD IMPORT DGCD;
+
+FROM SACI IMPORT IDREM, ISQRT, IDQ, IMAX, ISUM, IDQR,
+                 ICOMP, IDIF, IPROD, IQR, IQ;
+
+FROM SACM IMPORT MDLCRA, MDPROD, MIEXP, MDEXP, MDDIF, MDNEG;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACPRIM.mi,v 1.4 1995/11/05 08:45:56 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DPGEN</font></strong>(ML, K: LIST): LIST;
+<font color="#B22222">(*Digit prime generator. K and m are positive beta-integers.  
+L is the list (p(1),...,p(r)) of all prime numbers p such that 
+m le p lt m+2*K, with p(1) lt p(2) lt ... lt p(r).  
+A local array is used.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  P: ARRAY[1..1000] <font color="#4169E1">OF</font> BOOLEAN;
+     L, PL, ML1, ML2, HL, DL, SL, QL, RL: LIST;  
+     i, k: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*initialize.*)</font> k:=INTEGER(K); 
+      <font color="#4169E1">IF</font> k &gt; 1000 <font color="#4169E1">THEN</font> k:=1000;
+         ERROR(severe,"in DPGEN, only 2*1000 numbers checked.");
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> MASEVEN(ML) <font color="#4169E1">THEN</font> ML1:=ML+1 <font color="#4169E1">ELSE</font> ML1:=ML <strong><font color="#4169E1">END</font></strong>; 
+      HL:=LIST(2*k)-2; ML2:=ML1+HL;
+      <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> k <font color="#4169E1">DO</font> P[i]:=TRUE <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*mark proper odd multiples of dl for dl=3 and dl=6*nl+1 or
+      dl=6*nl-1 with dl**2 le ml2.*)</font> 
+      DL:=3; SL:=0;
+      LOOP   QL:=ML2 DIV DL;
+             <font color="#4169E1">IF</font> QL &lt; DL <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+             RL:=ML1 MOD DL;
+             <font color="#4169E1">IF</font> (RL+HL &gt;= DL) <font color="#4169E1">OR</font> (RL = 0) <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> i:=1; <font color="#4169E1">ELSE</font>
+                   <font color="#4169E1">IF</font> RL MOD 2 = 0  
+                      <font color="#4169E1">THEN</font> i:=INTEGER(DL-(RL DIV 2)+1); 
+                      <font color="#4169E1">ELSE</font> i:=INTEGER(((DL-RL) DIV 2)+1); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">IF</font> ML1 &lt;= DL <font color="#4169E1">THEN</font> i:=i+INTEGER(DL); <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">WHILE</font> i &lt;= k <font color="#4169E1">DO</font> P[i]:=FALSE; i:=i+INTEGER(DL); <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> DL:=DL+4; SL:=2; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> SL = 2 <font color="#4169E1">THEN</font> DL:=DL+2; SL:=1; <font color="#4169E1">ELSE</font> DL:=5; SL:=2;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*construct prime list.*)</font> L:=SIL; PL:=ML2; i:=k;
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> P[i] <font color="#4169E1">THEN</font> L:=COMP(PL,L); <strong><font color="#4169E1">END</font></strong>;
+             PL:=PL-2; i:=i-1;
+             <font color="#4169E1">UNTIL</font> i = 0;
+      <font color="#4169E1">IF</font> ML = 1 <font color="#4169E1">THEN</font> SFIRST(L,2); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> ML = 2 <font color="#4169E1">THEN</font> L:=COMP(2,L); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(L);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DPGEN;
+
+
+<strong><font color="#4169E1">PROCEDURE FRESL</font></strong>(NL: LIST; <strong><font color="#228B22">VAR</font></strong> ML,L: LIST);
+<font color="#B22222">(*Fermat residue list.  n is a positive integer with no prime divisors
+less than 17.  m is a positive beta-integer and L is an ordered list
+of the elements of Z(m) such that if x**2-n is a square then x is
+congruent to a (modulo m) for some a in L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, AL3, AL4, BL1, H, HL, J1Y, J2Y, KL, KL1, L1, M, ML1:
+     LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*modulus 2**5.*)</font> AL1:=IDREM(NL,32); AL2:=MASREM(AL1,16);
+      AL3:=MASREM(AL2,8); AL4:=MASREM(AL3,4);
+      <font color="#4169E1">IF</font> AL4 = 3 <font color="#4169E1">THEN</font> ML:=4;
+         <font color="#4169E1">IF</font> AL3 = 3 <font color="#4169E1">THEN</font> BL1:=2; <font color="#4169E1">ELSE</font> BL1:=0; <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AL3 = 1 <font color="#4169E1">THEN</font> ML:=8;
+            <font color="#4169E1">IF</font> AL2 = 1 <font color="#4169E1">THEN</font> BL1:=1; <font color="#4169E1">ELSE</font> BL1:=3; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">ELSE</font> ML:=16;  
+            <font color="#4169E1">CASE</font> INTEGER(AL1 DIV 8) <font color="#4169E1">OF</font>
+                 0 : BL1:=3; |
+                 1 : BL1:=7; |
+                 2 : BL1:=5; |
+                 3 : BL1:=1; 
+                 <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> ML = 4 <font color="#4169E1">THEN</font> L:=LIST1(BL1); <font color="#4169E1">ELSE</font> J1Y:=ML-BL1;
+         L:=LIST2(BL1,J1Y); <strong><font color="#4169E1">END</font></strong>;
+      KL:=LENGTH(L);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*modulus 3**3.*)</font> AL1:=IDREM(NL,27); AL2:=MASREM(AL1,3);
+      <font color="#4169E1">IF</font> AL2 = 2 <font color="#4169E1">THEN</font> ML1:=3; KL1:=1; L1:=LIST1(0); <font color="#4169E1">ELSE</font> ML1:=27;
+         KL1:=4; L1:=FRLSM(ML1,AL1); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*combine.*)</font> L:=MDLCRA(ML,ML1,L,L1); ML:=ML*ML1; KL:=KL*KL1;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*modulus 5**2.*)</font> AL1:=IDREM(NL,25); AL2:=MASREM(AL1,5);
+      <font color="#4169E1">IF</font> (AL2 = 2) <font color="#4169E1">OR</font> (AL2 = 3) <font color="#4169E1">THEN</font> ML1:=5; J1Y:=AL2-1; J2Y:=6-AL2;
+         L1:=LIST2(J1Y,J2Y); KL1:=2; <font color="#4169E1">ELSE</font> ML1:=25; L1:=FRLSM(ML1,AL1);
+         KL1:=7; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*combine.*)</font>
+      <font color="#4169E1">IF</font> ML1 &gt;= (BETA DIV ML) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+      KL:=KL*KL1; L:=MDLCRA(ML,ML1,L,L1); ML:=ML*ML1;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*moduli 7,11,13.*)</font> M:=LIST3(7,11,13); H:=LIST3(64,48,0);
+      LOOP   ADV(M,ML1,M);
+             <font color="#4169E1">IF</font> ML1 &gt;= (BETA DIV ML) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+             AL1:=IDREM(NL,ML1); L1:=FRLSM(ML1,AL1); KL1:=LENGTH(L1);
+             L:=MDLCRA(ML,ML1,L,L1); ML:=ML*ML1; KL:=KL*KL1;
+             ADV(H,HL,H);
+             <font color="#4169E1">IF</font> KL &gt; HL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> FRESL;
+
+
+<strong><font color="#4169E1">PROCEDURE FRLSM</font></strong>(ML,AL: LIST): LIST;
+<font color="#B22222">(*Fermat residue list, single modulus.  m is a positive beta-integer.
+a belongs to Z(m).  L is a list of the distinct b in Z(m) such
+that b**2-a is a square in Z(m).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, ILP, JL, L, MLP, S, SL, SLP, SP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute list of squares of z(ml).*)</font> MLP:=ML DIV 2; S:=BETA;
+      <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> MLP <font color="#4169E1">DO</font> SL:=MDPROD(ML,IL,IL); S:=COMP(SL,S); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute l.*)</font> L:=BETA; SP:=S;
+      <font color="#4169E1">FOR</font> IL:=MLP <font color="#4169E1">TO</font> 0 BY -1 <font color="#4169E1">DO</font> ADV(SP,SL,SP); SLP:=MDDIF(ML,SL,AL);
+          JL:=LSRCH(SLP,S);
+          <font color="#4169E1">IF</font> JL &lt;&gt; 0 <font color="#4169E1">THEN</font> L:=COMP(IL,L); ILP:=MDNEG(ML,IL);
+             <font color="#4169E1">IF</font> ILP &lt;&gt; IL <font color="#4169E1">THEN</font> L:=COMP(ILP,L); <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      RETURN(L);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> FRLSM;
+
+
+<strong><font color="#4169E1">PROCEDURE GDPGEN</font></strong>(ML: LIST; KL: INTEGER): LIST;
+<font color="#B22222">(*Gaussian digit prime generator. m and k are positive beta-integers. 
+L is the list (p(1),...,p(r)) of all prime numbers p such that m is 
+less than or equal to p, p is less than m+4*k and p is congruent to 
+3 mod 4, with p(1) lt p(2) lt ... lt p(r).  A local array is used.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  P: ARRAY[1..1000] <font color="#4169E1">OF</font> BOOLEAN;
+     RL4, RL6, QLB, MLB, JL, MLS,  
+     L, PL, J1Y, ML1, ML2, HL, DL, SL, QL, RL: LIST;  
+     i: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*initialize.*)</font> RL:=MASREM(ML,4); J1Y:=ML+3; ML1:=J1Y-RL; 
+      J1Y:=LIST(4*KL);
+      J1Y:=ML1+J1Y; ML2:=J1Y-4;
+      <font color="#4169E1">IF</font> KL &gt; 1000 <font color="#4169E1">THEN</font> KL:=1000;
+         ERROR(severe,"in GDPGEN, only 4*1000 numbers checked.");
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> KL <font color="#4169E1">DO</font> P[i]:=TRUE; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*mark proper multiples of dl=3, dl=6*nl+1 and dl=6*nl-1 with
+            dl**2 le ml2.*)</font> DL:=3; RL4:=3; RL6:=3;
+      LOOP   QLB:=ML2 DIV DL;
+             <font color="#4169E1">IF</font> DL &gt; QLB <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+             MLB:=QLB*DL; RL:=MASREM(MLB,4);
+             <font color="#4169E1">IF</font> RL = 3 <font color="#4169E1">THEN</font> JL:=0; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> RL4 = 1 <font color="#4169E1">THEN</font> JL:=RL+1; <font color="#4169E1">ELSE</font> JL:=3-RL; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             J1Y:=JL*DL; MLS:=MLB-J1Y; J1Y:=MLS-ML1; J1Y:=J1Y DIV 4;
+             i:=INTEGER(J1Y)+1; QL:=QLB-JL;
+             <font color="#4169E1">WHILE</font> (i &gt; 0) <font color="#4169E1">AND</font> (QL &gt; 1) <font color="#4169E1">DO</font> P[i]:=FALSE; i:=i-INTEGER(DL);
+                   QL:=QL-4; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> RL6 = 1 <font color="#4169E1">THEN</font> DL:=DL+4; RL6:=5; <font color="#4169E1">ELSE</font> DL:=DL+2;
+                <font color="#4169E1">IF</font> RL4 = 3 <font color="#4169E1">THEN</font> RL4:=1; <font color="#4169E1">ELSE</font> RL4:=3; <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">IF</font> RL6 = 5 <font color="#4169E1">THEN</font> RL6:=1; <font color="#4169E1">ELSE</font> RL6:=RL6+2; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*construct prime list.*)</font> L:=SIL; PL:=ML2;
+      <font color="#4169E1">FOR</font> i:=KL <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> P[i] <font color="#4169E1">THEN</font> L:=COMP(PL,L); <strong><font color="#4169E1">END</font></strong>;
+          PL:=PL-4; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(L);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> GDPGEN;
+
+
+<strong><font color="#4169E1">PROCEDURE IFACT</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Integer factorization.  n is a positive integer. F is a list 
+(q(1), q(2),...,q(h)) of the prime factors of n, q(1) le q(2) le ...
+le q(h), with n equal to the product of the q(i).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, CL, F, FP, J1Y, ML, MLP, PL, RL, SL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*find small factors of nl.*)</font> ISPD(NL,F,ML);
+      <font color="#4169E1">IF</font> ML = 1 <font color="#4169E1">THEN</font> RETURN(F); <strong><font color="#4169E1">END</font></strong>;
+      F:=INV(F); AL:=1000;
+<font color="#4169E1">REPEAT</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test for primality.*)</font>
+      <font color="#4169E1">IF</font> ML &lt; BETA <font color="#4169E1">THEN</font> MLP:=ML-1; RL:=MDEXP(ML,3,MLP); <font color="#4169E1">ELSE</font>
+         MLP:=IDIF(ML,1); RL:=MIEXP(ML,3,MLP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 5;*)</font> 
+         <font color="#B22222">(*5*)</font> <font color="#B22222">(*selfridge primality test.*)</font> FP:=IFACT(MLP);
+         SL:=ISPT(ML,MLP,FP);
+         <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> F:=COMP(ML,F); F:=INV(F); RETURN(F); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#B22222">(*go to 3;*)</font>         
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*search for a medium divisor.*)</font> ISQRT(ML,CL,TL); J1Y:=IDQ(CL,3);
+      BL:=IMAX(5000,J1Y);
+      <font color="#4169E1">IF</font> ICOMP(AL,BL) &gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 4;*)</font> PL:=1; 
+         <font color="#4169E1">ELSE</font>
+         IMPDS(ML,AL,BL,PL,ML);
+         <font color="#4169E1">IF</font> PL &lt;&gt; 1 <font color="#4169E1">THEN</font> AL:=PL; F:=COMP(PL,F); <font color="#B22222">(*go to 2;*)</font> <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">UNTIL</font> PL = 1;
+      AL:=BL;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*search for large divisor.*)</font> BL:=CL; ILPDS(ML,AL,BL,PL,ML);
+      <font color="#4169E1">IF</font> PL &lt;&gt; 1 <font color="#4169E1">THEN</font> F:=COMP(PL,F); <strong><font color="#4169E1">END</font></strong>;
+      F:=COMP(ML,F); F:=INV(F); RETURN(F);
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IFACT;
+
+
+<strong><font color="#4169E1">PROCEDURE ILPDS</font></strong>(NL,AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> PL,NLP: LIST);
+<font color="#B22222">(*Integer large prime divisor search.  n is a positive integer with
+no prime divisors less than 17.  1 le a le b le n.  A search is made
+for a divisor p of the integer n, with a le p le b.  If such a p
+is found then np=n/p, otherwise p=1 and np=n.  A modular version
+of fermats method is used, and the search goes from a to b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L, LP, ML, QL, RL, RL1, RL2, SL, TL, XL, XL1, XL2, YL,
+     YLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute boundary values of xl.*)</font> IQR(NL,BL,QL,RL);
+      XL1:=ISUM(BL,QL); IDQR(XL1,2,XL1,SL);
+      <font color="#4169E1">IF</font> (RL &lt;&gt; 0) <font color="#4169E1">OR</font> (SL &lt;&gt; 0) <font color="#4169E1">THEN</font> XL1:=ISUM(XL1,1); <strong><font color="#4169E1">END</font></strong>;
+      QL:=IQ(NL,AL); XL2:=ISUM(AL,QL); XL2:=IDQ(XL2,2);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute and sort residue list.*)</font> FRESL(NL,ML,L); L:=LBIBMS(L);
+      L:=INV(L);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find starting residue.*)</font> RL:=IDREM(XL2,ML); LP:=L;
+      <font color="#4169E1">WHILE</font> (LP &lt;&gt; SIL) <font color="#4169E1">AND</font> (RL &lt; FIRST(LP)) <font color="#4169E1">DO</font> LP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> LP = SIL <font color="#4169E1">THEN</font> LP:=L; SL:=ML; <font color="#4169E1">ELSE</font> SL:=0; <strong><font color="#4169E1">END</font></strong>;
+      ADV(LP,RL1,LP); J1Y:=SL+RL; SL:=J1Y-RL1; XL:=IDIF(XL2,SL);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*test successive values of xl.*)</font>
+      <font color="#4169E1">WHILE</font> ICOMP(XL,XL1) &gt;= 0 <font color="#4169E1">DO</font> J1Y:=IPROD(XL,XL);
+            YLP:=IDIF(J1Y,NL); ISQRT(YLP,YL,TL);
+            <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> PL:=IDIF(XL,YL); NLP:=ISUM(XL,YL); RETURN;
+               <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> LP &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(LP,RL2,LP); SL:=RL1-RL2; <font color="#4169E1">ELSE</font>
+               ADV(L,RL2,LP); J1Y:=ML+RL1; SL:=J1Y-RL2; <strong><font color="#4169E1">END</font></strong>;
+            RL1:=RL2; XL:=IDIF(XL,SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*no divisor found.*)</font> PL:=1; NLP:=NL; RETURN;
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> ILPDS;
+
+
+<strong><font color="#4169E1">PROCEDURE IMPDS</font></strong>(NL,AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> PL,QL: LIST);
+<font color="#B22222">(*Integer medium prime divisor search.  n, a and b are positive
+integers such that a le b le n and n has no
+positive divisors less than a.  If n has a prime
+divisor in the closed interval from a to b then p is the least
+such prime and q=n/p.  Otherwise p=1 and q=n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, LP, PLP, RL, RL1, RL2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*determine first divisor.*)</font> RL:=IDREM(AL,210); LP:=UZ210;
+      <font color="#4169E1">WHILE</font> RL &gt; FIRST(LP) <font color="#4169E1">DO</font> LP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+      RL1:=FIRST(LP); J1Y:=RL1-RL; PL:=ISUM(AL,J1Y);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*repeated trial division.*)</font>
+      <font color="#4169E1">WHILE</font> ICOMP(PL,BL) &lt;= 0 <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> PL &lt; BETA <font color="#4169E1">THEN</font> IDQR(NL,PL,QL,RL); <font color="#4169E1">ELSE</font>
+               IQR(NL,PL,QL,RL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+            LP:=RED(LP);
+            <font color="#4169E1">IF</font> LP = SIL <font color="#4169E1">THEN</font> LP:=UZ210; RL2:=RL1-210; <font color="#4169E1">ELSE</font>
+               RL2:=RL1; <strong><font color="#4169E1">END</font></strong>;
+            RL1:=FIRST(LP);
+            <font color="#4169E1">IF</font> PL &lt; BETA <font color="#4169E1">THEN</font> J1Y:=PL+RL1; PLP:=J1Y-RL2;
+               <font color="#4169E1">IF</font> PLP &gt;= BETA <font color="#4169E1">THEN</font> J1Y:=PLP-BETA; PL:=LIST2(J1Y,1);
+                  <font color="#4169E1">ELSE</font> PL:=PLP; <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">ELSE</font> J1Y:=RL1-RL2; PL:=ISUM(PL,J1Y); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*no divisors found.*)</font> PL:=1; QL:=NL; RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IMPDS;
+
+
+<strong><font color="#4169E1">PROCEDURE ISPD</font></strong>(NL: LIST; <strong><font color="#228B22">VAR</font></strong> F,ML: LIST);
+<font color="#B22222">(*Integer small prime divisors.  n is a positive integer.
+F is a list of primes (q(1),q(2),...,q(h)), h non-negative,
+q(1) le q(2) le ... lt q(h), such that n is equal to m times the
+product of the q(i) and m is not divisible by any prime in SMPRM.
+Either m=1 or m gt 1,000,000.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP, PL, QL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> F:=BETA; ML:=NL; LP:=SMPRM;
+      <font color="#4169E1">REPEAT</font> PL:=FIRST(LP);
+             <font color="#4169E1">IF</font> ML &lt; BETA <font color="#4169E1">THEN</font> MASQREM(ML,PL,QL,RL); <font color="#4169E1">ELSE</font>
+                IDQR(ML,PL,QL,RL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> F:=COMP(PL,F); ML:=QL; <font color="#4169E1">ELSE</font> LP:=RED(LP);
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (QL &lt;= PL) <font color="#4169E1">OR</font> (LP = SIL);
+      <font color="#4169E1">IF</font> (QL &lt;= PL) <font color="#4169E1">AND</font> (ML &lt;&gt; 1) <font color="#4169E1">THEN</font> F:=COMP(ML,F); ML:=1; <strong><font color="#4169E1">END</font></strong>;
+      F:=INV(F); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ISPD;
+
+
+<strong><font color="#4169E1">PROCEDURE ISPT</font></strong>(ML,MLP,F: LIST): LIST;
+<font color="#B22222">(*Integer selfridge primality test.  m is an integer greater than or
+equal to 3.  mp=m-1.  F is a list (q(1),q(2),...,q(k)),
+q(1) le q(2) le ... le q(k), of the prime factors of mp, with
+mp equal to the product of the q(i). An attempt is made to find a 
+root of unity modulo m of order m-1.  If the existence of such a root 
+is discovered then m is prime and s=1.  If it is discovered that no such
+root exists then m is not a prime and s=-1.  Otherwise the primality
+of m remains uncertain and s=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, FP, MLPP, PL, PL1, PP, QL, QL1, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize outer loop.*)</font> FP:=F; QL1:=1; PL1:=1;
+      LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*get next divisor of mlp, if any.*)</font>
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> FP = SIL <font color="#4169E1">THEN</font> SL:=1; RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+             ADV(FP,QL,FP);
+             <font color="#4169E1">UNTIL</font> ICOMP(QL,QL1) &gt; 0;
+      QL1:=QL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*try successive small primes.*)</font> PP:=SMPRM;
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> PP = SIL <font color="#4169E1">THEN</font> SL:=0; RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+             ADV(PP,PL,PP);
+             <font color="#4169E1">IF</font> PL &gt; PL1 <font color="#4169E1">THEN</font> PL1:=PL; AL:=MIEXP(ML,PL,MLP);
+                <font color="#4169E1">IF</font> AL &lt;&gt; 1 <font color="#4169E1">THEN</font> SL:=-1; RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             MLPP:=IQ(MLP,QL); BL:=MIEXP(ML,PL,MLPP);
+             <font color="#4169E1">UNTIL</font> BL &lt;&gt; 1;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*return for next divisor.*)</font> <font color="#B22222">(*go to 2;*)</font>
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*7*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> ISPT;
+
+
+<font color="#B22222">(* initialization of SACPRIM *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> IL: LIST;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+
+LISTVAR(SMPRM); LISTVAR(UZ210);
+
+<font color="#B22222">(*compute small primes list.*)</font> SMPRM:=DPGEN(1,500);
+
+<font color="#B22222">(*compute units of z sub 210.*)</font> UZ210:=SIL;
+<font color="#4169E1">FOR</font> IL:=209 <font color="#4169E1">TO</font> 1 BY -2 <font color="#4169E1">DO</font>
+    <font color="#4169E1">IF</font> DGCD(210,IL) = 1 <font color="#4169E1">THEN</font>
+       UZ210:=COMP(IL,UZ210); <strong><font color="#4169E1">END</font></strong>;
+       <strong><font color="#4169E1">END</font></strong>;
+
+<strong><font color="#4169E1">END</font></strong> SACPRIM.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

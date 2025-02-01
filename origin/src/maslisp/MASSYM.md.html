@@ -1,0 +1,108 @@
+
+<html>
+<head>
+<title>./maslisp/MASSYM.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:32:32+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASSYM.md,v 1.2 1992/02/12 17:32:31 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASSYM.md,v $
+ * Revision 1.2  1992/02/12  17:32:31  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:07  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASSYM;
+
+<font color="#B22222">(* MAS Symbol Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+
+<strong><font color="#228B22">VAR</font></strong> NOSHOW: LIST;
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASSYM.md,v 1.2 1992/02/12 17:32:31 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ATOM</font></strong>(X: LIST): BOOLEAN;
+<font color="#B22222">(*Atom. Test if X is an atom. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ELEMP</font></strong>(X: LIST): BOOLEAN;
+<font color="#B22222">(*Elementary Pointer. Test if X is an elementary SAC-2 structure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MEMQ</font></strong>(AL,L: LIST): BOOLEAN;
+<font color="#B22222">(*Membership test equal pointers.  a is an object, L a list. t=1 if 
+the pointer or atom a occurs in L and otherwise t=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE OCCURQ</font></strong>(AL,L: LIST): BOOLEAN;
+<font color="#B22222">(*Occurs test equal pointers. a and L are objects. t=TRUE if 
+the pointer or atom a occurs in L and otherwise t=FALSE. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UREAD</font></strong>(): LIST;
+<font color="#B22222">(*Universal read. The next atom, symbol, string or list over atoms, 
+strings and symbols is read and stored under L. Blanks may occur 
+anywhere. Elements of a list may or may not be separated by a comma.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UWRITE</font></strong>(L: LIST);
+<font color="#B22222">(*Universal write. L is an atom, symbol or a list over
+atoms and symbols. L is written in the output stream,
+followed by blines. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UWRIT1</font></strong>(L: LIST);
+<font color="#B22222">(*Universal write, 1. subalgorithm. L is an atom, a symbol
+or a list over atoms or symbols. L is written in the output
+stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UNIFY</font></strong>(A,B: LIST; <strong><font color="#228B22">VAR</font></strong> S: LIST): BOOLEAN;
+<font color="#B22222">(*Unification. A and B are objects. If there exists a 
+most general unificator of A and B, then S is the list of 
+substitutions. In this case TRUE is returned. If no unificator
+exists, then FALSE is returned and S is undefined. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GENARRAY</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Generate array reference symbol. S is a generated symbol. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GENINDEX</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Generate index set. I is an index set. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ARRAYDEC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Generate array name declarations. A is an array reference. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASSYM.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

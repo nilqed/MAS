@@ -1,0 +1,126 @@
+
+<html>
+<head>
+<title>./masroot/LINALG.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-03-06T15:23:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: LINALG.md,v 1.1 1994/03/11 15:21:45 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: LINALG.md,v $
+ * Revision 1.1  1994/03/11  15:21:45  pesch
+ * Counting real roots of multivariate polynomials, Diplomarbeit F. Lippold
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE LINALG;
+<font color="#B22222">(* Linear algebra definition module *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: LINALG.md,v 1.1 1994/03/11 15:21:45 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1993 Universitaet Passau";
+	
+<font color="#B22222">(* Arbitrary domain linear algebra ---------------------------------------- *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADUM</font></strong>(D,n: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain unit matrix. 
+   n is an integer. The (n x n) unit matrix of domain D is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADVSPROD</font></strong>(D,A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain vector scalar product. 
+   A and B are vectors of the domain D. The arbitrary domain value 
+   C = a1*b1 + ... + an*bn is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADVSVPROD</font></strong>(A,b: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain vector scalar vector product. 
+   A is an arbitrary domain vector and b is a number of the same domain. 
+   The arbitrary domain vector C = (a1*b, ..., an*b) is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADVVSUM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain vector vector sum. 
+   A and B are arbitrary domain vectors. The arbitrary domain vector 
+   C = (a1+b1, ..., an+bn) is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADSMPROD</font></strong>(A,b: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain scalar and matrix product.
+   A is a arbitrary domain matrix. b is a arbitrary domain number. 
+   The arbitrary domain matrix C = A * b is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADMSUM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix sum. 
+   A and B are arbitrary domain matrices. The arbitrary domain matrix 
+   C = A + B is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADMPROD</font></strong>(D,A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix product. 
+   A and B are matrices of domain D. The matrix C = A * B of domain D is 
+   returned, if the number of columns of A is equal to the number of rows 
+   of B, otherwise the empty matrix is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADVWRITE</font></strong>(A: LIST);
+<font color="#B22222">(* Arbitrary domain vector write. 
+   A is an arbitrary domain vector. A is written to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADMWRITE</font></strong>(A: LIST);
+<font color="#B22222">(*Arbitrary domain matrix write. 
+  A is an arbitrary domain  matrix. A is written to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADMTRACE</font></strong>(D,A: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix trace. 
+   A is a matrix of domain D. The trace of A is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADMPTRACE</font></strong>(D,A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain matrix product trace. 
+   A and B are matrices of domain D. The trace of A*B is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADCHARPOL</font></strong>(D,Q: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain characteristic polynomial. 
+   Q is a p x p Matrix of domain D. The list al=(a(0),...,a(p)) is created 
+   such that a(i) from D is the coefficient of X^(p-i) in det(XE-Q). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADSIG</font></strong>(D,Q: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain signature. 
+   Q is a symmetric p x p Matrix of domain D. The signature of Q ist returned.
+   ADCHARPOL is used. *)</font>
+
+<font color="#B22222">(* Integer linear algebra ------------------------------------------------- *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IMTRACE</font></strong>(A: LIST): LIST;
+<font color="#B22222">(* Integral matrix trace. 
+   A is an integral matrix. The trace of A is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IMPTRACE</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Integral matrix product trace. 
+   A and B are integral matrices. The trace of the matrix A*B is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ICHARPOL</font></strong>(Q: LIST): LIST;
+<font color="#B22222">(* Integral matrix characteristic polynomial. 
+   Q is an integral p x p Matrix. The list al = (a(0),...,a(p)) of integers 
+   is created with a(i) is the coefficient of X^(p-i) in det(XE-Q). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ISIG</font></strong>(Q: LIST): LIST;
+<font color="#B22222">(* Integral matrix signature. 
+   Q is a symmetric integral p x p Matrix. The signature of Q ist returned.
+   ICHARPOL is used *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IMRTPROD</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Integral matrix right tensor product. 
+   A and B are integral matrices. The matrix C is constructed by 
+   replacing every entry a(i,j) of A by the matrix a(i,j)*B. *)</font> 
+
+<strong><font color="#4169E1">END</font></strong> LINALG.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

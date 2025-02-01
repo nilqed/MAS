@@ -1,0 +1,140 @@
+
+<html>
+<head>
+<title>./masring/DIPDEC0.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPDEC0.md,v 1.2 1992/02/12 17:34:14 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPDEC0.md,v $
+ * Revision 1.2  1992/02/12  17:34:14  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:30  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPDEC0;
+
+<font color="#B22222">(* DIP Ideal Decomposition 0 System Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPDEC0.md,v 1.2 1992/02/12 17:34:14 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIGFET</font></strong>(P,IL,JL: LIST): LIST; 
+<font color="#B22222">(*DIP G base successful extension test. P is a Groebner base of 
+an ideal of dimension 0 in inverse lexicographical term ordering. 
+i and j are indexes of variables where an field extension is required. 
+t=1 if the extension was successful t=0 else. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIGISM</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*DIP G base index search for extension multiple univariats. 
+P is a Groebner base of dimension 0 in inverse lexicographical term 
+ordering. I is a list of indexes of variables where an field extension
+is required or I=() if no field extension is neccessary. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIGISR</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*DIP G base index search for extension reductas. P is a Groebner 
+base of an ideal of dimension 0 in inverse lexicographical term 
+ordering. I is a list of indexes of variables where an field 
+extension is required or I=() if no field extension is neccessary. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINTFE</font></strong>(T,IL,JL: LIST): LIST; 
+<font color="#B22222">(*DIP normalized tupel field extension. T is a normalized tupel 
+of a zero set with a final Groebner base of dimension 0.
+i and j determine the variable indexes for the field extension.
+TP is a list of normalized tupels for the field extension for T. 
+Trial values are used for the transcendent parameter. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINTSR</font></strong>(T: LIST): LIST; 
+<font color="#B22222">(*DIP normalized tupel separation refinement. T is a list of 
+normalized tupels with final Groebner base of dimension 0.
+TP is a list of normalized tupels for some field extensions for T. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINTSS</font></strong>(T: LIST): LIST; 
+<font color="#B22222">(*DIP normalized tupel strong separation. T is a list of normalized 
+tupels with final Groebner base of dimension 0. TP is a list of 
+normalized tupels for some field extensions for T. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DINTZS</font></strong>(N: LIST): LIST; 
+<font color="#B22222">(*DIP nomalized tupels from system zero. N is a zero set. 
+T is the list of nomalized tupels of N. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIRGZS</font></strong>(VB,PB,W: LIST): LIST; 
+<font color="#B22222">(*Distributive rational Groebner base zero set. VB is a rest of a 
+variable list. PB is a Groebner base. W is the total variable 
+list. N is the zero set of P. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLPD</font></strong>(A,VP: LIST): LIST; 
+<font color="#B22222">(*DIP rational polynomial ideal primary ideal decomposition.
+A is a non empty list of distributive rational polynomials 
+representing a Groebner base. The polynomials in A have r variables.
+L=(l1, ...,ln) with li=(pi,ei,vpi,qi) i=1, ...,n where 
+qi = ideal(pi**e,A) with A contained in qi and e maximal.
+Ideal(pi) is a prime ideal in at most r+1 variables. VPI is the 
+variable list vor pi. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLPW</font></strong>(A,V,L: LIST); 
+<font color="#B22222">(*DIP rational polynomial ideal primary ideal decomposition write.
+A is a non empty list of distributive rational polynomials 
+representing a Groebner base. The polynomials in a have r variables.
+L=(l1, ...,ln) with li=(pi,eli,vpi,qi) i=1, ...,n where 
+qi = ideal(pi)**e with A contained in qi and e maximal.
+Ideal(pi) is a prime ideal in at most r+1 variables. VPI is the 
+variable list for pi. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPDA</font></strong>(A,VP: LIST): LIST; 
+<font color="#B22222">(*DIP rational polynomial ideal primary ideal decomposition over Q(alpha).
+A is a non empty list of distributive rational polynomials 
+representing a Groebner base. The polynomials in A have r variables.
+L=(l1, ...,ln) with li=(pi,ei,vpi,qi) i=1, ...,n where 
+qi = ideal(pi**e,A) with A contained in qi and e maximal.
+Ideal(pi) is a prime ideal in at most r+1 variables. VPI is the 
+variable list vor pi. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DITFZS</font></strong>(N: LIST): LIST; 
+<font color="#B22222">(*DIP tupel from zero set. N is a zero set. T is a list of 
+tupels of the zero set. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DITSPL</font></strong>(T: LIST;  <strong><font color="#228B22">VAR</font></strong> T0,T1: LIST); 
+<font color="#B22222">(*DIP zero set tupel split. T is a list of normalized tupels 
+of a zero set. T0 is a list of normalized tupels of a zero set 
+with a final Groebner base of a ideal of dimension 0. T1=T-T0. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPDEC0.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,828 @@
+
+<html>
+<head>
+<title>./sacring/SACROOT.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACROOT.mi,v 1.4 1993/05/11 10:51:46 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACROOT.mi,v $
+ * Revision 1.4  1993/05/11  10:51:46  kredel
+ * Spelling errors corr.
+ *
+ * Revision 1.3  1992/10/15  16:29:07  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:35:05  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:16:15  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACROOT;
+
+<font color="#B22222">(* SAC Polynomial Real Root Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASMAX, MASQREM;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    LIST1, SFIRST, SRED, LENGTH, INV, 
+                    FIRST, RED, COMP, ADV;
+
+FROM MASBIOS IMPORT SWRITE, BLINES; 
+
+FROM SACLIST IMPORT LIST3, CONC, CINV, ADV2, COMP2, FIRST2, 
+                    ADV4, COMP4, ADV3, COMP3, EQUAL, RED2, 
+                    OWRITE, SECOND, LIST2;
+
+FROM SACI IMPORT INEG, ISUM, IABSF, ISIGNF, ICOMP, ILOG2, ITRUNC;
+
+FROM SACRN IMPORT RNFLOR, RNCEIL, RNRED, RNP2, RNNEG, RNFCL2, RNINT, 
+                  RIRNP, RNQ, RNSIGN, RNCOMP, RNDIF, RNPROD, RNSUM;
+
+FROM SACPOL IMPORT PCL, PRED, PRT, PORD, PDBORD, PDEG, PLDCF, 
+                   PTBCF, PDEGV, PINV;
+
+FROM SACIPOL IMPORT IUPTR1, IUPBRE, IUPBES, IPABS, IPDMV, IPHDMV, 
+                    IPONE, IUPBHT, IUPNT, IUPTR;
+
+FROM SACPGCD IMPORT IPPGSD, IPSF, IPPP, IPGCDC;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACROOT.mi,v 1.4 1993/05/11 10:51:46 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IIC</font></strong>(A,AP,I,L: LIST): LIST; 
+<font color="#B22222">(*Isolating interval conversion.  A is a squarefree univariate integral
+polynomial.  AP is the derivative of A.  I is an left open right closed
+interval (a,b) with binary rational endpoints represented by the list
+(a,b).  L is a list of isolating intervals with binary rational end-
+points for the real roots of A in I.  L=((a(1),b(1)), ...,(a(k),b(k))) 
+with a(1) le b(1) le  ... le a(k) le b(k) and (a(i), b(i)) 
+represents the open interval (a(i),b(i)) if a(i) lt
+b(i), the closed interval (a(i),b(i)) if a(i)=b(i).  LS is a
+list ((as(1),bs(1)), ...,(as(k),bs(k))) of isolating intervals for
+the same roots and satisfying the same conditions except that each pair
+(as(i),bs(i)) represents the left open right closed interval
+(as(i),bs(i)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, BL1, BL2, CL, I1, I2, J1Y, LP, LS, SL, SL1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> LP:=CINV(L); LS:=BETA; 
+
+LOOP
+LOOP
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> LP = SIL <font color="#4169E1">THEN</font> RETURN(LS); <strong><font color="#4169E1">END</font></strong>; 
+
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*i2 open.*)</font> ADV(LP, I2,LP); FIRST2(I2, AL2,BL2); 
+      SL:=RNCOMP(AL2,BL2); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*&lt;&gt;*)</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      LS:=COMP(I2,LS); <font color="#B22222">(*go to 2;*)</font> 
+      <strong><font color="#4169E1">END</font></strong>;
+
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*lp empty.*)</font> 
+      <font color="#4169E1">IF</font> LP = SIL <font color="#4169E1">THEN</font> AL2:=FIRST(I); J1Y:=LIST2(AL2,BL2); 
+         LS:=COMP(J1Y,LS); RETURN(LS); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*i1 not adjacent.*)</font> I1:=FIRST(LP); FIRST2(I1, AL1,BL1); 
+      SL:=RNCOMP(BL1,AL2); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*&lt;&gt;*)</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      AL2:=BL1; J1Y:=LIST2(AL2,BL2); LS:=COMP(J1Y,LS); 
+<strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 3;*)</font> <font color="#B22222">(*changed in goto 2. because of crossing loops. *)</font>
+
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*bisect i1.*)</font> LP:=RED(LP); SL1:=IUPBES(A,AL1); 
+      <font color="#4169E1">IF</font> SL1 = 0 <font color="#4169E1">THEN</font> SL1:=IUPBES(AP,AL1); <strong><font color="#4169E1">END</font></strong>; 
+      CL:=AL1; 
+      <font color="#4169E1">REPEAT</font> CL:=RIB(CL,BL1); SL:=IUPBES(A,CL); 
+             <font color="#4169E1">UNTIL</font> SL1*SL &lt;= 0; 
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*adjoint two intervals.*)</font> J1Y:=LIST2(CL,BL1); LS:=COMP(J1Y,LS); 
+      J1Y:=LIST2(AL1,CL); LS:=COMP(J1Y,LS); 
+<strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+
+<font color="#B22222">(*10*)</font> RETURN(LS); <strong><font color="#4169E1">END</font></strong> IIC; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPFSD</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial factorization, second derivative.  A is a
+positive primitive integral polynomial in r variables of positive
+degree.  L is a list (a(1), ...,a(k)) where k ge 1, A equal to sum of
+a(i) for i=1, ...,k and, for each i, a(i) is a positive primitive
+integral polynomial of positive degree with deg(a(i)) le 2 or
+gcd(a(i),app(i))=1  where app(i) is the second derivative of a(i).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, B1, B2, BPP, C, L, NL, S: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> L:=BETA; S:=LIST1(A); 
+      <font color="#4169E1">REPEAT</font> ADV(S, B,S); NL:=FIRST(B); 
+             <font color="#4169E1">IF</font> NL &lt;= 2 <font color="#4169E1">THEN</font> L:=COMP(B,L); <font color="#4169E1">ELSE</font> BPP:=IPHDMV(RL,B,2); 
+                IPGCDC(RL,B,BPP, C,B1,B2); 
+                <font color="#4169E1">IF</font> IPONE(RL,C) = 1 <font color="#4169E1">THEN</font> L:=COMP(B,L); <font color="#4169E1">ELSE</font>
+                   S:=COMP2(B1,C,S); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> S = SIL; 
+      RETURN(L); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPFSD; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPLRRI</font></strong>(L: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial list real root isolation.  L is a non-empty list
+(A sub 1 ,  ..., A sub n ) of distinct univariate integral polynomials
+which are positive, of positive degree, squarefree, and pairwise
+relatively prime.  M is a list (I sub 1 , B sub 1 , ..., I sub m ,
+B sub m ), where I sub 1  lt  I sub 2  lt   ...  lt  I sub m are
+strongly disjoint isolating intervals for all of the real roots of A eq
+prod from (j eq 1) to n (A sub j).  Each I sub i has binary
+rational number endpoints, and is either left-open and
+right-closed or is a one-point interval.  B sub i is the unique A
+sub j which has a root in I sub i.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A2, B1, I1, I11, I21, J1Y, J2Y, LP, LPP, M, S, S1, S2, SL, SP,
+     SPP, SS1, SS2, T, T1, T2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*isolate roots of each a sub i.*)</font> LP:=L; S:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, A1,LP); S1:=IPRIM(A1); S:=COMP(S1,S); 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      S:=INV(S); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine to disjoint isolating intervals.*)</font> LP:=L; SP:=S; 
+      <font color="#4169E1">WHILE</font> RED(LP) &lt;&gt; SIL <font color="#4169E1">DO</font> A1:=FIRST(LP); S1:=FIRST(SP); 
+            LPP:=RED(LP); SPP:=RED(SP); 
+            <font color="#4169E1">REPEAT</font> A2:=FIRST(LPP); S2:=FIRST(SPP); IPRRLS(A1,A2,S1,S2,
+                   SS1,SS2); S1:=SS1; SFIRST(SPP,SS2); LPP:=RED(LPP); 
+                   SPP:=RED(SPP); 
+                   <font color="#4169E1">UNTIL</font> LPP = SIL; 
+            SFIRST(SP,S1); LP:=RED(LP); SP:=RED(SP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*prepare to merge intervals.*)</font> LP:=L; SP:=S; T:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, A1,LP); ADV(SP, S1,SP); T1:=BETA; 
+             <font color="#4169E1">WHILE</font> S1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(S1, I11,S1); 
+                   T1:=COMP2(A1,I11,T1); <strong><font color="#4169E1">END</font></strong>; 
+             J1Y:=INV(T1); T:=COMP(J1Y,T); 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      T:=INV(T); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*merge-sort isolating intervals.*)</font> 
+      <font color="#4169E1">WHILE</font> RED(T) &lt;&gt; SIL <font color="#4169E1">DO</font> S:=BETA; 
+            <font color="#4169E1">WHILE</font> (T &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(T) &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV2(T,
+                  T1,T2,T); S1:=BETA; 
+                  <font color="#4169E1">WHILE</font> (T1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (T2 &lt;&gt; SIL) <font color="#4169E1">DO</font>
+                        I11:=FIRST(T1); I21:=FIRST(T2); J1Y:=FIRST(I11); 
+                        J2Y:=FIRST(I21); SL:=RNCOMP(J1Y,J2Y); 
+                        <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> ADV2(T1, I1,B1,T1); <font color="#4169E1">ELSE</font>
+                           ADV2(T2, I1,B1,T2); <strong><font color="#4169E1">END</font></strong>; 
+                        S1:=COMP2(B1,I1,S1); <strong><font color="#4169E1">END</font></strong>; 
+                  <font color="#4169E1">IF</font> T1 = SIL <font color="#4169E1">THEN</font> T1:=T2; <strong><font color="#4169E1">END</font></strong>; 
+                  J1Y:=INV(S1); S1:=CONC(J1Y,T1); S:=COMP(S1,S); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> T &lt;&gt; SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(T); S:=COMP(J1Y,S); <strong><font color="#4169E1">END</font></strong>; 
+            T:=INV(S); <strong><font color="#4169E1">END</font></strong>; 
+      M:=FIRST(T); RETURN(M); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IPLRRI; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRCH</font></strong>(A,I,KL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root calculation, high precision.  A is a
+univariate integral polynomial of positive degree.  I is either the
+nulllist () or a standard interval or an interval whose positive and
+non-positive parts are standard.  k is a gamma-integer.  L is a
+list ((e(1),I(1)), ...,(e(r),I(r))) where the e(j) are
+beta-integers,  1 le e(1) le  ... le e(r), and the I(j) are binary
+rational isolating intervals, I(j)=(a(j),b(j)), for the r distinct
+real roots of A if I=(), or for the r distinct real roots of A in I if
+I ne ().  e(j) is the multiplicity of the root alpha(j) in I(j) and
+abs(b(j)-a(j))  le 2**k.  I(j) is a left-open and right-closed
+interval if a(j) lt b(j), a one-point interval if a(j)=b(j).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AB, EL, J, L, L1, L2, P: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*squarefree factorization.*)</font> AB:=IPABS(1,A); L1:=IPSFSD(1,AB); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute roots of factors.*)</font> L:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(L1, P,L1); FIRST2(P, EL,A1); L2:=IPRCHS(A1,I,KL); 
+             <font color="#4169E1">WHILE</font> L2 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L2, J,L2); P:=LIST2(EL,J); 
+                   L:=COMP(P,L); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> L1 = SIL; 
+      L:=INV(L); RETURN(L); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPRCH; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRCHS</font></strong>(A,I,KL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root calculation, high-precision special.
+A is a positive, primitive, squarefree, univariate, integral polynomial
+of positive degrre with GCD(A,APP)=1.  I is either the null list () or
+a standard interval or an interval whose positive and non-positive parts
+are standard.  k is a gamma-integer.  L is a list (I(1), ...,I(r)) of
+binary rational isolating intervals I(j)=(a(j),b(j)) for the r
+distinct real roots of A if I=(), for the r distinct real roots of A
+of I if I ne (), with b(j)-a(j) le 2**kl.  I(j) is a left-open and
+right-closed interval if a(j) ne b(j), a one-point interval if
+a(j)=b(j).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, J, L, L1, SL, SLP, SLPP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*find strong isolation list for a.*)</font> L:=BETA; L1:=IPSRM(A,I); 
+      <font color="#4169E1">IF</font> L1 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine isolation list.*)</font> 
+      <font color="#4169E1">REPEAT</font> ADV(L1, J,L1); BL:=SECOND(J); 
+             <font color="#4169E1">IF</font> IUPBRE(A,BL) = 0 <font color="#4169E1">THEN</font> J:=LIST2(BL,BL); 
+                <font color="#4169E1">ELSE</font> IPRCNP(A,J, SLP,SLPP,J); TL:=RILC(J,KL); 
+                <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> SL:=SLP*SLPP; J:=IPRCN1(A,J,SL,KL) <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             L:=COMP(J,L); 
+             <font color="#4169E1">UNTIL</font> L1 = SIL; 
+      L:=INV(L); RETURN(L); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPRCHS; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRCNP</font></strong>(A,I: LIST;  <strong><font color="#228B22">VAR</font></strong> SLP,SLPP,J: LIST); 
+<font color="#B22222">(*Integral polynomial real root calculation, newton method preparation.
+A is a positive, primitive, squarefree, univariate integral polynomial
+of positive degree.  I is an open interval (a1,a2) with binary
+rational endpoints containing no roots of AP and APP.  sp and spp,
+beta-integers, are the signs of AP and APP on I.  J is a subinterval
+(b1,b2) of I with binary rational endpoints, containing alpha and
+such that spp*SIGN(AP(b1)+f*AP(b2)) ge 0, where
+f=(-3/4)**(sp*spp).  J is a left-open and right-closed interval if
+b1 lt b2, the one-point interval if b1=b2.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BL, BL1, BL2, DL, DL1, DL2, FL, HL, J1Y, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> FIRST2(I, BL1,BL2); HL:=LIST2(1,2); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute slp.*)</font> SLP:=IUPBES(A,BL2); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute slpp.*)</font> AP:=IPDMV(1,A); DL1:=IUPBRE(AP,BL1); 
+      DL2:=IUPBRE(AP,BL2); DL:=RNDIF(DL2,DL1); SLPP:=RNSIGN(DL); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute fl.*)</font> 
+      <font color="#4169E1">IF</font> SLP*SLPP &gt; 0 <font color="#4169E1">THEN</font> J1Y:=-3; FL:=LIST2(J1Y,4); <font color="#4169E1">ELSE</font> J1Y:=-4; 
+         FL:=LIST2(J1Y,3); <strong><font color="#4169E1">END</font></strong>; 
+LOOP
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*test for completion.*)</font> DL:=RNPROD(FL,DL2); DL:=RNSUM(DL1,DL); 
+      TL:=RNSIGN(DL); 
+      <font color="#4169E1">IF</font> SLPP*TL &gt;= 0 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 7;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*bisect interval.*)</font> BL:=RNSUM(BL1,BL2); BL:=RNPROD(BL,HL); 
+      SL:=IUPBES(A,BL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> BL1:=BL; BL2:=BL; EXIT <font color="#B22222">(*go to 7;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+      DL:=IUPBRE(AP,BL); 
+      <font color="#4169E1">IF</font> SL = SLP <font color="#4169E1">THEN</font> BL2:=BL; DL2:=DL; <font color="#4169E1">ELSE</font> BL1:=BL; DL1:=DL <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 5;*)</font> 
+
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*finish.*)</font> J:=LIST2(BL1,BL2); RETURN; 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IPRCNP; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRCN1</font></strong>(A,I,SL,KL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root calculation, 1 root.  A is a positive
+primitive univariate integral polynomial of positive degree. I is an
+open interval (a1,a2) with binary rational endpoints containing a
+unique root alpha of A and containing no roots of AP or APP.  s, a
+beta-integer, is the sign of AP*APP on I.
+min(abs(AP(a1)),abs(AP(a2))) le (3/4)*max(abs(AP(a1)),abs(AP(a2))).
+k is a beta-integer.  J is a subinterval of I of length 2**k or less
+containing alpha and with binary rational endpoints.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BL, BL1, BL2, DL1, DL2, DLP, J, QL1, QL2:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> AP:=IPDMV(1,A); J:=I; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine interval.*)</font> 
+      <font color="#4169E1">WHILE</font> RILC(J,KL) = 0 <font color="#4169E1">DO</font> FIRST2(J, BL1,BL2); 
+            DL1:=IUPBRE(A,BL1); DL2:=IUPBRE(A,BL2); 
+            <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> BL:=BL1; <font color="#4169E1">ELSE</font> BL:=BL2; <strong><font color="#4169E1">END</font></strong>; 
+            DLP:=IUPBRE(AP,BL); QL1:=RNQ(DL1,DLP); QL2:=RNQ(DL2,DLP); 
+            BL1:=RNDIF(BL1,QL1); BL2:=RNDIF(BL2,QL2); J:=LIST2(BL1,BL2); 
+            <font color="#4169E1">IF</font> RNCOMP(BL1,BL2) = 0 <font color="#4169E1">THEN</font> RETURN(J); <strong><font color="#4169E1">END</font></strong>; 
+            J:=RINT(J); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(J); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPRCN1; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRIM</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root isolation, modified Uspensky method.
+A is a non-zero squarefree univariate integral polynomial.  L is
+a list (I sub 1 , ..., I sub r ) of strongly disjoint isolating
+intervals for all of the real roots of A with I sub 1  lt  I
+sub 2  lt   ...  lt  I sub r.  Each I sub j has binary rational
+endpoints and is either left-open and right-closed or a one-point
+interval.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AB, AS, BL, BLS, HL, I, I1, I2, J1Y, KL, L, LP, LS, NL, SL:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> NL:=PDEG(A); L:=BETA; 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute positive roots.*)</font> AB:=PDBORD(A); BL:=IUPRB(AB); 
+      RNFCL2(BL, HL,KL); AS:=IUPBHT(AB,KL); LS:=IPRIMU(AS); 
+      <font color="#4169E1">WHILE</font> LS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LS, I,LS); I:=RIRNP(I,BL); 
+            L:=COMP(I,L); <strong><font color="#4169E1">END</font></strong>; 
+      L:=INV(L); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*zero a root.*)</font> 
+      <font color="#4169E1">IF</font> FIRST(AB) &lt; NL <font color="#4169E1">THEN</font> J1Y:=LIST2(0,0); L:=COMP(J1Y,L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute negative roots.*)</font> AS:=IUPNT(AS); LS:=IPRIMU(AS); 
+      BLS:=RNNEG(BL); 
+      <font color="#4169E1">WHILE</font> LS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LS, I,LS); I:=RIRNP(I,BLS); 
+            L:=COMP(I,L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*make intervals strongly disjoint.*)</font> LP:=L; 
+      <font color="#4169E1">WHILE</font> (L &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(LP) &lt;&gt; SIL) <font color="#4169E1">DO</font> I1:=FIRST(LP); 
+            I2:=SECOND(LP); IPRRS(A,A,I1,I2, I1,I2,SL); 
+            SFIRST(LP,I1); LP:=RED(LP); SFIRST(LP,I2); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IPRIM; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRIMO</font></strong>(A,AP,I: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root isolation, modified Uspensky method, open interval.  
+A is a univariate integral polynomial without multiple roots.  
+AP is the derivative of A.  I is an open interval (a,b) with
+binary rational endpoints, represented by the list (a,b), such that
+there are integers h and k for which a=h*2**k and b=(h+1)*2**k.
+L is a list (I(1), ...,I(r)) of isolating intervals for the real roots
+of A in I.  Each I(j) is a left open right closed interval with binary
+rational endpoints and I(1) lt I(2) lt  ... lt I(r).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, CL, J, L: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> L:=IPRIMS(A,AP,I); 
+      <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> L:=INV(L); J:=FIRST(L); BL:=SECOND(I); 
+         CL:=SECOND(J); 
+         <font color="#4169E1">IF</font> (RNCOMP(BL,CL) = 0) <font color="#4169E1">AND</font> (IUPBES(A,BL) = 0) <font color="#4169E1">THEN</font>
+            L:=RED(L); <strong><font color="#4169E1">END</font></strong>; 
+         L:=INV(L); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(L); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPRIMO; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRIMS</font></strong>(A,AP,I: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root isolation, modified Uspensky method, standard interval.  
+A is a univariate integral polynomial without multiple roots.  
+AP is the derivative of A.  I is a standard interval.
+L is a list (I(1), ...,I(r)) of isolating intervals for the real roots
+of A in I.  Each interval I(j) is a left open right closed interval
+(a(j),b(j)) with binary rational endpoints and I(1) lt I(2) lt  ...
+lt I(r).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL, AL1, ALP1, BL, BL1, BLP1, CL, HLP, HLS, I1, IP1, KL, KLP,
+     L, L1, LP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> 
+      <font color="#4169E1">IF</font> PDEG(A) = 0 <font color="#4169E1">THEN</font> L:=BETA; RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*transform a.*)</font> FIRST2(I, AL,BL); CL:=RNDIF(BL,AL); RNFCL2(CL,
+      KL,KLP); 
+      <font color="#4169E1">IF</font> BL = 0 <font color="#4169E1">THEN</font> HLP:=0; <font color="#4169E1">ELSE</font> HLS:=RNQ(BL,CL); HLP:=FIRST(HLS); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      A1:=IUPBHT(A,KL); A1:=IUPTR(A1,HLP); A1:=IUPNT(A1); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute roots.*)</font> L1:=IPRIMU(A1); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*transform isolation intervals.*)</font> LP:=BETA; 
+      <font color="#4169E1">WHILE</font> L1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L1, I1,L1); FIRST2(I1, AL1,BL1); 
+            ALP1:=RNPROD(AL1,CL); ALP1:=RNDIF(BL,ALP1); 
+            BLP1:=RNPROD(BL1,CL); BLP1:=RNDIF(BL,BLP1); 
+            IP1:=LIST2(BLP1,ALP1); LP:=COMP(IP1,LP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*convert isolating intervals.*)</font> L:=IIC(A,AP,I,LP); RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IPRIMS; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRIMU</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root isolation, modified Uspensky method, unit interval.  
+A is a squarefree univariate integral polynomial.  L is
+a list (I(1), ...,I(r)) of isolating intervals for all the roots of A
+in the left closed right open interval (0,1).  Each I(j) is a pair
+(a(j),b(j)) of binary rational numbers, with 0 le a(1) le b(1) le
+ ... le a(r) le b(r).  If a(j)=b(j) then (a(j),b(j))
+represents the one-point interval (a(j),b(j)).  If a(j) lt b(j)
+then the pair  (a(j),b(j)) represents the open interval
+(a(j),b(j)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, B1, BL, CL, EL, EL1, I, J1Y, L, S, TL, VL, VL1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> L:=BETA; S:=BETA; B:=A; AL:=0; BL:=LIST2(1,1); 
+      EL:=PORD(A); VL:=IPVCHT(B); TL:=LIST2(1,2); 
+LOOP
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*one variation or less.*)</font> 
+      <font color="#4169E1">IF</font> VL &lt;= 1 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> VL = 1 <font color="#4169E1">THEN</font> I:=LIST2(AL,BL); L:=COMP(I,L); <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> EL &gt; 0 <font color="#4169E1">THEN</font> I:=LIST2(AL,AL); L:=COMP(I,L); <strong><font color="#4169E1">END</font></strong>; 
+         EXIT <font color="#B22222">(*go to 5;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*bisect.*)</font> J1Y:=-1; B1:=IUPBHT(B,J1Y); B:=IUPTR1(B1); 
+      CL:=RNSUM(AL,BL); CL:=RNPROD(CL,TL); EL1:=EL; VL1:=IPVCHT(B1); 
+      EL:=PORD(B); VL:=IPVCHT(B); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*stack left half.*)</font> 
+      <font color="#4169E1">IF</font> (EL1 &gt; 0) <font color="#4169E1">OR</font> (VL1 &gt; 0) <font color="#4169E1">THEN</font> S:=COMP2(AL,CL,S); 
+         S:=COMP3(VL1,EL1,B1,S); <strong><font color="#4169E1">END</font></strong>; 
+      AL:=CL; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*finished.*)</font> 
+      <font color="#4169E1">IF</font> S = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+      ADV3(S, VL,EL,B,S); ADV2(S, AL,BL,S); 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+<font color="#B22222">(*8*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> IPRIMU; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRIU</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root isolation, Uspensky method.  A is a
+non-zero squarefree univariate integral polynomial.  L is a list of
+pairs  ((a(1),b(1)), ...,(a(k),b(k))) representing isolating
+intervals forall of the real roots of A, with a(1) le b(1) le  ... le
+a(k) le b(k).  If a(i) lt b(i) then the pair
+(a(i),b(i)) represents the open interval (a(i),b(i)), while
+if a(i)=b(i) then it represents the closed one-point interval
+(a(i),b(i)).  The a(i) and b(i) are rational numbers except
+that one may have a(1) equal to negative infinity, represented by
+-1/0, that is the pair (-1,0), and one may have b(k) equal to
+infinity, represented by 1/0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AB, AS, I, L, LS, ML, NL, RL1, RL2, RLP1, RLP2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=FIRST(A); AB:=PDBORD(A); ML:=FIRST(AB); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute positive roots.*)</font> L:=IPRIUP(AB); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*adjoint zero.*)</font> 
+      <font color="#4169E1">IF</font> ML &lt; NL <font color="#4169E1">THEN</font> I:=LIST2(0,0); L:=COMP(I,L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute negative roots.*)</font> AS:=IUPNT(AB); LS:=IPRIUP(AS); 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*adjoint negative roots.*)</font> 
+      <font color="#4169E1">WHILE</font> LS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LS, I,LS); ADV2(I, RL1,RL2,I); 
+            RLP1:=RNNEG(RL1); RLP2:=RNNEG(RL2); I:=LIST2(RLP2,RLP1); 
+            L:=COMP(I,L); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IPRIU; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRIUP</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial real root isolation, Uspensky method, positive roots.  
+A is a non-zero squarefree univariate integral polynomial.  L
+is a list of pairs ((a(1),b(1)), ...,(a(k),b(k))) representing iso-
+lating intervals for the positive real roots of A, with a(1) le
+b(1) le  ... le a(k) le b(k).  If a(i) lt e(i) then the pair
+(a(i), b(i)) represents the open interval (a(i),b(i)) while if
+a(i)=b(i) then (a(i),b(i)) represents the closed one-point
+interval (a(i),b(i)).  The a(i) and b(i) are rational
+numbers except thatone may have b(k) equal to infinity, represented
+by 1/0, that is, the pair (1,0).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, B1, B2, BL, CL, DL, EL, FL, HL, J1Y, L, RL, S, SL,
+     TL, UL, VL, VL1, VL2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> L:=BETA; S:=BETA; B:=A; RL:=LIST2(0,1); 
+      SL:=LIST2(1,0); TL:=2; VL:=IUPVAR(B); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*vl=0.*)</font> 
+      <font color="#4169E1">IF</font> VL = 0 <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*vl le 1.*)</font> 
+      <font color="#4169E1">IF</font> VL &lt;= 1 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> FIRST(RL) = 0 <font color="#4169E1">THEN</font> RL:=0; <strong><font color="#4169E1">END</font></strong>; 
+         J1Y:=LIST2(RL,SL); L:=COMP(J1Y,L); <font color="#B22222">(*go to 9;*)</font>
+         <font color="#4169E1">ELSE</font> 
+
+LOOP
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*bisect.*)</font> B1:=IUPTR1(B); J1Y:=PRT(B); B2:=IUPTR1(J1Y); 
+      FIRST2(RL, AL,CL); FIRST2(SL, BL,DL); EL:=ISUM(AL,BL); 
+      FL:=ISUM(CL,DL); HL:=LIST2(EL,FL); 
+      <font color="#4169E1">IF</font> TL = 2 <font color="#4169E1">THEN</font> UL:=B1; B1:=B2; B2:=UL; <strong><font color="#4169E1">END</font></strong>; 
+      VL1:=IUPVAR(B1); VL2:=IUPVAR(B2); 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*vl1 ne 0.*)</font> 
+      <font color="#4169E1">IF</font> VL1 &lt;&gt; 0 <font color="#4169E1">THEN</font> S:=COMP4(B1,RL,HL,VL1,S); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*hl a root.*)</font> 
+      <font color="#4169E1">IF</font> PORD(B2) &gt; 0 <font color="#4169E1">THEN</font> J1Y:=-1; S:=COMP4(0,HL,HL,J1Y,S); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*vl2 gt 1.*)</font> 
+      <font color="#4169E1">IF</font> VL2 &lt;= 1 <font color="#4169E1">THEN</font> <font color="#B22222">(*&gt;*)</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      B:=B2; RL:=HL; VL:=VL2; TL:=2; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* go to 4;*)</font> 
+
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*vl2=1.*)</font> 
+      <font color="#4169E1">IF</font> VL2 = 1 <font color="#4169E1">THEN</font> J1Y:=LIST2(HL,SL); L:=COMP(J1Y,L); <strong><font color="#4169E1">END</font></strong>; 
+
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*9*)</font> <font color="#B22222">(*finished.*)</font> 
+      <font color="#4169E1">IF</font> S = SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*&lt;&gt;*)</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      ADV4(S, B,RL,SL,VL,S); TL:=1; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 3;*)</font> 
+
+      RETURN(L); 
+<font color="#B22222">(*12*)</font> <strong><font color="#4169E1">END</font></strong> IPRIUP; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRRLS</font></strong>(A1,A2,L1,L2: LIST;  <strong><font color="#228B22">VAR</font></strong> LS1,LS2: LIST); 
+<font color="#B22222">(*Integral polynomial real root list separation.  A1 and A2 are
+univariate integral polynomials with no multiple real roots and with
+no common real roots.  L1 and L2 are lists of isolating intervals for
+some or all of the real roots of A1 and A2, respectively.  The
+intervals in L1 and L2 have binary rational endpoints, and are either
+left-open and right-closed or one-point intervals. Let
+L1 eq (I sub 1,1 , ..., I sub (1,r sub 1) ),
+L2 eq (I sub 2,1 , ..., I sub (2,r sub 2) ).
+Then I sub 1,1  lt  I sub 1,2  lt   ...  lt  I sub (1,r sub 1)
+and  I sub 2,1  lt  I sub 2,2  lt   ...  lt  I sub (2,r sub 2) .
+L sub 1 sup *  eq (I sub 1,1 sup * , ..., I sub (1,r sub 1) sup * )
+and L sub 2 sup *  eq (I sub 2,1 sup * , ..., I sub (2,r sub 2) sup * ),
+where I sub i,j sup * is a binary rational subinterval of
+I sub i,j containing the root of A sub i in I sub i,j.
+Each I sub 1,j sup * is strongly disjoint from each
+I sub 2,j sup *.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  I1, I2, LP1, LP2, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> 
+      <font color="#4169E1">IF</font> (L1 = SIL) <font color="#4169E1">OR</font> (L2 = SIL) <font color="#4169E1">THEN</font> LS1:=L1; LS2:=L2; 
+         RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      ADV(L1, I1,LP1); LS1:=BETA; ADV(L2, I2,LP2); LS2:=BETA; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine and merge.*)</font> 
+      <font color="#4169E1">REPEAT</font> IPRRS(A1,A2,I1,I2, I1,I2,SL); 
+             <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> LS1:=COMP(I1,LS1); 
+                <font color="#4169E1">IF</font> LP1 &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(LP1, I1,LP1); <font color="#4169E1">ELSE</font> I1:=0; 
+                <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> LS2:=COMP(I2,LS2); 
+                <font color="#4169E1">IF</font> LP2 &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(LP2, I2,LP2); <font color="#4169E1">ELSE</font> I2:=0; 
+                <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (I1 = 0) <font color="#4169E1">OR</font> (I2 = 0); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> I1 = 0 <font color="#4169E1">THEN</font> LS2:=COMP(I2,LS2); 
+         <font color="#4169E1">WHILE</font> LP2 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP2, I2,LP2); LS2:=COMP(I2,LS2); 
+               <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">ELSE</font> LS1:=COMP(I1,LS1); 
+         <font color="#4169E1">WHILE</font> LP1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP1, I1,LP1); LS1:=COMP(I1,LS1); 
+               <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      LS1:=INV(LS1); LS2:=INV(LS2); RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPRRLS; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRRS</font></strong>(A1,A2,I1,I2: LIST;  <strong><font color="#228B22">VAR</font></strong> IS1,IS2,SL: LIST); 
+<font color="#B22222">(*Integral polynomial real root separation.  A1 and A2 are squarefree
+univariate integral polynomials of positive degrees.  I1 and I2
+are intervals with binary rational number endpoints, each of
+which is either left-open and right-closed, or a one-point interval.
+I1 contains a unique root alpha sub 1 of A1, and I2 contains a
+unique root alpha sub 2 ne alpha sub 1 of A2.  I sub 1 sup *
+and I sub 2 sup * are binary rational subintervals of I1 and I2
+containing alpha sub 1 and alpha sub 2 respectively, with
+I sub 1 sup * and I sub 2 sup * strongly disjoint.  If I1 is
+left-open and right-closed then so is I sub 1 sup *, and
+similarly for I2 and I sub 2 sup *.  s eq -1
+if I sub 1 sup *  lt  I sub 2 sup *, and s eq 1
+if I sub 1 sup *  gt  I sub 2 sup *.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL1, AL2, BL1, BL2, CL, DL1, DL2, SL1l, SL1r, SL2l, SL2r, 
+      TL, UL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*i1 and i2 disjoint.*)</font> FIRST2(I1, AL1,BL1); FIRST2(I2, AL2,BL2); 
+      <font color="#4169E1">IF</font> RNCOMP(BL1,AL2) &lt; 0 <font color="#4169E1">THEN</font> IS1:=I1; IS2:=I2; SL:=-1; RETURN; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> RNCOMP(BL2,AL1) &lt; 0 <font color="#4169E1">THEN</font> IS1:=I1; IS2:=I2; SL:=1; RETURN; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> DL1:=RNDIF(BL1,AL1); DL2:=RNDIF(BL2,AL2); 
+      SL1l:=IUPBES(A1,AL1); SL2l:=IUPBES(A2,AL2); 
+      SL1r:=IUPBES(A1,BL1); SL2r:=IUPBES(A2,BL2); 
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*bisect i1.*)</font> TL:=RNCOMP(DL1,DL2); 
+      <font color="#4169E1">IF</font> TL &gt;= 0 <font color="#4169E1">THEN</font>
+         CL:=RIB(AL1,BL1); UL:=IUPBES(A1,CL);
+         <font color="#4169E1">IF</font> (SL1r = 0) <font color="#4169E1">OR</font> (SL1r*UL &lt; 0) <font color="#4169E1">THEN</font> 
+            <font color="#4169E1">IF</font> (UL = 0) <font color="#4169E1">OR</font> (SL1l*UL &lt; 0)   
+               <font color="#4169E1">THEN</font> <font color="#B22222">(* looks like roots in both intervalls. *)</font>
+                    BL1:=CL; SL1r:=UL; VL:=-1;
+               <font color="#4169E1">ELSE</font> AL1:=CL; SL1l:=UL; VL:=1; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">ELSE</font> BL1:=CL; SL1r:=UL; VL:=-1; <strong><font color="#4169E1">END</font></strong>; 
+         DL1:=RNDIF(BL1,AL1); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*bisect i2.*)</font> 
+      <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font>
+         CL:=RIB(AL2,BL2); UL:=IUPBES(A2,CL); 
+         <font color="#4169E1">IF</font> (SL2r = 0) <font color="#4169E1">OR</font> (SL2r*UL &lt; 0) <font color="#4169E1">THEN</font> 
+            <font color="#4169E1">IF</font> (UL = 0) <font color="#4169E1">OR</font> (SL2l*UL &lt; 0) 
+               <font color="#4169E1">THEN</font> <font color="#B22222">(* looks like roots in both intervalls. *)</font>
+                    BL2:=CL; SL2r:=UL; VL:=-1; 
+               <font color="#4169E1">ELSE</font> AL2:=CL; SL2l:=UL; VL:=-1; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">ELSE</font> BL2:=CL; SL2r:=UL; VL:=1; <strong><font color="#4169E1">END</font></strong>; 
+         DL2:=RNDIF(BL2,AL2); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*i1 and i2 disjoint.*)</font> 
+      <font color="#4169E1">IF</font> (VL &lt; 0) <font color="#4169E1">AND</font> (RNCOMP(BL1,AL2) &lt; 0) 
+         <font color="#4169E1">THEN</font> SL:=-1; EXIT;
+         <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> (VL &gt; 0) <font color="#4169E1">AND</font> (RNCOMP(BL2,AL1) &lt; 0) 
+            <font color="#4169E1">THEN</font> SL:=1; EXIT; 
+            <font color="#B22222">(*else go to 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+      IS1:=LIST2(AL1,BL1); IS2:=LIST2(AL2,BL2); RETURN; 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IPRRS; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPSFSD</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral squarefree factorization, second derivative.  A is a
+positive integral polynomial in r variables of positive degree L is a
+list ((e(1),A(1)), ...,(e(k),A(k))) where primitive part of A
+is equal to the sum of A(i)**e(i) for i=1, ...,k.  The a(i) are
+pairwise relatively prime squarefree positive polynomials of
+positive degrees, with deg(A(i))=1 or GCD(A(i),APP(i))=1 for all
+i where APP(i) is the second derivative of A(i) and the e(i) are
+positive beta-integers e(1) le e(2) le  ... le e(k).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AB, EL, L, L1, LB, P: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute primitive part.*)</font> AB:=IPPP(RL,A); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*squarefree factorization.*)</font> LB:=IPSF(RL,AB); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*apply ipfsd.*)</font> L:=BETA; LB:=INV(LB); 
+      <font color="#4169E1">REPEAT</font> ADV(LB, P,LB); FIRST2(P, EL,A1); L1:=IPFSD(RL,A1); 
+             <font color="#4169E1">WHILE</font> L1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L1, A1,L1); P:=LIST2(EL,A1); 
+                   L:=COMP(P,L); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> LB = SIL; 
+      RETURN(L); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPSFSD; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPSRM</font></strong>(A,I: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial strong real root isolation, modified Uspensky method. 
+A is a univariate integral polynomial with multiple roots and
+with no real roots in common with APP.  I is either the null list () or
+a standard interval or an interval whose positive and non-negative
+parts are standard.  L is a list (I(1), ...,I(r)) of isolating intervals
+for  all the real roots of A if I=(), or for all the real roots of A in
+I if I ne ().  The intervals I(j) contain no roots of AP or APP, are
+left-open and right-closed, have binary rational endpoints, and
+satisfy I(1) lt I(2) lt  ... lt I(r).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, I1, I2, L, L1, L2, NL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> NL:=PDEG(A); 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> L:=BETA; RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute intervals.*)</font> 
+      <font color="#4169E1">IF</font> I = SIL <font color="#4169E1">THEN</font> BL:=IUPRB(A); AL:=RNNEG(BL); I1:=LIST2(AL,0); 
+         I2:=LIST2(0,BL); <font color="#4169E1">ELSE</font> FIRST2(I, AL,BL); 
+         <font color="#4169E1">IF</font> RNSIGN(AL) &gt;= 0 <font color="#4169E1">THEN</font> I1:=BETA; I2:=I; <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> RNSIGN(BL) &lt;= 0 <font color="#4169E1">THEN</font> I1:=I; I2:=BETA; <font color="#4169E1">ELSE</font>
+               I1:=LIST2(AL,0); I2:=LIST2(0,BL); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute non-positive roots.*)</font> 
+      <font color="#4169E1">IF</font> I1 &lt;&gt; SIL <font color="#4169E1">THEN</font> L1:=IPSRMS(A,I1); <font color="#4169E1">ELSE</font> L1:=BETA; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute positive roots.*)</font> 
+      <font color="#4169E1">IF</font> I2 &lt;&gt; SIL <font color="#4169E1">THEN</font> L2:=IPSRMS(A,I2); <font color="#4169E1">ELSE</font> L2:=BETA; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*concatenate.*)</font> L:=CONC(L1,L2); RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IPSRM; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPSRMS</font></strong>(A,I: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial strong real root isolation, modified Uspensky method, standard interval. 
+A is a univariate integral polynomial with no multiple real roots 
+and with no real roots in common with APP.  I is
+a standard interval.  L is a list (I(1), ...,I(r)) of isolating
+intervals for the roots of A in I.  The intervals I(j) contain no
+roots of AP or APP, are left-open and right-closed, have binary rational
+endpoints, are subintervals of I, and satisfy I(1) lt I(2) lt  ...
+lt I(r).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, APPS, APPSP, APS, APSP, L, LP, LPP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> L:=BETA; RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*isolate roots of a.*)</font> AP:=IPDMV(1,A); L:=IPRIMS(A,AP,I); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*remove roots of ap.*)</font> APS:=IPPGSD(1,AP); APSP:=IPDMV(1,APS); 
+      LP:=IPRIMS(APS,APSP,I); 
+      IPRRLS(A,APS,L,LP, L,LP); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*remove roots of app.*)</font> APP:=IPDMV(1,AP); APPS:=IPPGSD(1,APP); 
+      LPP:=IPRIMS(APPS,APPSP,I); 
+      IPRRLS(A,APPS,L,LPP, L,LPP); 
+      RETURN(L); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IPSRMS; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPVCHT</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial variations after circle to half-plane transformation.  
+A is a non-zero univariate integral polynomial.  Let
+n=deg(A), AP(x)=(x**n)*A(1/x), B(x)=AP(x+1).  k is the number of
+sign variations in the coefficients of B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B, KL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=PRT(A); B:=IUPTR1(AP); KL:=IUPVAR(B); RETURN(KL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPVCHT; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPRB</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial root bound.  A is an integral poly-
+nomial of positive degree.  b is a binary rational number which is a
+root bound for A.  If A(x) is equal to the sum of a(i)*x(i)**i for
+i=0, ...,n, a(n) ne 0, then b is the smallest power of 2 such that
+2*abs(a(n-k)/a(n))**(1/k) le b for 1 le k le n.  If
+a(n-k)=0 for 1 le k le n then b=1.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AL1, ALB, ALB1, ALBP, AP, BL, DL, HL, HL1, J1Y, KL, ML, ML1,
+     NL, NL1, QL, RL, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> ADV2(A, NL,AL,AP); 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> HL:=-1; <font color="#B22222">(*go to 3;*)</font>
+         <font color="#4169E1">ELSE</font> 
+
+      ALB:=IABSF(AL); ML:=ILOG2(ALB); TL:=0; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*process terms.*)</font> 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, NL1,AL1,AP); KL:=NL-NL1; ML1:=ILOG2(AL1); 
+             J1Y:=ML1-ML; DL:=J1Y-1; MASQREM(DL,KL, QL,RL); 
+             <font color="#4169E1">IF</font> RL &lt; 0 <font color="#4169E1">THEN</font> RL:=RL+KL; QL:=QL-1; <strong><font color="#4169E1">END</font></strong>; 
+             HL1:=QL+1; 
+             <font color="#4169E1">IF</font> RL = KL-1 <font color="#4169E1">THEN</font> ALB1:=IABSF(AL1); J1Y:=HL1*KL; 
+                J1Y:=-J1Y; ALBP:=ITRUNC(ALB,J1Y); SL:=ICOMP(ALB1,ALBP); 
+                <font color="#4169E1">IF</font> SL &gt; 0 <font color="#4169E1">THEN</font> HL1:=HL1+1; <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> (TL = 0) <font color="#4169E1">OR</font> (HL1 &gt; HL) <font color="#4169E1">THEN</font> HL:=HL1; <strong><font color="#4169E1">END</font></strong>; 
+             TL:=1; 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+<strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 3*)</font>
+
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute bl.*)</font> J1Y:=HL+1; BL:=RNP2(J1Y); RETURN(BL); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IUPRB; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPRLP</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial, root of a linear polynomial.
+A is an integral univariate polynomial of degree one.  r is
+the unique rational number such that A(r)=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, J1Y, L, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> PRED(A) = 0 <font color="#4169E1">THEN</font> RL:=0; <font color="#4169E1">ELSE</font> L:=PCL(A); FIRST2(L, AL,BL); 
+         J1Y:=INEG(BL); RL:=RNRED(J1Y,AL); RETURN(RL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(RL); <strong><font color="#4169E1">END</font></strong> IUPRLP; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPVAR</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial variations.  A is a non-zero uni-
+variate integral polynomial.  n is the number of sign variations in
+the coefficients of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, EL, NL, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> NL:=0; AP:=A; ADV2(AP, EL,AL,AP); SL:=ISIGNF(AL); 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AP, EL,AL,AP); TL:=ISIGNF(AL); 
+            <font color="#4169E1">IF</font> SL &lt;&gt; TL <font color="#4169E1">THEN</font> NL:=NL+1; SL:=TL; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(NL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IUPVAR; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPVSI</font></strong>(A,I: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial, variations for standard interval.  
+A is a non-zero integral univariate polynomial.  I is
+a standard open interval.  Let T(z) be the transformation mapping the
+right half-plane onto the circle having I as a diameter.
+Let B(x)=A(T(x)).  Then v is the number of sign variations in the
+coefficients of B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, BL, C, DL, HL, KL, KLP, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute hl and kl such that i=(al,bl), al=hl*2**kl and
+            bl=(hl+1)*2**kl.*)</font> FIRST2(I, AL,BL); DL:=RNDIF(BL,AL); 
+      RNFCL2(DL, KL,KLP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> HL:=RNQ(AL,DL); HL:=FIRST(HL); <font color="#4169E1">ELSE</font> HL:=0; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*transform and count variations.*)</font> 
+      <font color="#4169E1">IF</font> KL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=IUPBHT(A,KL); <font color="#4169E1">ELSE</font> B:=A; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> HL &lt;&gt; 0 <font color="#4169E1">THEN</font> C:=IUPTR(B,HL); <font color="#4169E1">ELSE</font> C:=B; <strong><font color="#4169E1">END</font></strong>; 
+      VL:=IPVCHT(C); RETURN(VL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IUPVSI; 
+
+
+<strong><font color="#4169E1">PROCEDURE RIB</font></strong>(RL,SL: LIST): LIST; 
+<font color="#B22222">(*Rational interval bisection.  r and s are binary rational numbers,
+r lt s.  t is a binary rational number with r lt t lt s, defined
+as follows.  Let h=floor(log2(s-r)) and let c be the least integer
+such that c*2**h gt r.  Then t=c*2**h if c*2**h lt s and
+t=(2*c-1)*2**(h-1) otherwise.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, DL, EL, H, HL, HLP, NL, QL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute hlp=2**hl.*)</font> DL:=RNDIF(RL,SL); RNFCL2(DL, HL,NL); 
+      HLP:=RNP2(HL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute tl.*)</font> QL:=RNQ(RL,HLP); CL:=RNCEIL(QL); CL:=RNINT(CL); 
+      TL:=RNPROD(CL,HLP); EL:=RNCOMP(TL,RL); 
+      <font color="#4169E1">IF</font> EL = 0 <font color="#4169E1">THEN</font> TL:=RNSUM(TL,HLP); <strong><font color="#4169E1">END</font></strong>; 
+      EL:=RNCOMP(TL,SL); 
+      <font color="#4169E1">IF</font> EL &gt;= 0 <font color="#4169E1">THEN</font> H:=LIST2(1,2); HLP:=RNPROD(HLP,H); 
+         TL:=RNDIF(TL,HLP); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(TL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RIB; 
+
+
+<strong><font color="#4169E1">PROCEDURE RILC</font></strong>(I,KL: LIST): LIST; 
+<font color="#B22222">(*Rational interval length comparison.  I is an interval (a,b) with
+rational endpoints, a le b.  k is a gamma-integer.  t=1 if b-a le
+2**k and t=0 otherwise.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, DL, ML, NL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> FIRST2(I, AL,BL); DL:=RNDIF(BL,AL); TL:=1; 
+      <font color="#4169E1">IF</font> DL &lt;&gt; 0 <font color="#4169E1">THEN</font> RNFCL2(DL, ML,NL); 
+         <font color="#4169E1">IF</font> NL &gt; KL <font color="#4169E1">THEN</font> TL:=0; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(TL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RILC; 
+
+
+<strong><font color="#4169E1">PROCEDURE RINT</font></strong>(I: LIST): LIST; 
+<font color="#B22222">(*Rational interval normalizing transformation.  I is a list (r,s)
+with rational endpoints and r lt s.  IS is the list (rs,ss)=
+psi(r,s).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, HL, IS, J1Y, KL, KLP, RL, RLS, SL, SLS, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute hl=floor(log2(sl-rl))-1 and tl=2**hl.*)</font> FIRST2(I,
+      RL,SL); DL:=RNDIF(SL,RL); RNFCL2(DL, KL,KLP); HL:=KL-1; 
+      TL:=RNP2(HL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute rls.*)</font> J1Y:=RNQ(RL,TL); RLS:=RNFLOR(J1Y); 
+      <font color="#4169E1">IF</font> RLS &lt;&gt; 0 <font color="#4169E1">THEN</font> RLS:=LIST2(RLS,1); RLS:=RNPROD(RLS,TL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute sls.*)</font> J1Y:=RNQ(SL,TL); SLS:=RNCEIL(J1Y); 
+      <font color="#4169E1">IF</font> SLS &lt;&gt; 0 <font color="#4169E1">THEN</font> SLS:=LIST2(SLS,1); SLS:=RNPROD(SLS,TL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font> IS:=LIST2(RLS,SLS); RETURN(IS); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> RINT; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACROOT.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

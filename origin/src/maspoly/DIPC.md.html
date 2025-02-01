@@ -1,0 +1,553 @@
+
+<html>
+<head>
+<title>./maspoly/DIPC.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-04T22:14:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPC.md,v 1.7 1995/11/04 22:14:54 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPC.md,v $
+ * Revision 1.7  1995/11/04 22:14:54  pesch
+ * New procedures EVOWRITE and EvordWrite.
+ *
+ * Revision 1.6  1994/09/01  13:30:57  pfeil
+ * minor changes
+ *
+ * Revision 1.5  1994/06/09  15:13:25  pfeil
+ * Added AD2DIP, DIP2AD.
+ *
+ * Revision 1.4  1994/03/30  13:02:30  dolzmann
+ * New procedure DILPERM.
+ *
+ * Revision 1.3  1993/03/16  09:32:22  kredel
+ * Removed obsolete LPERM function.
+ *
+ * Revision 1.2  1992/02/12  17:33:45  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:36  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPC;
+
+<font color="#B22222">(* DIP Common Polynomial System Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+
+<strong><font color="#228B22">CONST</font></strong> LEX = 1;
+      INVLEX = 2;
+      GRLEX = 3;
+      IGRLEX = 4;      
+      REVLEX  = 5;
+      REVILEX = 6;
+      REVTDEG = 7;
+      REVITDG = 8; 
+
+<strong><font color="#228B22">VAR</font></strong>  EVORD: LIST; 
+     VALIS: LIST;    
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPC.md,v 1.7 1995/11/04 22:14:54 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1995 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE BACKUB</font></strong>();
+<font color="#B22222">(*Backspace until blank. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CLIN</font></strong>(): LIST;
+<font color="#B22222">(*Character list in. If a character list is next in the input
+stream then it is read, else L is empty. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILBSO</font></strong>(A: LIST);
+<font color="#B22222">(*Distributive polynomial list bubble sort. A is a list of
+lists of base coefficients and exponent vectors.
+Each element of A is sorted with respect to the termordering
+defined in EVORD by the bubble-sort method,
+two monomials with equal exponents will lead to an error.
+The lists in A but not there location, are modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILFPL</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list from polynom list. A is a list
+of polynomials in r variables, r ge 0. Every polynomial in A
+is converted to distributive representation and returned in B. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILPERM</font></strong>(dil,perm: LIST):LIST;
+<font color="#B22222">(* distributive polynomial list permutation of variables.
+The variable dil is a list of distributive polynomials in r variables, 
+perm is a permutation. In each distributive polynomial of the list dil 
+the variables are permuted with respect to perm. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPADM</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> EL,FL,BL,B: LIST);
+<font color="#B22222">(*Distributive polynomial advance main variable. A is a
+distributive polynomial in one or more variables. e is the
+degree of A, b is the leading coefficient of A,
+B is the reductum of A, f is the degree of B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPADS</font></strong>(A,IL,SL: LIST;    <strong><font color="#228B22">VAR</font></strong> EL,FL,BL,B: LIST);
+<font color="#B22222">(*Distributive polynomial advance and substitute. A is a
+distributive polynomial, i is the specified variable,
+1 le i le r=DIPNOV(A), s is the new exponent of b
+in the i-th variable. e is the exponent of the leading
+monomial of A in the i-th variable, let bs be part of the
+coefficient of xi**e then b = bs * xi**s,
+B = A - bs*xi**e, f is the exponent of the leading monomial
+of B in the i-th variable.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPADV</font></strong>(A,IL: LIST;    <strong><font color="#228B22">VAR</font></strong> EL,FL,BL,B: LIST);
+<font color="#B22222">(*Distributive polynomial advance. A is a distributive polynomial,
+i is the specified variable, 1 le i le r=DIPNOV(A). e is
+the exponent of the leading monomial of A in the i-th variable,
+b is part of the coefficient of xi**e of A,
+B = A - b*xi**e, f is the exponent of the leading monomial
+of B in the i-th variable.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPBSO</font></strong>(A: LIST);
+<font color="#B22222">(*Distributive polynomial bubble sort. A is a list of
+base coefficients and exponent vectors, A is sorted
+with respect to the termordering defined in EVORD
+by the bubble-sort method, two monomials with equal
+exponents will lead to an error. The
+list A but not its location, is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPCMP</font></strong>(EL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial composition. A is a distributive
+polynomial in r variables. e is an exponent. Let t=r+1, then
+B(x1, ...,xr,xt)=A(x1, ...,xr)*xt**e.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial degree. A is a distributive polynomial.
+n is the degree of A in its main variable.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDPV</font></strong>(A,SL,QL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial division by power of variable. A is
+a distributive polynomial in r variables. s is the desired
+variable to be divided, s le r. q is a beta-integer.
+Q = A / ( xs**q). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPERM</font></strong>(A,P: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial permutation of variables. A is a
+distributive polynomial, in r variables, r ge 0. P is a
+list (p sub 1, ...,p sub r) whose elements are the
+beta-digits 1 through r.  B(x sub (p sub 1), ...,x sub (p sub r))
+=A(x sub 1, ...,x sub r). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEVL</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial exponent vector leading monomial.
+A is a distributive polynomial. u is the exponent vector of
+the leading monomial of A. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEVP</font></strong>(A,EL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial exponent vector product. A is a
+distributive polynomial, e is an exponent vector  C=A*(x**e). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEXC</font></strong>(A,ILP,JLP: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial exchange variables. A is a
+distributive polynomial, the variables ip and jp are exchanged,
+B=(x1, ...,xip, ...,xjp, ...,xr)=A(x1, ...,xjp, ...,xip, ...,xr), 
+0 le ip, jp le DIPNOV(A).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPFMO</font></strong>(AL,EL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial from monomial. A is a non zero
+distributive polynomial with a as its leading base coefficient
+and e as is its exponent vector of the leading monomial. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPFP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial from polynomial. A is a polynomial
+in r variables, r ge 0. B is the result of converting A from
+recursive to distributive representation. Modified version
+original version by G. E. Collins. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPINV</font></strong>(A,JL,KL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial introduction of new variables.
+A is a distributive polynomial in r variables. k ge 0,
+0 le j le r. B(x1, ...,xj,y1, ...,yk,xj+1, ...,xr)=A(x1, ...,xr).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLBC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial leading base coefficient. A is a
+distributive polynomial. a is the leading base coefficient of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLDC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial leading coefficient. A is a distributive
+polynomial in one or more variables. a is the leading
+coefficient of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLM</font></strong>(L1,L2: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list merge.  L1 and L2 are lists
+of non zero distributive polynomials in non decreasing
+order.  L is the merge of L1 and L2. L1 and L2 are
+modified to produce L. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLPM</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list pair-merge sort. A is
+a list of non zero distributive polynomials. B is the
+result of sorting A into non-decreasing order. Pairs of
+polynomials are merged. The list A is modified to produce B. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLRS</font></strong>(A: LIST);
+<font color="#B22222">(*Distributive polynomial list re-sort. A is a list of
+distributive  polynomials in r variables, r ge 0.
+The polynomials in A are re-sorted. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMAD</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> AL,EL,AP: LIST);
+<font color="#B22222">(*Distributive polynomial monomial advance. A is a non zero
+distributive polynomial. a is its leading base coefficient,
+e is the exponent vector of the leading monomial of A.
+AP is the distributive polynomial a without its leading
+monomial, or the empty list. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMCP</font></strong>(AL,EL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial monomial composition. A is an emty
+list or a non zero distributive polynomial. AP is a non zero
+distributive polynomial with a as its leading base coefficient,
+e as is its exponent vector of the leading monomial and A as
+its monomial reductum. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMPM</font></strong>(A,PL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial multiplication by power of main variable.
+A is a distributive polynomial in r variables. p is a beta-
+integer.  B = A * ( xr**p ). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMPV</font></strong>(A,SL,PL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial multiplication by power of variable.
+A is a distributive polynomial in r variables. s is the specified
+variable to be multiplicated, 1 le s le r. p is a beta-integer.
+B = A * ( xs**p ). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMRD</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial monomial reductum. A is a distributive
+polynomial. B is the distributive polynomial a without the
+leading monomial of A. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMST</font></strong>(A,AL,EL: LIST);
+<font color="#B22222">(*Distributive polynomial monomial set. A is a non zero
+distributive polynomial. Its leading base coefficient is set
+to a and its exponent vector of the leading monomial is
+set to e. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNBC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial number of base coefficients. A is a
+distributive polynomial. l is the number of base coefficients.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNOV</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial number of variables. A is a distributive
+polynomial. r is the number of variables, r ge 0. If A=0 then
+r is set to zero. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPRED</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial reductum. A is a distributive polynomial,
+in one or more variables. B is the reductum of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTBC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial trailing base coefficient. A is a
+distributive polynomial. a is the trailing base coefficient.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTCF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial trailing coefficient. A is a
+distributive polynomial. a is the trailing coefficient of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTCS</font></strong>(A,IL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial trailing coefficient specified variable.
+A is a distributive polynomial in r variables. a is the
+trailing coefficient of A with respect to the i-th variable,
+1 le i le r. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTDG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial total degree. A is a distributive
+polynomial. n is the total degree of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPUNT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial univariate test. A is a distributive
+polynomial. If a is univariate then t=1, otherwise t=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPUV</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial univariate variable output.
+A is a distributive polynomial. If A is univariate then t=i, 
+otherwise t=0. were i is the index of the variable in which A 
+is univariate. If A is constant then t= -1. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EPREAD</font></strong>(): LIST; 
+<font color="#B22222">(*Exponent read.  If ** is found in the input stream
+then e=AREAD, else e=1. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVCADD</font></strong>(U,IL,EL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,FL: LIST);
+<font color="#B22222">(*Exponent vector component add. U=(u1, ...,ur) is an
+exponent vector of length r, e is added to the i-th component,
+1 le i le r, f=ui+e, V=(u1, ...,ui+e, ...,ur). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVCOMP</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector compare. U=(u1, ...,ur), V=(v1, ...vr)
+are exponent vectors. r is the length of U and V.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to the ordering of the exponent vectors specified
+in the global variable EVORD. Lexicographical, inverse
+lexicographical, graded lexicograhpical, inverse graded
+lexicographical orderings are possible. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVCSUB</font></strong>(U,IL,EL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,FL: LIST);
+<font color="#B22222">(*Exponent vector component subtract. U=(u1, ...,ur) is an
+exponent vector of length r, e is subtracted from the i-th
+component, 1 le i le r, V=(u1, ...,ui-e, ...,ur), f=ui. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVDEL</font></strong>(U,IL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,EL: LIST);
+<font color="#B22222">(*Exponent vector delete. U=(u1, ...,ur) is an exponent vector
+of length r. i is the component to be deleted, 1 le i le r.
+V=(u1, ...,ui-1,ui+1, ...,ur),  e=ui.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVDER</font></strong>(U,IL,EL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,FL: LIST);
+<font color="#B22222">(*Exponent vector derivation. U=(u1, ...,ur) is an exponent
+vector of length r, from the i-th component e-times one is
+subtracted and f is multiplied with the result.
+V=(u1, ...,ui-e, ...,ur). If f=0 then V is undefined. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVDFSI</font></strong>(U,V: LIST;    <strong><font color="#228B22">VAR</font></strong> W,SL: LIST);
+<font color="#B22222">(*Exponent vector difference and sign. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+W=(w1, ...,wr) is the componentwise difference of U and V.
+s is the EVSIGN of W. If s=-1 then W is undefined.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVDIF</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector difference. U=(u1, ...,ur), V=(v1, ...,vr)
+are exponent vectors of length r. W=(w1, ...,wr) is the
+componentwise difference of U and V.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVDOV</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector dependency on variables. U is an exponent
+vector. V is the list (j1, ...,jn) where each
+j is the index of a variable with non zero exponent in U. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVEXC</font></strong>(U,IL,JL: LIST): LIST;
+<font color="#B22222">(*Exponent vector exchange. U=(u1, ...,ui, ...,uj, ...,ur)
+is an exponent vector of length r. The components ui and uj are 
+exchanged, 1 le i lt j le r. V=(u1, ...,uj, ...,ui, ...,ur).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVIGLC</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse graded lexicographical compare.
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to the inverse graded lexicographical ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVILCI</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse lexicographical compare inverse exponent vector. 
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt,
+lt with respect to the inverse lexicographical ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVILCP</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse lexicographical compare.
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt,
+lt with respect to the inverse lexicographical ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVITDC</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse total degree compare.
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to buchbergers total degree ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVLFCP</font></strong>(L,U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector linear form compare. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+L is an univariate integral polynomial vector.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to the ordering of the exponent vectors 
+determined by the linear form.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVLCM</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector least common multiple. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+W=(w1, ...,wr) is the least common multiple of U and V. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVMT</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector multiple test. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+t=1 if U is a multiple of V, t=0 else. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVNNZE</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector number of non zero exponents. U is an
+exponent vector. n is the number of non zero exponents of U. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE EVOWRITE</font></strong>(EVO: LIST);
+<font color="#B22222">(*Exponent vector order write.
+EVO is an exponent vector order. A description of EVO is written to the
+output stream.
+inverse refers to the order of variables (in VALIS).
+ascending means the inverted order (if x&lt;y then x&gt;y wrt. the inverted order).
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE EvordWrite</font></strong>();
+<font color="#B22222">(* Evord Write.
+Writes a description of EVORD to the output stream. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE EVRAND</font></strong>(RL,KL: LIST): LIST;
+<font color="#B22222">(*Exponent vector random. r is the length of U. k is a
+positive beta-digit such that every component of U will be
+less than k and k lt beta. U is a random exponent vector.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVRASP</font></strong>(RL,KL,QL: LIST): LIST;
+<font color="#B22222">(*Exponent vector random. r is the length of U. k is a
+positive beta-digit such that every component of U will be
+less than k and k lt beta. U is a random exponent vector.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVSIGN</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector signum. U=(u1, ...,ur) is an exponent vector
+of length r. t=0 if all components are eq 0, t=1 if all
+components are ge 0, else t=-1.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVSU</font></strong>(U,IL,FL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,EL: LIST);
+<font color="#B22222">(*Exponent vector substitution. U=(u1, ...,ui, ...,ur)
+is an exponent vector of length r. The i-th component is
+changed into f. 1 le i le r. e=ui. 
+V=(u1, ...,ui-1,f,ui+1, ...,ur). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVSUM</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector sum. U=(u1, ...,ur), V=(v1, ...,vr) are
+exponent vectors of length r. W=(u1+v1, ...,ur+vr) is the
+componentwise sum of U and V. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVTDEG</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector total degree. U is an exponent vector.
+n is the sum of the components of U.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PBCLI</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial base coefficients list. A is a polynomial in
+r variables. B is the list of the base coefficients of A. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PFDIP</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> RL,B: LIST);
+<font color="#B22222">(*Polynomial from distributive polynomial. A is a distributive
+polynomial. B is the result of converting A to recursive
+representation, r is the number of variables of B, r ge 0.
+Modified version, original version by G. E. Collins. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PLFDIL</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> RL,B: LIST);
+<font color="#B22222">(*Polynomial list from distributive polynom list. A is a list
+of distributive polynomials in r variables, r ge 0. Every
+polynomial in A is converted to recursive representation and
+stored in B. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PMPV</font></strong>(RL,A,IL,NL: LIST): LIST;
+<font color="#B22222">(*Polynomial multiplication by power of variable.  A is
+a polynomial in r variables. 1 le i le r
+and n is a beta-integer. B=A*(x sub i)**n. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PPERMV</font></strong>(RL,A,P: LIST): LIST;
+<font color="#B22222">(*Polynomial permutation of variables.  A is a polynomial in
+r variables, r ge 0. P is a list (p sub 1, ...,p sub r)
+whose elements are the beta-digits 1 through r.
+B(x sub (p sub 1), ...,x sub (p sub r))=A(x sub 1, ...,
+x sub r).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STVL</font></strong>(RL: LIST): LIST; 
+<font color="#B22222">(*Standard variable list. r is the number of variables.
+V is the variable list for the variables x1, ...,xr. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIP2AD</font></strong>(P,d,rest: LIST): LIST;
+<font color="#B22222">(* distributive polynomial to arbitrary domain.
+   P is a polynomial in distributive representation,
+   d is a domain number, rest is a domain descriptor,
+   returns P with added domain numbers and descriptors *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE AD2DIP</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* arbitrary domain to distributive polynomial.
+   P is a polynomial in distributive representation
+   with domain numbers and descriptors,
+   returns P without domain numbers and descriptors *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPC.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,620 @@
+
+<html>
+<head>
+<title>./masmodul/SACLDIO.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:21+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACLDIO.mi,v 1.3 1992/10/15 16:29:18 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACLDIO.mi,v $
+ * Revision 1.3  1992/10/15  16:29:18  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:12  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:53  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACLDIO;
+
+<font color="#B22222">(* SAC Linear Diophantine Equation System Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASMAX, MASEVEN;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    LIST1, SFIRST, SRED, LENGTH, INV, 
+                    FIRST, RED, COMP, ADV;
+
+FROM MASERR IMPORT ERROR, severe; 
+
+FROM MASBIOS IMPORT SWRITE;
+
+FROM SACLIST IMPORT LIST3, CONC, CINV, ADV2, COMP2, FIRST2, 
+                    LELT, LIST4, LEINST, LEROT, REDUCT,
+                    EQUAL, RED2, SECOND, LIST2;
+
+FROM SACD IMPORT DLOG2;
+
+FROM SACI IMPORT ILOG2, IDEGCD, IODD, IREM, IDP2, ICOMP, IPROD, IQ, 
+                 ISUM, ISIGNF, IDREM, IDPR, IDIF, IMP2, INEG;
+
+FROM SACM IMPORT MDHOM, MDDIF, MDSUM, MDNEG, MDPROD, MDINV, MIHOM, 
+                 MIPROD, SMFMI;
+
+FROM SACPRIM IMPORT SMPRM;
+
+FROM SACCOMB IMPORT ASSPR;
+
+FROM SACPOL IMPORT PDEGSV, PINV, PDEG, PRIME;
+
+FROM SACIPOL IMPORT IPSUM, IPDIF, IPNEG, 
+                    IPPROD, IPQ, IPCRA, IPSUMN;
+
+FROM SACMPOL IMPORT MPPROD, MPINT, VMPIP, MPEMV, MPHOM, MPEVAL;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACLDIO.mi,v 1.3 1992/10/15 16:29:18 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE LDSMKB</font></strong>(A,BL: LIST;  <strong><font color="#228B22">VAR</font></strong> XLS,N: LIST); 
+<font color="#B22222">(*Linear diophantine system solution, modified Kannan and Bachem algorithm.  
+A is an m by n integral matrix.  A is represented
+column-wise.  b is an integral m-vector.  If the diophantine
+system A*x=b is consistent, then xs is a particular
+solution and N is a list of basis vectors of the solution
+module of A*x=0.  Otherwise, xs and N are null lists.  A and b are
+modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C, C1, CL, CP, CP1, CS, CS1, HL, IL, J1Y, JL, KL, ML, NL, R,
+     RL, RP, T: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*adjoin identity matrix to a and zero vector to -bl.*)</font> 
+      NL:=LENGTH(A); C:=MIAIM(A); J1Y:=VINEG(BL); B:=VIAZ(J1Y,NL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> ML:=LENGTH(BL); C1:=FIRST(C); JL:=0; 
+      <font color="#4169E1">REPEAT</font> JL:=JL+1; ADV(C1, CL,C1); 
+             <font color="#4169E1">UNTIL</font> CL &lt;&gt; 0; 
+      R:=LIST1(JL); 
+      <font color="#4169E1">IF</font> JL &lt;= ML <font color="#4169E1">THEN</font> RL:=1; <font color="#4169E1">ELSE</font> RL:=0; <strong><font color="#4169E1">END</font></strong>; 
+      KL:=1; 
+
+<font color="#4169E1">WHILE</font> KL &lt; NL <font color="#4169E1">DO</font> <font color="#B22222">(*if nl = 1 then go to 5; end;*)</font> 
+
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*eliminate column kl+1 and augment row-sequence.*)</font> 
+      CS:=REDUCT(C,KL); CS1:=FIRST(CS); CP:=C; RP:=R; 
+LOOP
+      <font color="#4169E1">FOR</font> HL:=1 <font color="#4169E1">TO</font> KL+1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> HL &lt;= KL <font color="#4169E1">THEN</font> ADV(RP, IL,RP); <font color="#4169E1">ELSE</font> J1Y:=ML+NL; 
+             IL:=J1Y+1; <strong><font color="#4169E1">END</font></strong>; 
+          CP1:=CS1; JL:=0; 
+          <font color="#4169E1">REPEAT</font> JL:=JL+1; ADV(CP1, CL,CP1); 
+                 <font color="#4169E1">UNTIL</font> CL &lt;&gt; 0; 
+          <font color="#4169E1">IF</font> JL &gt;= IL <font color="#4169E1">THEN</font>
+             <font color="#4169E1">IF</font> JL = IL <font color="#4169E1">THEN</font> C1:=FIRST(CP); VIUT(C1,CS1,IL,
+                C1,CS1); SFIRST(CP,C1); <strong><font color="#4169E1">END</font></strong>; 
+             CP:=RED(CP); <font color="#4169E1">ELSE</font> SFIRST(CS,CS1); J1Y:=KL+1; 
+             C:=LEROT(C,HL,J1Y); J1Y:=HL-1; R:=LEINST(R,J1Y,JL); 
+             <font color="#4169E1">IF</font> JL &lt;= ML <font color="#4169E1">THEN</font> RL:=RL+1; <strong><font color="#4169E1">END</font></strong>; 
+             EXIT <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+      EXIT <strong><font color="#4169E1">END</font></strong>;
+
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*normalize off-diagonal elements.*)</font> 
+      <font color="#4169E1">FOR</font> JL:=HL <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> J1Y:=JL-1; CS:=REDUCT(C,J1Y); ADV(CS,
+          T,CP); RP:=REDUCT(R,JL); 
+          <font color="#4169E1">WHILE</font> RP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(CP, CP1,CP); ADV(RP, IL,RP); 
+                T:=VIERED(T,CP1,IL); <strong><font color="#4169E1">END</font></strong>; 
+          SFIRST(CS,T); <strong><font color="#4169E1">END</font></strong>; 
+      KL:=KL+1; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*if kl &lt; nl then go to 3; end;*)</font> 
+
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*check consistency of the system.*)</font> 
+      <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> ADV(C, T,C); ADV(R, IL,R); B:=VIERED(B,T,IL); 
+          <strong><font color="#4169E1">END</font></strong>; 
+      JL:=0; 
+      <font color="#4169E1">REPEAT</font> JL:=JL+1; ADV(B, CL,B); 
+             <font color="#4169E1">UNTIL</font> (JL = ML) <font color="#4169E1">OR</font> (CL &lt;&gt; 0); 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*system consistent.*)</font> 
+      <font color="#4169E1">IF</font> CL = 0 <font color="#4169E1">THEN</font> CP:=C; 
+         <font color="#4169E1">WHILE</font> CP &lt;&gt; SIL <font color="#4169E1">DO</font> CP1:=FIRST(CP); CP1:=REDUCT(CP1,ML); 
+               SFIRST(CP,CP1); CP:=RED(CP); <strong><font color="#4169E1">END</font></strong>; 
+         XLS:=B; N:=C; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*system inconsistent.*)</font> XLS:=BETA; N:=BETA; RETURN; 
+<font color="#B22222">(*10*)</font> <strong><font color="#4169E1">END</font></strong> LDSMKB; 
+
+
+<strong><font color="#4169E1">PROCEDURE LDSSBR</font></strong>(A,BL: LIST;  <strong><font color="#228B22">VAR</font></strong> XLS,N: LIST); 
+<font color="#B22222">(*Linear diophantine system solution, based on Rosser ideas.  A is an
+m by n integral matrix.  A is represented column-wise.  b is
+an integral m-vector.  If the diophantine system A*x=b
+is consistent, then xs is a particular solution and N is
+a list of basis vectors of the solution module of A*x=0.  Otherwise,
+xs and N are null lists.  A and b are modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BL1, C, C1, C2, CP, J1Y, ML, NL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=LENGTH(A); ML:=LENGTH(BL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*adjoin identity matrix to a and zero vector to -bl.*)</font> 
+      C:=MIAIM(A); J1Y:=VINEG(BL); B:=VIAZ(J1Y,NL); 
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*sort columns of c.*)</font> C:=MINNCT(C); C:=MICS(C); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*pivot row zero.*)</font> C1:=FIRST(C); 
+      <font color="#4169E1">IF</font> FIRST(C1) &lt;&gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*= go to 6;*)</font> 
+
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*eliminate pivot row.*)</font> 
+      <font color="#4169E1">REPEAT</font> B:=VIERED(B,C1,1); C:=RED(C); 
+             <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> SL:=0; <font color="#4169E1">ELSE</font> C2:=FIRST(C); 
+                SL:=FIRST(C2); 
+                <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> C1:=VIERED(C1,C2,1); 
+                   C:=MICINS(C,C1); C1:=C2; <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> SL = 0; 
+      NL:=NL-1; 
+
+      <strong><font color="#4169E1">END</font></strong>; 
+LOOP
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*system inconsistent.*)</font> ADV(B, BL1,B); 
+      <font color="#4169E1">IF</font> BL1 &lt;&gt; 0 <font color="#4169E1">THEN</font> XLS:=BETA; N:=BETA; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*remove pivot row.*)</font> CP:=C; 
+      <font color="#4169E1">WHILE</font> CP &lt;&gt; SIL <font color="#4169E1">DO</font> C1:=FIRST(CP); C1:=RED(C1); SFIRST(CP,C1); 
+            CP:=RED(CP); <strong><font color="#4169E1">END</font></strong>; 
+      ML:=ML-1; 
+
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*finished.*)</font> 
+      <font color="#4169E1">IF</font> ML &gt; 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> NL &gt; 0 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 3;*)</font> <font color="#B22222">(*else go to 6;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 6*)</font> 
+
+      <font color="#4169E1">IF</font> ML &lt;= 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 3*)</font>
+
+      XLS:=B; N:=C; RETURN; 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> LDSSBR; 
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPDE</font></strong>(RL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials determinant, exact division algorithm.
+M is a square matrix of integral polynomials in r variables, r ge 0,
+represented as a list.  D is the determinant of M.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D, IL, J1Y, J2Y, JL, M1, M2, MP1, P, R, R1, R2, RP, S, S1, S2, SS,
+     SS2, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> M1:=M; P:=0; TL:=1; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*order 1 matrix.*)</font> 
+      <font color="#4169E1">IF</font> RED(M1) = SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(M1); D:=FIRST(J1Y); 
+         <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font> D:=IPNEG(RL,D); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(D); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find pivot row, if possible.*)</font> MP1:=M1; IL:=0; 
+      <font color="#4169E1">REPEAT</font> IL:=IL+1; ADV(MP1, R,MP1); 
+             <font color="#4169E1">UNTIL</font> (FIRST(R) &lt;&gt; 0) <font color="#4169E1">OR</font> (MP1 = SIL); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*no pivot row.*)</font> 
+      <font color="#4169E1">IF</font> FIRST(R) = 0 <font color="#4169E1">THEN</font> D:=0; RETURN(D); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*update sign.*)</font> 
+      <font color="#4169E1">IF</font> MASEVEN(IL) <font color="#4169E1">THEN</font> TL:=-TL; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*compute m2.*)</font> ADV(R, R1,R); M2:=BETA; JL:=0; 
+      <font color="#4169E1">REPEAT</font> JL:=JL+1; ADV(M1, S,M1); 
+             <font color="#4169E1">IF</font> JL &lt;&gt; IL <font color="#4169E1">THEN</font> ADV(S, S1,S); SS:=BETA; RP:=R; 
+                <font color="#4169E1">REPEAT</font> ADV(RP, R2,RP); ADV(S, S2,S); 
+                       J1Y:=IPPROD(RL,R1,S2); J2Y:=IPPROD(RL,S1,R2); 
+                       SS2:=IPDIF(RL,J1Y,J2Y); 
+                       <font color="#4169E1">IF</font> P &lt;&gt; 0 <font color="#4169E1">THEN</font> SS2:=IPQ(RL,SS2,P); <strong><font color="#4169E1">END</font></strong>; 
+                       SS:=COMP(SS2,SS); 
+                       <font color="#4169E1">UNTIL</font> RP = SIL; 
+                M2:=COMP(SS,M2); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> M1 = SIL; 
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*prepare for next pivot step.*)</font> P:=R1; M1:=M2; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+<font color="#B22222">(*9*)</font> RETURN(D); <strong><font color="#4169E1">END</font></strong> MAIPDE; 
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPDM</font></strong>(RL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials determinant, modular algorithm.  M is
+a square matrix of integral polynomials in r variables, r non-negative.
+D is the determinant of M.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, BLP, D, DS, J1Y, KL, M1, M11, MP, MS, N, N1, N11, NL, P, PL,
+     PLP, Q, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*matrix of order 1.*)</font> 
+      <font color="#4169E1">IF</font> RED(M) = SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(M); D:=FIRST(J1Y); RETURN(D); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute norm bound.*)</font> MP:=M; N:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(MP, M1,MP); N1:=BETA; 
+             <font color="#4169E1">REPEAT</font> ADV(M1, M11,M1); N11:=IPSUMN(RL,M11); 
+                    N11:=ILOG2(N11); N1:=COMP(N11,N1); 
+                    <font color="#4169E1">UNTIL</font> M1 = SIL; 
+             N:=COMP(N1,N); 
+             <font color="#4169E1">UNTIL</font> MP = SIL; 
+      ASSPR(N, X,BL); NL:=LENGTH(M); KL:=DLOG2(NL); J1Y:=NL*KL; 
+      BL:=J1Y+BL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*apply chinese remainder theorem.*)</font> P:=PRIME; Q:=1; 
+      BLP:=0; D:=0; 
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font>
+                ERROR(severe,"prime list exhausted in MAIPDM."); 
+                RETURN(D) <strong><font color="#4169E1">END</font></strong>; 
+             ADV(P, PL,P); MS:=MAIPHM(RL,PL,M); DS:=MMPDMA(RL,PL,MS); 
+             J1Y:=MDHOM(PL,Q); PLP:=MDINV(PL,J1Y); 
+             D:=IPCRA(Q,PL,PLP,RL,D,DS); Q:=IDPR(Q,PL); J1Y:=DLOG2(PL); 
+             BLP:=BLP+J1Y; 
+             <font color="#4169E1">UNTIL</font> BLP &gt;= BL; 
+      RETURN(D); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MAIPDM; 
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPHM</font></strong>(RL,ML,A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials homomorphism.  A is a matrix of
+integral polynomials in r variables, r non-negative.  m is a
+positive beta-integer.  B is the matrix B(i,j) of polynomials in r
+variables  over Z sub m such that B(i,j)=H(m)(A(i,j)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A11, AP, B, B1, B11: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, A1,AP); B1:=BETA; 
+             <font color="#4169E1">REPEAT</font> ADV(A1, A11,A1); B11:=MPHOM(RL,ML,A11); 
+                    B1:=COMP(B11,B1); 
+                    <font color="#4169E1">UNTIL</font> A1 = SIL; 
+             B1:=INV(B1); B:=COMP(B1,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MAIPHM; 
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPP</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials product.  A and B are matrices of
+integral polynomials in r variables, r ge 0, for which the matrix
+product A*B is defined.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A11, AP, AP1, B1, B11, BP, BS, C, C1, C11, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=BETA; AP:=A; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, A1,AP); BP:=B; C1:=BETA; 
+             <font color="#4169E1">REPEAT</font> C11:=0; BS:=BETA; AP1:=A1; 
+                    <font color="#4169E1">REPEAT</font> ADV(AP1, A11,AP1); ADV(BP, B1,BP); ADV(B1,
+                           B11,B1); J1Y:=IPPROD(RL,A11,B11); 
+                           C11:=IPSUM(RL,C11,J1Y); BS:=COMP(B1,BS); 
+                           <font color="#4169E1">UNTIL</font> BP = SIL; 
+                    BP:=INV(BS); C1:=COMP(C11,C1); 
+                    <font color="#4169E1">UNTIL</font> FIRST(BP) = SIL; 
+             C1:=INV(C1); C:=COMP(C1,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MAIPP; 
+
+
+<strong><font color="#4169E1">PROCEDURE MIAIM</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers, adjoin identity matrix,  A is an m by n matrix
+of integers.  A is represented column-wise.  B is the matrix obtained
+by adjoining an n by n identity matrix to the bottom of A.  A is
+modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, B, IL, JL, NL, T: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> NL:=LENGTH(A); AP:=INV(A); B:=BETA; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> ADV(AP, A1,AP); T:=BETA; 
+          <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font>
+              <font color="#4169E1">IF</font> IL = JL <font color="#4169E1">THEN</font> T:=COMP(1,T); <font color="#4169E1">ELSE</font> T:=COMP(0,T); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+          A1:=CONC(A1,T); B:=COMP(A1,B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MIAIM; 
+
+
+<strong><font color="#4169E1">PROCEDURE MICINS</font></strong>(A,V: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers column insertion.  A is an m by n integral
+matrix represented by the list (a(1),a(2), ...,a(n)), where a(i) is the
+list (a(1,i), ...,a(m,i)) representing column i of A and a(1,1)
+ge a(1,2) ge  ... ge a(1,m).  V=(v(1), ...,v(m)) is an integral
+vector with v(1) lt a(1,1). Let i be the largest integer such that
+a(1,i) ge v(1).  Then B is the matrix represented by the list (a(1), ...,
+a(i),V,a(i+1), ...,a(n)).  A is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, B, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> AP:=A; APP:=RED(AP); VL:=FIRST(V); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop.*)</font> 
+      <font color="#4169E1">WHILE</font> (APP &lt;&gt; SIL) <font color="#4169E1">AND</font> (ICOMP(FIRST(FIRST(APP)),VL) &gt;= 0)
+            <font color="#4169E1">DO</font> AP:=APP; APP:=RED(APP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> B:=COMP(V,APP); SRED(AP,B); B:=A; RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MICINS; 
+
+
+<strong><font color="#4169E1">PROCEDURE MICS</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers column sort.  A is an integral matrix with non-
+negative elements in first row.  A is represented column-wise.  B is an
+integral matrix obtained by sorting columns of A such that elements
+of the first row are in descending order.  A is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A2, AL1, AL2, AP, APP, B, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*bubble sort columns.*)</font> 
+      <font color="#4169E1">REPEAT</font> AP:=A; SL:=0; 
+             <font color="#4169E1">WHILE</font> RED(AP) &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, A1,APP); 
+                   A2:=FIRST(APP); AL1:=FIRST(A1); AL2:=FIRST(A2); 
+                   <font color="#4169E1">IF</font> ICOMP(AL1,AL2) &lt; 0 <font color="#4169E1">THEN</font> SFIRST(AP,A2); 
+                      SFIRST(APP,A1); SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                   AP:=APP; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> SL = 0; 
+      B:=A; RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MICS; 
+
+
+<strong><font color="#4169E1">PROCEDURE MINNCT</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers, non-negative column transformation.
+A=(a(i,j)) is an m by n integral matrix.  A is represented
+column-wise. B=(b(i,j)) is the m by n integral matrix
+with b(i,j)=a(i,j) if a(1,j) ge 0 and b(i,j)=-a(i,j) if
+a(1,j) lt 0.  A is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL, AP, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=A; AP:=A; 
+      <font color="#4169E1">REPEAT</font> A1:=FIRST(AP); AL:=FIRST(A1); 
+             <font color="#4169E1">IF</font> ISIGNF(AL) &lt; 0 <font color="#4169E1">THEN</font> A1:=VINEG(A1); SFIRST(AP,A1); 
+                <strong><font color="#4169E1">END</font></strong>; 
+             AP:=RED(AP); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MINNCT; 
+
+
+<strong><font color="#4169E1">PROCEDURE MMDDET</font></strong>(PL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular digits determinant.  p is a prime beta-integer.
+M is a square matrix over GF(p), represented as a list.  d is the
+determinant of M.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, DL, IL, J1Y, JL, M1, M2, MP1, R, R1, R2, RP, RS, S, S1,
+     S2, SS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> M1:=M; DL:=1; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*order 1 matrix.*)</font> 
+      <font color="#4169E1">IF</font> RED(M1) = SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(M1); AL:=FIRST(J1Y); 
+         DL:=MDPROD(PL,DL,AL); RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find pivot row, if possible.*)</font> MP1:=M1; IL:=0; 
+      <font color="#4169E1">REPEAT</font> IL:=IL+1; ADV(MP1, R,MP1); 
+             <font color="#4169E1">UNTIL</font> (FIRST(R) &lt;&gt; 0) <font color="#4169E1">OR</font> (MP1 = SIL); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*no pivot row.*)</font> 
+      <font color="#4169E1">IF</font> FIRST(R) = 0 <font color="#4169E1">THEN</font> DL:=0; RETURN(DL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*transform pivot row.*)</font> ADV(R, AL,R); DL:=MDPROD(PL,DL,AL); 
+      <font color="#4169E1">IF</font> MASEVEN(IL) <font color="#4169E1">THEN</font> DL:=MDNEG(PL,DL); <strong><font color="#4169E1">END</font></strong>; 
+      ALP:=MDINV(PL,AL); RS:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(R, R1,R); R1:=MDPROD(PL,R1,ALP); RS:=COMP(R1,RS); 
+             <font color="#4169E1">UNTIL</font> R = SIL; 
+      R:=INV(RS); 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*compute m2.*)</font> M2:=BETA; JL:=0; 
+      <font color="#4169E1">REPEAT</font> JL:=JL+1; ADV(M1, S,M1); 
+             <font color="#4169E1">IF</font> JL &lt;&gt; IL <font color="#4169E1">THEN</font> ADV(S, S1,S); SS:=BETA; RP:=R; 
+                <font color="#4169E1">REPEAT</font> ADV(RP, R2,RP); ADV(S, S2,S); 
+                       J1Y:=MDPROD(PL,S1,R2); S2:=MDDIF(PL,S2,J1Y); 
+                       SS:=COMP(S2,SS); 
+                       <font color="#4169E1">UNTIL</font> RP = SIL; 
+                M2:=COMP(SS,M2); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> M1 = SIL; 
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*prepare for next pivot step.*)</font> M1:=M2; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> 
+<font color="#B22222">(*9*)</font> RETURN(DL); <strong><font color="#4169E1">END</font></strong> MMDDET; 
+
+
+<strong><font color="#4169E1">PROCEDURE MMDNSB</font></strong>(PL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular digits null space basis.  p is a prime beta-
+integer.  M is an m by n matrix over Z sub p.  B is a list (b(1), ...,
+b(r)) representing a basis for the null space of M, consisting of all
+x such that M*x=0.  r is the dimension of the null space.  B=() if
+the null space of M is 0.  Each b(i) is a list representing an
+m-vector.  M is modified.  Alternatively, if M represents a matrix by
+columns, then B is a basis for the null space consisting of all x such
+that x*M=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, C, CL, CP, IL, J1Y, KL, M1, M2, ML, MP1, MP2, V, VL, VP:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> M1:=M; M2:=BETA; B:=BETA; KL:=1; J1Y:=FIRST(M); 
+      ML:=LENGTH(J1Y); 
+LOOP 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search for a pivot column.*)</font> MP1:=M1; M1:=BETA; AL:=0; 
+      LOOP 
+           <font color="#4169E1">IF</font> MP1 = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*while mp1 &lt;&gt; sil do*)</font> 
+           ADV(MP1, C,MP1); ADV(C, AL,C); 
+           <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+           M1:=COMP(C,M1);  
+           <strong><font color="#4169E1">END</font></strong>; 
+
+<font color="#4169E1">IF</font> (MP1 = SIL) <font color="#4169E1">AND</font> (AL = 0) <font color="#4169E1">THEN</font>  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate a basis vector.*)</font> V:=BETA; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ML-KL <font color="#4169E1">DO</font> V:=COMP(0,V); <strong><font color="#4169E1">END</font></strong>; 
+      V:=COMP(1,V); MP2:=M2; 
+      <font color="#4169E1">WHILE</font> MP2 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(MP2, C,MP2); AL:=VMPIP(0,PL,C,V); 
+            V:=COMP(AL,V); <strong><font color="#4169E1">END</font></strong>; 
+      B:=COMP(V,B); M2:=COMP(0,M2); 
+
+      <font color="#B22222">(*go to 5;*)</font> <font color="#4169E1">ELSE</font> 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*perform pivot operations.*)</font> M2:=COMP(C,M2); J1Y:=MDINV(PL,AL); 
+      AL:=PL-J1Y; CP:=C; 
+      <font color="#4169E1">WHILE</font> CP &lt;&gt; SIL <font color="#4169E1">DO</font> J1Y:=FIRST(CP); CL:=MDPROD(PL,J1Y,AL); 
+            SFIRST(CP,CL); CP:=RED(CP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">WHILE</font> MP1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(MP1, VP,MP1); ADV(VP, VL,VP); 
+            M1:=COMP(VP,M1); 
+            <font color="#4169E1">IF</font> VL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=C; 
+               <font color="#4169E1">WHILE</font> CP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(CP, CL,CP); 
+                     AL:=MDPROD(PL,CL,VL); J1Y:=FIRST(VP); 
+                     AL:=MDSUM(PL,J1Y,AL); SFIRST(VP,AL); VP:=RED(VP); 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> KL &gt;= ML <font color="#4169E1">THEN</font> <font color="#B22222">(*&lt;*)</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      KL:=KL+1; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*go to 2;*)</font> <font color="#B22222">(*else return(b); end;*)</font> 
+
+<font color="#B22222">(*8*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> MMDNSB; 
+
+
+<strong><font color="#4169E1">PROCEDURE MMPDMA</font></strong>(RL,PL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular polynomials determinant, modular algorithm.  M is a
+square matrix of modular polynomials in r variables over Z sub p,
+r non-negative, p a prime beta-integer.  D is the determinant of M.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, BL, BLP, D, DL, DS, J1Y, M1, M11, MP, MS, N, N1, N11, 
+     RLP, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*matrix of order 1.*)</font> 
+      <font color="#4169E1">IF</font> RED(M) = SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(M); D:=FIRST(J1Y); RETURN(D); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> D:=MMDDET(PL,M); RETURN(D); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute degree bound.*)</font> MP:=M; N:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(MP, M1,MP); N1:=BETA; 
+             <font color="#4169E1">REPEAT</font> ADV(M1, M11,M1); N11:=PDEGSV(RL,M11,1); 
+                    N1:=COMP(N11,N1); 
+                    <font color="#4169E1">UNTIL</font> M1 = SIL; 
+             N:=COMP(N1,N); 
+             <font color="#4169E1">UNTIL</font> MP = SIL; 
+      ASSPR(N, X,DL); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*apply evaluation and interpolation.*)</font> AL:=0; RLP:=RL-1; 
+      B:=PINV(0,1,1); 
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> AL = PL <font color="#4169E1">THEN</font>
+                ERROR(severe,"elements <font color="#4169E1">of</font> finite field exhausted in MMPDMA."); 
+                RETURN(D); <strong><font color="#4169E1">END</font></strong>; 
+             MS:=MMPEV(RL,PL,M,1,AL); DS:=MMPDMA(RLP,PL,MS); 
+             BL:=MPEMV(1,PL,B,AL); BLP:=MDINV(PL,BL); 
+             D:=MPINT(PL,B,AL,BLP,RL,D,DS); J1Y:=MDNEG(PL,AL); 
+             X:=LIST4(1,1,0,J1Y); B:=MPPROD(1,PL,B,X); AL:=AL+1; 
+             <font color="#4169E1">UNTIL</font> PDEG(B) &gt; DL; 
+      RETURN(D); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> MMPDMA; 
+
+
+<strong><font color="#4169E1">PROCEDURE MMPEV</font></strong>(RL,ML,A,KL,AL: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular polynomials evaluation.  A is a matrix of
+polynomials in r variables over Z sub m, m a positive beta-integer.
+1 le k le r and a is an element of Z sub m.  B is the matrix of
+polynomials b(i,j) where b(i,j)(x(1), ...,x(k-1),x(k+1), ...,x(r))=
+a(i,j)(x(1), ...,x(k-1),a,x(k+1), ...,x(r)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A11, AP, B, B1, B11: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, A1,AP); B1:=BETA; 
+             <font color="#4169E1">REPEAT</font> ADV(A1, A11,A1); B11:=MPEVAL(RL,ML,A11,KL,AL); 
+                    B1:=COMP(B11,B1); 
+                    <font color="#4169E1">UNTIL</font> A1 = SIL; 
+             B1:=INV(B1); B:=COMP(B1,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MMPEV; 
+
+
+<strong><font color="#4169E1">PROCEDURE VIAZ</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Vector of integers, adjoin zeros.  A is the vector (a(1), ...,a(m)).
+n is a non-negative beta-integer.  B is the vector (a(1), ...,a(m),
+0, ...,0) of m+n components.  A is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, KL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=BETA; 
+      <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> B:=COMP(0,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=CONC(A,B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VIAZ; 
+
+
+<strong><font color="#4169E1">PROCEDURE VIDIF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Vector of integers difference.  A and B are vectors in Z sup n.
+C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=VINEG(B); C:=VISUM(A,J1Y); RETURN(C); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VIDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE VIERED</font></strong>(U,V,IL: LIST): LIST; 
+<font color="#B22222">(*Vector of integers, element reduction.  U=(u(1), ...,u(n)) and
+V=(v(1), ...,v(n)) are integral n-vectors.  1 le i le n.  v(i)
+ne 0.  W=U-q*V, where q=INTEGER(u(i)/v(i)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  QL, UL, VL, W: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UL:=LELT(U,IL); VL:=LELT(V,IL); QL:=IQ(UL,VL); 
+      <font color="#4169E1">IF</font> QL = 0 <font color="#4169E1">THEN</font> W:=U; <font color="#4169E1">ELSE</font> QL:=INEG(QL); W:=VISPR(QL,V); 
+         W:=VISUM(U,W); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(W); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VIERED; 
+
+
+<strong><font color="#4169E1">PROCEDURE VILCOM</font></strong>(AL,BL,A,B: LIST): LIST; 
+<font color="#B22222">(*Vector of integers linear combination.  a and b are integers.  A
+and B are integral vectors in Z sup n.  C=a*A+b*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, S, T: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> S:=VISPR(AL,A); T:=VISPR(BL,B); C:=VISUM(S,T); RETURN(C); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VILCOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE VINEG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Vector of integers negation.  A is an integral vector.  B=-A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=BETA; AP:=A; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); BL:=INEG(AL); B:=COMP(BL,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VINEG; 
+
+
+<strong><font color="#4169E1">PROCEDURE VISPR</font></strong>(AL,A: LIST): LIST; 
+<font color="#B22222">(*Vector of integers scalar product.  a is an integer.  A is an
+integral vector.  C=a*A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, AP, C, CL, IL, NL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*al=0.*)</font> 
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> NL:=LENGTH(A); C:=BETA; 
+         <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> C:=COMP(0,C); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*al=1.*)</font> 
+      <font color="#4169E1">IF</font> AL = 1 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*al=-1.*)</font> 
+      <font color="#4169E1">IF</font> AL = -1 <font color="#4169E1">THEN</font> C:=VINEG(A); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*general case.*)</font> C:=BETA; AP:=A; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, ALP,AP); CL:=IPROD(AL,ALP); C:=COMP(CL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> VISPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE VISUM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Vector of integers sum.  A and B are vectors in Z sup n.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=BETA; AP:=A; BP:=B; 
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); ADV(BP, BL,BP); CL:=ISUM(AL,BL); 
+             C:=COMP(CL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VISUM; 
+
+
+<strong><font color="#4169E1">PROCEDURE VIUT</font></strong>(U,V,IL: LIST;  <strong><font color="#228B22">VAR</font></strong> UP,VP: LIST); 
+<font color="#B22222">(*Vector of integers, unimodular transformation.  U=(u(1), ...,u(n))
+and V=(v(1), ...,v(n)) are vectors in Z sup n with u(i) ne 0.
+(UP,VP)=(U,V)*K where K is a unimodular matrix, depending on u(i)
+and v(i), whose elements are obtained from IDEGCD.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, PL, QL, RL, SL, UL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UL:=LELT(U,IL); VL:=LELT(V,IL); IDEGCD(UL,VL, CL,PL,QL,RL,SL); 
+      UP:=VILCOM(PL,QL,U,V); VP:=VILCOM(RL,SL,U,V); RETURN; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VIUT; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACLDIO.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,932 @@
+
+<html>
+<head>
+<title>./masmain/MASU.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:26+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASU.mi,v 1.8 1995/11/05 09:02:44 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASU.mi,v $
+ * Revision 1.8  1995/11/05 09:02:44  kredel
+ * Small exit, access to CREADB, UREAD and cosmetic.
+ *
+ * Revision 1.7  1995/09/12  17:24:40  pesch
+ * Corrected to handle prompts other then "MAS:".
+ *
+ * Revision 1.6  1995/03/06  16:45:43  pesch
+ * Modified to make use of GNU readline possible.
+ *
+ * Revision 1.5  1994/03/11  15:38:25  pesch
+ * Corrected use of MEMBER.
+ *
+ * Revision 1.4  1993/05/11  10:57:56  kredel
+ * Added help()
+ *
+ * Revision 1.3  1992/10/15  16:30:42  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:55  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:20  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASU;
+
+<font color="#B22222">(* MAS Utility Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASEXP;
+
+FROM MASSTOR IMPORT BETA, SIL, LIST, LENGTH, 
+                    LIST1, ADV, FIRST, RED, COMP, INV, SFIRST, SRED;
+
+FROM MASBIOS IMPORT CREADB, GWRITE, LISTS, OStreamKind, BLINES, SWRITE, SOLINE,
+                    SILINE, SLIST, StorSummary, Summary, termkind;
+
+FROM MASBIOSU IMPORT INP, OUT, SHUT, EDIT, DOS, CLTIS;
+
+FROM SACLIST IMPORT EQUAL, CLOUT, RED2, CINV, CONC, CCONC, SECOND, MEMBER, 
+                    FIRST3, LIST3, ADV3, FIRST2, ADV2, LIST2, COMP2;
+
+FROM MASSYM2 IMPORT SYWRIT, ACOMP, SYMBOL, SREAD, GET, PUT, 
+                    EXPLOD, PACK, ENTER, ACOMP1,  
+                    ASSOC, SYMTB, STWRT, STLST, SymSummary;
+
+FROM MASSYM IMPORT NOSHOW, ATOM, ELEMP, UREAD, UWRITE, UWRIT1;
+
+FROM MASLISPU IMPORT EXTYP, ARITY, SUBR, EXPR, 
+                     Declare, CallCompiled, Signature,
+                     Compiledp0, Compiledp1, Compiledp2, Compiledp3,
+                     Compiledf0, Compiledf1, Compiledf2, Compiledf3,
+                     Compiledp1v2, Compiledp2v2,
+                     CompSummary, PROCP;
+
+FROM MASLISP IMPORT TDEF, DEFAULT, ARROW, <font color="#B22222">(*indicators*)</font>
+                    ENV, <font color="#B22222">(*global environement (alist)*)</font>
+                    NULL, WT, SCHLUSS, schluss, TINFO,   
+                    EQS, NEQS, GTS, LTS, GEQ, LEQ, NOTS, UND, ODER,   
+                    ADD, SUB, MUL, QUOT, REM, POW,
+                    QUOTE, SETQ, COND, LISTX, 
+                    ASSIGN, READ, WRITE, DECREAD, DECWRITE, 
+                    PROGN, VARS, IFS, WHL, RPT, STRNG, DE, DF, DM, DG,  
+                    PROGA, GTO, LBEL, SETAV, ARY, ATM, RTN, ANY,
+                    UNIT, EXPOS, SPEC, SORT, SIG, IMPRT, IMPL, 
+                    MODEL, MAP, AXIOM, RULE, WHEN, 
+                    LAMBDA, FLAMBDA, MLAMBDA, GLAMBDA,
+                    REP, FER, FERx, FEL, FELx, CONVVAL, CONVDES,
+                    trace, stricttyping;
+
+FROM MASSPEC IMPORT EVALUATE;
+
+FROM MASREP IMPORT NewRep, FullRep, SetRep, GetRep, CopyRep, 
+                   StepRep, ForEachinRep, ForEachinList;
+
+FROM MASPARSE IMPORT Parse, SwitchParse;
+
+FROM ALDPARSE IMPORT Aparse;
+
+
+<strong><font color="#228B22">TYPE</font></strong> pragmas = ( mas, lisp, aldes, time, debug, 
+                 Trace, fussy, sloppy, genparse );
+
+<strong><font color="#228B22">VAR</font></strong>  M2S, LSP, ALD, TME, DBG, 
+     SHOW, TRC, FUS, SLO, GENP: LIST;
+     Parser: pragmas;
+     genparsing: BOOLEAN;
+     alls, modname, comment, loaded, listi: LIST; 
+
+<strong><font color="#228B22">CONST</font></strong> PIND = 0; <font color="#B22222">(*dirty, dirty. *)</font>
+      FIND = -1;
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASU.mi,v 1.8 1995/11/05 09:02:44 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE InitExternalsU</font></strong>();
+<font color="#B22222">(*Initialize external compiled utility procedures. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   x, y, f: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*internal compiled procedures *)</font>
+      Compiledp0(DumpVars,"DUMPENV");
+      Compiledp0(UnitDump,"DUMPUNIT");
+      Compiledp0(SymSummary,"SYMTB");
+      Compiledp0(StorSummary,"GCM");
+      Compiledp0(Summary,"BIOS");
+      Compiledp0(CompSummary,"EXTPROCS"); 
+      Compiledp0(HELP,"HELP"); 
+      Compiledp1(Help,"helpfx"); 
+      Compiledp1(ProcMod,"procinmodx"); 
+      Compiledp1(ProcSummary,"ProcSummary"); 
+      Compiledp0(VarSummary,"VARS");
+      Compiledp0(SortSummary,"SORTS");
+      Compiledp0(UnitSummary,"UNITS");
+      Compiledp0(ArrowSummary,"SIGS");
+      Compiledp0(GenericSummary,"GENERICS");
+      Compiledp0(ListVars,"LISTENV");
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Representations. *)</font>
+      Compiledf0(NewRep,"NewRep");
+      Compiledf2(GetRep,"GetRep");
+      Compiledp3(SetRep,"SetRep");
+      Compiledf1(FullRep,"FullRep");
+      Compiledf1(CopyRep,"CopyRep");
+      Compiledf1(StepRep,"StepRep");
+      Compiledf3(ForEachinRep,"ForEachX");
+      Compiledf3(ForEachinList,"ForEachY");
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*external Compiled procedures *)</font>
+      Compiledf1(INP,"IN");
+      Compiledf1(OUT,"OUT");
+      Compiledf1(SHUT,"SHUT");
+      Compiledf1(EDIT,"EDIT");
+      Compiledf1(DOS,"DOS");
+      Compiledf1(LENGTH,"LENGTH");
+      Compiledf1(FIRST,"FIRST");
+      Compiledf1(FIRST,"CAR");
+      Compiledf1(SECOND,"SECOND");
+      Compiledf1(RED,"RED");
+      Compiledf1(RED,"CDR");
+      Compiledp2(SRED,"SRED");
+      Compiledp2(SFIRST,"SFIRST");
+      Compiledf1(INV,"INV");
+      Compiledf1(CINV,"CINV");
+      Compiledf1(CINV,"REVERSE");
+      Compiledf0(CREADB,"CREADB");
+      Compiledp1(BLINES,"BLINES");
+      Compiledp1(CLOUT,"CLOUT");
+      Compiledp1(CLOUT,"SWRITE");
+      Compiledf2(COMP,"COMP");
+      Compiledf2(COMP,"CONS");
+      Compiledf2(CONC,"CONC");
+      Compiledf2(CCONC,"CCONC");
+      Compiledf2(CCONC,"JOIN");
+      Compiledf2(EQUAL,"EQUAL");
+      Compiledf2(MASEXP,"POW");
+      Compiledp1v2(ADV,"ADV");
+      Compiledp3(siline,"SILINE");
+      Compiledp3(soline,"SOLINE");
+<font color="#B22222">(*      Compiledp0(SSYTBAL,"BALANCE");*)</font>
+      Compiledp1(MWRITE,"MWRITE");
+      Compiledp1(UWRITE,"UWRITE");
+      Compiledf0(UREAD,"UREAD");
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Initialize Pragmas. *)</font>
+      InitPragma;
+      <font color="#B22222">(*TEST   CompSummary;   TEST*)</font>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Variables. *)</font>  
+      Declare(alls,"all"); 
+      Declare(modname,"ModulName"); 
+      Declare(comment,"Comment"); 
+      Declare(listi,"LIST"); 
+      Declare(loaded,"Loaded"); 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(* eval (DF help (x) (helpfx x)). *)</font>
+      Declare(f,"help");  Declare(x,"x"); Declare(y,"helpfx");  
+      x:=LIST1(x); y:=COMP(y,x); y:=LIST1(y);  
+      y:=COMP(x,y); y:=COMP(f,y);
+      Declare(f,"DF"); y:=COMP(f,y);
+      y:=EVALUATE(y,ENV);  
+<font color="#B22222">(*7*)</font> <font color="#B22222">(* eval (DF procinmod (x) (procinmodx x)). *)</font>
+      Declare(f,"procinmod");  Declare(x,"x"); Declare(y,"procinmodx");  
+      x:=LIST1(x); y:=COMP(y,x); y:=LIST1(y);  
+      y:=COMP(x,y); y:=COMP(f,y);
+      Declare(f,"DF"); y:=COMP(f,y);
+      y:=EVALUATE(y,ENV);  
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitExternalsU;
+
+
+<font color="#B22222">(*Display component. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DumpVars</font></strong>;
+<font color="#B22222">(*Write out all variables with their current binding. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   Y, X, V, W: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> X:=ENV; BLINES(0); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on alist. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(X,V,W,X);
+            Y:=LIST3(SETQ,V,W); UWRITE(Y); 
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DumpVars;
+
+
+<strong><font color="#4169E1">PROCEDURE UnitSummary</font></strong>;
+<font color="#B22222">(*Write out all variables with their current binding. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   Y, X, V, W, WP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> X:=ENV; BLINES(0); 
+      SWRITE("List <font color="#4169E1">of</font> all declared units: "); BLINES(1); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on alist. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(X,V,W,X);
+            <font color="#4169E1">IF</font> W &gt; SIL <font color="#4169E1">THEN</font> ADV(W,Y,WP);
+               <font color="#4169E1">IF</font> Y = UNIT <font color="#4169E1">THEN</font> UWRIT1(V); SWRITE(", ");
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      BLINES(1);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> UnitSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE UnitDump</font></strong>;
+<font color="#B22222">(*Write out all variables with their current binding. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   Y, X, V, W, WP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> X:=ENV; BLINES(1); 
+      SWRITE(" PRAGMA(LISP). "); BLINES(1);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on alist. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(X,V,W,X);
+            <font color="#4169E1">IF</font> W &gt; SIL <font color="#4169E1">THEN</font> ADV(W,Y,WP);
+               <font color="#4169E1">IF</font> Y = UNIT <font color="#4169E1">THEN</font> Y:=LIST3(SETQ,V,W); UWRITE(Y); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      BLINES(1);
+      SWRITE(" (PRAGMA MODULA) "); BLINES(1);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> UnitDump;
+
+
+<strong><font color="#4169E1">PROCEDURE VarSummary</font></strong>;
+<font color="#B22222">(*Write out all defined variables. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a, X, V, W, WP, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> a:=0;
+      SWRITE("List <font color="#4169E1">of</font> all declared variables: "); BLINES(1); 
+      X:=STLST(SYMTB); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on symbol list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,V,X); W:=GET(V,TDEF);
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> a:=a+1;   
+               SWRITE("<strong><font color="#228B22">VAR</font></strong> "); SYWRIT(V); SWRITE(": ");
+               FIRST2(W,Z,WP); UWRIT1(Z); 
+               <font color="#4169E1">IF</font> WP &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+                  Z:=COMP(DECWRITE,W);
+                  SWRITE(<font color="#666666">' "'</font>);
+                  Z:=EVALUATE(Z,ENV); <font color="#B22222">(*write out*)</font>
+                  SWRITE(<font color="#666666">'"'</font>);
+                  <strong><font color="#4169E1">END</font></strong>;
+               SWRITE(".");
+               BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summary. *)</font> BLINES(1);
+      GWRITE(a); SWRITE(" declared variables."); 
+      BLINES(0); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> VarSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE SortSummary</font></strong>;
+<font color="#B22222">(*Write out all defined sorts. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a, X, V, W, s, t, f: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> a:=0;
+      SWRITE("List <font color="#4169E1">of</font> all sorts: "); BLINES(1); 
+      X:=STLST(SYMTB); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on symbol list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,V,X); W:=GET(V,SORT);
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> a:=a+1;   
+               UWRIT1(V); SWRITE(", ");
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summary. *)</font> BLINES(1);
+      GWRITE(a); SWRITE(" sorts."); 
+      BLINES(0); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SortSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE ArrowSummary</font></strong>;
+<font color="#B22222">(*Write out all defined arrows. *)</font>
+<strong><font color="#228B22">VAR</font></strong> a, X, V, W, s, t, f: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> a:=0;
+      SWRITE("List <font color="#4169E1">of</font> all signatures: "); BLINES(1); 
+      X:=STLST(SYMTB); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on symbol list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,V,X); W:=GET(V,ARROW);
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> a:=a+1;   
+               FIRST3(W, s,f,t); 
+               SWRITE("SIGNATURE "); SYWRIT(f); 
+               UWRIT1(s); 
+               <font color="#4169E1">IF</font> RED(t) = SIL <font color="#4169E1">THEN</font> t:=FIRST(t) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*single value*)</font>
+               <font color="#4169E1">IF</font> t &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(": "); UWRIT1(t) <strong><font color="#4169E1">END</font></strong>;
+               SWRITE(".");
+               BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summary. *)</font> BLINES(1);
+      GWRITE(a); SWRITE(" signatures."); 
+      BLINES(0); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ArrowSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE GenericSummary</font></strong>;
+<font color="#B22222">(*Write out all defined generic items. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   M, I, E, a, X, V, W, Y, s, t, f: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> a:=0; 
+      SWRITE("List <font color="#4169E1">of</font> all generic items: "); BLINES(1); 
+      X:=ENV; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on environment list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(X, V,W,X); 
+            <font color="#4169E1">IF</font> W &gt; SIL <font color="#4169E1">THEN</font> Y:=FIRST(W) <font color="#4169E1">ELSE</font> Y:=SIL <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> Y = GLAMBDA <font color="#4169E1">THEN</font> a:=a+1;   
+               W:=RED2(W); FIRST3(W,M,I,E); 
+               SYWRIT(V); SWRITE(":"); BLINES(0);
+               <font color="#4169E1">WHILE</font> M &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(M, s,f,M);
+                     f:=COMP2(MAP,s,f); MWRITE(f);
+                     <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">IF</font> I &lt;&gt; SIL <font color="#4169E1">THEN</font> f:=FIRST(I); f:=LIST3(SETQ,V,f);
+                                MWRITE(f); <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">WHILE</font> E &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(E, s, E);
+                     f:=COMP(RULE,s); MWRITE(f);
+                     <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summary. *)</font> BLINES(1);
+      GWRITE(a); SWRITE(" generic items."); 
+      BLINES(0); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> GenericSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE ListVars</font></strong>;
+<font color="#B22222">(*Write out all variables with their current binding. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, V, W, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> X:=ENV; BLINES(0); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on alist. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(X,V,W,X); 
+            Y:=LIST3(SETQ,V,W); MWRITE(Y);   
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ListVars;
+
+
+<strong><font color="#4169E1">PROCEDURE ProcMod</font></strong>(t: LIST);
+<font color="#B22222">(*Procedure to Module Information. t = (M,P) is a list 
+where M is a character string which indicates the module name 
+and P is a list of procedure names in this module.  
+For each procedure, the module name is stored under the ModName 
+indicator in the symbol table. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   M, p, P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> t = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>; 
+      FIRST2(t, M, P); 
+      <font color="#4169E1">IF</font> P &lt;&gt; SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> FIRST(P) = listi <font color="#4169E1">THEN</font> P:=RED(P) <strong><font color="#4169E1">END</font></strong> <strong><font color="#4169E1">END</font></strong>;
+      SWRITE("P ="); 
+      <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P, p,P); 
+            SWRITE(" "); UWRIT1(p); 
+            PUT(p,modname,M);
+            <strong><font color="#4169E1">END</font></strong>; 
+      BLINES(1); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ProcMod;
+
+
+<strong><font color="#4169E1">PROCEDURE HELP</font></strong>();
+<font color="#B22222">(*Help processor compatibility interface. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> Help(SIL); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> HELP;
+
+
+<strong><font color="#4169E1">PROCEDURE Help</font></strong>(t: LIST);
+<font color="#B22222">(*Help processor. t is the topic for which help is requested. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   f: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check topic.*)</font> 
+      <font color="#4169E1">IF</font> t &lt;= SIL <font color="#4169E1">THEN</font> 
+         SWRITE("Enter <font color="#666666">'help(name[,mod])'</font> <font color="#4169E1">or</font> <font color="#666666">'help(start,end[,mod])'</font>"); 
+         SWRITE(" <font color="#4169E1">to</font> get more help."); BLINES(0); 
+         SWRITE("<font color="#666666">'Name'</font> means the first characters <font color="#4169E1">of</font> a range <font color="#4169E1">of</font> names,");
+         BLINES(0);
+         SWRITE(" <font color="#666666">'start,end'</font> means a range <font color="#4169E1">of</font> names."); BLINES(0); 
+         SWRITE("<font color="#666666">'[,mod]'</font> is optional <font color="#4169E1">and</font> <font color="#666666">'mod'</font> can be "); BLINES(0); 
+         SWRITE("<font color="#666666">'ModulName'</font> = list module names <font color="#4169E1">of</font> the procedures,"); 
+         BLINES(0);
+         SWRITE("<font color="#666666">'all'</font> = list all loaded procedures, "); 
+         BLINES(0);
+         SWRITE("<font color="#666666">'Loaded'</font> = list loaded procedures, "); 
+         BLINES(0);
+         SWRITE("<font color="#666666">'Comment'</font> = list <strong><font color="#4169E1">procedure comments</font></strong> "); 
+         SWRITE("(default)."); 
+         BLINES(1); RETURN <strong><font color="#4169E1">END</font></strong>; 
+      f:=t; 
+      <font color="#4169E1">IF</font> SYMBOL(t) <font color="#4169E1">THEN</font> f:=LIST1(t) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*module name*)</font> 
+      <font color="#4169E1">IF</font> MEMBER(modname,f) = 1 <font color="#4169E1">THEN</font> ModSummary(f); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*procedure summary*)</font> 
+      <font color="#4169E1">IF</font> MEMBER(alls,f) = 1 <font color="#4169E1">THEN</font> ProcSummary(f); RETURN; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> MEMBER(loaded,f) = 1 <font color="#4169E1">THEN</font> ProcSummary(f); RETURN <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*comment*)</font> <font color="#B22222">(*default*)</font> 
+      ComSummary(f);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Help;
+
+
+<strong><font color="#4169E1">PROCEDURE ModSummary</font></strong>(F: LIST); 
+<font color="#B22222">(*Module summary. F is a filter expression. 
+Write out module names for all functions from symbol table SYMTB, 
+which meet the filter expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, V, W: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> 
+      SWRITE("Module Names: "); BLINES(1); 
+      X:=STLST(SYMTB); X:=Filter(X,F); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on symbol list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,V,X); 
+            W:=GET(V,modname); 
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+               UWRIT1(V); SWRITE(" is in: "); CLOUT(RED(W)); 
+               SWRITE(". "); BLINES(0);
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+      BLINES(1); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ModSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE ComSummary</font></strong>(F: LIST); 
+<font color="#B22222">(*Comment summary. F is a filter expression. 
+Write out comments for all functions from symbol table SYMTB, 
+which meet the filter expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, V, W, awk, awk1, sys, n, m: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> 
+      SWRITE("Comments: "); BLINES(1); 
+      X:=STLST(SYMTB); X:=Filter(X,F); 
+      awk1:=LISTS(<font color="#666666">'awk "/RE '</font>);  
+      awk:=LISTS(<font color="#666666">'/{pf=1} {if (pf==1) print} /\*\)/{pf=0}" '</font>); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on symbol list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,V,X); 
+            W:=GET(V,modname); 
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> n:=EXPLOD(V); m:=RED(W); 
+               sys:=CCONC(m,LISTS(" ")); 
+               sys:=CCONC(LISTS("help/"),sys); 
+               sys:=CCONC(awk,sys); 
+               sys:=CCONC(n,sys); 
+               sys:=CCONC(awk1,sys); 
+               <font color="#B22222">(* CLOUT(sys); *)</font> BLINES(1); 
+               W:=DOS(sys); 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ComSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE Filter</font></strong>(L, f: LIST): LIST;
+<font color="#B22222">(*Filter a list of symbols. L is a list of symbols. 
+f is a filtering expression. A sublist of L is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   LP, l, h, s: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*determine expression.*)</font> <font color="#4169E1">IF</font> f &lt;= SIL <font color="#4169E1">THEN</font> RETURN(L) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> SYMBOL(f) <font color="#4169E1">THEN</font> f:=LIST1(f) <strong><font color="#4169E1">END</font></strong>; 
+      ADV(f,l,f); <font color="#4169E1">IF</font> l = alls <font color="#4169E1">THEN</font> RETURN(L) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> f = SIL <font color="#4169E1">THEN</font> h:=EXPLOD(l); h:=CONC(h,LISTS("ZZZZZ"));
+                      h:=ENTER(h); 
+                 <font color="#4169E1">ELSE</font> h:=FIRST(f); 
+                      <font color="#4169E1">IF</font> h = modname <font color="#4169E1">THEN</font> h:=EXPLOD(l); 
+                         h:=CONC(h,LISTS("ZZZZZ")); h:=ENTER(h); <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">IF</font> h = comment <font color="#4169E1">THEN</font> h:=EXPLOD(l); 
+                         h:=CONC(h,LISTS("ZZZZZ")); h:=ENTER(h); <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">IF</font> h = alls <font color="#4169E1">THEN</font> h:=EXPLOD(l); 
+                         h:=CONC(h,LISTS("ZZZZZ")); h:=ENTER(h); <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">IF</font> h = loaded <font color="#4169E1">THEN</font> h:=EXPLOD(l); 
+                         h:=CONC(h,LISTS("ZZZZZ")); h:=ENTER(h); <strong><font color="#4169E1">END</font></strong>;
+                      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*scan list*)</font> LP:=SIL; 
+      <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L, s,L);
+            <font color="#4169E1">IF</font> (ACOMP(l,s) &lt;= 0) <font color="#4169E1">AND</font> (ACOMP(s,h) &lt;= 0) <font color="#4169E1">THEN</font>
+               LP:=COMP(s,LP); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>;
+      LP:=INV(LP); RETURN(LP);  
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Filter;
+
+
+<strong><font color="#4169E1">PROCEDURE ProcSummary</font></strong>(F: LIST); 
+<font color="#B22222">(*Procedure and function summary. F is a filter expression. 
+Write out all functions with their signature from symbol 
+table SYMTB and ENV, which meet the filter expression. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, V, W, k, i, o, p, WP, s, f, t, Y: LIST;
+      cp, cf, cs, ce: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> cp:=0; cf:=0; cs:=0; ce:=0;
+      SWRITE("List <font color="#4169E1">of</font> functions <font color="#4169E1">and</font> procedures: "); BLINES(1); 
+      X:=STLST(SYMTB); X:=Filter(X,F); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on symbol list. *)</font> 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(X,V,X); 
+<font color="#B22222">(*2.1*)</font>     <font color="#B22222">(*Signatures . *)</font> WP:=SIL;
+            W:=GET(V,ARROW); 
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> cs:=cs+1;
+               FIRST3(W, s,f,t); 
+               SWRITE("SIGNATURE "); SYWRIT(f); 
+               <font color="#4169E1">IF</font> RED(t) = SIL <font color="#4169E1">THEN</font> t:=FIRST(t) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*single value*)</font>
+               UWRIT1(s); 
+               <font color="#4169E1">IF</font> t &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(": "); UWRIT1(t) <strong><font color="#4169E1">END</font></strong>; 
+               SWRITE(" "); BLINES(0); 
+               <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2.2*)</font>     <font color="#B22222">(*Interpreter procedures. *)</font> WP:=SIL;
+            W:=ASSOC(V,ENV); <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> W:=FIRST(W) <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> W &gt; SIL <font color="#4169E1">THEN</font> ADV(W,WP,W) <strong><font color="#4169E1">END</font></strong>;
+            <font color="#B22222">(* (xlamda parms body) *)</font>    
+            <font color="#4169E1">IF</font> WP = LAMBDA <font color="#4169E1">THEN</font> ce:=ce+1;
+               SWRITE("PROCEDURE "); SYWRIT(V);
+               Y:=FIRST(W); FIRST2(Y,i,o); SWRITE("("); 
+               <font color="#4169E1">WHILE</font> i &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(i,p,i); SYWRIT(p); 
+                     <font color="#4169E1">IF</font> i &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">IF</font> o &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE("; <strong><font color="#228B22">VAR</font></strong> ") <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">WHILE</font> o &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(o,p,o); SYWRIT(p); 
+                     <font color="#4169E1">IF</font> o &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+               SWRITE(")"); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> WP = FLAMBDA <font color="#4169E1">THEN</font> ce:=ce+1;
+               SWRITE("FPROCEDURE "); SYWRIT(V);
+               Y:=FIRST(W); SWRITE("("); 
+               <font color="#4169E1">WHILE</font> Y &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Y,p,Y); SYWRIT(p); 
+                     <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+               SWRITE(")"); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> WP = MLAMBDA <font color="#4169E1">THEN</font> ce:=ce+1;
+               SWRITE("MACRO "); SYWRIT(V);
+               Y:=FIRST(W); SWRITE("("); 
+               <font color="#4169E1">WHILE</font> Y &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(Y,p,Y); SYWRIT(p); 
+                     <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+               SWRITE(")"); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> WP = GLAMBDA <font color="#4169E1">THEN</font> ce:=ce+1;
+               SWRITE("GENERIC   "); SYWRIT(V);
+               SWRITE(" "); BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2.3*)</font>     <font color="#B22222">(*Compiled procedures. *)</font>
+            W:=GET(V,ARITY);
+            <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font>    
+               FIRST3(W, k,i,o); 
+               <font color="#4169E1">IF</font> k = PIND <font color="#4169E1">THEN</font> cp:=cp+1; 
+                  SWRITE("PROCEDURE "); SYWRIT(V);
+                  <font color="#4169E1">IF</font> i + o &gt; 0 <font color="#4169E1">THEN</font> SWRITE("(");
+                     <font color="#4169E1">WHILE</font> i &gt; 0 <font color="#4169E1">DO</font> i:=i-1; SWRITE("LIST");
+                           <font color="#4169E1">IF</font> i &gt; 0 <font color="#4169E1">THEN</font> SWRITE(",") <strong><font color="#4169E1">END</font></strong>;
+                           <strong><font color="#4169E1">END</font></strong>;
+                     <font color="#4169E1">IF</font> o &gt; 0 <font color="#4169E1">THEN</font> SWRITE("; ") <strong><font color="#4169E1">END</font></strong>;
+                     <font color="#4169E1">WHILE</font> o &gt; 0 <font color="#4169E1">DO</font> o:=o-1; SWRITE("LIST");
+                           <font color="#4169E1">IF</font> o &gt; 0 <font color="#4169E1">THEN</font> SWRITE(",") <strong><font color="#4169E1">END</font></strong>;
+                           <strong><font color="#4169E1">END</font></strong>;
+                     SWRITE(")") <strong><font color="#4169E1">END</font></strong>
+               ELSIF k = FIND <font color="#4169E1">THEN</font> cf:=cf+1;
+                     SWRITE("FUNCTION  "); SYWRIT(V);
+                     SWRITE("(");
+                     <font color="#4169E1">WHILE</font> i &gt; 0 <font color="#4169E1">DO</font> i:=i-1; SWRITE("LIST");
+                           <font color="#4169E1">IF</font> i &gt; 0 <font color="#4169E1">THEN</font> SWRITE(",") <strong><font color="#4169E1">END</font></strong>;
+                           <strong><font color="#4169E1">END</font></strong>;
+                     <font color="#4169E1">IF</font> o &gt; 0 <font color="#4169E1">THEN</font> SWRITE("; ") <strong><font color="#4169E1">END</font></strong>;
+                     <font color="#4169E1">WHILE</font> o &gt; 0 <font color="#4169E1">DO</font> o:=o-1; SWRITE("LIST");
+                           <font color="#4169E1">IF</font> o &gt; 0 <font color="#4169E1">THEN</font> SWRITE(",") <strong><font color="#4169E1">END</font></strong>;
+                           <strong><font color="#4169E1">END</font></strong>;
+                     SWRITE("): LIST") 
+               <font color="#4169E1">ELSE</font> UWRIT1(W) <strong><font color="#4169E1">END</font></strong>;
+               BLINES(0); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summary. *)</font> BLINES(1);
+      GWRITE(cs); SWRITE(" signatures, "); BLINES(0); 
+      GWRITE(ce); SWRITE(" interpreter procedures, "); BLINES(0); 
+      GWRITE(cf); SWRITE(" compiled functions, "); BLINES(0); 
+      GWRITE(cp); SWRITE(" compiled procedures "); BLINES(0);
+      SWRITE("accessible."); BLINES(1); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ProcSummary;
+
+
+<font color="#B22222">(*Pretty printer component. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE MWRITE</font></strong>(Y: LIST);
+<font color="#B22222">(*Output in modula like syntax. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> ELEMP(Y) <font color="#4169E1">THEN</font> UWRITE(Y)
+         <font color="#4169E1">ELSE</font> MWRIT1(Y,TRUE); SWRITE(". ") <strong><font color="#4169E1">END</font></strong>; 
+      BLINES(0);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MWRITE;
+
+                       
+<strong><font color="#4169E1">PROCEDURE MWRIT1</font></strong>(Y: LIST; top: BOOLEAN);
+<font color="#B22222">(*Output in modula like syntax. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   N, YP, A, B, C, D, F: LIST;
+      parm: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*primitive. *)</font> <font color="#4169E1">IF</font> ELEMP(Y) <font color="#4169E1">THEN</font> UWRIT1(Y); RETURN <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*symbol. *)</font> <font color="#4169E1">IF</font> SYMBOL(Y) <font color="#4169E1">THEN</font> SYWRIT(Y); RETURN <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*function or special. *)</font> YP:=Y; parm:=FALSE;
+      <font color="#4169E1">IF</font> SYMBOL(FIRST(Y)) <font color="#4169E1">THEN</font> ADV(Y, N, YP); 
+            <font color="#4169E1">IF</font> N = TINFO  <font color="#4169E1">THEN</font> A:=LIST2(WRITE,Y); SWRITE(<font color="#666666">'"'</font>);
+                               B:=EVALUATE(A,ENV); SWRITE(<font color="#666666">'"'</font>);
+         ELSIF N = SETQ   <font color="#4169E1">THEN</font> FIRST2(YP, A, B); C:=SIL;
+                               <font color="#4169E1">IF</font> B &gt; SIL <font color="#4169E1">THEN</font> C:=FIRST(B) <strong><font color="#4169E1">END</font></strong>;
+                               <font color="#4169E1">IF</font> C = LAMBDA 
+                                  <font color="#4169E1">THEN</font> SWRITE("PROCEDURE ");
+                                       MWRIT1(A,FALSE); MWRIT1(B,FALSE);
+                                       SWRITE(" "); MWRIT1(A,FALSE); 
+                                  <font color="#4169E1">ELSE</font> MWRIT1(A,FALSE); 
+                                       SWRITE(":="); MWRIT1(B,FALSE);
+                                       <strong><font color="#4169E1">END</font></strong>; 
+         ELSIF N = ASSIGN <font color="#4169E1">THEN</font> FIRST2(YP, A, B); MWRIT1(A,FALSE); 
+                               SWRITE(":="); MWRIT1(B,FALSE); 
+         ELSIF N = ADD    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE("+"); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = SUB    <font color="#4169E1">THEN</font> ADV(YP, B,YP); SWRITE("(");
+                               <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> A:=FIRST(YP); 
+                                  MWRIT1(B,FALSE); B:=A <strong><font color="#4169E1">END</font></strong>; 
+                               SWRITE("-"); MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = MUL    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); MWRIT1(A,FALSE); 
+                               SWRITE("*"); MWRIT1(B,FALSE);
+         ELSIF N = POW    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); MWRIT1(A,FALSE); 
+                               SWRITE("^"); MWRIT1(B,FALSE);
+         ELSIF N = QUOT   <font color="#4169E1">THEN</font> FIRST2(YP, A, B); MWRIT1(A,FALSE); 
+                               SWRITE("/"); MWRIT1(B,FALSE);
+         ELSIF N = REM    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); MWRIT1(A,FALSE); 
+                               SWRITE("%"); MWRIT1(B,FALSE);
+         ELSIF N = EQS    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE(" = "); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = NEQS   <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE(" &lt;&gt; "); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = LEQ    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE(" &lt;= "); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = LTS    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE(" &lt; "); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = GEQ    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE(" &gt;= "); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = GTS    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); SWRITE("("); 
+                               MWRIT1(A,FALSE); SWRITE(" &gt; "); 
+                               MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = UND    <font color="#4169E1">THEN</font> FIRST2(YP, A, B); 
+                               SWRITE("("); MWRIT1(A,FALSE);
+                               SWRITE(" <font color="#4169E1">AND</font> "); MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = ODER   <font color="#4169E1">THEN</font> FIRST2(YP, A, B); 
+                               SWRITE("("); MWRIT1(A,FALSE);
+                               SWRITE(" <font color="#4169E1">OR</font> "); MWRIT1(B,FALSE); SWRITE(")");
+         ELSIF N = NOTS   <font color="#4169E1">THEN</font> A:=FIRST(YP); 
+                               SWRITE(" <font color="#4169E1">NOT</font> "); MWRIT1(A,FALSE); SWRITE(")");
+         ELSIF N = STRNG  <font color="#4169E1">THEN</font> SWRITE(<font color="#666666">'"'</font>); CLOUT(YP); SWRITE(<font color="#666666">'"'</font>);
+         ELSIF N = IFS    <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); BLINES(0); 
+                               SWRITE("<font color="#4169E1">IF</font> "); MWRIT1(A,FALSE);
+                               SWRITE(" <font color="#4169E1">THEN</font> "); MWRIT1(B,FALSE);
+                               <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> B:=FIRST(YP); BLINES(0); 
+                                  SWRITE("   <font color="#4169E1">ELSE</font> "); MWRIT1(B,FALSE) <strong><font color="#4169E1">END</font></strong>; 
+                               SWRITE(" <strong><font color="#4169E1">END</font></strong>");  
+         ELSIF N = WHL    <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); BLINES(0);  
+                               SWRITE("<font color="#4169E1">WHILE</font> "); MWRIT1(A,FALSE);
+                               SWRITE(" <font color="#4169E1">DO</font> "); MWRIT1(B,FALSE);
+                               SWRITE(" <strong><font color="#4169E1">END</font></strong>"); 
+         ELSIF N = RPT    <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); BLINES(0); 
+                               SWRITE("<font color="#4169E1">REPEAT</font> "); MWRIT1(A,FALSE);
+                               SWRITE(" <font color="#4169E1">UNTIL</font> "); MWRIT1(B,FALSE);
+         ELSIF N = VARS   <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); BLINES(0); 
+                               SWRITE("<strong><font color="#228B22">VAR</font></strong> "); MWRIT3(A);
+                               SWRITE(": "); MWRIT1(B,FALSE);
+         ELSIF N = SORT   <font color="#4169E1">THEN</font> BLINES(0); 
+                               SWRITE("SORT "); MWRIT3(YP);
+         ELSIF N = LAMBDA <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); FIRST2(A,C,D); 
+                               <font color="#B22222">(*SWRITE("LAMBDA "); done on SETQ*)</font> 
+                               SWRITE("("); MWRIT3(C); 
+                               <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE("; "); MWRIT3(D) <strong><font color="#4169E1">END</font></strong>; 
+                               SWRITE("); "); BLINES(0); MWRIT1(B,TRUE);
+         ELSIF N = MLAMBDA <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); 
+                               SWRITE("MLAMBDA "); MWRIT2(A);
+                               SWRITE("; "); BLINES(0); MWRIT1(B,TRUE);
+         ELSIF N = FLAMBDA <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); 
+                               SWRITE("FLAMBDA "); MWRIT2(A);
+                               SWRITE("; "); BLINES(0); MWRIT1(B,TRUE);
+         ELSIF N = GLAMBDA <font color="#4169E1">THEN</font> ADV(YP, A,YP); BLINES(0);
+                               SWRITE("GLAMBDA "); MWRIT1(A,TRUE);
+                               SWRITE(" "); FIRST3(YP,A,B,C);
+                               SWRITE("MAPS "); MWRIT1(A,FALSE); 
+                               BLINES(0);
+                               SWRITE("PROCEDURE "); MWRIT1(B,FALSE); 
+                               BLINES(0);
+                               SWRITE("RULES "); MWRIT3(C); 
+                               BLINES(0);
+         ELSIF N = UNIT    <font color="#4169E1">THEN</font> ADV2(YP, A, B, YP); BLINES(0);
+                               SWRITE("UNIT "); MWRIT1(A,TRUE);
+                               MWRIT2(B); SWRITE("; ");
+                               <font color="#4169E1">WHILE</font> YP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(YP,B,YP);
+                                     MWRIT1(B,FALSE); SWRITE("; "); 
+                                     <strong><font color="#4169E1">END</font></strong>;
+                               SWRITE("<strong><font color="#4169E1">END</font></strong> "); MWRIT1(A,FALSE);
+                               SWRITE("; ");
+         ELSIF N = DE     <font color="#4169E1">THEN</font> FIRST3(YP, A,B,C); 
+                               SWRITE("PROCEDURE "); 
+                               <font color="#4169E1">IF</font> SYMBOL(A) <font color="#4169E1">THEN</font> SYWRIT(A);
+                                  FIRST2(B,D,F); 
+                                  SWRITE("("); MWRIT3(D); 
+                                  <font color="#4169E1">IF</font> F &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE("; "); 
+                                     MWRIT3(F); <strong><font color="#4169E1">END</font></strong>; 
+                                  SWRITE("); "); BLINES(0);  
+                                  MWRIT1(C,TRUE); 
+                                  SWRITE(" "); SYWRIT(A);  
+                                  <strong><font color="#4169E1">END</font></strong>;
+         ELSIF N = DF     <font color="#4169E1">THEN</font> FIRST3(YP, A,B,C); 
+                               SWRITE("FPROCEDURE "); 
+                               <font color="#4169E1">IF</font> SYMBOL(A) <font color="#4169E1">THEN</font> SYWRIT(A);
+                                  MWRIT2(B); SWRITE("; "); BLINES(0); 
+                                  MWRIT1(C,TRUE); <strong><font color="#4169E1">END</font></strong>;
+         ELSIF N = DM     <font color="#4169E1">THEN</font> FIRST3(YP, A,B,C); 
+                               SWRITE("MPROCEDURE "); 
+                               <font color="#4169E1">IF</font> SYMBOL(A) <font color="#4169E1">THEN</font> SYWRIT(A);
+                                  MWRIT2(B); SWRITE("; "); BLINES(0); 
+                                  MWRIT1(C,TRUE) <strong><font color="#4169E1">END</font></strong>;
+         ELSIF N = MAP    <font color="#4169E1">THEN</font> ADV2(YP, A,B, YP); 
+                               SWRITE("MAP "); UWRIT1(A); 
+                               SWRITE(" -&gt; "); FIRST2(B, A,B);
+                               SYWRIT(A); MWRIT2(B);
+                               <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> FIRST2(FIRST(YP), A,B);
+                                  SWRITE(" WHEN "); 
+                                  SYWRIT(A); MWRIT2(B); <strong><font color="#4169E1">END</font></strong>;
+         ELSIF N = SIG    <font color="#4169E1">THEN</font> ADV3(YP, A, B, C, YP); 
+                               SWRITE("SIGNATURE "); SYWRIT(A);
+                               SWRITE(" "); UWRIT1(B); 
+                               <font color="#4169E1">IF</font> C &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(": "); UWRIT1(C) <strong><font color="#4169E1">END</font></strong>; 
+         ELSIF N = RULE   <font color="#4169E1">THEN</font> ADV2(YP, A, B,YP); 
+                               SWRITE("RULE "); MWRIT1(A,FALSE);
+                               SWRITE(" =&gt; "); MWRIT1(B,FALSE); 
+                               <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> A:=FIRST(YP);
+                                  SWRITE(" WHEN "); MWRIT1(A,FALSE); <strong><font color="#4169E1">END</font></strong>;
+         ELSIF N = REP    <font color="#4169E1">THEN</font> SWRITE("REP &lt;...&gt;");
+         ELSIF N = NOSHOW <font color="#4169E1">THEN</font> SWRITE("NOSHOW(...)");
+         ELSIF N = PROGN  <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> top <font color="#4169E1">THEN</font> BLINES(0); SWRITE("<strong><font color="#4169E1">BEGIN</font></strong> "); <strong><font color="#4169E1">END</font></strong>;
+                               <font color="#4169E1">WHILE</font> YP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(YP,A,YP);
+                                     MWRIT1(A,FALSE);
+                                     <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE("; ") <strong><font color="#4169E1">END</font></strong>;
+                                     <strong><font color="#4169E1">END</font></strong>;
+                               <font color="#4169E1">IF</font> top <font color="#4169E1">THEN</font> SWRITE(" <strong><font color="#4169E1">END</font></strong>") <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">ELSE</font>  <font color="#B22222">(*function*)</font> SYWRIT(N); parm:=TRUE; 
+               <strong><font color="#4169E1">END</font></strong>;  
+         <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> parm <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*list. *)</font> MWRIT2(YP);  
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MWRIT1;
+
+                       
+<strong><font color="#4169E1">PROCEDURE MWRIT2</font></strong>(Y: LIST);
+<font color="#B22222">(*List output with ( and ) in modula like syntax. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*list. *)</font> SWRITE("("); MWRIT3(Y); SWRITE(")");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MWRIT2;
+
+                       
+<strong><font color="#4169E1">PROCEDURE MWRIT3</font></strong>(Y: LIST);
+<font color="#B22222">(*List output in modula like syntax. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   YP, A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*list. *)</font> YP:=Y; 
+      <font color="#4169E1">WHILE</font> YP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(YP,A,YP);
+            MWRIT1(A,FALSE);
+            <font color="#4169E1">IF</font> YP &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MWRIT3;
+
+
+<font color="#B22222">(*Pragma component. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE Pragma</font></strong>(a: LIST);
+<font color="#B22222">(*Pragma. Define Pragma a. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font>    <font color="#4169E1">IF</font> a = M2S  <font color="#4169E1">THEN</font> Parser:=mas
+      ELSIF a = LSP  <font color="#4169E1">THEN</font> Parser:=lisp
+      ELSIF a = ALD  <font color="#4169E1">THEN</font> Parser:=aldes
+      ELSIF a = TME  <font color="#4169E1">THEN</font> Time  := <font color="#4169E1">NOT</font> Time
+      ELSIF a = DBG  <font color="#4169E1">THEN</font> Debug := <font color="#4169E1">NOT</font> Debug
+      ELSIF a = TRC  <font color="#4169E1">THEN</font> trace := <font color="#4169E1">NOT</font> trace
+      ELSIF a = FUS  <font color="#4169E1">THEN</font> stricttyping := TRUE
+      ELSIF a = SLO  <font color="#4169E1">THEN</font> stricttyping := FALSE
+      ELSIF a = GENP <font color="#4169E1">THEN</font> genparsing := <font color="#4169E1">NOT</font> genparsing; 
+                          SwitchParse(genparsing);
+      ELSIF a = SHOW <font color="#4169E1">THEN</font> 
+<font color="#B22222">(*2*)</font>       SWRITE("Actual Pragmas: "); 
+            <font color="#4169E1">IF</font> Time <font color="#4169E1">THEN</font> SWRITE("TIME, ") 
+                    <font color="#4169E1">ELSE</font> SWRITE("NO TIME, "); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("TRACE, ") 
+                     <font color="#4169E1">ELSE</font> SWRITE("NO TRACE, "); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> Debug <font color="#4169E1">THEN</font> SWRITE("DEBUG, ") 
+                     <font color="#4169E1">ELSE</font> SWRITE("NO DEBUG, "); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> stricttyping <font color="#4169E1">THEN</font> SWRITE("FUSSY, ") 
+                            <font color="#4169E1">ELSE</font> SWRITE("SLOPPY, "); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> genparsing <font color="#4169E1">THEN</font> SWRITE("GENPARSE, ") 
+                          <font color="#4169E1">ELSE</font> SWRITE("NO GENPARSE, "); <strong><font color="#4169E1">END</font></strong>;
+            SWRITE("Parser: ");
+            <font color="#4169E1">CASE</font> Parser <font color="#4169E1">OF</font> 
+                   mas: SWRITE("MODULA");   |
+                  lisp: SWRITE("LISP");  |
+                 aldes: SWRITE("ALDES"); |
+                   <font color="#4169E1">ELSE</font> SWRITE("none");  <strong><font color="#4169E1">END</font></strong>;
+            SWRITE("."); 
+<font color="#B22222">(*3*)</font>  <font color="#4169E1">ELSE</font> SWRITE("Invalid Pragma: "); UWRITE(a);
+            SWRITE("Possible Pragmas: SHOW, TIME, DEBUG, TRACE, ");
+            SWRITE("SLOPPY, FUSSY, "); BLINES(0);
+            SWRITE("MODULA, LISP, ALDES, GENPARSE.");
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Pragma;
+
+
+<strong><font color="#4169E1">PROCEDURE DoParse</font></strong>(): LIST;
+<font color="#B22222">(*Do parse. Call specific Parser. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">CASE</font> Parser <font color="#4169E1">OF</font> 
+             mas: SWRITE("MAS: "); 
+	          <font color="#4169E1">IF</font> (OStreamKind()=termkind) <font color="#4169E1">THEN</font> WroteChars:=5; <strong><font color="#4169E1">END</font></strong>;
+     	       	  PromptFirst:=TRUE; PromptType:=0;
+		  Y:=Parse();  |
+            lisp: SWRITE("LISP: "); 
+	          <font color="#4169E1">IF</font> (OStreamKind()=termkind) <font color="#4169E1">THEN</font> WroteChars:=6; <strong><font color="#4169E1">END</font></strong>;
+     	       	  PromptFirst:=TRUE; PromptType:=1;
+     	       	  Y:=UREAD(); |
+           aldes: SWRITE("ALD: ");
+	          <font color="#4169E1">IF</font> (OStreamKind()=termkind) <font color="#4169E1">THEN</font> WroteChars:=5; <strong><font color="#4169E1">END</font></strong>;
+     	       	  PromptFirst:=TRUE; PromptType:=2;
+     	          Y:=Aparse(); Parser:=mas; |
+             <font color="#4169E1">ELSE</font> SWRITE("MAS: "); PromptType:=0;
+	          <font color="#4169E1">IF</font> (OStreamKind()=termkind) <font color="#4169E1">THEN</font> WroteChars:=5; <strong><font color="#4169E1">END</font></strong>;
+     	       	  PromptFirst:=TRUE;
+     	       	  Y:=Parse(); Parser:=mas;
+                  <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> Debug <font color="#4169E1">THEN</font> SWRITE("Parse: "); UWRITE(Y) <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(Y);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DoParse;
+
+
+<strong><font color="#4169E1">PROCEDURE DoWrite</font></strong>(Y: LIST);
+<font color="#B22222">(*Do Write. Write according to Parser. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">CASE</font> Parser <font color="#4169E1">OF</font> 
+             mas: SWRITE("ANS: "); MWRITE(Y); |
+            lisp: SWRITE("ANS: "); UWRITE(Y); |
+           aldes: SWRITE("ANS: "); MWRITE(Y); |
+             <font color="#4169E1">ELSE</font> SWRITE("ANS: "); UWRITE(Y);
+                  <strong><font color="#4169E1">END</font></strong>;
+      BLINES(1); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DoWrite;
+
+
+<strong><font color="#4169E1">PROCEDURE InitPragma</font></strong>;
+<font color="#B22222">(*Initialize pragmas. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> Declare(M2S,"MODULA");
+      Declare(LSP,"LISP");
+      Declare(ALD,"ALDES");
+      Declare(TME,"TIME");
+      Declare(DBG,"DEBUG");
+      Declare(TRC,"TRACE");
+      Declare(FUS,"FUSSY");
+      Declare(SLO,"SLOPPY");
+      Declare(GENP,"GENPARSE");
+      Declare(SHOW,"SHOW");
+<font color="#B22222">(*2*)</font> Parser:=mas;
+      Time:=FALSE;
+      Debug:=FALSE;
+      genparsing:=FALSE;
+      trace:=FALSE;
+      stricttyping:=FALSE;
+<font color="#B22222">(*3*)</font> Compiledp1(Pragma,"PRAGMA");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitPragma;
+
+
+<strong><font color="#4169E1">PROCEDURE siline</font></strong>(s,l,r: LIST);
+<font color="#B22222">(*Set input line. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> SILINE(s, l, r); 
+<font color="#B22222">(*2*)</font> SWRITE("Old input line size (size,left,right): ("); 
+      GWRITE(s); SWRITE(", "); GWRITE(l); SWRITE(", "); 
+      GWRITE(r); SWRITE(")."); 
+      BLINES(0); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> siline;
+
+
+<strong><font color="#4169E1">PROCEDURE soline</font></strong>(s,l,r: LIST);
+<font color="#B22222">(*Set output line. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> SOLINE(s, l, r); 
+<font color="#B22222">(*2*)</font> SWRITE("Old output line size (size,left,right): ("); 
+      GWRITE(s); SWRITE(", "); GWRITE(l); SWRITE(", "); 
+      GWRITE(r); SWRITE(")."); 
+      BLINES(0); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> soline;
+
+
+<font color="#B22222">(* Execution part. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     WroteChars:=0;
+     PromptFirst:=FALSE;
+     PromptType:=0;
+<strong><font color="#4169E1">END</font></strong> MASU.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

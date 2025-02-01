@@ -1,0 +1,48 @@
+
+<html>
+<head>
+<title>./masarith/MASCOMB.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T20:39:33+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASCOMB.md,v 1.1 1994/11/28 20:39:33 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MASCOMB.md,v $
+ * Revision 1.1  1994/11/28  20:39:33  dolzmann
+ * New modules MASCOMB.md, MASCOMB.mi, MASSET.md, and MASSET.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASCOMB; 
+<font color="#B22222">(* MAS Combinatorial System Definition Module. *)</font>
+
+FROM MASSTOR	IMPORT	LIST; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASCOMB.md,v 1.1 1994/11/28 20:39:33 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE INVPERM</font></strong>(perm: LIST):LIST;
+<font color="#B22222">(* inverse permutation. perm is a permutation. The inverse permutation
+is returned, i.e. LPERM(LPERM(x,p),INVPERM(p))=x. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE PVFLISTS</font></strong>(list1,list2:LIST):LIST;
+<font color="#B22222">(* permutation vector from lists.
+list1 and list2 are lists of the same length.
+A permutations vector P is returned, so that LPERM(list1,P)=list2 *)</font>
+
+<strong><font color="#4169E1">END</font></strong> MASCOMB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

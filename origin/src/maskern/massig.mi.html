@@ -1,0 +1,48 @@
+
+<html>
+<head>
+<title>./maskern/massig.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-04T20:40:06+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: massig.mi,v 1.1 1995/11/04 20:40:06 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: massig.mi,v $
+ * Revision 1.1  1995/11/04 20:40:06  pesch
+ * Renamed massignal.m? to massig.m? because of conflict with MASSIGNAL.m?
+ * on certain OS.
+ *
+ * Revision 1.1  1995/09/12 17:22:50  pesch
+ * Signal handling function are now declared in massignal.
+ * Action has been changed according to ANSI C.
+ * signal.* and massignal.* have been removed, the former because of
+ * name clash with signal.h.
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE massig;
+
+<font color="#B22222">(* MAS Signal Handling Implementation Module. *)</font>
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: massig.mi,v 1.1 1995/11/04 20:40:06 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+     SIG_DFL:=Action(0);
+     SIG_IGN:=Action(1);
+     SIG_ACK:=Action(4);
+     SIG_ERR:=Action(-1);
+<strong><font color="#4169E1">END</font></strong> massig.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

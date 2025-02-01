@@ -1,0 +1,1023 @@
+
+<html>
+<head>
+<title>./masib/DIPIB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPIB.mi,v 1.1 1995/10/12 14:44:53 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPIB.mi,v $
+ * Revision 1.1  1995/10/12 14:44:53  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPIB;
+<font color="#B22222">(* DIP Involutive Base Implementation Module. *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM ADEXTRA 	IMPORT 	ADPCP;
+
+FROM DIPADOM 	IMPORT 	DIPBCP, DIPDIF, DIPMOC, DIPROD;
+
+FROM DIPC 	IMPORT 	DIPEVL, DIPFMO, DIPMAD, DIPMCP, EVTDEG, EVDIF,
+			EVLCM, EVSUM; 
+
+FROM DIPCJ 	IMPORT 	ADDTDG, ADVTDG, DILATDG, DILCAN, DILEP2P, DILPP, DILTDG,
+			DIPFIRST, DIPNML, DIRPMV, DIPPGL, DIPPGL2, DIPVL, 
+			DIPSSM, DIPPGL3, EVMTJ, DILBBS;
+
+FROM DIPTOOLS 	IMPORT 	ADDNFDIP;
+
+FROM MASADOM 	IMPORT 	ADGCDC, ADQUOT;
+
+FROM MASBIOS 	IMPORT 	BLINES, SWRITE;
+
+FROM MASERR 	IMPORT 	harmless, ERROR;
+
+FROM MASLISPU 	IMPORT 	PROCF1, PROCF2, PROCP1V2, PROCP2V2;
+
+FROM MASSTOR 	IMPORT 	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, RED, SIL,
+                        SRED, TIME, SFIRST;
+
+FROM SACI 	IMPORT 	IWRITE;
+
+FROM SACLIST 	IMPORT 	AWRITE, CCONC, CINV, CONC, EQUAL, LAST,
+		        LIST2, LIST3, LIST4, LIST5, LWRITE, SECOND, THIRD;
+
+
+<strong><font color="#228B22">CONST</font></strong> maxdom = 30;
+
+<strong><font color="#228B22">TYPE</font></strong> DomainRecord = RECORD
+               NFJ: PROCP2V2;
+                    <font color="#B22222">(* Normalform procedure which depends on the domain
+                       of the coefficients *)</font>
+               NFJ2: PROCP2V2;
+                    <font color="#B22222">(* Normalform procedure which depends on the domain 
+                       of the coefficients is used from the more efficient
+                       algorithm DIPIB *)</font>
+               NFJ3: PROCP5V2;
+                    <font color="#B22222">(* Normalform procedure wicht depends on the domain of
+                       the coeficients and is used from DIPIB4 *)</font>
+            <strong><font color="#4169E1">END</font></strong>;
+
+<strong><font color="#228B22">VAR</font></strong> Jdomain: ARRAY[1..maxdom] <font color="#4169E1">OF</font> DomainRecord;
+
+<strong><font color="#228B22">VAR</font></strong> DIPIBOpt: RECORD
+                   TraceLevel: INTEGER;
+                           <font color="#B22222">(* Output during computation *)</font>
+                   ISJ: PROCP1V2;
+                           <font color="#B22222">(* Janet-Irreducible-Set algorithm *)</font>
+                   Select: PROCP2V2;
+                           <font color="#B22222">(* Strategy for selection of polynomials from
+                              polynomlist. *)</font>
+                   Cancel: PROCF1;
+                           <font color="#B22222">(* Function to cancel down coefficients *)</font>
+                   Crit: BOOLEAN;
+                           <font color="#B22222">(* Decide wether to use criteria from Gerdt *)</font>
+              <strong><font color="#4169E1">END</font></strong>;
+
+    Select: PROCP2V2;
+
+     
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPIB.mi,v 1.1 1995/10/12 14:44:53 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";      
+
+
+<strong><font color="#4169E1">PROCEDURE ADCAN</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Arbitrary Polynomial Cancel.
+   P is an polynomial of arbitrary domain,
+   P is canceled down with ADPCP iff the domain of P is INT and with
+   DIPMOC else *)</font>
+<strong><font color="#228B22">CONST</font></strong> int = 2;
+<strong><font color="#228B22">VAR</font></strong> dom: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> P=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  dom:=ADDNFDIP(P);
+  <font color="#4169E1">IF</font> dom=int <font color="#4169E1">THEN</font> P:=ADPCP(P) 
+             <font color="#4169E1">ELSE</font> P:=DIPMOC(P) <strong><font color="#4169E1">END</font></strong>;
+  RETURN(P);
+<strong><font color="#4169E1">END</font></strong> ADCAN;
+
+
+
+<font color="#B22222">(*****************************************************************************
+ * The following two algorithms are from: Zharkov, Blinkov                   *
+ *        Involutive Bases of Zero-Dimensional Ideals &amp;                      *
+ *        Involution approach to Solving Systems of Algebraic Equations      *
+ *****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADPNFJ</font></strong>(G,P: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* Arbitrary domain polynomial normalform in the sense of Janet.
+   G is a list of polynomials in distributive representation over an arbitrary
+   domain, P is a polynomial as above,
+   returns a polynomial h such that P is Janet-reducible to h modulo G
+   and h is in Janet-normalform w.r.t. G, the flag "reduced" is set TRUE iff
+   a Janet-reduction took place *)</font>
+<strong><font color="#228B22">VAR</font></strong> DomNum: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  DomNum:=ADDNFDIP(P);
+  <font color="#4169E1">IF</font> DomNum=0 <font color="#4169E1">THEN</font> h:=0; reduced:=FALSE; <font color="#B22222">(* P is the zero polynom *)</font>
+              <font color="#4169E1">ELSE</font> Jdomain[INTEGER(DomNum)].NFJ(G,P,h,reduced);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADPNFJ;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNFJ</font></strong>(P,S: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN); 
+<font color="#B22222">(* Distributive polynomial normal form in the sense of Janet. 
+   P is a list of non zero polynomials in distributive
+   representation in r variables. S is a distributive polynomial. 
+   The result is a polynomial h such that S is reducible to h modulo P 
+   in the sense of Janet and h is in Janet-normalform with respect to P,
+   "reduced" is set TRUE iff a Janet-reduction took place. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, PP, Q, QA, QE, QP, R, SL, SP, TA, TE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      reduced:=FALSE; h:=0;
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      R:=SIL; SP:=S; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE, SP);
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); DIPMAD(Q, QA,QE,QP); 
+                     SL:=EVMTJ(TE,QE); 
+             <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> R:=DIPMCP(TE,TA,R); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); 
+                   BL:=ADQUOT(TA,QA);  AP:=DIPFMO(BL,FL); 
+                   APP:=DIPROD(QP,AP); SP:=DIPDIF(SP,APP);
+                   reduced:=TRUE;
+                <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0;   
+      <font color="#4169E1">IF</font> R = SIL <font color="#4169E1">THEN</font> h:=0; <font color="#4169E1">ELSE</font> h:=INV(R); <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong> DIPNFJ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIPINFJ</font></strong>(P,S: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN); 
+<font color="#B22222">(* Integral Distributive polynomial normal form in the sense of Janet. 
+   P is a list of non zero polynomials in distributive
+   representation in r variables. S is a distributive
+   polynomial. h is a polynomial such that S is reducible to h
+   modulo P in the sense of Janet and h is in normalform with respect to P,
+   reduced is set TRUE iff a Janet-reduction took place. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, PP, Q, QA, QE, QP, R, SL, SP, TA, TE,
+      AL, CL, RP, RS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      reduced:=FALSE; h:=0;
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      R:=0; SP:=S; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE, SP);
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); DIPMAD(Q, QA,QE,QP);
+                    SL:=EVMTJ(TE,QE);
+             <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RP:=DIPFMO(TA,TE);
+                <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> R:=RP; <font color="#4169E1">ELSE</font> RS:=LAST(R); SRED(RS,RP); <strong><font color="#4169E1">END</font></strong>;  
+                       <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); 
+                   ADGCDC(TA,QA,CL,AL,BL);
+                   AP:=DIPFMO(AL,FL);
+                   APP:=DIPROD(QP,AP); SP:= DIPBCP(SP,BL);
+                   R:=DIPBCP(R,BL); SP:=DIPDIF(SP,APP); reduced:=TRUE;
+                <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0;   
+      h:=R; 
+<strong><font color="#4169E1">END</font></strong> DIPINFJ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DILISJ</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> PP: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* Distributive polynomial list irreducible set in the sense of Janet.
+   P is a list of distributive polynomials,
+   PP is the result of reducing each polynomial p in P modulo P-(p)
+   in the sense of Janet until no further reductions are possible.
+   reduced is set TRUE if a Janet-reduction took place. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   IRR, LL, PL, PS, RP,T	: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      T:=TIME();
+      PS:=CINV(P); RP:=PS; PP:=INV(PS);  LL:=LENGTH(PP); IRR:=0;
+      <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0); SWRITE("**irr: "); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*reduce until all polynomials are irreducible. *)</font>
+      <font color="#4169E1">REPEAT</font> ADV(PP, PL,PP); ADPNFJ(PP,PL,PL,reduced); 
+             <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> LL:=LL-1;
+                <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">ELSE</font> 
+                <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(reduced) <font color="#4169E1">THEN</font> IRR:=IRR+1; 
+                   <font color="#4169E1">ELSE</font> IRR:=0; PL:=DIPIBOpt.Cancel(PL); <strong><font color="#4169E1">END</font></strong>;
+                PS:=LIST1(PL); SRED(RP,PS); RP:=PS; 
+             <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> AWRITE(IRR); SWRITE(", "); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">UNTIL</font> IRR = LL;
+      <font color="#B22222">(*finish. *)</font>  
+      <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+              BLINES(0); SWRITE("Janet-Reduction in "); 
+              AWRITE(TIME()-T); SWRITE("ms, with");
+              BLINES(0); AWRITE(LL); SWRITE(" irreducible polynomials"); 
+      <strong><font color="#4169E1">END</font></strong>;
+      RETURN; 
+<strong><font color="#4169E1">END</font></strong> DILISJ;      
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIRLJ</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> F: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* distributive polynomial interreduced list in the sense of Janet.
+   P is a list of polynomials in distributive representation over an 
+   arbitrary domain, 
+   The result is a Janet-interreduced list of polynoms F,
+   reduced is set TRUE iff a reduction took place. *)</font>
+<strong><font color="#228B22">VAR</font></strong> H, f, g, HTg,HTf,T,LL	: LIST;
+    NewHT			: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+   F:=P;
+   <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0); SWRITE("**irr: "); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">REPEAT</font>
+         <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> 
+                LL:=LENGTH(F); AWRITE(LL); SWRITE(", ");
+         <strong><font color="#4169E1">END</font></strong>;
+         H:=SIL; NewHT:=FALSE;
+         <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(F,f,F); 
+                  HTf:=DIPEVL(f);
+                  ADPNFJ(CCONC(F,H),f,g,reduced);
+                  <font color="#4169E1">IF</font> g&lt;&gt;0 <font color="#4169E1">THEN</font>
+                     g:=DIPIBOpt.Cancel(g);
+                     <font color="#4169E1">IF</font> reduced <font color="#4169E1">THEN</font> 
+                        HTg:=DIPEVL(g);
+                        <font color="#4169E1">IF</font> EQUAL(HTg,HTf)&lt;&gt;1 <font color="#4169E1">THEN</font> NewHT:=TRUE; <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+                     H:=COMP(g,H);
+                  <strong><font color="#4169E1">END</font></strong>;      
+         <strong><font color="#4169E1">END</font></strong>;
+         F:=H;
+   <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font>(NewHT);
+   <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> BLINES(0);
+                         SWRITE("Janet-Reduction in "); 
+                         AWRITE(TIME()-T); SWRITE("ms, "); BLINES(0);
+                         AWRITE(LENGTH(F)); 
+                         SWRITE(" irreducible polynoms "); 
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> DIPIRLJ;
+
+
+<font color="#B22222">(*** Algorithms from: Zharkov, Blinkov; 
+                                Involutive Bases of zero-dimensional ideals ***)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPCOM</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial complete.
+   Subalgorithm for computing Invbase.
+   Input: Distributive polynomial list F.
+   Output: G: complete system, such that Ideal(G) = Ideal(F). *)</font>
+<strong><font color="#228B22">VAR</font></strong> f,h,p,G,H,TDG,NM,nm,EL: LIST;
+    FLAG,reduced          : BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  EL:=SIL; DIPIBOpt.ISJ(F,G,reduced); 
+  <font color="#4169E1">REPEAT</font>
+        H:=G; TDG:=DILTDG(H); FLAG:=TRUE;
+        <font color="#4169E1">WHILE</font> (H&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font> 
+              ADV(H,h,H); NM:=DIPNML(h);
+              <font color="#4169E1">WHILE</font> (NM&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font>
+                    ADV(NM,nm,NM);
+                    p:=DIRPMV(h,nm);
+                    <font color="#4169E1">IF</font> DILTDG(COMP(p,EL)) &lt;= TDG <font color="#4169E1">THEN</font>
+                       ADPNFJ(G,p,f,reduced);
+                       <font color="#4169E1">IF</font> f&lt;&gt;0 <font color="#4169E1">THEN</font> f:=DIPIBOpt.Cancel(f); 
+                                    DIPIBOpt.ISJ(COMP(f,G),G,reduced);
+                                    FLAG:=FALSE;
+                       <strong><font color="#4169E1">END</font></strong>; 
+                    <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+        <strong><font color="#4169E1">END</font></strong>; 
+   <font color="#4169E1">UNTIL</font> (H = SIL) <font color="#4169E1">AND</font> FLAG; 
+   RETURN(G);        
+<strong><font color="#4169E1">END</font></strong> DIPCOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIB2</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial involutive basis.
+   Mainalgorithm for computing Invbase.
+   Input: Distributive polynomial list F.
+   Output: G: involutive system, such that Ideal(G) = Ideal(F). *)</font>
+<strong><font color="#228B22">VAR</font></strong> f,h,p,G,H,TDG,NM,nm,EL: LIST;
+    FLAG,reduced          : BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  EL:=SIL; F:=DILCAN(F, DIPIBOpt.Cancel); G:=DIPCOM(F); 
+  <font color="#4169E1">REPEAT</font>
+        H:=G; TDG:=DILTDG(H); FLAG:=TRUE;
+        <font color="#4169E1">WHILE</font> (H&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font> 
+              ADV(H,h,H); NM:=DIPNML(h);
+              <font color="#4169E1">WHILE</font> (NM&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font>
+                    ADV(NM,nm,NM);
+                    p:=DIRPMV(h,nm);
+                    <font color="#4169E1">IF</font> DILTDG(COMP(p,EL)) &gt; TDG <font color="#4169E1">THEN</font>
+                       ADPNFJ(G,p,f,reduced);
+                       <font color="#4169E1">IF</font> f&lt;&gt;0 <font color="#4169E1">THEN</font> f:=DIPIBOpt.Cancel(f); G:=DIPCOM(COMP(f,G));
+                                    FLAG:=FALSE;
+                       <strong><font color="#4169E1">END</font></strong>; 
+                    <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+        <strong><font color="#4169E1">END</font></strong>; 
+   <font color="#4169E1">UNTIL</font> (H = SIL) <font color="#4169E1">AND</font> FLAG; 
+   RETURN(G);        
+<strong><font color="#4169E1">END</font></strong> DIPIB2;
+
+
+<font color="#B22222">(*** Algorithm from: Zharkov, Blinkov:
+              Involution Approach to Solving Systems of Algebraic Equations ***)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPIB3</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive polynom involutive base.
+   Algorithm for computing the involutive Base for a given polynomial list F.
+   Input: Distributiv Polynomial List F.
+   Output: Equivalent involutive system G.*)</font>
+<strong><font color="#228B22">VAR</font></strong> G, H, h, NM, nm, f, T, VL, le, T	: LIST;
+    reduced                      	: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  T:=TIME(); G:=SIL; F:=DILCAN(F, DIPIBOpt.Cancel); 
+  VL:=DIPVL(FIRST(F)); le:=LENGTH(VL)+1;
+  <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>       
+        DIPIBOpt.ISJ(CONC(F,G),G,reduced); 
+        F:=SIL; H:=G;
+        <font color="#4169E1">WHILE</font> H&lt;&gt;SIL <font color="#4169E1">DO</font>
+              <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0); AWRITE(LENGTH(H));
+                                            SWRITE(" polynomials <font color="#4169E1">to</font> consider ");
+              <strong><font color="#4169E1">END</font></strong>;
+              DIPIBOpt.Select(H,FALSE,h,H); 
+              NM:=DIPPGL3(h, VL, le);
+              <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> BLINES(0); AWRITE(LENGTH(NM));
+                                   SWRITE(" prolongations, ");
+              <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">WHILE</font> NM&lt;&gt;SIL <font color="#4169E1">DO</font>
+                    ADV(NM,nm,NM); 
+                    ADPNFJ(G,nm,f,reduced); 
+                    <font color="#4169E1">IF</font> f&lt;&gt;0 <font color="#4169E1">THEN</font> 
+                       <font color="#4169E1">IF</font> reduced <font color="#4169E1">THEN</font> f:=DIPIBOpt.Cancel(f); <strong><font color="#4169E1">END</font></strong>;
+                       F:=COMP(f,F) 
+                    <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>   
+     BLINES(1); AWRITE(TIME() - T); SWRITE(" ms "); BLINES(0);
+     SWRITE("Involutive Base with "); AWRITE(LENGTH(G)); SWRITE(" polynomials");
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(G);
+<strong><font color="#4169E1">END</font></strong> DIPIB3;
+
+
+<font color="#B22222">(******************************************************************************
+ *    Algorithm analog to: Zharkov, Blinkov:                                  * 
+ *                              Solving zero-dimensional involutive systems,  * 
+ *    an optional using of three criteria is possible. The three criteria are *
+ *    from Gerdt, Blinkov: Involutive Polynomial Bases.                       * 
+ *----------------------------------------------------------------------------*
+ * This algorithm works with extended polynomial lists. An extended polynomial*
+ * is a triple (deg, pol, ht) if the DIPIB-option crit is used, or a tuple    *
+ * (deg, pol) else.                                                           * 
+ *    deg - total degree of the leading term or 0 if the polynomial is already*
+ *          prolongated.                                                      *
+ *    pol - the polynomial                                                    *
+ *    ht  - head term of the starting polynomial. ht must not be equal to the *
+ *          head term of pol. ht is updated in the procedure IBcrit.          *
+ *          For details see Gerdt, Blinkov: Involutive Polynomial Bases.      * 
+ ******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADEPNFJ</font></strong>(G,P: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* Arbitrary domain extended polynomial normalform in the sense of Janet.
+   G is a list of polynomials in distributive representation over an arbitrary
+   domain, P is a polynomial as above,
+   returns a polynomial h such that P is Janet-reducible to h modulo G
+   and h is in Janet-normalform w.r.t. G, the flag "reduced" is set True iff
+   a Janet-reduction took place  *)</font>
+<strong><font color="#228B22">VAR</font></strong> DomNum: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> P=SIL <font color="#4169E1">THEN</font> DomNum:=0 <font color="#4169E1">ELSE</font>
+                DomNum:=ADDNFDIP(SECOND(P)); <strong><font color="#4169E1">END</font></strong>; 
+  <font color="#4169E1">IF</font> DomNum=0 <font color="#4169E1">THEN</font> h:=0; reduced:=FALSE; <font color="#B22222">(* P is the zero polynom *)</font>
+              <font color="#4169E1">ELSE</font> Jdomain[INTEGER(DomNum)].NFJ2(G,P,h,reduced);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADEPNFJ;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPENFJ</font></strong>(P,S: LIST; <strong><font color="#228B22">VAR</font></strong> R: LIST; <strong><font color="#228B22">VAR</font></strong> c: BOOLEAN);
+<font color="#B22222">(* Distributive extended polynomial normal form in the sense of Janet. 
+   P is a list of non zero extended polynomials in distributive
+   representation in r variables. S is a distributive extended 
+   polynomial. R is an extended polynomial such that S is reducible 
+   to R modulo P in the sense of Janet and R is in normalform with 
+   respect to P, c is set TRUE iff a Janet-reduction took place. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, PP, Q, QA, QE, QP, SL, SP, TA, TE, deg, tdg,
+	term, HT : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      c:=FALSE;
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> R:=S; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(*reduction step.*)</font> R:=SIL; ADEPCrumble(S, deg, SP, term);
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE, SP);
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); Q:=ADEPpolynomial(Q); DIPMAD(Q, QA,QE,QP); 
+                    SL:=EVMTJ(TE,QE); 
+             <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> R:=DIPMCP(TE,TA,R); <font color="#4169E1">ELSE</font> 
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); 
+                   BL:=ADQUOT(TA,QA);  AP:=DIPFMO(BL,FL); 
+                   APP:=DIPROD(QP,AP); SP:=DIPDIF(SP,APP); c:=TRUE; <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0; 
+      <font color="#4169E1">IF</font> R = SIL <font color="#4169E1">THEN</font> R:=0; <font color="#4169E1">ELSE</font> R:=INV(R); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> R&lt;&gt;0 <font color="#4169E1">THEN</font> 
+              <font color="#4169E1">IF</font> c <font color="#4169E1">THEN</font> R:=ADEPCompose(EVTDEG(FIRST(R)),R,term);
+                   <font color="#4169E1">ELSE</font> R:=ADEPCompose(deg,R,term); <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong> DIPENFJ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEINFJ</font></strong>(P,S: LIST; <strong><font color="#228B22">VAR</font></strong> R: LIST; <strong><font color="#228B22">VAR</font></strong> c: BOOLEAN);
+<font color="#B22222">(* Integral distributive extended polynomial normal form in the sense of Janet. 
+   P is a list of non zero extended polynomials in distributive
+   representation in r variables. S is a distributive extended
+   polynomial. R is a polynomial such that S is reducible to R
+   modulo P in the sense of Janet and R is in normalform with respect to P. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, PP, Q, QA, QE, QP, SL, SP, TA, TE,
+      AL, CL, RP, RS, deg, term, HT: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>  
+      c:=FALSE;
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> R:=S; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      R:=0; ADEPCrumble(S, deg, SP, term); 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE, SP);
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP,Q,PP); Q:=ADEPpolynomial(Q); DIPMAD(Q, QA,QE,QP);
+                    SL:=EVMTJ(TE,QE);
+             <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RP:=DIPFMO(TA,TE);
+                <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> R:=RP; <font color="#4169E1">ELSE</font> RS:=LAST(R); SRED(RS,RP); <strong><font color="#4169E1">END</font></strong>;  
+                       <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); 
+                   ADGCDC(TA,QA,CL,AL,BL);
+                   AP:=DIPFMO(AL,FL);
+                   APP:=DIPROD(QP,AP); SP:= DIPBCP(SP,BL);
+                   R:=DIPBCP(R,BL); SP:=DIPDIF(SP,APP); c:=TRUE; <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0;   
+      <font color="#4169E1">IF</font> R&lt;&gt;0 <font color="#4169E1">THEN</font> 
+              <font color="#4169E1">IF</font> c <font color="#4169E1">THEN</font> R:=ADEPCompose(EVTDEG(FIRST(R)),R,term); 
+                   <font color="#4169E1">ELSE</font> R:=ADEPCompose(deg,R,term); <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong> DIPEINFJ; 
+
+
+<strong><font color="#4169E1">PROCEDURE IsInvolutive</font></strong>(G: LIST): BOOLEAN;
+<font color="#B22222">(* Is involutive.
+   Test wether G is involutive. If G is involutive, then the first entry of G
+   is 0. G is a list of distributive polynomials,
+   Returns TRUE iff G is involutive, FALSE else *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  RETURN(FIRST(G)=0);
+<strong><font color="#4169E1">END</font></strong> IsInvolutive;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPmark</font></strong>(g, G: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended polynomial mark.
+   g is an extended polynomial, G is a list of extended polynomials;
+   the first entry of g is set to 0 and G is set to G cup g *)</font>
+<strong><font color="#228B22">VAR</font></strong> tdg: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  ADVTDG(g,tdg,g); g:=COMP(0,g); 
+  G:=COMP(g,G); 
+  RETURN(G);
+<strong><font color="#4169E1">END</font></strong> ADEPmark;
+
+
+<strong><font color="#4169E1">PROCEDURE DILISJ2</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial list irreducible set.
+   P is a list of distributive polynomials,
+   PP is the result of reducing each p element of P modulo P-(p)
+   in the sense of Janet until no further reductions are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong> EL, FL, IRR, LL, PL, PP, PS, RP, pl, T, deg, pol, term: LIST;
+    reduced : BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      T:=TIME();
+      PS:=CINV(P); RP:=PS; PP:=INV(PS);  LL:=LENGTH(PP); IRR:=0;
+      <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> BLINES(0); SWRITE("**irr: "); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*reduce until all polynomials are irreducible. *)</font>
+      <font color="#4169E1">REPEAT</font> ADV(PP,PL,PP); 
+             ADEPNFJ(PP,PL,PL,reduced); 
+             <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> AWRITE(LL); SWRITE(", "); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> LL:=LL-1; 
+                <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(reduced) <font color="#4169E1">THEN</font> IRR:=IRR+1; <font color="#4169E1">ELSE</font> IRR:=0; 
+                    ADEPCrumble(PL, deg, pol, term);
+                    pol:=DIPIBOpt.Cancel(pol); 
+                    PL:=ADEPCompose(deg,pol,term); <strong><font color="#4169E1">END</font></strong>; 
+                    PS:=LIST1(PL); SRED(RP,PS); RP:=PS; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">UNTIL</font> IRR = LL;
+      <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>  BLINES(0); 
+                                     SWRITE("Janet-Reduction in ");
+                                     AWRITE(TIME()-T); SWRITE("ms, ");
+                                     BLINES(0); AWRITE(LL);
+                                     SWRITE(" irreducible polynomials"); 
+      <strong><font color="#4169E1">END</font></strong>;
+      RETURN(PP); 
+<strong><font color="#4169E1">END</font></strong> DILISJ2;      
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPtriple</font></strong>(PS, term: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended polynomial triple.
+   Input: PS - a list of polynomials, term - term to use as head-term or SIL.
+   Output: a list of extended polynomials *)</font>
+<strong><font color="#228B22">VAR</font></strong> L, P, term, deg, triple, ht: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  L:=SIL;
+  <font color="#4169E1">WHILE</font> PS&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(PS,P,PS); ht:=FIRST(P); deg:=EVTDEG(ht);
+        <font color="#4169E1">IF</font> term=SIL <font color="#4169E1">THEN</font> triple:=ADEPCompose(deg,P,ht); 
+	            <font color="#4169E1">ELSE</font> triple:=ADEPCompose(deg,P,term); <strong><font color="#4169E1">END</font></strong>;
+	L:=COMP(triple,L);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(L);
+<strong><font color="#4169E1">END</font></strong> ADEPtriple;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPuntriple</font></strong>(PS: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended polynomial untriple.
+   Input: PS - an extended polynomial list.
+   Output: a polynomial list. *)</font>
+<strong><font color="#228B22">VAR</font></strong> L, P, pol: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  L:=SIL;
+  <font color="#4169E1">WHILE</font> PS&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(PS,P,PS);
+	pol:=ADEPpolynomial(P);
+	L:=COMP(pol,L);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(L);
+<strong><font color="#4169E1">END</font></strong> ADEPuntriple;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPCrumble</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> deg, pol, ht: LIST);
+<font color="#B22222">(* Arbitrary domain extended polynomial crumble.
+   Input: an arbritraty domain extended polynomial,
+   Output: the components of the extended polynomial: deg - the total degree 
+           of the leading term, pol - the polynomial and if exists ht - the
+           head term of the polynomial and 0 else. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  deg:=0; pol:=SIL; ht:=SIL;  
+  <font color="#4169E1">IF</font> P&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(P,deg,P);
+     <font color="#4169E1">IF</font> P&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(P,pol,P);
+        <font color="#4169E1">IF</font> P&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(P,ht,P);
+        <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADEPCrumble;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPCompose</font></strong>(deg, pol, ht: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended polynomial compose.
+   Input: the components to build an extended polynomial: deg - the total degree
+	  of the polynomial, pol - the polynomial and ht - the head term of
+          the polynomial or 0 if ht should not be element of the extended
+          polynomial.
+   Output: an extended polynomial. *)</font>
+<strong><font color="#228B22">VAR</font></strong> P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> DIPIBOpt.Crit <font color="#4169E1">THEN</font> RETURN(LIST3(deg,pol,ht)); 
+                    <font color="#4169E1">ELSE</font> RETURN(LIST2(deg,pol)); <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADEPCompose;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPdegree</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended polynomial degree.
+   Input: P - an arbitrary domain extended polynomial.
+   Ouput: the degree of the head term of P, that is the first entry from the
+          extended polynomial *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  RETURN(FIRST(P));
+<strong><font color="#4169E1">END</font></strong> ADEPdegree;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPpolynomial</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended polynomial polynomial.
+   Input: P - an arbitrary domain extended polynomial.
+   Output: the polynomial entry of the extended polynomial, that is the second
+           entry from the extended polynomial. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  RETURN(SECOND(P));
+<strong><font color="#4169E1">END</font></strong> ADEPpolynomial;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPheadterm</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain extended plynomial head-term.
+   Input: P - an arbitrary domain extended polynomial.
+   Output: the head term entry of the extended polynomial. That is the third
+           entry in the extended polynomial list. 
+   The third list entry must not be equal to the head-term of the polynomial
+   entry of the extended polynomial list. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  RETURN(THIRD(P));
+<strong><font color="#4169E1">END</font></strong> ADEPheadterm;
+
+
+<strong><font color="#4169E1">PROCEDURE ADEPleadingterm</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Arbitrary polynomial leading term.
+   Input: P - an arbitrary domain extended polynomial.
+   Output: the head term of the polynomial in the extended polynomial list,
+           that is the first element of the second list entry. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  RETURN(FIRST(SECOND(P)));
+<strong><font color="#4169E1">END</font></strong> ADEPleadingterm;
+
+
+<strong><font color="#4169E1">PROCEDURE IBcrit</font></strong>(NM, G: LIST): LIST;
+<font color="#B22222">(* Inovlutive Base criterium.
+   Input: NM - a list of prolongated extended polynomials, G - a list of 
+          extended polynomials.
+   Output: NM minus the polynomials from NM which are reducible to 0 by
+          one of the criteriums, or which are reducible to 0 modulo G. *)</font>
+<strong><font color="#228B22">VAR</font></strong> u, R, nm, deg, lm, PP, Q, QE, SL, v, lcm : LIST;
+    reduced: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> NM=SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+    u:=ADEPheadterm(FIRST(NM)); R:=SIL; 
+    <font color="#4169E1">WHILE</font> NM&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(NM,nm,NM);
+          deg:=ADEPdegree(nm); lm:=ADEPleadingterm(nm); PP:=G;
+          <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); QE:=ADEPleadingterm(Q);
+                 SL:=EVMTJ(lm,QE); 
+          <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1);
+          <font color="#4169E1">IF</font> SL=1 <font color="#4169E1">THEN</font> v:=ADEPheadterm(Q); 
+<font color="#B22222">(* crit 1*)</font>  <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(EQUAL(u,v)) <font color="#4169E1">THEN</font> lcm:=EVLCM(u,v);
+<font color="#B22222">(* crit 2*)</font>     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font>(EQUAL(lcm, EVSUM(u,v))) <font color="#4169E1">THEN</font>
+<font color="#B22222">(* crit 3*)</font>	   <font color="#4169E1">IF</font> EVTDEG(lcm)&gt;=deg <font color="#4169E1">THEN</font> 
+                      ADEPNFJ(G,nm,nm,reduced);
+                      <font color="#4169E1">IF</font> nm&lt;&gt;0 <font color="#4169E1">THEN</font>
+                         ADEPCrumble(nm, deg, nm, v);
+                         v:=FIRST(nm); nm:=DIPIBOpt.Cancel(nm);
+                         nm:=ADEPCompose(deg,nm,v); R:=COMP(nm,R); <strong><font color="#4169E1">END</font></strong>;
+	            <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+                                 BLINES(0); SWRITE("Criterium 3 used"); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+                                 BLINES(0); SWRITE("Criterium 2 used"); <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font>
+                                 BLINES(0); SWRITE("Criterium 1 used"); <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">ELSE</font> ADEPNFJ(G,nm,nm,reduced);
+               <font color="#4169E1">IF</font> nm&lt;&gt;0 <font color="#4169E1">THEN</font> 
+                  <font color="#4169E1">IF</font> reduced <font color="#4169E1">THEN</font> ADEPCrumble(nm, deg, nm, v); 
+                                  nm:=DIPIBOpt.Cancel(nm); 
+                                  nm:=ADEPCompose(deg,nm,v); <strong><font color="#4169E1">END</font></strong>;
+                             R:=COMP(nm,R);
+               <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN(R);
+<strong><font color="#4169E1">END</font></strong> IBcrit;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIB</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial involutive basis.
+   Algorithm for computing the involutive Base for a given F.
+   Input: Distributiv Polynomial List F.
+   Output: Equivalent involutive system G.*)</font>
+<strong><font color="#228B22">VAR</font></strong> G, g, NM, nm, f, T, LL, VL, le, PL, CL, PS, r, T: LIST;
+    reduced: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  T:=TIME(); G:=SIL;
+  VL:=DIPVL(FIRST(F)); le:=LENGTH(VL)+1;
+  PS:=DILCAN(F, DIPIBOpt.Cancel); <font color="#B22222">(* PS:=ADEPtriple(PS,SIL); *)</font>
+  F:=PS; 
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+  DILISJ(F,G,reduced); G:=ADEPtriple(G,SIL);
+  LOOP 
+       Select(G,TRUE,g,G); <font color="#B22222">(* never use DIPIBopt.Select because G must be sorted 
+                              else IsInvolutive possibly returns a false result *)</font>
+       <font color="#4169E1">IF</font> IsInvolutive(g) <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+       NM:=DIPPGL3(ADEPpolynomial(g),VL,le); 
+       G:=ADEPmark(g,G); NM:=ADEPtriple(NM, ADEPheadterm(g));
+       <font color="#4169E1">IF</font> DIPIBOpt.Crit <font color="#4169E1">THEN</font> NM:=IBcrit(NM,G); <strong><font color="#4169E1">END</font></strong>;
+       <font color="#4169E1">IF</font> NM &lt;&gt; SIL <font color="#4169E1">THEN</font> G:=CONC(NM,G); G:=DILISJ2(G); <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>;
+  G:=COMP(g,G); 
+  PS:=ADEPuntriple(G);
+  <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;0 <font color="#4169E1">THEN</font> BLINES(1);
+                   AWRITE(TIME()-T); SWRITE("ms, "); 
+                   SWRITE("involutive base with "); AWRITE(LENGTH(PS));
+                   SWRITE(" polynomials ");
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PS);
+<strong><font color="#4169E1">END</font></strong> DIPIB;
+
+
+<font color="#B22222">(*****************************************************************************
+ *     algorithm analog to: Zharkov, Blinkov,                                * 
+ *                         Solving zero-dimensional involutive systems       *
+ *---------------------------------------------------------------------------*
+ * This algorithm does not work with extended polynomial list and thus it    *
+ * needs another Janet-interreducible algorithm.                             *
+ * This algorithm does a Janet-reduction with two different input sets:      *
+ *  the first set is a list of possible candidates for prolongations and     *
+ *  the second set is a list of already condered polynomials                 *
+ *****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADPNFJS</font></strong>(G1,G2,G3,G4,P: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* Arbitrary domain polynomial normalform in the sense of Janet modulo a set
+   of set of polynomials.
+   G1-G4 are lists of polynomials in distributive representation over an
+   arbitrary domain, P is a polynomial.
+   The result is a polynomial h such that P is Janet-reducible to
+   h modulo the union of G1-G4 and h is in Janet-Normalform w.r.t. G1-G4, 
+   the flag "reduced" is set TRUE iff a Janet-reduction took place *)</font>
+<strong><font color="#228B22">VAR</font></strong> DomNum: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> P=SIL <font color="#4169E1">THEN</font> DomNum:=0 <font color="#4169E1">ELSE</font> DomNum:=ADDNFDIP(P); <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> DomNum=0 <font color="#4169E1">THEN</font> reduced:=FALSE; h:=0;
+              <font color="#4169E1">ELSE</font> Jdomain[INTEGER(DomNum)].NFJ3(G1,G2,G3,G4,P,h,reduced);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADPNFJS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNFJS</font></strong>(P1,P2,P3,P4,S: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN); 
+<font color="#B22222">(* Distributive polynomial normal form in the sense of Janet modulo a set of
+   sets of polynomials. 
+   P1-P4 are lists of non zero polynomials in distributive
+   representation in r variables. S is a distributive
+   polynomial. R is a polynomial such that S is reducible to R modulo P 
+   in the sense of Janet and R is in normalform with respect to P,
+   reduced is set TRUE iff a reduction took place. *)</font>
+<strong><font color="#228B22">CONST</font></strong> no = 4;
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, Q, QA, QE, QP, R, SL, SP, TA, TE: LIST; 
+      PP: ARRAY[1..no] <font color="#4169E1">OF</font> LIST;
+      i : CARDINAL;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      reduced:=FALSE; h:=0;
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> ((P1=SIL) <font color="#4169E1">AND</font> (P2=SIL) <font color="#4169E1">AND</font> (P3=SIL) <font color="#4169E1">AND</font> (P4=SIL))
+         <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      R:=SIL; SP:=S; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE, SP);
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP[1]:=P1; PP[2]:=P2; PP[3]:=P3; PP[4]:=P4; i:=1; SL:=0;
+             <font color="#4169E1">REPEAT</font>
+                   <font color="#4169E1">WHILE</font> (i&lt;no) <font color="#4169E1">AND</font> (PP[i]=SIL) <font color="#4169E1">DO</font> i:=i+1 <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">WHILE</font> (PP[i]&lt;&gt;SIL) <font color="#4169E1">AND</font> (SL=0) <font color="#4169E1">DO</font>
+                         ADV(PP[i],Q,PP[i]); DIPMAD(Q, QA,QE,QP); 
+                         SL:=EVMTJ(TE,QE); 
+                   <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (i = no) <font color="#4169E1">OR</font> (SL = 1);
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> R:=DIPMCP(TE,TA,R); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); 
+                   BL:=ADQUOT(TA,QA);  AP:=DIPFMO(BL,FL); 
+                   APP:=DIPROD(QP,AP); SP:=DIPDIF(SP,APP);
+                   reduced:=TRUE;
+                <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0;   
+      <font color="#4169E1">IF</font> R = SIL <font color="#4169E1">THEN</font> h:=0; <font color="#4169E1">ELSE</font> h:=INV(R); <strong><font color="#4169E1">END</font></strong>;  
+<strong><font color="#4169E1">END</font></strong> DIPNFJS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPINFJS</font></strong>(P1,P2,P3,P4,S: LIST; <strong><font color="#228B22">VAR</font></strong> h: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* Integral Distributive polynomial normal form in the sense of Janet modulo a
+   set of sets of polynomials. 
+   P1-P4 are lists of non zero polynomials in distributive
+   representation in r variables. S is a distributive
+   polynomial. h is a polynomial such that S is reducible to h
+   modulo P in the sense of Janet and h is in normalform with respect to P,
+   reduced is set TRUE iff a Janet-reduction took place. *)</font>
+<strong><font color="#228B22">CONST</font></strong> no = 4;
+<strong><font color="#228B22">VAR</font></strong>   AP, APP, BL, FL, Q, QA, QE, QP, R, SL, SP, TA, TE,
+      AL, CL, RP, RS: LIST; 
+      PP: ARRAY[1..no] <font color="#4169E1">OF</font> LIST;
+      i : CARDINAL;
+<strong><font color="#4169E1">BEGIN</font></strong>  
+      reduced:=FALSE; h:=S;
+      <font color="#4169E1">IF</font> (S = 0) <font color="#4169E1">OR</font> ((P1=SIL) <font color="#4169E1">AND</font> (P2=SIL) <font color="#4169E1">AND</font> (P3=SIL) <font color="#4169E1">AND</font> (P4=SIL)) 
+         <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(*reduction step.*)</font> R:=0; SP:=S; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE, SP);
+             <font color="#4169E1">IF</font> SP=SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP[1]:=P1; PP[2]:=P2; PP[3]:=P3; PP[4]:=P4; i:=1; SL:=0;
+             <font color="#4169E1">REPEAT</font>
+                   <font color="#4169E1">WHILE</font> (i&lt;no) <font color="#4169E1">AND</font> (PP[i]=SIL) <font color="#4169E1">DO</font> i:=i+1 <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">WHILE</font> (PP[i]&lt;&gt;SIL) <font color="#4169E1">AND</font> (SL=0) <font color="#4169E1">DO</font>
+                         ADV(PP[i],Q,PP[i]); DIPMAD(Q, QA,QE,QP); 
+                         SL:=EVMTJ(TE,QE); 
+                   <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (i = no) <font color="#4169E1">OR</font> (SL = 1);
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RP:=DIPFMO(TA,TE);
+                <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> R:=RP; <font color="#4169E1">ELSE</font> RS:=LAST(R); SRED(RS,RP); <strong><font color="#4169E1">END</font></strong>;  
+                       <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); 
+                   ADGCDC(TA,QA,CL,AL,BL);
+                   AP:=DIPFMO(AL,FL);
+                   APP:=DIPROD(QP,AP); SP:= DIPBCP(SP,BL);
+                   R:=DIPBCP(R,BL); SP:=DIPDIF(SP,APP); reduced:=TRUE;
+                <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> (SP = 0);   
+      h:=R; 
+<strong><font color="#4169E1">END</font></strong> DIPINFJS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIRLJ2</font></strong>(<strong><font color="#228B22">VAR</font></strong> P, Q: LIST; <strong><font color="#228B22">VAR</font></strong> reduced: BOOLEAN);
+<font color="#B22222">(* Distributive polynomial list interreduced list in the sense of Janet.
+   P and Q are lists of polynomials in distributive representation over an 
+   arbitrary domain,
+   P and Q already initialised by the calling procedure.
+   P contains polynomials which are possible candidates for prolongations,
+   Q are already considered.
+   Output is the list P of Janet-reduced polynomials from p plus Janet-reduced
+   polynomials from Q. Q contains polynomials from input Q which are not
+   Janet-reduced.
+   reduced is set TRUE iff a reduction took place *)</font>
+<strong><font color="#228B22">VAR</font></strong> F,G,H,I,f,g,HTg,HTf,T 	: LIST;
+    NewHT, FromG		: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+   T:=TIME(); F:=P; G:=Q;
+   <font color="#4169E1">REPEAT</font>
+         H:=SIL; I:=SIL; NewHT:=FALSE;
+         <font color="#4169E1">WHILE</font> (F&lt;&gt;SIL) <font color="#4169E1">OR</font> (G&lt;&gt;SIL) <font color="#4169E1">DO</font> 
+                  <font color="#4169E1">IF</font> F&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(F,f,F); FromG:=FALSE;
+                            <font color="#4169E1">ELSE</font> ADV(G,f,G); FromG:=TRUE; <strong><font color="#4169E1">END</font></strong>;
+                  HTf:=DIPEVL(f); 
+                  ADPNFJS(F,H,G,I,f,g,reduced);
+                  <font color="#4169E1">IF</font> g&lt;&gt;0 <font color="#4169E1">THEN</font>
+                     <font color="#4169E1">IF</font> reduced <font color="#4169E1">THEN</font> 
+                        HTg:=DIPEVL(g); g:=DIPIBOpt.Cancel(g); H:=COMP(g,H);
+                        <font color="#4169E1">IF</font> EQUAL(HTg,HTf)&lt;&gt;1 <font color="#4169E1">THEN</font> NewHT:=TRUE;  <strong><font color="#4169E1">END</font></strong>;
+                     <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> FromG <font color="#4169E1">THEN</font> I:=COMP(g,I);
+                                   <font color="#4169E1">ELSE</font> H:=COMP(g,H); <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;      
+         <strong><font color="#4169E1">END</font></strong>;
+         F:=H; G:=I;
+   <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font>(NewHT);
+   Q:=G; P:=F;
+   <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> BLINES(0); AWRITE(TIME()-T); SWRITE("ms, ");
+                                AWRITE(LENGTH(Q)+LENGTH(P)); 
+                                SWRITE(" irreducible polynoms ");
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> DIPIRLJ2;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIB4</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial involutive basis.
+   Algorithm for computing the involutive Base for a given F.
+   Input: Distributiv Integral Polynomial List F.
+   Output: Equivalent involutive system G.*)</font>
+<strong><font color="#228B22">VAR</font></strong> G, H, g, NM, VL, le,T	: LIST;
+    reduced			: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  T:=TIME(); H:=SIL;
+  g:=FIRST(F); VL:=DIPVL(g); le:=LENGTH(VL)+1;
+  F:=DILCAN(F, DIPIBOpt.Cancel);
+  DIPIRLJ2(F,H,reduced); <font color="#B22222">(* be carfull: don't change the order of F and H
+                                without changing the order in DIPIRL2!        *)</font>
+  G:=F;
+  LOOP 
+       <font color="#4169E1">IF</font> G=SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+       DIPIBOpt.Select(G,FALSE,g,G); H:=COMP(g,H);
+       NM:=DIPPGL3(g,VL,le); 
+       <font color="#4169E1">IF</font> NM&lt;&gt;SIL <font color="#4169E1">THEN</font> G:=CONC(NM,G); DIPIRLJ2(G,H,reduced); <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> DIPIBOpt.TraceLevel&gt;0 <font color="#4169E1">THEN</font> BLINES(1); AWRITE(TIME()-T); SWRITE("ms, ");
+                                SWRITE("involutive base with ");
+                                AWRITE(LENGTH(H)); SWRITE(" polynomials.");
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(H);
+<strong><font color="#4169E1">END</font></strong> DIPIB4;
+
+
+<font color="#B22222">(******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIBopt</font></strong>(options: LIST);
+<font color="#B22222">(* Set distributive polynomial involutive base options.
+   Input: List of 4 options in the order Trace-Level, Cancel-Option, 
+          Select-Option, ISJ-Algorithm.
+   For details see the corresponding procedures *)</font>
+<strong><font color="#228B22">VAR</font></strong> opt: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(options,opt,options);
+                       SetDIPIBTraceLevel(opt);
+     <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(options,opt,options);
+                          SetDIPIBCancel(opt);
+        <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(options,opt,options);
+                             SetDIPIBSelect(opt);
+           <font color="#4169E1">IF</font> options&lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(options,opt,options);
+                                 SetDIPIBISJ(opt);
+              <font color="#4169E1">IF</font> options&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(options,opt,options);
+                                   SetDIPIBCrit(opt);
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDIPIBopt;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIBTraceLevel</font></strong>(level: INTEGER);
+<font color="#B22222">(* Set Trace Level.
+   Input is the integer level. You get the following informatins:
+   0: no information,
+   1: computing time and number of polynomials of the computed involutive base,
+   2: informations about each Janet-reduction,
+   3: more detailed information of each Janet-reduction.
+ *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  DIPIBOpt.TraceLevel:=level;
+<strong><font color="#4169E1">END</font></strong> SetDIPIBTraceLevel;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIBCancel</font></strong>(Canc: CARDINAL);
+<font color="#B22222">(* Set distributive polynomial involutive base cancel.
+   Set the function to use to cancel down the coefficients in case of
+   integer coefficients. Canc=1 means: use ADCAN, 2 means: use DIPMOC *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">CASE</font> Canc <font color="#4169E1">OF</font>
+       1: DIPIBOpt.Cancel:=ADCAN |
+       2: DIPIBOpt.Cancel:=DIPMOC |
+       <font color="#4169E1">ELSE</font> ERROR(harmless, "DIPIB.SetCancel: Illegal number");
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDIPIBCancel;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIBSelect</font></strong>(SEL: INTEGER);
+<font color="#B22222">(* Set distributive polynomial involutive base select.
+   Set polynomial selection strategy:
+   1: DIPSSM, 2: DIPFIRST  *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">CASE</font> SEL <font color="#4169E1">OF</font>
+       1: DIPIBOpt.Select := DIPSSM |
+       2: DIPIBOpt.Select := DIPFIRST;
+       <font color="#4169E1">ELSE</font> ERROR(harmless, "DIPIBSetSelect: Illegal number");
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDIPIBSelect;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIBISJ</font></strong>(Sel: INTEGER);
+<font color="#B22222">(* Set distributive involutive base irreducible set in the sense of Janet.
+   Set Janet-Irreducible-Set Algorithm, 1: DILISJ, 2: DIPIRLJ *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">CASE</font> Sel <font color="#4169E1">OF</font>
+       1: DIPIBOpt.ISJ:=DILISJ |
+       2: DIPIBOpt.ISJ:=DIPIRLJ;
+    <font color="#4169E1">ELSE</font> ERROR(harmless, "DIPIBSetISJ: Illegal number ");
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDIPIBISJ;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIBCrit</font></strong>(crit: INTEGER);
+<font color="#B22222">(* Set distributive polynomial involutive base critera.
+   Input: an integer crit.
+   DIPIBOpt.Crit ::= TRUE iff cirt = 1 and FALSE else *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> crit=1 <font color="#4169E1">THEN</font> DIPIBOpt.Crit:=TRUE;
+	    <font color="#4169E1">ELSE</font> DIPIBOpt.Crit:=FALSE; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetDIPIBCrit;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDomainNFJ</font></strong>;
+<font color="#B22222">(* Initialize Jdomain *)</font>
+<strong><font color="#228B22">VAR</font></strong> i: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> maxdom <font color="#4169E1">DO</font> Jdomain[INTEGER(i)].NFJ:=DIPNFJ;
+                        Jdomain[INTEGER(i)].NFJ2:=DIPENFJ;
+                        Jdomain[INTEGER(i)].NFJ3:=DIPNFJS;
+  <strong><font color="#4169E1">END</font></strong>;
+  Jdomain[INTEGER(2)].NFJ:=DIPINFJ;
+  Jdomain[INTEGER(2)].NFJ2:=DIPEINFJ;
+  Jdomain[INTEGER(2)].NFJ3:=DIPINFJS;
+  Jdomain[INTEGER(3)].NFJ:=DIPINFJ;
+  Jdomain[INTEGER(3)].NFJ2:=DIPEINFJ;
+  Jdomain[INTEGER(3)].NFJ3:=DIPINFJS;
+  Jdomain[INTEGER(12)].NFJ:=DIPINFJ;
+  Jdomain[INTEGER(12)].NFJ2:=DIPEINFJ;
+  Jdomain[INTEGER(12)].NFJ3:=DIPINFJS; 
+<strong><font color="#4169E1">END</font></strong> SetDomainNFJ;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+  SetDomainNFJ;
+  <font color="#B22222">(* TraceLevel = 0, Cancel = ADPCP, Select = DIPSSM, ISJ = DILISJ,
+     Criteria = TRUE *)</font>
+  SetDIPIBopt(LIST5(0,1,1,1,1));
+  Select:=DIPSSM;
+<strong><font color="#4169E1">END</font></strong> DIPIB.
+ 
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

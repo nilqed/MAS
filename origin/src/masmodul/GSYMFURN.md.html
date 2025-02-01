@@ -1,0 +1,82 @@
+
+<html>
+<head>
+<title>./masmodul/GSYMFURN.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T15:57:28+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: GSYMFURN.md,v 1.1 1995/11/05 15:57:28 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: GSYMFURN.md,v $
+ * Revision 1.1  1995/11/05 15:57:28  pesch
+ * Diplomarbeit Manfred Goebel, Reduktion G-symmetrischer Polynome fuer
+ * beliebige Permutationsgruppen G, slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE GSYMFURN;
+<font color="#B22222">(* G-Symmetric Rational Polynomial System Definition Module. *)</font>
+
+FROM MASSTOR	IMPORT	LIST;
+
+FROM MASELEM	IMPORT	GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: GSYMFURN.md,v 1.1 1995/11/05 15:57:28 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE GRNORP</font></strong>(PG, MO: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Rational Orbit Polynomial.
+The PG-symmetric orbit polynomial of the monomial MO is computed
+with respect to the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNOPL</font></strong>(PG, ML: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Rational Orbit Polynomial List.
+The PG-symmetric orbit polynomial list is calculated from the the
+monomial list ML and the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNCUT</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> POL_1, POL_2: LIST);
+<font color="#B22222">(*G-Symmetric Rational Polynomial Cut.
+The Polynomial POL is splitted up into the G-symmetric polynomial POL_1
+and the remainder polynomial POL_2 with respect to the permutation group PG
+and the termorder. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNCHK</font></strong>(PG, BASE, POL:LIST): LIST;
+<font color="#B22222">(*G-Symmetric Rational Polynomial Check.
+The original polynomial is computed from the polynomial POL and the
+PG-symmetric base polynomials BASE with respect to the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNCHKBAS</font></strong>(<strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<font color="#B22222">(*G-Symmetric Rational Base Check.
+The procedure removes not used base orbit polynomials from BASE and
+make an update of POL. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNRED</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, BASE_POL, REM_POL: LIST);
+<font color="#B22222">(*G-Symmetric Rational Polynomial Reduction.
+The PG-symmetric polynomial BASE_POL, which is the PG-symmetric polynomial
+reconstruction with respect to the base polynomials BASE, and the remainder
+polynomial REM_POL are computed from the polynomial POL with respect to the
+permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNBAS</font></strong>(PG: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Rational Base Construction.
+The PG-symmetric base polynomials for the permutation group PG are computed. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GRNGGB</font></strong>(PG: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Rational Base Construction (Buchberger-Algorithm).
+The PG-symmetric base polynomials for the permutation group PG are computed
+with the Buchberger-Algorithm. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> GSYMFURN.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

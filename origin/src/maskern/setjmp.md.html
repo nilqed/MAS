@@ -1,0 +1,57 @@
+
+<html>
+<head>
+<title>./maskern/setjmp.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:56+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: setjmp.md,v 1.4 1993/05/11 10:46:24 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: setjmp.md,v $
+ * Revision 1.4  1993/05/11  10:46:24  kredel
+ * Increased jmp buffer
+ *
+ * Revision 1.3  1992/09/29  09:39:48  kredel
+ * Added procedure comments.
+ *
+ * Revision 1.2  1992/02/12  17:32:04  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:24  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+FOREIGN MODULE setjmp;
+
+<font color="#B22222">(* Setjmp Foreign Module. *)</font>
+
+
+<strong><font color="#228B22">TYPE</font></strong> jmp_buf = ARRAY [0..255] <font color="#4169E1">OF</font> INTEGER;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: setjmp.md,v 1.4 1993/05/11 10:46:24 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE setjmp</font></strong>(<strong><font color="#228B22">VAR</font></strong> env: jmp_buf): INTEGER;
+<font color="#B22222">(* Set jump environment. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE longjmp</font></strong>(<strong><font color="#228B22">VAR</font></strong> env: jmp_buf; rc: INTEGER);
+<font color="#B22222">(* Long jump to old environment. *)</font> 
+
+
+<strong><font color="#4169E1">END</font></strong> setjmp.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

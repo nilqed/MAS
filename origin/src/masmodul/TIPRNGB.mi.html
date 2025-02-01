@@ -1,0 +1,428 @@
+
+<html>
+<head>
+<title>./masmodul/TIPRNGB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T15:57:39+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: TIPRNGB.mi,v 1.1 1995/11/05 15:57:39 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: TIPRNGB.mi,v $
+ * Revision 1.1  1995/11/05 15:57:39  pesch
+ * Diplomarbeit Manfred Goebel, Reduktion G-symmetrischer Polynome fuer
+ * beliebige Permutationsgruppen G, slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE TIPRNGB;
+
+<font color="#B22222">(* DIP Rational Extended Groebner Bases Implementation Module. *)</font>
+
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, RED,
+			SFIRST, SIL, SRED, TIME;
+
+FROM SACLIST	IMPORT	ADV2, EQUAL, FIRST2, FIRST3, LAST, LIST2, LIST3,
+			OWRITE;
+
+FROM MASBIOS	IMPORT	BLINES, SWRITE;
+
+FROM SACRN	IMPORT	RNABS, RNINV, RNNEG, RNPROD, RNQ, RNRED, RNSUM;
+
+FROM DIPC	IMPORT	DIPEVL, DIPFMO, DIPLBC, DIPMAD, DIPMCP, EVCOMP,
+			EVDIF, EVLCM, EVMT, EVSIGN, EVSUM, VALIS;
+
+FROM DIPRN	IMPORT	DIRPDF, DIRPEX, DIRPON, DIRPPR, DIRPRP, DIRPSM,
+			DIRPWR;
+
+FROM DIPRNGB	IMPORT	EVPLM, EVPLSO;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: TIPRNGB.mi,v 1.1 1995/11/05 15:57:39 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE EGBPMC</font></strong>(AM: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> A, AX, BL, CM, C, CX, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+CM := SIL;
+<font color="#4169E1">IF</font> AM = SIL <font color="#4169E1">THEN</font> RETURN(CM); <strong><font color="#4169E1">END</font></strong>;
+FIRST2(AM, A, AX);
+<font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(CM); <strong><font color="#4169E1">END</font></strong>;
+BL := RNINV(DIPLBC(A)); C := DIRPRP(A, BL);
+CX := SIL;
+<font color="#4169E1">WHILE</font> AX # SIL <font color="#4169E1">DO</font> ADV(AX, Y, AX); Y := DIRPRP(Y, BL); CX := COMP(Y, CX); <strong><font color="#4169E1">END</font></strong>; 
+CM := COMP(C, COMP(INV(CX), CM));
+RETURN(CM);
+<strong><font color="#4169E1">END</font></strong> EGBPMC;
+
+<strong><font color="#4169E1">PROCEDURE EGBPON</font></strong>(AM: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> A, AX: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#4169E1">IF</font> AM = SIL <font color="#4169E1">THEN</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+FIRST2(AM, A, AX);
+RETURN(DIRPON(A));
+<strong><font color="#4169E1">END</font></strong> EGBPON;
+
+<strong><font color="#4169E1">PROCEDURE EGBC3</font></strong>(B, PMI, PMJ, EL: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> BP, EP, PM, PL, PX, PP, PLI, PLJ, PXI, PXJ, PPI, PPJ,
+    PS, Q, QM, SL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BP := B;
+<font color="#4169E1">REPEAT</font> ADV2(BP, PS, Q, BP);
+    ADV(PS, PM, PS); FIRST2(PM, PL, PX);
+    <font color="#4169E1">IF</font> PM &lt;&gt; PMI <font color="#4169E1">THEN</font> EP := DIPEVL(PL);
+         TL := EVMT(EL, EP);
+         <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> SL := 0; 
+              PP := PS;
+              <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QM, PP);
+                   <font color="#4169E1">IF</font> (QM = PMI) <font color="#4169E1">OR</font> (QM = PMJ) <font color="#4169E1">THEN</font> SL := 1; <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+              <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">UNTIL</font> PM = PMI;
+
+PPI := PS;
+<font color="#4169E1">REPEAT</font> ADV2(BP, PS, Q, BP);
+    ADV(PS, PM, PS); FIRST2(PM, PL, PX);
+    <font color="#4169E1">IF</font> PM &lt;&gt; PMJ <font color="#4169E1">THEN</font> EP := DIPEVL(PL);
+         TL := EVMT(EL,EP);
+         <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> SL := 0; 
+              PP := PPI;
+              <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QM, PP);
+                   <font color="#4169E1">IF</font> QM = PM <font color="#4169E1">THEN</font> SL := 1; <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+              PP := PS;
+              <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QM, PP);
+                   <font color="#4169E1">IF</font> QM = PMJ <font color="#4169E1">THEN</font> SL := 1; <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+              <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">UNTIL</font> PM = PMJ;
+
+PPJ := PS;
+<font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(BP, PS, Q, BP);
+    ADV(PS, PM, PS); FIRST2(PM, PL, PX);
+    EP := DIPEVL(PL); TL := EVMT(EL, EP);
+    <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> SL := 0; PP := PPI;
+         <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QM, PP);
+              <font color="#4169E1">IF</font> QM = PM <font color="#4169E1">THEN</font> SL := 1; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+         PP := PPJ;
+         <font color="#4169E1">WHILE</font> (PP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font> ADV(PP, QM, PP);
+              <font color="#4169E1">IF</font> QM = PM <font color="#4169E1">THEN</font> SL := 1; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+SL := 1; RETURN(SL);
+<strong><font color="#4169E1">END</font></strong> EGBC3;
+
+<strong><font color="#4169E1">PROCEDURE EGBC4</font></strong>(PMI, PMJ, EL: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong>  PI, PJ, EI, EJ, EP, SL, DUMMY: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+FIRST2(PMI, PI, DUMMY); FIRST2(PMJ, PJ, DUMMY);
+EI := DIPEVL(PI); EJ := DIPEVL(PJ);
+EP := EVSUM(EI, EJ); SL := EQUAL(EL, EP);
+RETURN(1 - SL);
+<strong><font color="#4169E1">END</font></strong> EGBC4;
+
+<strong><font color="#4169E1">PROCEDURE EGBPSP</font></strong>(AM, BM: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> A, AL, AP, AX, B, BL, BP, BX, C, CL, CX, CM, 
+    EL, FL, GL, Y1, Y2, DUMMY: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+CM := SIL;
+<font color="#4169E1">IF</font> (AM = SIL) <font color="#4169E1">OR</font> (BM = SIL) <font color="#4169E1">THEN</font> RETURN(CM); <strong><font color="#4169E1">END</font></strong>;
+FIRST2(AM, A, AX); FIRST2(BM, B, BX);
+<font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(CM); <strong><font color="#4169E1">END</font></strong>;
+
+DIPMAD(A, AL, EL, DUMMY); DIPMAD(B, BL, FL, DUMMY);
+GL := EVLCM(EL, FL);
+AP := DIPFMO(BL, EVDIF(GL, EL)); BP := DIPFMO(AL, EVDIF(GL, FL));
+C := DIRPDF(DIRPPR(A, AP), DIRPPR(B, BP));
+<font color="#4169E1">IF</font> C = 0 <font color="#4169E1">THEN</font> RETURN(CM); <strong><font color="#4169E1">END</font></strong>;
+
+CX := SIL;
+<font color="#4169E1">WHILE</font> AX # SIL <font color="#4169E1">DO</font>
+    ADV(AX, Y1, AX); Y1 := DIRPPR(Y1, AP);
+    ADV(BX, Y2, BX); Y2 := DIRPPR(Y2, BP);
+    CX := COMP(DIRPDF(Y1, Y2), CX);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+CM := COMP(C, COMP(INV(CX), CM));
+RETURN(CM);
+<strong><font color="#4169E1">END</font></strong> EGBPSP;
+
+<strong><font color="#4169E1">PROCEDURE EGBPNF</font></strong>(P, SM: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> AP, APP, PP, QM, Q, QX, QA, QE, R, RX, RM,
+    SL, S, SX, TA, TE, XX, Y1, Y2, DUMMY: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RM := SIL;
+<font color="#4169E1">IF</font> (SM = SIL) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> RM := SM; RETURN(RM); <strong><font color="#4169E1">END</font></strong>;
+R := 0;
+FIRST2(SM, S, SX);
+<font color="#4169E1">REPEAT</font> DIPMAD(S, TA, TE, DUMMY);
+    PP := P;
+    <font color="#4169E1">REPEAT</font> ADV(PP, QM, PP); FIRST2(QM, Q, QX);
+         DIPMAD(Q, QA, QE, DUMMY); SL := EVMT(TE, QE);
+         <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1);
+    <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> XX := DIPFMO(TA, TE);
+         S := DIRPDF(S, XX); 
+         R := DIRPSM(R, XX);
+    <font color="#4169E1">ELSE</font> XX := DIPFMO(RNQ(TA, QA), EVDIF(TE, QE));
+         AP := DIRPPR(Q, XX);
+         S := DIRPDF(S, AP);
+         RX := SIL;
+         <font color="#4169E1">WHILE</font> SX # SIL <font color="#4169E1">DO</font> ADV(SX, Y1, SX);
+              ADV(QX, Y2, QX);
+              RX := COMP(DIRPDF(Y1, DIRPPR(Y2, XX)), RX);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+         SX := INV(RX);
+         <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">UNTIL</font> S = 0;
+RX := SX;
+<font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(RM); <font color="#4169E1">ELSE</font> RM := COMP(R, COMP(RX, RM)); <strong><font color="#4169E1">END</font></strong>;
+RETURN(RM);
+<strong><font color="#4169E1">END</font></strong> EGBPNF;
+
+<strong><font color="#4169E1">PROCEDURE LISTMERGE</font></strong>(L1, L2: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> AM1, AM2, AL1, AL2, AX1, AX2, EL1, EL2, L, LP, LP1, LP2, TL: LIST;
+    eoz: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#4169E1">IF</font> L1 = SIL <font color="#4169E1">THEN</font> L := L2; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> L2 = SIL <font color="#4169E1">THEN</font> L := L1; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+
+LP1 := L1; LP2 := L2;
+AM1 := FIRST(L1); AM2 := FIRST(L2);
+FIRST2(AM1, AL1, AX1); FIRST2(AM2, AL2, AX2);
+EL1 := DIPEVL(AL1); EL2 := DIPEVL(AL2);
+TL := EVCOMP(EL1, EL2);
+<font color="#4169E1">IF</font> TL &gt; 0 <font color="#4169E1">THEN</font> L := L2; LP := L2; LP2 := RED(L2); eoz := FALSE;
+<font color="#4169E1">ELSE</font> L := L1; LP := L1; LP1 := RED(L1); eoz := TRUE; <strong><font color="#4169E1">END</font></strong>;
+
+LOOP <font color="#4169E1">IF</font> eoz <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> LP1 = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+         AM1 := FIRST(LP1); FIRST2(AM1, AL1, AX1);
+         EL1 := DIPEVL(AL1); TL := EVCOMP(EL1, EL2);
+         <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> LP := LP1; LP1 := RED(LP1); eoz := TRUE;
+         <font color="#4169E1">ELSE</font> SRED(LP, LP2); LP := LP2; LP2 := RED(LP2); eoz:=FALSE; <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> LP2 = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+         AM2 := FIRST(LP2); FIRST2(AM2, AL2, AX2);
+         EL2 := DIPEVL(AL2); TL := EVCOMP(EL1, EL2);
+         <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> SRED(LP, LP1); LP := LP1; LP1 := RED(LP1); eoz := TRUE;
+         <font color="#4169E1">ELSE</font> LP := LP2; LP2 := RED(LP2); eoz := FALSE <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> LP1 = SIL <font color="#4169E1">THEN</font> SRED(LP, LP2); <font color="#4169E1">ELSE</font> SRED(LP, LP1); <strong><font color="#4169E1">END</font></strong>;
+RETURN(L);
+<strong><font color="#4169E1">END</font></strong> LISTMERGE;
+
+<strong><font color="#4169E1">PROCEDURE EGBLPM</font></strong>(A: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> AM1, AM2, AL1, AL2, AX1, AX2, AP, APP, APPP, B, BP, BPP,
+    C, CP, CPP, CS, EL1, EL2, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (RED(A) = SIL) <font color="#4169E1">THEN</font> B := A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+C := LIST1(0); CS := C; AP := A;
+<font color="#4169E1">REPEAT</font> ADV(AP, AM1, APP); FIRST2(AM1, AL1, AX1);
+    <font color="#4169E1">IF</font> APP = SIL <font color="#4169E1">THEN</font> BP := AP;
+    <font color="#4169E1">ELSE</font> ADV(APP, AM2, APPP); FIRST2(AM2, AL2, AX2);
+         EL1 := DIPEVL(AL1); EL2 := DIPEVL(AL2);
+         TL := EVCOMP(EL1, EL2);
+         <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> BP := AP; SRED(APP, SIL);
+         <font color="#4169E1">ELSE</font> BP := APP; SRED(APP, AP); SRED(AP, SIL); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+    C := COMP(BP, C); AP := APPP;
+    <font color="#4169E1">UNTIL</font> (APP = SIL) <font color="#4169E1">OR</font> (AP = SIL);
+
+ADV(C, BP, C); SFIRST(CS, BP); SRED(CS, C); ADV(C, B, CP);
+<font color="#4169E1">WHILE</font> C &lt;&gt; CP <font color="#4169E1">DO</font> ADV(CP, BP, CPP); BPP := LISTMERGE(B, BP);
+    SFIRST(C, BPP); SRED(C, CPP); C := CPP; ADV(C, B, CP); <strong><font color="#4169E1">END</font></strong>;
+RETURN(B);
+<strong><font color="#4169E1">END</font></strong> EGBLPM;
+
+<strong><font color="#4169E1">PROCEDURE EGBMI</font></strong>(GB: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> AL, EI, EJ, EL, PB, PI, PIP, PJ, PP, PS, QP, TL, PM1, PM2, PX1, PX2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+PP := GB;
+<font color="#4169E1">IF</font> (GB = SIL) <font color="#4169E1">OR</font> (RED(GB) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+
+PS := PP; QP := SIL;
+<font color="#4169E1">REPEAT</font> ADV(PS, PM1, PS); FIRST2(PM1, PI, PX1);
+    PB := PS; EI := DIPEVL(PI); TL := 0;
+    <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font> ADV(PB, PM2, PB);
+         FIRST2(PM2, PJ, PX2); EJ := DIPEVL(PJ);
+         TL := EVMT(EI, EJ);
+         <strong><font color="#4169E1">END</font></strong>;
+    PB := QP;
+    <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font> ADV(PB, PM2 ,PB);
+         FIRST2(PM2, PJ, PX2); EJ := DIPEVL(PJ);
+         TL := EVMT(EI,EJ);
+         <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> QP := COMP(PM1, QP); <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">UNTIL</font> PS = SIL;
+
+PP := INV(QP);
+<font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+PS := PP; QP := PP; PP := SIL;
+<font color="#4169E1">REPEAT</font> ADV(PS, PM1, PS);
+    FIRST2(PM1, PI, PX1);
+    DIPMAD(PI, AL, EL, PIP);
+    <font color="#4169E1">IF</font> PIP &lt;&gt; SIL <font color="#4169E1">THEN</font>
+         PM1 := SIL; PM1 := COMP(PIP, COMP(PX1, PM1));
+         PM1 := EGBPNF(QP, PM1);
+         <font color="#4169E1">IF</font> PM1 &lt;&gt; SIL <font color="#4169E1">THEN</font>
+              FIRST2(PM1, PIP, PX1);
+              PI := DIPMCP(AL, EL, PIP);
+         <font color="#4169E1">ELSE</font> PI := DIPFMO(AL, EL); <strong><font color="#4169E1">END</font></strong>;
+         PM1 := SIL; PM1 := COMP(PI, COMP(PX1, PM1));
+         <strong><font color="#4169E1">END</font></strong>;
+    PP := COMP(PM1, PP);
+    <font color="#4169E1">UNTIL</font> PS = SIL;
+PP := INV(PP);
+<font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>;
+RETURN(EGBLPM(PP));
+<strong><font color="#4169E1">END</font></strong> EGBMI;
+
+<strong><font color="#4169E1">PROCEDURE EGBLCPL</font></strong>(P: LIST;  <strong><font color="#228B22">VAR</font></strong> D, B: LIST);
+<strong><font color="#228B22">VAR</font></strong> BP, BR, EL, ELI, ELJ, PI, PJ, PP, PM1, PM2, PX1, PX2,
+    PSS, Q, QP, V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+D := SIL; B := SIL;
+<font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+PP := P; PSS := PP; BR := SIL;
+<font color="#4169E1">REPEAT</font> ADV(PSS, PM1, QP);
+    FIRST2(PM1, PI, PX1);
+    Q := LIST1(PM1); BP := COMP(0, BR); ELI := DIPEVL(PI);
+    <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, PM2, QP); FIRST2(PM2, PJ, PX2);
+         ELJ := DIPEVL(PJ); EL := EVLCM(ELI, ELJ);
+         D := COMP(LIST3(EL, BP, Q), D); Q := COMP(PM2, Q);
+         <strong><font color="#4169E1">END</font></strong>;
+    QP := INV(Q); SFIRST(BP, QP);
+    BR := COMP(Q, BP); PSS := RED(PSS);
+    <font color="#4169E1">UNTIL</font> PSS = SIL;
+D := EVPLSO(D); B := INV(BR);
+<strong><font color="#4169E1">END</font></strong> EGBLCPL;
+
+<strong><font color="#4169E1">PROCEDURE EGBLUPL</font></strong>(PM, P, D, B: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> BP, BPP, BPPP, BR, DL, DP, EL, ELI, ELJ, PB, PMI, PLI, PXI, PP, PPP,
+    PPR, PS, Q, QS, SL, T, TF, V, HM, HI, HX: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BP := B; DP := SIL; PP := P; HM := PM;
+PS := LIST1(HM); PPR := LAST(PP); SRED(PPR, PS);
+FIRST2(HM, HI, HX); ELJ := DIPEVL(HI);
+
+<font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BP, QS, BPP); ADV(BPP, Q, BPPP);
+            PMI := FIRST(QS); FIRST2(PMI, PLI, PXI);
+            ELI := DIPEVL(PLI); EL := EVLCM(ELI, ELJ);
+            DL := LIST3(EL, BP, Q); DP := COMP(DL, DP);
+            PS := LIST1(HM); SRED(Q, PS); SFIRST(BPP, PS); BP := BPPP;
+            <strong><font color="#4169E1">END</font></strong>;
+DP := EVPLSO(DP); DP := EVPLM(D, DP);
+PS := LIST1(HM); PB := LIST2(PS, PS);
+BR := LAST(B); SRED(BR, PB);
+RETURN(DP);
+<strong><font color="#4169E1">END</font></strong> EGBLUPL;
+
+<strong><font color="#4169E1">PROCEDURE DIREGB</font></strong>(P, TF: LIST; <strong><font color="#228B22">VAR</font></strong> GB, GBM: LIST);
+<strong><font color="#228B22">VAR</font></strong> B, C, CPI, CPJ, CPP, D, DL, EL, ELI, ELJ, J1Y, K, PMI, PMIP, PMJ, 
+    PM, PL, PX, PP, PPP, PPR, PS, Q, QP, SM, HM, H, HX, SL, T, 
+    X3, X4, XC, XH, XS, YD, I, XX: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+GB := SIL; GBM := SIL; PP := SIL;
+<font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+PS := P; K := 0; YD := LENGTH(P);
+<font color="#4169E1">WHILE</font> PS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PS, PMI, PS);
+    <font color="#4169E1">IF</font> PMI # 0 <font color="#4169E1">THEN</font> 
+         K := K + 1;
+         XX := SIL;
+         <font color="#4169E1">FOR</font> I := K + 1 <font color="#4169E1">TO</font> YD <font color="#4169E1">DO</font> XX := COMP(0, XX); <strong><font color="#4169E1">END</font></strong>;
+         XX := COMP(DIRPEX(PMI, 0), XX);
+         <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> K - 1 <font color="#4169E1">DO</font> XX := COMP(0, XX); <strong><font color="#4169E1">END</font></strong>;
+         PP := COMP(LIST2(PMI, XX), PP);
+         <strong><font color="#4169E1">END</font></strong>; 
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<font color="#4169E1">IF</font> PP = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+
+PS := PP; PPR := SIL;
+<font color="#4169E1">WHILE</font> PS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PS, PMI, PS);
+    <font color="#4169E1">IF</font> PMI &lt;&gt; SIL <font color="#4169E1">THEN</font> PMIP := EGBPMC(PMI);
+         SL := EGBPON(PMIP);
+         <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> FIRST2(PMIP, GB, GBM);
+              GB := LIST1(GB); GBM := LIST1(GBM); RETURN;
+              <strong><font color="#4169E1">END</font></strong>;
+         PPR := COMP(PMIP, PPR);
+         <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+PP := INV(PPR);
+
+<font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">OR</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font>
+    <font color="#4169E1">WHILE</font> PP # SIL <font color="#4169E1">DO</font> ADV(PP, PM, PP);
+         FIRST2(PM, PL, PX);
+         GB := COMP(PL, GB); GBM := COMP(PX, GBM);
+         <strong><font color="#4169E1">END</font></strong>;
+    GB := INV(GB);  GBM := INV(GBM); RETURN;
+    <strong><font color="#4169E1">END</font></strong>;
+
+<font color="#4169E1">IF</font> VALIS = SIL <font color="#4169E1">THEN</font> TF := 0 <strong><font color="#4169E1">END</font></strong>;
+T := TIME(); XH := 0; XS := 0; X3 := 0; X4 := 0;
+
+PPR := EGBLPM(PP); PP := INV(PPR);
+EGBLCPL(PP, D, B); YD := LENGTH(D);
+
+LOOP <font color="#4169E1">IF</font> D = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+    YD := YD - 1; ADV(D, DL, D);
+    FIRST3(DL, EL, CPI, CPJ); ADV(CPI, QP, C);
+    PMI := FIRST(QP); J1Y := RED(CPJ);
+    PMJ := FIRST(J1Y); J1Y := RED(CPJ);
+    CPP := RED(J1Y); SRED(CPJ, CPP);
+    <font color="#4169E1">IF</font> CPP = SIL <font color="#4169E1">THEN</font> Q := LAST(QP); SFIRST(C, Q); <strong><font color="#4169E1">END</font></strong>;
+    LOOP X3 := X3 + 1; <font color="#4169E1">IF</font> EGBC3(B, PMI, PMJ, EL) = 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+         X4 := X4 + 1; <font color="#4169E1">IF</font> EGBC4(PMI, PMJ, EL) = 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+         XS := XS + 1; SM := EGBPSP(PMI, PMJ);
+         <font color="#4169E1">IF</font> SM = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+         XH := XH + 1; HM := EGBPNF(PP, SM);
+         <font color="#4169E1">IF</font> HM = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+         HM := EGBPMC(HM); FIRST2(HM, H, HX); SL := EGBPON(HM);
+         <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> FIRST2(PMIP, GB, GBM);
+              GB := LIST1(GB); GBM := LIST1(GBM); RETURN;
+              <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> OWRITE(TIME()-T); SWRITE(" S, "); OWRITE(XH);
+              SWRITE(" H-POLYNOMIALS, "); OWRITE(YD); SWRITE(" PAIRS LEFT.");
+              BLINES(0); SWRITE("H="); DIRPWR(H,VALIS,-1); BLINES(0);
+              <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> OWRITE(X3); SWRITE(" CRIT3,  "); OWRITE(X4);
+              SWRITE(" CRIT4,  "); OWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1);
+              <strong><font color="#4169E1">END</font></strong>;
+         D := EGBLUPL(HM, PP, D, B); YD := LENGTH(D);
+         EXIT;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+
+<font color="#4169E1">IF</font> TF &gt;= 1 <font color="#4169E1">THEN</font> OWRITE(TIME()-T); SWRITE(" S, "); OWRITE(XH);
+    SWRITE(" H-POLYNOMIALS, "); OWRITE(YD); SWRITE(" PAIRS LEFT.");
+    BLINES(0); SWRITE("H="); DIRPWR(H,VALIS,-1); BLINES(0);
+    <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> TF &gt;= 2 <font color="#4169E1">THEN</font> OWRITE(X3); SWRITE(" CRIT3,  "); OWRITE(X4);
+    SWRITE(" CRIT4,  "); OWRITE(XS); SWRITE(" SPOLY,  "); BLINES(1);
+    <strong><font color="#4169E1">END</font></strong>;
+PP := EGBMI(PP);
+<font color="#4169E1">WHILE</font> PP # SIL <font color="#4169E1">DO</font>
+    ADV(PP, PM, PP);
+    FIRST2(PM, PL, PX);
+    GB := COMP(PL, GB); GBM := COMP(PX, GBM);
+    <strong><font color="#4169E1">END</font></strong>;
+GB := INV(GB);  GBM := INV(GBM);
+<strong><font color="#4169E1">END</font></strong> DIREGB;
+
+<strong><font color="#4169E1">END</font></strong> TIPRNGB.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

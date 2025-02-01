@@ -1,0 +1,56 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT2.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:47+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT2.md,v 1.2 1992/02/12 17:34:46 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT2.md,v $
+ * Revision 1.2  1992/02/12  17:34:46  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:26  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACEXT2;
+
+<font color="#B22222">(* SAC Extensions 2 Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACEXT2.md,v 1.2 1992/02/12 17:34:46 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE RNBCR</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> M,N,KL: LIST); 
+<font color="#B22222">(*Rational number binary common representation.  A and B are binary
+rational numbers.  If both A eq 0 and B eq 0, then M eq N eq K eq 0.
+If A eq 0, B ne 0, then M eq 0 and N and K are the unique integers
+such that B eq N cdot 2 sup k with N odd.  If B eq 0, A ne 0, then
+N eq 0 and M and K are the unique integers such that A eq
+M cdot 2 sup K with M odd.  If A ne 0 and B ne 0, then M,N, and K
+are the unique integers such that A eq M cdot 2 sup K and
+B eq N cdot 2 sup K with at least one of M and N odd.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT2.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,386 @@
+
+<html>
+<head>
+<title>./masarith/MathLib.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MathLib.mi,v 1.4 1993/03/22 10:17:07 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) GMD
+ * ----------------------------------------------------------------------------
+ * $Log: MathLib.mi,v $
+ * Revision 1.4  1993/03/22  10:17:07  kredel
+ * This file is not part of MAS
+ *
+ * Revision 1.3  1992/10/15  16:28:15  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  13:19:06  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:34  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+IMPLEMENTATION MODULE MathLib;
+
+<font color="#B22222">(* GMD Mocka MathLib. *)</font>
+
+
+  <strong><font color="#228B22">CONST</font></strong>
+    log2     =  0.693147180559945309E0;  <font color="#B22222">(* ln (2.0) *)</font>
+    pi       = 3.1415926535897932384626434;
+    twoopi   = 2.0 / pi;
+    pio2     =   pi / 2.0;
+    pio4     =   pi / 4.0;
+    sqrt2    =  1.4142135623730950488016887;
+    MaxCardI = 65535;
+    MaxCardR = 65535.0;
+    
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MathLib.mi,v 1.4 1993/03/22 10:17:07 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) GMD";
+
+
+
+  <strong><font color="#4169E1">PROCEDURE Trunc</font></strong> (x : LONGREAL) : INTEGER;
+  <font color="#B22222">(* software emulation of TRUNC for LONGREAL, x &gt;= 0.0 *)</font>
+    <strong><font color="#228B22">VAR</font></strong> res, exp, i, j : INTEGER; xS : REAL; xL : LONGREAL; c : CARDINAL;
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    exp := 0;
+    <font color="#4169E1">WHILE</font> x &gt;= MaxCardR <font color="#4169E1">DO</font>
+      x := x / MaxCardR; INC (exp);
+    <strong><font color="#4169E1">END</font></strong>;
+    xS := x;
+    res := TRUNC (xS);
+    <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> exp <font color="#4169E1">DO</font>
+      xS := x;
+      xL := FLOAT ( TRUNC (xS));
+      x := (x - xL) * MaxCardR;
+      xS := x;
+      j := TRUNC (xS);
+      res := MaxCardI * res + j;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN res;
+  <strong><font color="#4169E1">END</font></strong> Trunc;
+
+  <strong><font color="#4169E1">PROCEDURE Float</font></strong> (x : INTEGER) : LONGREAL;
+  <font color="#B22222">(* software emulation of FLOAT for LONGREAL, x &gt;= 0.0 *)</font>
+    <strong><font color="#228B22">VAR</font></strong> divC, modC : CARDINAL;
+        divR, modR : LONGREAL;
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    divC := x DIV MaxCardI; divR := FLOAT (divC);
+    modC := x MOD MaxCardI; modR := FLOAT (modC);
+    RETURN divR * MaxCardR + modR;
+  <strong><font color="#4169E1">END</font></strong> Float;
+
+  <strong><font color="#4169E1">PROCEDURE frexp</font></strong> (x: LONGREAL; <strong><font color="#228B22">VAR</font></strong> exp: INTEGER): LONGREAL;
+  <font color="#B22222">(* Returns the real mantissa m of 'x' and an integer exp *)</font>
+  <font color="#B22222">(* such that 'x' = m * 2 ** exp *)</font>
+    <strong><font color="#228B22">VAR</font></strong> neg : BOOLEAN;
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* frexp *)</font>
+    exp := 0;
+    neg := x &lt; 0.0;
+    <font color="#4169E1">IF</font> neg <font color="#4169E1">THEN</font> x := -x; <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> x &gt;= 1.0 <font color="#4169E1">THEN</font>
+      <font color="#4169E1">REPEAT</font>
+        INC (exp); x := x / 2.0;
+      <font color="#4169E1">UNTIL</font> x &lt; 1.0;
+    ELSIF (x &lt; 0.1) &amp; (x # 0.0) <font color="#4169E1">THEN</font>
+      <font color="#4169E1">REPEAT</font>
+        DEC (exp); x := x * 2.0;
+      <font color="#4169E1">UNTIL</font> x &gt;= 0.1;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> neg <font color="#4169E1">THEN</font> x := -x; <strong><font color="#4169E1">END</font></strong>;
+    RETURN x
+  <strong><font color="#4169E1">END</font></strong> frexp;
+
+  <strong><font color="#4169E1">PROCEDURE ldexp</font></strong> (value: LONGREAL; exp: INTEGER): LONGREAL;
+  <font color="#B22222">(* Returns value * 2 ** exp *)</font>
+    <strong><font color="#228B22">VAR</font></strong> i: INTEGER;
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> exp &gt; 0 <font color="#4169E1">THEN</font>
+      <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font>  exp <font color="#4169E1">DO</font> value := value * 2.0 <strong><font color="#4169E1">END</font></strong>;
+    ELSIF exp &lt; 0 <font color="#4169E1">THEN</font>
+      <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> -exp <font color="#4169E1">DO</font> value := value / 2.0 <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    RETURN value;
+  <strong><font color="#4169E1">END</font></strong> ldexp;
+
+  <strong><font color="#4169E1">PROCEDURE modf</font></strong> (value: LONGREAL; <strong><font color="#228B22">VAR</font></strong> int: INTEGER): LONGREAL;
+  <font color="#B22222">(* Returns the positive fractional part of value and (by int) *)</font>
+  <font color="#B22222">(* the integer part *)</font>
+    <strong><font color="#228B22">VAR</font></strong> neg: BOOLEAN; 
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    neg := value &lt; 0.0;
+    <font color="#4169E1">IF</font> neg <font color="#4169E1">THEN</font> value := -value <strong><font color="#4169E1">END</font></strong>;
+    int := Trunc (value);
+    value := value - Float (int);
+    <font color="#4169E1">IF</font> neg <font color="#4169E1">THEN</font> int := -int <strong><font color="#4169E1">END</font></strong>;
+    RETURN value;
+  <strong><font color="#4169E1">END</font></strong> modf;
+
+  <strong><font color="#4169E1">PROCEDURE sarctan</font></strong> (arg: LONGREAL): LONGREAL;
+  <font color="#B22222">(* Reduces its positive argument to the range {0 .. 0.414} and calls xatan *)</font>
+
+    <strong><font color="#4169E1">PROCEDURE xatan</font></strong> (arg: LONGREAL): LONGREAL;
+      <strong><font color="#228B22">CONST</font></strong>
+	p4 = 0.161536412982230228262E2;
+	p3 = 0.26842548195503973794141E3;
+	p2 = 0.11530293515404850115428136E4;
+	p1 = 0.178040631643319697105464587E4;
+	p0 = 0.89678597403663861959987488E3;
+	q4 = 0.5895697050844462222791E2;
+	q3 = 0.536265374031215315104235E3;
+	q2 = 0.16667838148816337184521798E4;
+	q1 = 0.207933497444540981287275926E4;
+	q0 = 0.89678597403663861962481162E3;
+      <strong><font color="#228B22">VAR</font></strong> argsq: LONGREAL;
+    <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* xatan *)</font>
+      argsq := arg * arg;
+      RETURN ((((         p4  * argsq + p3) * argsq + p2)
+	       * argsq + p1) * argsq + p0)
+	   / (((((argsq + q4) * argsq + q3) * argsq + q2)
+	       * argsq + q1) * argsq + q0) * arg;
+    <strong><font color="#4169E1">END</font></strong> xatan;
+
+    <strong><font color="#228B22">CONST</font></strong>
+      sq2m1 = sqrt2 - 1.0;
+      sq2p1 = sqrt2 + 1.0;
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* sarctan *)</font>
+    <font color="#4169E1">IF</font> arg &lt; sq2m1 <font color="#4169E1">THEN</font>
+      RETURN xatan (arg);
+    ELSIF arg &gt; sq2p1 <font color="#4169E1">THEN</font>
+      RETURN pio2 - xatan (1.0 / arg);
+    <font color="#4169E1">ELSE</font>
+      RETURN pio4 + xatan ((arg-1.0) / (arg+1.0));
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong> sarctan;
+
+  <strong><font color="#4169E1">PROCEDURE sinus</font></strong> (x: LONGREAL; quad: INTEGER): LONGREAL;
+    <strong><font color="#228B22">VAR</font></strong> y, dummy, ysq: LONGREAL;
+      e, f, k: INTEGER;
+    <strong><font color="#228B22">CONST</font></strong>
+      p0 =  0.1357884097877375669092680E8;
+      p1 = -0.4942908100902844161158627E7;
+      p2 =  0.4401030535375266501944918E6;
+      p3 = -0.1384727249982452873054457E5;
+      p4 =  0.1459688406665768722226959E3;
+      q0 =  0.8644558652922534429915149E7;
+      q1 =  0.4081792252343299749395779E6;
+      q2 =  0.9463096101538208180571257E4;
+      q3 =  0.1326534908786136358911494E3;
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* sinus *)</font>
+    <font color="#4169E1">IF</font> x &lt; 0.0 <font color="#4169E1">THEN</font>
+     x := -x;
+     INC (quad, 2);
+    <strong><font color="#4169E1">END</font></strong>;
+    x := x * twoopi;  <font color="#B22222">(* Underflow? *)</font>
+    <font color="#4169E1">IF</font> x &gt; 32764.0 <font color="#4169E1">THEN</font>
+      y := modf (x, e);
+      INC (e, quad);
+      dummy := modf (0.25 * real (e), f);
+      quad := e - 4 * f;
+    <font color="#4169E1">ELSE</font>
+      k := entier (x);
+      y := x - realL (k);
+      quad := (quad + k) MOD 4;
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> ODD (quad) <font color="#4169E1">THEN</font> y := 1.0 - y <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> quad &gt; 1 <font color="#4169E1">THEN</font> y := -y <strong><font color="#4169E1">END</font></strong>;
+    ysq := y * y;
+    RETURN (((((p4 * ysq + p3) * ysq + p2) * ysq + p1) * ysq + p0) * y)
+         /  ((((     ysq + q3) * ysq + q2) * ysq + q1) * ysq + q0);
+  <strong><font color="#4169E1">END</font></strong> sinus;
+
+  <strong><font color="#4169E1">PROCEDURE sqrt</font></strong> (arg: REAL): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN sqrtL (arg)
+  <strong><font color="#4169E1">END</font></strong> sqrt;
+
+  <strong><font color="#4169E1">PROCEDURE sqrtL</font></strong> (arg: LONGREAL): LONGREAL;
+    <font color="#B22222">(* Newton's method. Returns zero if arg &lt; 0 *)</font>
+
+    <strong><font color="#228B22">CONST</font></strong> L30 = 1.073741824E9; <font color="#B22222">(* = 1L&lt;&lt;30 *)</font>
+    <strong><font color="#228B22">VAR</font></strong> x, temp: LONGREAL; exp: INTEGER; i: [0..4];
+
+    <strong><font color="#4169E1">PROCEDURE TwoPower</font></strong> (b: CARDINAL): LONGREAL;
+      <font color="#B22222">(* Returns 1L&lt;&lt;b for b &lt; 32 *)</font>
+      <strong><font color="#228B22">VAR</font></strong> i: CARDINAL; result: LONGREAL;
+    <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* TwoPower *)</font>
+      result := 1.0;
+      <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> b <font color="#4169E1">DO</font> result := result * 2.0 <strong><font color="#4169E1">END</font></strong>;
+      RETURN result;
+    <strong><font color="#4169E1">END</font></strong> TwoPower;
+
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* sqrt *)</font>
+    <font color="#4169E1">IF</font> arg &lt; 0.0 <font color="#4169E1">THEN</font> <font color="#B22222">(* Overflow *)</font> RETURN 0.0 <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> arg = 0.0 <font color="#4169E1">THEN</font> RETURN 0.0 <strong><font color="#4169E1">END</font></strong>;
+    x := frexp (arg, exp);
+    <font color="#4169E1">WHILE</font> x &lt; 0.5 <font color="#4169E1">DO</font>
+      x := x * 2.0;
+      DEC (exp);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> ODD (exp) <font color="#4169E1">THEN</font>
+      x := x * 2.0;
+      DEC (exp);
+    <strong><font color="#4169E1">END</font></strong>;
+    temp := 0.5 * (1.0 + x);
+    <font color="#4169E1">WHILE</font> exp &gt; 60 <font color="#4169E1">DO</font>
+      temp := temp * L30;
+      DEC (exp, 60);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">WHILE</font> exp &lt; -60 <font color="#4169E1">DO</font>
+      temp := temp / L30;
+      INC (exp, 60);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> exp &gt;= 0 <font color="#4169E1">THEN</font>
+      temp := temp * TwoPower ( exp DIV 2);
+    <font color="#4169E1">ELSE</font>
+      temp := temp / TwoPower (-exp DIV 2);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">FOR</font> i := 0 <font color="#4169E1">TO</font> 4 <font color="#4169E1">DO</font> temp := 0.5 * (temp + arg / temp) <strong><font color="#4169E1">END</font></strong>;
+    RETURN temp;
+  <strong><font color="#4169E1">END</font></strong> sqrtL;
+
+  <strong><font color="#4169E1">PROCEDURE exp</font></strong> (arg: REAL): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN expL (arg)
+  <strong><font color="#4169E1">END</font></strong> exp;
+
+  <strong><font color="#4169E1">PROCEDURE expL</font></strong> (arg: LONGREAL): LONGREAL;
+    <font color="#B22222">(* Returns zero for arg out of range *)</font>
+    <strong><font color="#228B22">VAR</font></strong> ent: INTEGER;
+      fract, xsq, temp1, temp2: LONGREAL;
+    <strong><font color="#228B22">CONST</font></strong>
+      maxf = 10000.0;
+      p0 = 0.2080384346694663001443843411E7;
+      p1 = 0.3028697169744036299076048876E5;
+      p2 = 0.6061485330061080841615584556E2;
+      q0 = 0.6002720360238832528230907598E7;
+      q1 = 0.3277251518082914423057964422E6;
+      q2 = 0.1749287689093076403844945335E4;
+      log2e = 1.0 / log2;
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* exp *)</font>
+    <font color="#4169E1">IF</font> arg = 0.0 <font color="#4169E1">THEN</font> RETURN 1.0 <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> arg &lt; -maxf <font color="#4169E1">THEN</font> RETURN 0.0 <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> arg &gt;  maxf <font color="#4169E1">THEN</font> <font color="#B22222">(* Overflow *)</font> RETURN 0.0 <strong><font color="#4169E1">END</font></strong>;
+    arg := arg * log2e;
+    ent := entier (arg);
+    fract := (arg - realL (ent)) - 0.5;
+    xsq := fract * fract;
+    temp1 := ((       p2  * xsq + p1) * xsq + p0) * fract;
+    temp2 :=  ((xsq + q2) * xsq + q1) * xsq + q0;
+    RETURN ldexp (sqrt2 * (temp2 + temp1) / (temp2 - temp1), ent);
+  <strong><font color="#4169E1">END</font></strong> expL;
+
+  <strong><font color="#4169E1">PROCEDURE ln</font></strong> (arg: REAL): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN lnL (arg)
+  <strong><font color="#4169E1">END</font></strong> ln;
+
+  <strong><font color="#4169E1">PROCEDURE lnL</font></strong> (arg: LONGREAL): LONGREAL;
+    <font color="#B22222">(* Returns zero for arg out of range *)</font>
+    <strong><font color="#228B22">VAR</font></strong> asq: LONGREAL; exp: INTEGER;
+    <strong><font color="#228B22">CONST</font></strong>
+      sqrto2 = 1.0 / sqrt2;
+      p0 = -0.240139179559210510E2;
+      p1 =  0.309572928215376501E2;
+      p2 = -0.963769093368686593E1;
+      p3 =  0.421087371217979714E0;
+      q0 = -0.120069589779605255E2;
+      q1 =  0.194809660700889731E2;
+      q2 = -0.891110902798312337E1;
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* ln *)</font>
+    <font color="#4169E1">IF</font> arg &lt;= 0.0 <font color="#4169E1">THEN</font> <font color="#B22222">(* Overflow *)</font> RETURN 0.0 <strong><font color="#4169E1">END</font></strong>;
+    arg := frexp (arg, exp);
+    <font color="#4169E1">WHILE</font> arg &lt; sqrto2 <font color="#4169E1">DO</font>
+      arg := arg * 2.0;
+      DEC (exp);
+    <strong><font color="#4169E1">END</font></strong>;
+    arg := (arg - 1.0) / (arg + 1.0);
+    asq := arg * arg;
+    RETURN (((p3 * asq + p2) * asq + p1) * asq + p0)
+         / (((     asq + q2) * asq + q1) * asq + q0)
+	 * arg + realL (exp) * log2;
+  <strong><font color="#4169E1">END</font></strong> lnL;
+
+  <strong><font color="#4169E1">PROCEDURE sin</font></strong> (arg: REAL): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN sinL (arg)
+  <strong><font color="#4169E1">END</font></strong> sin;
+
+  <strong><font color="#4169E1">PROCEDURE sinL</font></strong> (arg: LONGREAL): LONGREAL;
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    RETURN sinus (arg, 0);
+  <strong><font color="#4169E1">END</font></strong> sinL;
+
+  <strong><font color="#4169E1">PROCEDURE cos</font></strong> (arg: REAL): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN cosL (arg)
+  <strong><font color="#4169E1">END</font></strong> cos;
+
+  <strong><font color="#4169E1">PROCEDURE cosL</font></strong> (arg: LONGREAL): LONGREAL;
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> arg &lt; 0.0 <font color="#4169E1">THEN</font> arg := -arg <strong><font color="#4169E1">END</font></strong>;
+    RETURN sinus (arg, 1);
+  <strong><font color="#4169E1">END</font></strong> cosL;
+
+  <strong><font color="#4169E1">PROCEDURE arctan</font></strong> (arg: REAL): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN arctanL (arg)
+  <strong><font color="#4169E1">END</font></strong> arctan;
+
+  <strong><font color="#4169E1">PROCEDURE arctanL</font></strong> (arg: LONGREAL): LONGREAL;
+    <font color="#B22222">(* Returns the value of the arctangent of its argument in the
+       range {-pi..+pi} *)</font>
+  <strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* arctan *)</font>
+    <font color="#4169E1">IF</font> arg &gt; 0.0 <font color="#4169E1">THEN</font>
+      RETURN sarctan (arg);
+    <font color="#4169E1">ELSE</font>
+      RETURN -sarctan (-arg);
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong> arctanL;
+
+  <strong><font color="#4169E1">PROCEDURE real</font></strong> (arg: INTEGER): REAL;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN realL (arg)
+  <strong><font color="#4169E1">END</font></strong> real;
+
+  <strong><font color="#4169E1">PROCEDURE realL</font></strong> (arg: INTEGER): LONGREAL;
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> arg &lt; 0 <font color="#4169E1">THEN</font>
+      RETURN -Float (-arg);
+    <font color="#4169E1">ELSE</font>
+      RETURN  Float (arg);
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong> realL;
+
+  <strong><font color="#4169E1">PROCEDURE entier</font></strong> (arg: REAL): INTEGER;
+  <strong><font color="#4169E1">BEGIN</font></strong> 
+    RETURN entierL (arg)
+  <strong><font color="#4169E1">END</font></strong> entier;
+
+  <strong><font color="#4169E1">PROCEDURE entierL</font></strong> (arg: LONGREAL): INTEGER;
+    <font color="#B22222">(* Returns the largest integer &lt;= arg *)</font>
+  <strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> arg &gt;= 0.0 <font color="#4169E1">THEN</font>
+      RETURN  Trunc (arg);
+    ELSIF -Float (Trunc (-arg)) = arg <font color="#4169E1">THEN</font>
+      RETURN -Trunc (-arg);
+    <font color="#4169E1">ELSE</font>
+      <font color="#B22222">(*RETURN -Trunc (arg) - 1;   HE 3/90 *)</font>
+      RETURN -Trunc (-arg) - 1;
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong> entierL;
+
+<strong><font color="#4169E1">END</font></strong> MathLib.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

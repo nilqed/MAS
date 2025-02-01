@@ -1,0 +1,371 @@
+
+<html>
+<head>
+<title>./masdom/DIPAGB.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-10-14T15:42:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPAGB.md,v 1.3 1994/10/13 15:58:20 rose Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPAGB.md,v $
+ * Revision 1.3  1994/10/13  15:58:20  rose
+ * Some more procedures exported.
+ *
+ * Revision 1.2  1994/06/06  17:15:52  rose
+ * Syntactical errors (found by Mocka) corrected.
+ *
+ * Revision 1.1  1994/05/19  10:42:27  rose
+ * New module DIPAGB. Computes a Groebner basis with the second Buchberger
+ * criterion (Gebauer/Moeller).
+ * Implemented critical pair selection strategies: normal, normal with sugar.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+
+DEFINITION MODULE DIPAGB;
+
+<font color="#B22222">(* DIP Arbitrary Domain Groebner Basis Definition Module. *)</font>
+
+
+FROM MASSTOR  IMPORT LIST;
+
+FROM MASLISPU IMPORT PROCF1, PROCF2, PROCP0, PROCP1, PROCP1V2;
+
+<strong><font color="#228B22">CONST</font></strong> Normal          = 0;
+<strong><font color="#228B22">CONST</font></strong> NormalWithSugar = 1;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPAGB.md,v 1.3 1994/10/13 15:58:20 rose Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1994 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ADDNFEDIP</font></strong>(f: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain domain number from extended distributive polynomial.
+   f is an extended distributive polynomial over an arbitrary domain polynomial
+   ring. The domain number of the arbitrary domain is returned. If the
+   unextended distributive polynomial appropriate to f is the zero polynomial
+   then 0 is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CPEXTEND</font></strong>(f,g: LIST): LIST;
+<font color="#B22222">(* Critical pair extend.
+   f and g are distributive polynomials such that (f,g) is a critical pair.
+   CPEXTEND(f,g) is the appropriate extended critical pair, i.e. the list of
+   f, g and further components which depend on the chosen extended critical
+   pair selection strategy. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPAGB</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial arbitrary domain Groebner basis.
+   F is a list of polynomials in distributive representation.
+   G=DIPAGB(F) is a (not reduced) Groebner basis with Id(G)=Id(F). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEXTEND</font></strong>(f: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial extension.
+   f is a polynomial in distributive representation.
+   DIPEXTEND(f) is the extended distributive polynomial appropriate to f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPRWTDG</font></strong>(f,W: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial rational-weighted total degree.
+   f is a polynomial in distributive representation in r variables.
+   W=(W1,...,Wr) is a list of rational numbers, where Wi, 1 le i le r, is the
+   weight of the (r-i+1)-th variable in the variable list VALIS, i.e. of the
+   variable w.r.t. the i-th component in each exponent vector of f.
+   DIPRWTDG(f,W) is the rational-weighted total degree of f, defined by the
+   maximal rational-weighted total degree of the exponent vectors of the terms
+   of f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPINSERT</font></strong>(CP,P: LIST): LIST;
+<font color="#B22222">(* Extended critical pair insertion.
+   The extended critical pair CP is to be inserted into the extended critical
+   pair list P.
+   ECPINSERT(CP,P) is the list P with the additional pair CP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPLCMHT</font></strong>(CP: LIST): LIST;
+<font color="#B22222">(* Extended critical pair select the least common multiple of head terms.
+   ECPLCMHT(CP) is the extended least common multiple of the leadings terms
+   of the two extended polynomials in the extended critical pair CP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPPOLY1</font></strong>(CP: LIST): LIST;
+<font color="#B22222">(* Extended critical pair select the first extended distributive polynomial. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPPOLY2</font></strong>(CP: LIST): LIST;
+<font color="#B22222">(* Extended critical pair select the second extended distributive
+   polynomial. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPSELECT</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> CP,Q: LIST);
+<font color="#B22222">(* Select an extended critical pair from the extended critical pair list.
+   The extended critical pair list is modified. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPSUGAR</font></strong>(CP: LIST): LIST;
+<font color="#B22222">(* Extended critical pair select sugar.
+   ECPSUGAR(CP) is the sugar of the S-polynomial of the polynomials in the
+   extended critical pair CP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPUNEXTEND</font></strong>(CP: LIST): LIST;
+<font color="#B22222">(* Extended critical pair un-extend.
+   CP is an extended critical pair.
+   ECPUNEXTEND(CP) is the appropriate critical pair, i.e. CP without the
+   extensions which depend on the chosen extended critical pair selection
+   strategy. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ECPWRITE</font></strong>(CP: LIST);
+<font color="#B22222">(* Extended critical pair write.
+   The extended critical pair CP is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIIFSUGNF</font></strong>(P,f: LIST): LIST;
+<font color="#B22222">(* Extended distributive integral function polynomial normal with sugar
+   strategy normal form.
+   P is a list of non-zero extended distributive integral function polynomials.
+   f is an extended distributive integral function polynomial.
+   EDIIFSUGNF(P,f) is an extended distributive integral function polynomial
+   such that f is reducible to EDIIFSUGNF(P,f) modulo P and EDIIFSUGNF(P,f) is
+   in normalform w.r.t. P. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIIFSUGSP</font></strong>(f,g: LIST): LIST;
+<font color="#B22222">(* Extended distributive integral function polynomial normal with sugar
+   strategy S-polynomial.
+   f and g are extended distributive integral function polynomials.
+   EDIIFSUGSP(f,g) is the extended S-polynomial of f and g w.r.t. the normal
+   with sugar strategy. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPEVL</font></strong>(f: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial exponent vector of the leading monomial.
+   f is an extended distributive polynomial.
+   EDIPEVL(f) is the exponent vector of the leading monomial of f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPNOR</font></strong>(P,f: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial normal form.
+   P is a list of non-zero extended distributive polynomials.
+   f is an extended distributive polynomial.
+   EDIPNOR(P,f) is an extended distributive polynomial such that f is reducible
+   to EDIPNOR(P,f) modulo P and EDIPNOR(P,f) is in normalform w.r.t. P. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPSP</font></strong>(f,g: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial S-polynomial.
+   f and g are extended distributive polynomials.
+   EDIPSP(f,g) is the extended S-polynomial of f and g. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPSUGAR</font></strong>(f: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial sugar.
+   EDIPSUGAR(f) is the sugar of the extended distributive polynomial f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPSUGCON</font></strong>(f,S: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial normal with sugar strategy constructor.
+   f is a distributive polynomial.
+   S is the sugar of f.
+   EDIPSUGCON(f,S) is the extended distributive polynomial appropriate to f
+   with sugar S. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPSUGNOR</font></strong>(P,f: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial normal with sugar strategy normal form.
+   P is a list of non-zero extended distributive polynomials.
+   f is an extended distributive polynomial.
+   EDIPSUGNOR(P,f) is an extended distributive polynomial such that f is
+   reducible to EDIPSUGNOR(P,f) modulo P and EDIPSUGNOR(P,f) is in normalform
+   w.r.t. P. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPSUGSP</font></strong>(f,g: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial normal with sugar strategy S-polynomial.
+   f and g are extended distributive polynomials.
+   EDIPSUGSP(f,g) is the extended S-polynomial of f and g w.r.t. the normal
+   with sugar strategy. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPUNEXTEND</font></strong>(f: LIST): LIST;
+<font color="#B22222">(* Extended distributive polynomial un-extend.
+   f is an extended distributive polynomial.
+   EDIPUNEXTEND(f) is the distributive polynomial appropriate to f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIPWRITE</font></strong>(f: LIST);
+<font color="#B22222">(* Extended distributive polynomial write.
+   The extended distributive polynomial f is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVRWTDEG</font></strong>(U,W: LIST): LIST;
+<font color="#B22222">(* Exponent vector rational-weighted total degree.
+   U=(U1,...,Ur) is an exponent vector.
+   W=(W1,...,Wr) is a list of rational numbers, where Wi, 1 le i le r, is the
+   weight of the (r-i+1)-th variable in the variable list VALIS, i.e. of the
+   variable w.r.t. the i-th component of U.
+   TD=EVRWTDEG(U,W) is the rational-weighted total degree of U, defined by
+   TD = W1U1+...+WrUr. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE INITUPDATE</font></strong>(f: LIST; <strong><font color="#228B22">VAR</font></strong> G,B: LIST);
+<font color="#B22222">(* The initialization function as a first call of UPDATE. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LDIPEXTEND</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* List of distributive polynomials extend.
+   P is a list of distributive polynomials.
+   LDIPEXTEND(P) is the list of the appropriate extended distributive
+   polynomials. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LECPUNEXTEND</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* List of extended critical pairs un-extend.
+   P is a list of extended critical pairs.
+   LECPUNEXTEND(P) is the list of the appropriate critical pairs. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LECPWRITE</font></strong>(P: LIST);
+<font color="#B22222">(* List of extended critical pairs write.
+   The list P of extended critical pairs is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LEDIPUNEXTEND</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* List of extended distributive polynomials un-extend.
+   P is a list of extended distributive polynomials.
+   LEDIPUNEXTEND(P) is the list of the appropriate distributive polynomials. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LEDIPWRITE</font></strong>(P: LIST);
+<font color="#B22222">(* List of extended distributive polynomials write.
+   The list P of extended distributive polynomials is written in the output
+   stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LRNWRIT</font></strong>(LRN: LIST);
+<font color="#B22222">(* List of rational numbers write.
+   The list LRN of rational numbers is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UPDATE</font></strong>(h: LIST; <strong><font color="#228B22">VAR</font></strong> G,B: LIST);
+<font color="#B22222">(* Update of extended ideal basis and extended critical pair list as required
+   by DIPAGB.
+   h is an extended distributive polynomial, G is a list of extended
+   distributive polynomials. B is a list of extended critical pairs. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UpdateVariableWeight</font></strong>;
+<font color="#B22222">(* Update of the DIPAGB variable weight list. *)</font>
+
+
+<font color="#B22222">(* ------------------------------------------------------------------------- *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPAGBOptions</font></strong>(OPT: LIST);
+<font color="#B22222">(* Set the trace flag, the strategy and the variable weight list of the
+   DIPAGB option record. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPAGBStrategy</font></strong>(st: LIST);
+<font color="#B22222">(* Set the DIPAGB strategy option for the extended critical pair selection.
+   st=0 (= normal) and st=1 (= normal with sugar) are supported. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPAGBTraceFlag</font></strong>(tf: LIST);
+<font color="#B22222">(* Set the DIPAGB trace flag.
+   tf is a non-negative integer level for interactive documentations. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPAGBVariableWeight</font></strong>(VW: LIST);
+<font color="#B22222">(* Set the DIPAGB variable weight list for the normal with sugar strategy.
+   VW is a list of r non-negative rational components where r is the number of
+   variables in the distributive polynomials handled with. The i-th component
+   is the weight of the i-th variable in the variable list VALIS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetCPExtend</font></strong>(EXT: PROCF2);
+<font color="#B22222">(* Set the critical pair extension function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetDIPExtend</font></strong>(EXT: PROCF1);
+<font color="#B22222">(* Set the distributive polynomial extension function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetECPInsert</font></strong>(INS: PROCF2);
+<font color="#B22222">(* Set the extended critical pair insertion function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetECPSelect</font></strong>(SEL: PROCP1V2);
+<font color="#B22222">(* Set the extended critical pair selection procedure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetECPWrite</font></strong>(WR: PROCP1);
+<font color="#B22222">(* Set the extended critical pair write procedure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetEDIPNormalform</font></strong>(NF: PROCF2);
+<font color="#B22222">(* Set the extended distributive polynomial normalform function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetEDIPSPolynomial</font></strong>(SP: PROCF2);
+<font color="#B22222">(* Set the extended distributive S-polynomial function. *)</font>
+
+ 
+<strong><font color="#4169E1">PROCEDURE SetEDIPUnExtend</font></strong>(UEXT: PROCF1);
+<font color="#B22222">(* Set the extended distributive polynomial un-extension function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetEDIPWrite</font></strong>(WR: PROCP1);
+<font color="#B22222">(* Set the extended distributive polynomial write procedure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetInit</font></strong>(INIT: PROCP1V2);
+<font color="#B22222">(* Set the initialization procedure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetUpdate</font></strong>(UPD: PROCP1V2);
+<font color="#B22222">(* Set the update procedure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetUpdateVariableWeight</font></strong>(UPD: PROCP0);
+<font color="#B22222">(* Set the DIPAGB variable weight update procedure. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WriteDIPAGBOptions</font></strong>;
+<font color="#B22222">(* Write the current trace flag, strategy and variable weight list of the
+   DIPAGB option record in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WriteDIPAGBStrategy</font></strong>;
+<font color="#B22222">(* Write the DIPAGB strategy option for the extended critical pair selection
+   in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WriteDIPAGBTraceFlag</font></strong>;
+<font color="#B22222">(* Write the DIPAGB trace flag in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WriteDIPAGBVariableWeight</font></strong>;
+<font color="#B22222">(* Write the DIPAGB variable weight list in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPAGB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

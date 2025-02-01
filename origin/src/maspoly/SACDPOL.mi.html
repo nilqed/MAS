@@ -1,0 +1,162 @@
+
+<html>
+<head>
+<title>./maspoly/SACDPOL.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:36+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACDPOL.mi,v 1.3 1992/10/15 16:28:39 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACDPOL.mi,v $
+ * Revision 1.3  1992/10/15  16:28:39  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:57  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:11  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACDPOL;
+
+<font color="#B22222">(* SAC Dense Polynomial Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, SRED, SFIRST, 
+                    FIRST, RED, COMP, INV, ADV, LIST1;
+
+FROM SACLIST IMPORT LIST2, COMP2, ADV2, FIRST2, 
+                    CLOUT, CINV, RED2, SECOND, EQUAL;
+
+FROM SACM    IMPORT MDDIF, MDINV, MDSUM, MDPROD;
+
+FROM SACPOL  IMPORT PDEG;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACDPOL.mi,v 1.3 1992/10/15 16:28:39 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE DMPPRD</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Dense modular polynomial product.  A and B are polynomials in r
+variables over Z sub m, m a beta-integer, r ge 0.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BP, BS, C, C1, CL, EL, FL, IL, JL, NL, RLP:
+     LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=MDPROD(ML,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> ADV(A, EL,AP); ADV(B, FL,BP); AS:=CINV(AP);
+      BS:=CINV(BP); C:=0; RLP:=RL-1;
+      <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> FL <font color="#4169E1">DO</font> C1:=BETA;
+          <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> IL <font color="#4169E1">DO</font> C1:=COMP(0,C1); <strong><font color="#4169E1">END</font></strong>;
+          AP:=AS; ADV(BS, BL,BS);
+          <font color="#4169E1">FOR</font> JL:=0 <font color="#4169E1">TO</font> EL <font color="#4169E1">DO</font> ADV(AP, AL,AP);
+              <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDPROD(ML,AL,BL); <font color="#4169E1">ELSE</font>
+                 CL:=DMPPRD(RLP,ML,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+              C1:=COMP(CL,C1); <strong><font color="#4169E1">END</font></strong>;
+          NL:=EL+IL;
+          <font color="#4169E1">WHILE</font> (C1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(C1) = 0) <font color="#4169E1">DO</font> NL:=NL-1;
+                C1:=RED(C1); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> C1 &lt;&gt; SIL <font color="#4169E1">THEN</font> C1:=COMP(NL,C1); C:=DMPSUM(RL,ML,C1,C);
+             <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DMPPRD;
+
+
+<strong><font color="#4169E1">PROCEDURE DMPSUM</font></strong>(RL,ML,A,B: LIST): LIST;
+<font color="#B22222">(*Dense modular polynomial sum.  A and B are dense polynomials in r
+variables over Z sub m, m a beta-integer.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, EL, FL, IL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> RLP:=RL-1;
+      <font color="#4169E1">IF</font> FIRST(A) &gt;= FIRST(B) <font color="#4169E1">THEN</font> ADV(A, EL,AP); ADV(B, FL,BP); <font color="#4169E1">ELSE</font>
+         ADV(B, EL,AP); ADV(A, FL,BP); <strong><font color="#4169E1">END</font></strong>;
+      C:=BETA;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL-FL <font color="#4169E1">DO</font> ADV(AP, AL,AP); C:=COMP(AL,C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); ADV(BP, BL,BP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=MDSUM(ML,AL,BL); <font color="#4169E1">ELSE</font>
+                CL:=DMPSUM(RLP,ML,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP(CL,C);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> C:=INV(C);
+      <font color="#4169E1">WHILE</font> (C &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(C) = 0) <font color="#4169E1">DO</font> C:=RED(C); EL:=EL-1;
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <font color="#4169E1">ELSE</font> C:=COMP(EL,C); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DMPSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE DMUPNR</font></strong>(PL,A,B: LIST): LIST;
+<font color="#B22222">(*Dense modular univariate polynomial natural remainder.  A and B are
+non-zero dense univariate polynomials over Z sub p, p a prime
+beta-integer, with deg(A) ge deg(B).  C is the natural remainder of B.
+The list for A is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, APP, AS, BL, BLP, BP, BPP, BS, C, CL, KL, ML, NL:
+     LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*deg(b)=0.*)</font> NL:=FIRST(B);
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*deg(b) positive.*)</font> BP:=RED(B); ADV(BP, BL,BS);
+      BLP:=MDINV(PL,BL); AS:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AS, KL,AP); ML:=-1; ADV(AP, AL,APP);
+             CL:=MDPROD(PL,AL,BLP); BPP:=BS;
+             <font color="#4169E1">REPEAT</font> ADV(BPP, BL,BPP); BL:=MDPROD(PL,BL,CL);
+                    AL:=FIRST(APP); AL:=MDDIF(PL,AL,BL); KL:=KL-1;
+                    <font color="#4169E1">IF</font> (ML &lt; 0) <font color="#4169E1">AND</font> (AL &lt;&gt; 0) <font color="#4169E1">THEN</font> ML:=KL; AS:=AP;
+                       <strong><font color="#4169E1">END</font></strong>;
+                    SFIRST(APP,AL); AP:=APP; APP:=RED(AP);
+                    <font color="#4169E1">UNTIL</font> BPP = SIL;
+             <font color="#4169E1">WHILE</font> (ML &lt; 0) <font color="#4169E1">AND</font> (APP &lt;&gt; SIL) <font color="#4169E1">DO</font> KL:=KL-1;
+                   <font color="#4169E1">IF</font> FIRST(APP) &lt;&gt; 0 <font color="#4169E1">THEN</font> ML:=KL; AS:=AP; <strong><font color="#4169E1">END</font></strong>;
+                   AP:=APP; APP:=RED(AP); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> ML &gt;= 0 <font color="#4169E1">THEN</font> SFIRST(AS,ML); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> ML &lt; NL;
+      <font color="#4169E1">IF</font> ML &gt;= 0 <font color="#4169E1">THEN</font> C:=AS; <font color="#4169E1">ELSE</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DMUPNR;
+
+
+<strong><font color="#4169E1">PROCEDURE DPFP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Dense polynomial from polynomial.  A is a polynomial in r
+variables, r ge 0.  B is the result of converting A to dense
+polynomial representation.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B, BL, J1Y, KL, NL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (RL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      NL:=PDEG(A); RLP:=RL-1; B:=BETA; AP:=A;
+      <font color="#4169E1">FOR</font> KL:=NL <font color="#4169E1">TO</font> 0 BY -1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">OR</font> (FIRST(AP) &lt; KL) <font color="#4169E1">THEN</font> BL:=0; <font color="#4169E1">ELSE</font>
+             AP:=RED(AP); ADV(AP, BL,AP);
+             <font color="#4169E1">IF</font> RLP &gt; 0 <font color="#4169E1">THEN</font> BL:=DPFP(RLP,BL); <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>;
+          B:=COMP(BL,B); <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=INV(B); B:=COMP(NL,J1Y); RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DPFP;
+
+
+<strong><font color="#4169E1">END</font></strong> SACDPOL.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

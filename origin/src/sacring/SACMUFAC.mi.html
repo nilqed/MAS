@@ -1,0 +1,249 @@
+
+<html>
+<head>
+<title>./sacring/SACMUFAC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:56+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACMUFAC.mi,v 1.3 1992/10/15 16:29:02 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACMUFAC.mi,v $
+ * Revision 1.3  1992/10/15  16:29:02  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:58  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:16:09  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACMUFAC;
+
+<font color="#B22222">(* SAC Modular Univariate Polynomial Factorization Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASMAX;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    LIST1, SFIRST, SRED, LENGTH, INV, 
+                    FIRST, RED, COMP, ADV;
+
+FROM MASBIOS IMPORT SWRITE;
+
+FROM SACLIST IMPORT LIST3, CONC, CINV, ADV2, COMP2, FIRST2, 
+                    EQUAL, RED2, SECOND, LIST2;
+
+FROM SACI IMPORT IODD, IREM, IDP2, ICOMP, IPROD, IQ, 
+                 IDREM, IDPR, IDIF, IMP2, INEG;
+
+FROM SACM IMPORT MDDIF, MIHOM, MIPROD, SMFMI;
+
+FROM SACPRIM IMPORT SMPRM;
+
+FROM SACCOMB IMPORT CSFPAR, CSINT, CSUN, LEXNEX, LPERM, PERMR;
+
+FROM SACPOL IMPORT PRIME, PFDP, PDPV, PDEG, PLDCF, PTBCF, PDEGV, PINV;
+
+FROM SACIPOL IMPORT IPSIGN, IPABS, IPDMV, IPEMV, 
+                    IPSUM, IPDIF, IPIP, IPIQ, IPTRAN, 
+                    IUPTPR, IPSUMN, IPQR, IPPROD, IPQ, IPEVAL;
+
+FROM SACMPOL IMPORT VMPIP, MIPPR, MPQ, MPHOM, MPMON, MUPDER,
+                    MPSUM, MPDIF, MIUPQR, SMFMIP, MIPDIF, 
+                    MIPHOM, MIPIPR, MIPSUM;
+
+FROM SACDPOL IMPORT DPFP, DMPPRD, DMUPNR;
+
+FROM SACPGCD IMPORT IPSF, IPSCPP, IPPP, IPCPP, IPGCDC, 
+                    MUPEGC, MUPGCD;
+
+FROM SACLDIO IMPORT MMDNSB;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACMUFAC.mi,v 1.3 1992/10/15 16:29:02 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE MCPMV</font></strong>(NL,L: LIST): LIST; 
+<font color="#B22222">(*Matrix of coefficients of polynomials, with respect to main variable.
+L is a list (L(1), ...,L(k)) of k, ge 1, non-zero polynomials with
+degrees less than n.  n is a positive beta-integer.  M is the matrix
+with m(1,il)+m(2,i)*x+ ...+m(n,i)*x**(n-1)=L(i) for 1 le i le
+k.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, KL, LP, LP1, LS, M, MP, MS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=L; MP:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, LS,LP); LP1:=DPFP(1,LS); ADV(LP1, KL,LP1); 
+             <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL-KL-1 <font color="#4169E1">DO</font> LP1:=COMP(0,LP1); <strong><font color="#4169E1">END</font></strong>; 
+             MP:=COMP(LP1,MP); 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      M:=BETA; 
+      <font color="#4169E1">REPEAT</font> MS:=MP; LP:=BETA; 
+             <font color="#4169E1">REPEAT</font> LS:=FIRST(MS); SFIRST(MS,RED(LS)); SRED(LS,LP); 
+                    LP:=LS; MS:=RED(MS); 
+                    <font color="#4169E1">UNTIL</font> MS = SIL; 
+             M:=COMP(LP,M); 
+             <font color="#4169E1">UNTIL</font> FIRST(MP) = SIL; 
+      RETURN(M); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MCPMV; 
+
+
+<strong><font color="#4169E1">PROCEDURE MIUPSE</font></strong>(M,A,B,S,T,C: LIST;  <strong><font color="#228B22">VAR</font></strong> U,V: LIST); 
+<font color="#B22222">(*Modular integral univariate polynomial, solution of equation.  M is a
+positive integer.  A,B,S,T and C belong to Z sub M (x) with ldcf(A) a
+unit, deg(T) lt deg(A) and A*S+B*T=1.  U and V are the unique elements
+of Z sub M (x) such that A*U+B*V=C, with deg(V) lt deg(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  HL, J, J1Y, K, KL, L, ML, NL, Q, Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> NL:=PDEG(C); HL:=PDEG(A); KL:=PDEG(B); J1Y:=NL-HL; J1Y:=J1Y+1; 
+      ML:=MASMAX(J1Y,KL); Y:=MIPPR(1,M,T,C); MIUPQR(M,Y,A, Q,V); 
+      J:=IUPTPR(ML,S,C); K:=IUPTPR(ML,B,Q); L:=IPSUM(1,J,K); 
+      U:=MIPHOM(1,M,L); RETURN; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MIUPSE; 
+
+
+<strong><font color="#4169E1">PROCEDURE MUPBQP</font></strong>(PL,A: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial Berlekamp q polynomials construction.
+p is a prime beta-integer.  A is a univariate polynomial over Z sub p
+with deg(A) ge 2.  Q is the list (Q(0), ...,Q(n-1)), where Q(i)(x)=
+rem(x**(p*i),A(x)) and n=deg(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B, C, IL, J1Y, KL, ML, NL, Q, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> KL:=2; 
+      <font color="#4169E1">WHILE</font> KL &lt;= PL <font color="#4169E1">DO</font> KL:=KL+KL; <strong><font color="#4169E1">END</font></strong>; 
+      KL:=KL DIV 2; NL:=FIRST(A); AP:=DPFP(1,A); C:=LIST2(0,1); 
+      Q:=LIST1(C); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute q1.*)</font> X:=LIST3(1,1,0); B:=X; ML:=PL-KL; 
+      <font color="#4169E1">REPEAT</font> B:=DMPPRD(1,PL,B,B); 
+             <font color="#4169E1">IF</font> FIRST(B) &gt;= NL <font color="#4169E1">THEN</font> B:=DMUPNR(PL,B,AP); <strong><font color="#4169E1">END</font></strong>; 
+             KL:=KL DIV 2; 
+             <font color="#4169E1">IF</font> ML &gt;= KL <font color="#4169E1">THEN</font> B:=DMPPRD(1,PL,X,B); 
+                <font color="#4169E1">IF</font> FIRST(B) &gt;= NL <font color="#4169E1">THEN</font> B:=DMUPNR(PL,B,AP); <strong><font color="#4169E1">END</font></strong>; 
+                ML:=ML-KL; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> KL = 1; 
+      J1Y:=PFDP(1,B); Q:=COMP(J1Y,Q); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute q(il).*)</font> C:=B; 
+      <font color="#4169E1">FOR</font> IL:=2 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> C:=DMPPRD(1,PL,B,C); 
+          <font color="#4169E1">IF</font> FIRST(C) &gt;= NL <font color="#4169E1">THEN</font> C:=DMUPNR(PL,C,AP); <strong><font color="#4169E1">END</font></strong>; 
+          J1Y:=PFDP(1,C); Q:=COMP(J1Y,Q); <strong><font color="#4169E1">END</font></strong>; 
+      Q:=INV(Q); RETURN(Q); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MUPBQP; 
+
+
+<strong><font color="#4169E1">PROCEDURE MUPDDF</font></strong>(PL,A: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial distinct degree factorization.  p is
+a prime beta-integer.  A is a monic squarefree univariate polynomial
+over Z sub p, with deg(A) ge 2.  L is a list ((n(1),A(1)), ...
+,(n(k),A(k))) where each n(i) is a positive integer, n(1) lt
+n(2) lt ...lt n(k), and A(i) is the product of all irreducible monic
+factors of A  of degree n(i).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BL, BP, C, D, EL, IL, J1Y, KL, L, L1, NL, Q, Q1, QP, W, X:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> Q:=MUPBQP(PL,A); J1Y:=RED(Q); B:=FIRST(J1Y); 
+      C:=A; L:=BETA; KL:=1; X:=LIST2(1,1); NL:=FIRST(A); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute a(kl).*)</font> 
+      LOOP   W:=MPDIF(1,PL,B,X); D:=MUPGCD(PL,W,C); 
+             <font color="#4169E1">IF</font> FIRST(D) &gt; 0 <font color="#4169E1">THEN</font> L1:=LIST2(KL,D); L:=COMP(L1,L); 
+                C:=MPQ(1,PL,C,D); <strong><font color="#4169E1">END</font></strong>; 
+             KL:=KL+1; EL:=FIRST(C); 
+             <font color="#4169E1">IF</font> EL &gt;= 2*KL <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> KL = 2 <font color="#4169E1">THEN</font> Q:=MCPMV(NL,Q); <strong><font color="#4169E1">END</font></strong>; 
+                B:=DPFP(1,B); ADV(B, EL,B); 
+                <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL-EL-1 <font color="#4169E1">DO</font> B:=COMP(0,B); <strong><font color="#4169E1">END</font></strong>; 
+                BP:=INV(B); B:=BETA; QP:=Q; 
+                <font color="#4169E1">REPEAT</font> ADV(QP, Q1,QP); BL:=VMPIP(0,PL,BP,Q1); 
+                       B:=COMP(BL,B); 
+                       <font color="#4169E1">UNTIL</font> QP = SIL; 
+                EL:=NL-1; 
+                <font color="#4169E1">WHILE</font> FIRST(B) = 0 <font color="#4169E1">DO</font> EL:=EL-1; B:=RED(B); <strong><font color="#4169E1">END</font></strong>; 
+                B:=COMP(EL,B); B:=PFDP(1,B); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &gt; 0 <font color="#4169E1">THEN</font> L1:=LIST2(EL,C); L:=COMP(L1,L); <strong><font color="#4169E1">END</font></strong>; 
+                L:=INV(L); RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*until sil*)</font> 
+<font color="#B22222">(*5*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> MUPDDF; 
+
+
+<strong><font color="#4169E1">PROCEDURE MUPFBL</font></strong>(PL,A: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial factorization-Berlekamp algorithm.
+p is a prime beta-integer.  A is a monic squarefree univariate poly-
+nomial, with deg(A) ge 2.  L is a list of all the monic irreducible
+factors of A of positive degree.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, B1, BS, IL, JL, L, NL, Q, Q1, QP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*construct the matrix q-i.*)</font> NL:=FIRST(A); Q:=MUPBQP(PL,A); 
+      Q:=MCPMV(NL,Q); QP:=Q; 
+      <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> Q1:=FIRST(QP); 
+          <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> IL <font color="#4169E1">DO</font> Q1:=RED(Q1); <strong><font color="#4169E1">END</font></strong>; 
+          AL:=FIRST(Q1); AL:=MDDIF(PL,AL,1); SFIRST(Q1,AL); QP:=RED(QP); 
+          <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate null space basis and convert to polynomials.*)</font> 
+      BS:=MMDNSB(PL,Q); B:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(BS, B1,BS); B1:=INV(B1); IL:=NL-1; 
+             <font color="#4169E1">WHILE</font> FIRST(B1) = 0 <font color="#4169E1">DO</font> IL:=IL-1; B1:=RED(B1); <strong><font color="#4169E1">END</font></strong>; 
+             B1:=COMP(IL,B1); B1:=PFDP(1,B1); B:=COMP(B1,B); 
+             <font color="#4169E1">UNTIL</font> BS = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*factorize.*)</font> L:=MUPFS(PL,A,B,1); RETURN(L); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> MUPFBL; 
+
+
+<strong><font color="#4169E1">PROCEDURE MUPFS</font></strong>(PL,A,B,DL: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial factorization, special.  p is a prime
+beta-integer. A is a monic squarefree polynomial in Z sub p(x),deg(A)
+ge 2.  B is a list (B(1), ...,B(r)) of monic univariate polynomials
+over Z sub p, which constitute a basis for the space of all polynomials
+C of degree less than deg(A) such that A is a divisor of C**p-C.
+Further-more, B(1)=1.  d is a positive beta-integer such that A has
+no irreducible factor of degree less than d.  L is a list
+consisting of all the monic irreducible factors of A of positive
+degree.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, B1, BP, C, CL, EL, FL, IL, KL, L, LP, RL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a irreducible.*)</font> L:=LIST1(A); RL:=LENGTH(B); 
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*factorize.*)</font> BP:=RED(B); KL:=1; CL:=LIST2(0,1); 
+      LOOP   LP:=BETA; ADV(BP, B1,BP); 
+             <font color="#4169E1">REPEAT</font> ADV(L, A1,L); EL:=FIRST(A1); 
+                    <font color="#4169E1">IF</font> EL &gt; DL <font color="#4169E1">THEN</font> SL:=0; IL:=0; 
+                       <font color="#4169E1">REPEAT</font> C:=MUPGCD(PL,A1,B1); FL:=FIRST(C); 
+                              <font color="#4169E1">IF</font> FL &gt; 0 <font color="#4169E1">THEN</font>
+                                 <font color="#4169E1">IF</font> FL = EL <font color="#4169E1">THEN</font> SL:=1; <font color="#4169E1">ELSE</font>
+                                    LP:=COMP(C,LP); A1:=MPQ(1,PL,A1,C); 
+                                    KL:=KL+1; 
+                                    <font color="#4169E1">IF</font> KL = RL <font color="#4169E1">THEN</font>
+                                       LP:=COMP(A1,LP); L:=CONC(LP,L); 
+                                       RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+                                    EL:=FIRST(A1); 
+                                    <font color="#4169E1">IF</font> EL = DL <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                                    <strong><font color="#4169E1">END</font></strong>; 
+                                 <strong><font color="#4169E1">END</font></strong>; 
+                              B1:=MPSUM(1,PL,CL,B1); IL:=IL+1; 
+                              <font color="#4169E1">UNTIL</font> (IL = PL) <font color="#4169E1">OR</font> (SL = 1); 
+                       <strong><font color="#4169E1">END</font></strong>; 
+                    LP:=COMP(A1,LP); 
+                    <font color="#4169E1">UNTIL</font> L = SIL; 
+             L:=LP; 
+             <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*until sil;*)</font> 
+<font color="#B22222">(*5*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> MUPFS; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACMUFAC.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

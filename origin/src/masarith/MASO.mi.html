@@ -1,0 +1,339 @@
+
+<html>
+<head>
+<title>./masarith/MASO.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-10-15T16:28:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASO.mi,v 1.3 1992/10/15 16:28:13 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASO.mi,v $
+ * Revision 1.3  1992/10/15  16:28:13  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/09/28  18:34:53  kredel
+ * Updated revision string.
+ *
+ * Revision 1.1  1992/09/28  17:30:31  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASO;
+
+<font color="#B22222">(* MAS Octonion Number Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASBIOS IMPORT SWRITE, CWRITE, CREADB, MASORD, BKSP, BLINES;
+
+FROM MASSTOR IMPORT LIST, ADV, COMP, FIRST, SIL, INV; 
+
+FROM MASERR IMPORT severe, ERROR;
+
+FROM SACLIST IMPORT OWRITE, SECOND, FIRST2, LIST2, COMP2,  
+                    AWRITE, EQUAL;
+
+FROM SACRN IMPORT RNSUM, RNQ;
+
+FROM MASQ IMPORT QCON, QABS, QNEG, QINT, QRN, QONE, QRAND, 
+                 QPROD, QDIF, QSUM, 
+                 QDREAD, QDWRITE, QNREAD, QNWRITE;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASO.mi,v 1.3 1992/10/15 16:28:13 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<font color="#B22222">(* Representation of ( a, b ), with a, b quaternion numbers, is 
+
+                         0   if a=0 and b=0 
+                     (a,b)   else   *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE OABS</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Octonion number absolute value.  R is a octonion number.  S is the
+absolute value of R, a rational number. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> S:=R; RETURN(S) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      S:=RNSUM(QABS(r),QABS(i));
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OABS;
+
+
+<strong><font color="#4169E1">PROCEDURE OCON</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Octonion number conjugate.  R is a octonion number. S is the
+octonion conjugate of R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      S:=COMP2(QCON(r),QNEG(i),SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OCON;
+
+
+<strong><font color="#4169E1">PROCEDURE OCOMP</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Octonion number comparison.  R and S are octonion numbers.
+t=0 if R=S, t=1 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> t:=EQUAL(R,S); 
+      <font color="#4169E1">IF</font> t = 1 <font color="#4169E1">THEN</font> t:=0 <font color="#4169E1">ELSE</font> t:=1 <strong><font color="#4169E1">END</font></strong>;  
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE ODIF</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Octonion number difference.  R and S are octonion numbers.  T=R-S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, r2, i2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=ONEG(S); RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r1,i1); FIRST2(S,r2,i2); 
+      r1:=QDIF(r1,r2); i1:=QDIF(i1,i2); 
+      <font color="#4169E1">IF</font> (r1 = 0) <font color="#4169E1">AND</font> (i1 = 0) <font color="#4169E1">THEN</font> T:=0; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r1,i1,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ODIF;
+
+
+<strong><font color="#4169E1">PROCEDURE ODREAD</font></strong>(): LIST; 
+<font color="#B22222">(*Octonion number decimal read.  The octonion number R is read
+from the input stream.  Any preceding blanks are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R, r, i, c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=QDREAD(); i:=0; 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("p") <font color="#4169E1">THEN</font> i:=QDREAD(); <font color="#4169E1">ELSE</font> BKSP; <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      R:=COMP2(r,i,SIL);
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ODREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE ODWRITE</font></strong>(R,NL: LIST); 
+<font color="#B22222">(*Octonion number decimal write.  R is a octonion number.  n is a
+non-negative integer.  R is approximated by a decimal fraction D with
+n decimal digits following the decimal point and D is written in the
+output stream.  The inaccuracy of the approximation is at most
+(1/2)*10**-n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      QDWRITE(r,NL); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" p "); QDWRITE(i,NL) <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ODWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE OEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Octonion number exponentiation.  A is a octonion number,
+n is a non-negative beta-integer.  B=A**n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, KL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*n less than or equal to 1.*)</font> 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=OINT(1); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> KL:=NL DIV 2; B:=OEXP(A,KL); B:=OPROD(B,B); 
+      <font color="#4169E1">IF</font> NL &gt; 2*KL <font color="#4169E1">THEN</font> B:=OPROD(B,A); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> OEXP; 
+
+
+<strong><font color="#4169E1">PROCEDURE OIM</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Octonion number imaginary part p.  R is a octonion number.  b is the
+imaginary part p of R, a quaternion number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(SECOND(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OIM;
+
+
+<strong><font color="#4169E1">PROCEDURE OINT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Octonion number from integer.  A is an integer.  R is the octonion
+number with real part equal to A/1 and imaginary part p equal to 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> R:=A; RETURN(R) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP2(QINT(A),0,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OINT;
+
+
+<strong><font color="#4169E1">PROCEDURE ORE</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Octonion number real part p.  R is a octonion number.  b is the
+real part p of R, a quaternion number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(FIRST(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ORE;
+
+
+<strong><font color="#4169E1">PROCEDURE ORN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Octonion number from rational number.  A is a rational number.  
+R is the octonion number with real part equal to A and 
+imaginary part p equal to 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP2(QRN(A),0,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ORN;
+
+
+<strong><font color="#4169E1">PROCEDURE ORNP</font></strong>(A, B: LIST): LIST;
+<font color="#B22222">(*Octonion number from pair of quaternion numbers.  A and B are 
+quaternion numbers.  R is the octonion number with real part equal 
+to A and imaginary part p equal to B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">AND</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP2(A,B,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ORNP;
+
+
+<strong><font color="#4169E1">PROCEDURE ONINV</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Octonion number inverse.  R is a non-zero octonion number.  S R=1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, t, r, i, r1, i1, a: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> ERROR(severe,"OINV: division by zero."); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> a:=OABS(R); S:=OCON(R); 
+      FIRST2(S,r,i); r1:=0; i1:=0; 
+      <font color="#4169E1">IF</font> r &lt;&gt; 0 <font color="#4169E1">THEN</font> r1:=SIL; 
+         <font color="#4169E1">WHILE</font> r &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(r,t,r); 
+               t:=RNQ(t,a); r1:=COMP(t,r1); <strong><font color="#4169E1">END</font></strong>; 
+         r1:=INV(r1); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> i1:=SIL; 
+         <font color="#4169E1">WHILE</font> i &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(i,t,i); 
+               t:=RNQ(t,a); i1:=COMP(t,i1); <strong><font color="#4169E1">END</font></strong>; 
+         i1:=INV(i1); <strong><font color="#4169E1">END</font></strong>; 
+      S:=COMP2(r1,i1,SIL); 
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ONINV;
+
+
+<strong><font color="#4169E1">PROCEDURE ONEG</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Octonion number negative.  R is a octonion number.  S=-R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      S:=COMP2(QNEG(r),QNEG(i),SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ONEG;
+
+
+<strong><font color="#4169E1">PROCEDURE OONE</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Octonion number one.  R is a octonion number.  s=1 if R=1,
+s=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i, t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      t:=QONE(r); 
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OONE;
+
+
+<strong><font color="#4169E1">PROCEDURE OPROD</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Octonion number product.  R and S are octonion numbers.  T=R*S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, r2, i2, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (R = 0) <font color="#4169E1">OR</font> (S = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r1,i1); FIRST2(S,r2,i2); 
+      r:=QDIF(QPROD(r1,r2),QPROD(QCON(i2),i1)); 
+      i:=QSUM(QPROD(i1,QCON(r2)),QPROD(i2,r1)); 
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r,i,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE OQ</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Octonion number quotient.  R and S are octonion numbers, S non-zero.
+T=R/S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> T:=OPROD(R,ONINV(S)); 
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OQ;
+
+
+<strong><font color="#4169E1">PROCEDURE ORAND</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Octonion number, random.  n is a positive beta-integer.  Random 
+quaternion numbers A and B are generated using QRAND(n). Then 
+R is the octonion number with real part equal to A and 
+imaginary part p equal to B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=QRAND(NL); i:=QRAND(NL); 
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r,i,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ORAND;
+
+
+<strong><font color="#4169E1">PROCEDURE ONREAD</font></strong>(): LIST;
+<font color="#B22222">(*Octonion number read.  The octonion number R is read from the input
+stream.  Any preceding blanks are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R, r, i, c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=QNREAD(); i:=0; 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("p") <font color="#4169E1">THEN</font> i:=QNREAD(); <font color="#4169E1">ELSE</font> BKSP; <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      R:=COMP2(r,i,SIL);
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ONREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE OSUM</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Octonion number sum.  R and S are octonion numbers.  T=R+S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, r2, i2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=S; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r1,i1); FIRST2(S,r2,i2); 
+      r1:=QSUM(r1,r2); i1:=QSUM(i1,i2); 
+      <font color="#4169E1">IF</font> (r1 = 0) <font color="#4169E1">AND</font> (i1 = 0) <font color="#4169E1">THEN</font> T:=0; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r1,i1,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE ONWRITE</font></strong>(R: LIST);
+<font color="#B22222">(*Octonion number write. R is a octonion number.  R is converted 
+to decimal and written in the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      QNWRITE(r);
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" p "); QNWRITE(i) <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ONWRITE;
+
+
+
+<strong><font color="#4169E1">END</font></strong> MASO.
+
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

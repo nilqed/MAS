@@ -1,0 +1,494 @@
+
+<html>
+<head>
+<title>./masroot/RRADOM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-03-06T15:23:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: RRADOM.mi,v 1.1 1994/03/11 15:21:49 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: RRADOM.mi,v $
+ * Revision 1.1  1994/03/11  15:21:49  pesch
+ * Counting real roots of multivariate polynomials, Diplomarbeit F. Lippold
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE RRADOM;
+<font color="#B22222">(* Real Root Arbitrary Domain Implementation Module *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, ADV, RED, COMP, INV, FIRST, LIST1, LENGTH;
+
+FROM SACLIST IMPORT ADV2, COMP2, LIST2, SECOND, FIRST3, LIST3, EQUAL, 
+                    CONC, CINV, SUFFIX, REDUCT, MEMBER, OWRITE;
+
+FROM DIPC IMPORT DIPEVL, DIPFMO, DIPMAD, DIPMRD,
+                 EVDOV, EVDFSI, EVCOMP, EVCADD, EVSUM, EVDIF, EVSIGN, EVTDEG;
+
+FROM DIPADOM IMPORT DIPNEG, DIPBCP, DIPSUM;
+
+FROM MASADOM IMPORT ADFI;
+
+FROM MASELEM IMPORT MASEVEN;
+
+FROM MASBIOS IMPORT BLINES, SWRITE;
+
+FROM SACI IMPORT IWRITE;
+
+FROM SACRN IMPORT RNNUM;
+
+FROM LINALG IMPORT ADUM, ADVVSUM, ADVSVPROD, ADSMPROD, ADMSUM, ADMPROD,
+                   ADMPTRACE, ADVSPROD, ADSIG, IMRTPROD;
+
+FROM LINALGI IMPORT IMGELUD, IMSDS, IVWRITE;
+
+FROM LINALGRN IMPORT VEL, MSET, MTRANS;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: RRADOM.mi,v 1.1 1994/03/11 15:21:49 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE EVUMSORT</font></strong>(L: LIST): LIST;
+<font color="#B22222">(* Exponent vector unique merge sort. 
+   The list of exponent vectors L ist sorted with respect to the actual 
+   termorder. Multiple entries are deleted. *)</font>
+<strong><font color="#228B22">VAR</font></strong> L1,L2,s,x: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> (L &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(L) &lt;&gt; SIL) <font color="#4169E1">THEN</font>
+    L1 := SIL;
+    L2 := SIL;
+    s := 1;
+    <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(L,x,L);
+      <font color="#4169E1">IF</font> s = 1 <font color="#4169E1">THEN</font> L1 := COMP(x,L1) <font color="#4169E1">ELSE</font> L2 := COMP(x,L2) <strong><font color="#4169E1">END</font></strong>;
+      s := -s;
+    <strong><font color="#4169E1">END</font></strong>;
+    L1 := EVUMSORT(L1);
+    L2 := EVUMSORT(L2);
+    <font color="#4169E1">WHILE</font> (L1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (L2 &lt;&gt; SIL) <font color="#4169E1">DO</font>
+      s := EVCOMP(FIRST(L1),FIRST(L2));
+      <font color="#4169E1">IF</font> s &lt;&gt;  1 <font color="#4169E1">THEN</font> ADV(L1,x,L1) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> s &lt;&gt; -1 <font color="#4169E1">THEN</font> ADV(L2,x,L2) <strong><font color="#4169E1">END</font></strong>;
+      L := COMP(x,L);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">WHILE</font> L1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L1,x,L1); L := COMP(x,L) <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">WHILE</font> L2 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(L2,x,L2); L := COMP(x,L) <strong><font color="#4169E1">END</font></strong>;
+    L := INV(L);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(L);
+<strong><font color="#4169E1">END</font></strong> EVUMSORT;
+
+<strong><font color="#4169E1">PROCEDURE EVSSPROD</font></strong>(T: LIST): LIST;
+<font color="#B22222">(* Exponent vektor set sorted product. 
+   T is a list of terms. U = {a*b: a,b from T} is sorted with respect to 
+   the actual termorder. *)</font>
+<strong><font color="#228B22">VAR</font></strong> U,V,v,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  U := SIL;
+  <font color="#4169E1">WHILE</font> T &lt;&gt; SIL <font color="#4169E1">DO</font>
+    V := T;
+    ADV(T,t,T);
+    <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(V,v,V);
+      U := COMP(EVSUM(t,v),U);
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(EVUMSORT(U));
+<strong><font color="#4169E1">END</font></strong> EVSSPROD;
+
+<strong><font color="#4169E1">PROCEDURE RRVTEXT</font></strong>(A,L: LIST): LIST;
+<font color="#B22222">(* Real root vector of tupels extension. 
+   A is a set of s-tupels, L is a set of objects. B is a set of (s+1)-tupels 
+   constructed by appending each object of L to the tupels of A. The ordering
+   of B is increasing lexicographical wrt the ordering of L and A. *)</font>
+<strong><font color="#228B22">VAR</font></strong> B,As,as,e: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+  B := SIL;
+  <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(L,e,L);
+    As := A;
+    <font color="#4169E1">WHILE</font> As &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(As,as,As);
+      B := COMP(COMP(e,as),B);
+  <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+  B := INV(B);
+  RETURN(B);
+<strong><font color="#4169E1">END</font></strong> RRVTEXT;
+
+<strong><font color="#4169E1">PROCEDURE RRZDIM</font></strong>(G: LIST): LIST;
+<font color="#B22222">(* Real root zero-dimensional test.
+   G non-trivial reduced groebner basis. 
+   s = 1 iff Id(G) is zero-dimensional, s = 0 otherwise. *)</font>
+<strong><font color="#228B22">VAR</font></strong> n,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  n := LENGTH(DIPEVL(FIRST(G)));
+  <font color="#4169E1">WHILE</font> G &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(G,g,G);  
+    <font color="#4169E1">IF</font> LENGTH(EVDOV(DIPEVL(g))) = 1 <font color="#4169E1">THEN</font> n := n - 1 <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> n = 0 <font color="#4169E1">THEN</font> RETURN(1) <font color="#4169E1">ELSE</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRZDIM;
+
+<strong><font color="#4169E1">PROCEDURE RRREDTEST</font></strong>(G,t: LIST; <strong><font color="#228B22">VAR</font></strong> g,s: LIST);
+<font color="#B22222">(* Real root reducibility test. 
+   G reduced groebner basis, t term.
+   s =  0, if t is reducible with an Element g of G with HT(g) = t,
+   s = -1, if t is not reducible and s = 1 otherwise *)</font>
+<strong><font color="#228B22">VAR</font></strong> w: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s := -1;
+  <font color="#4169E1">WHILE</font> (G &lt;&gt; SIL) <font color="#4169E1">AND</font> (s = -1) <font color="#4169E1">DO</font>
+    ADV(G,g,G);
+    EVDFSI(t,DIPEVL(g),w,s);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRREDTEST;
+
+<strong><font color="#4169E1">PROCEDURE RRREDTERMS</font></strong>(G: LIST): LIST;      
+<font color="#B22222">(* Real root reduced terms. 
+   G reduced groebner basis of a nontrival zerodimensional ideal. R ist the 
+   set of reduced terms sorted with respect to the actual termorder. *)</font>
+<strong><font color="#228B22">VAR</font></strong> R,L,i,j,g,t,n,s: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  n := LENGTH(DIPEVL(FIRST(G)));
+  R := LIST1(VEL(0,n));
+  <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> n <font color="#4169E1">DO</font>
+    L := R;
+    <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(L,t,L);
+      EVCADD(t,i,1,t,j);
+      RRREDTEST(G,t,g,s);
+      <font color="#4169E1">WHILE</font> s = -1 <font color="#4169E1">DO</font>
+        R := COMP(t,R);
+        EVCADD(t,i,1,t,j);
+        RRREDTEST(G,t,g,s); 
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>; 
+  RETURN(EVUMSORT(R));
+<strong><font color="#4169E1">END</font></strong> RRREDTERMS;  
+
+<strong><font color="#4169E1">PROCEDURE RRADNFORM</font></strong>(D,G,R: LIST): LIST;
+<font color="#B22222">(* Real root arbitrary domain normal form. 
+   G monic reduced groebner basis of a nontrivial zerodimensional ideal of 
+   domain D, R is the set of reduced terms. NF is a list of entries (u,ut,up)
+   with: u is an element of R * R, RRREDTEST(G,u,_,ut) and up is the normal 
+   form of u wrt G. The elements of NF are sorted with respect to the actual 
+   termorder in decreasing order of the first entry. *)</font>
+<strong><font color="#228B22">VAR</font></strong> NF,N,L,U,u,ut,up,v,vt,vp,w,wt,wp,a,t,x,tx,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  NF := SIL;
+  U := EVSSPROD(R);
+  <font color="#4169E1">WHILE</font> U &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(U,u,U);
+    RRREDTEST(G,u,g,ut);
+    <font color="#4169E1">IF</font> ut = -1 <font color="#4169E1">THEN</font> up := DIPFMO(ADFI(D,1),u)
+    ELSIF ut = 0 <font color="#4169E1">THEN</font> up := DIPNEG(DIPMRD(g)) <font color="#4169E1">ELSE</font>
+<font color="#B22222">(* u is not in R and not in HM(G) *)</font>
+      up := 0; N := NF;
+<font color="#B22222">(* find element v in R x R with v*x = u and v not in R *)</font> 
+      <font color="#4169E1">REPEAT</font>
+        <font color="#4169E1">REPEAT</font>                                 
+          ADV(N,L,N);                    
+          FIRST3(L,v,vt,vp);              
+        <font color="#4169E1">UNTIL</font> vt &lt;&gt; -1; 
+        x := EVDIF(u,v);
+      <font color="#4169E1">UNTIL</font> (EVSIGN(x) = 1) <font color="#4169E1">AND</font> (EVTDEG(x) = 1);
+<font color="#B22222">(* for all monomials a*t in vp: up=up+a*"normal-form of t*x" *)</font> 
+      N := NF;
+      <font color="#4169E1">WHILE</font> vp &lt;&gt; 0 <font color="#4169E1">DO</font>
+        DIPMAD(vp,a,t,vp);
+        <font color="#4169E1">IF</font> vp = SIL <font color="#4169E1">THEN</font> vp := 0 <strong><font color="#4169E1">END</font></strong>;
+        tx := EVSUM(t,x);     
+        <font color="#4169E1">REPEAT</font>
+          ADV(N,L,N);
+          FIRST3(L,w,wt,wp);
+        <font color="#4169E1">UNTIL</font> EQUAL(w,tx) = 1; 
+        up := DIPSUM(up, DIPBCP(wp,a));
+      <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>;
+    NF := COMP(LIST3(u,ut,up),NF);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(NF);
+<strong><font color="#4169E1">END</font></strong> RRADNFORM;
+
+<strong><font color="#4169E1">PROCEDURE RRADSTRCONST</font></strong>(D,G,R: LIST; <strong><font color="#228B22">VAR</font></strong> U, beta: LIST);
+<font color="#B22222">(* Real root arbitrary domain structure constants. 
+   G monic reduced groebner basis of a nontrivial zerodimensional ideal of 
+   domain D, R is the set of reduced terms. beta is a matrix of structure-
+   constants beta[u,v] wrt the basis R with u from U = R * R and v from R. 
+   U and the rows of the matrix beta are sorted with respect to the actual 
+   termorder in increasing order. *)</font>
+<strong><font color="#228B22">VAR</font></strong> NF,L,u,ut,up,uv,a,t,V,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  U := SIL; beta := SIL;
+  NF := RRADNFORM(D,G,R);
+  <font color="#4169E1">WHILE</font> NF &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(NF,L,NF);
+    FIRST3(L,u,ut,up);
+    uv := SIL; V := CINV(R);
+    <font color="#4169E1">WHILE</font> up &lt;&gt; 0 <font color="#4169E1">DO</font>
+      DIPMAD(up,a,t,up);
+      <font color="#4169E1">IF</font> up = SIL <font color="#4169E1">THEN</font> up := 0 <strong><font color="#4169E1">END</font></strong>;
+      ADV(V,v,V);
+      <font color="#4169E1">WHILE</font> EQUAL(v,t) = 0 <font color="#4169E1">DO</font> ADV(V,v,V); uv := COMP(ADFI(D,0),uv) <strong><font color="#4169E1">END</font></strong>;
+      uv := COMP(a,uv);
+    <strong><font color="#4169E1">END</font></strong>; 
+    <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V,v,V); uv := COMP(ADFI(D,0),uv) <strong><font color="#4169E1">END</font></strong>;
+    U := COMP(u,U);
+    beta := COMP(uv,beta);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRADSTRCONST;
+
+<strong><font color="#4169E1">PROCEDURE RRMMULT</font></strong>(w,R,U,beta: LIST): LIST;
+<font color="#B22222">(* Real root matrix of multiplication. 
+   R is the set of reduced terms in increasing order, w from R, U = R * R 
+   and beta is the set of combined structure constants wrt R. The columnwise 
+   represented matrix of multiplication with w is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> M,u,v,t,l: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  M := SIL; 
+  <font color="#4169E1">WHILE</font> R &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(R,v,R);
+    t := EVSUM(w,v);
+    <font color="#4169E1">REPEAT</font> 
+      ADV(U,u,U);
+      ADV(beta,l,beta)
+    <font color="#4169E1">UNTIL</font> EQUAL(t,u) = 1;
+    M := COMP(l,M);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(INV(M));
+<strong><font color="#4169E1">END</font></strong> RRMMULT;
+
+<strong><font color="#4169E1">PROCEDURE RRADVARMATRICES</font></strong>(G,R,U,beta: LIST): LIST;
+<font color="#B22222">(* Real root arbitrary domain multiplication matrices of variables. 
+   G monic reduced groebner basis of a nontrivial zerodimensional ideal. R is
+   the set of reduced terms in increasing order, U = R * R and beta is the
+   set of combined structure constants wrt R. L is a list of entries of the 
+   form (1,M(i)) and M(i) is the matrix of multiplication with X(i) wrt R. *)</font>
+<strong><font color="#228B22">VAR</font></strong> L,MXi,i,j,n,s,a,t,f,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  L := SIL;
+  n := LENGTH(DIPEVL(FIRST(G)));
+  <font color="#4169E1">FOR</font> i := n <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font>
+    EVCADD(VEL(0,n),i,1,t,j);
+    RRREDTEST(G,t,g,s);
+    <font color="#4169E1">IF</font> s = -1 <font color="#4169E1">THEN</font> MXi := RRMMULT(t,R,U,beta) <font color="#4169E1">ELSE</font>
+      MXi := SIL; f := DIPNEG(DIPMRD(g));
+      <font color="#4169E1">WHILE</font> f &lt;&gt; 0 <font color="#4169E1">DO</font>
+        DIPMAD(f,a,t,f);
+        <font color="#4169E1">IF</font> f = SIL <font color="#4169E1">THEN</font> f := 0 <strong><font color="#4169E1">END</font></strong>;
+        MXi := ADMSUM(MXi,ADSMPROD(RRMMULT(t,R,U,beta),a));
+    <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+    L := COMP(LIST2(1,MXi),L);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(L);
+<strong><font color="#4169E1">END</font></strong> RRADVARMATRICES;
+
+<strong><font color="#4169E1">PROCEDURE RRADUPDATE</font></strong>(D,i,M1,M2: LIST; <strong><font color="#228B22">VAR</font></strong> l,ls: LIST);
+<font color="#B22222">(* Real root arbitrary domain update. Subroutine of RRADPOLMATRIX. *)</font>
+<strong><font color="#228B22">VAR</font></strong> j,M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">WHILE</font> (l &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(l) &lt; i) <font color="#4169E1">DO</font>
+    ADV2(l,j,M,l);
+    ls := COMP2(M,j,ls);
+  <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> (l = SIL) <font color="#4169E1">OR</font> (FIRST(l) &gt; i) <font color="#4169E1">THEN</font>
+    M := ADMPROD(D,M1,M2);
+    l := COMP2(i,M,l);
+  <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong> RRADUPDATE;
+
+<strong><font color="#4169E1">PROCEDURE RRADPOLMATRIX</font></strong>(D,R,h: LIST; <strong><font color="#228B22">VAR</font></strong> Mh,L: LIST);
+<font color="#B22222">(* Real root arbitrary domain polynomial matrix. 
+   R is the set of reduced terms in increasing order, 
+   h is a polynomial of domain D, L contains nonempty lists L(i) of the form 
+   j(1),M(1),j(2),M(2),...,j(k),M(k) with 1=j(1)&lt;j(2)&lt;...&lt;j(k) and M(l) ist 
+   the matrix of multiplikation with X(i)**j(l) for the variable X(i). L is 
+   extended with new calculated matrices. Mh is the matrix of multiplication 
+   with h. *)</font>
+<strong><font color="#228B22">VAR</font></strong> Mt,Ls,l,ls,A,a,B,b,k,p,c,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  p := LENGTH(R);
+  Mh := SIL;
+  <font color="#4169E1">WHILE</font> h &lt;&gt; 0 <font color="#4169E1">DO</font>
+    DIPMAD(h,c,t,h);
+    <font color="#4169E1">IF</font> h = SIL <font color="#4169E1">THEN</font> h := 0 <strong><font color="#4169E1">END</font></strong>;
+    Mt := ADUM(D,p); 
+    Ls := SIL;
+    <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(L,l,L);
+      ADV(t,k,t);
+      <font color="#4169E1">IF</font> k &lt;&gt; 0 <font color="#4169E1">THEN</font>
+        ls := SIL;
+        a := 0; A := ADUM(D,p);
+        b := FIRST(l); B := SECOND(l);
+        <font color="#4169E1">WHILE</font> k &lt;&gt; 0 <font color="#4169E1">DO</font>
+          <font color="#4169E1">WHILE</font> MASEVEN(k) <font color="#4169E1">DO</font>
+            b := 2*b; k := k DIV 2;
+            RRADUPDATE(D,b,B,B,l,ls);
+            B := SECOND(l);
+          <strong><font color="#4169E1">END</font></strong>;
+          a := a+b; k:= k-1;
+          RRADUPDATE(D,a,A,B,l,ls);
+          A := SECOND(l);
+        <strong><font color="#4169E1">END</font></strong>;
+        Mt := ADMPROD(D,Mt,A);
+        l := CONC(INV(ls),l);
+      <strong><font color="#4169E1">END</font></strong>;
+      Ls := COMP(l,Ls);
+    <strong><font color="#4169E1">END</font></strong>;
+    Mh := ADMSUM(Mh,ADSMPROD(Mt,c));
+    L := INV(Ls);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRADPOLMATRIX;
+
+<strong><font color="#4169E1">PROCEDURE RRADQUADFORM</font></strong>(D,R,U,beta,Mh: LIST): LIST;
+<font color="#B22222">(* Real root arbitrary domain quadratic form. 
+   D is a domain, R is the set of reduced terms in increasing order, U = R * R
+   and beta is the set of combined structure constants wrt R. Mh is the matrix
+   of multiplication with h represented columnwise. The matrix Q=(q(i,j)) with
+   q(i,j) = tr(M(h)*M(v(i))*M(v(j)) and v(i),v(j) from R is computed. *)</font>
+<strong><font color="#228B22">VAR</font></strong> Q,V,v,W,w,tab,t,p,betah,Mhv,i,j,e,q,s,u: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tab := SIL;
+  p := LENGTH(R);
+  Q := VEL(VEL(0,p),p);
+  betah := ADMPROD(D,beta,Mh);
+  V := R; 
+  <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> p <font color="#4169E1">DO</font>
+    W := V;
+    ADV(V,v,V);
+    Mhv := RRMMULT(v,R,U,betah);
+    <font color="#4169E1">FOR</font> j := i <font color="#4169E1">TO</font> p <font color="#4169E1">DO</font>
+      ADV(W,w,W); 
+      u := EVSUM(v,w);
+      s := 0; t := tab;
+      <font color="#4169E1">WHILE</font> (t &lt;&gt; SIL) <font color="#4169E1">AND</font> (s = 0) <font color="#4169E1">DO</font>
+        ADV2(t,e,q,t);
+        s := EQUAL(u,e);
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> s = 0 <font color="#4169E1">THEN</font>
+        q := ADMPTRACE(D,Mhv,RRMMULT(w,R,U,beta));
+        tab := COMP2(u,q,tab);
+      <strong><font color="#4169E1">END</font></strong>;
+      Q := MSET(Q,i,j,q);
+      <font color="#4169E1">IF</font> j &lt;&gt; i <font color="#4169E1">THEN</font> Q := MSET(Q,j,i,q) <strong><font color="#4169E1">END</font></strong>; 
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(Q);
+<strong><font color="#4169E1">END</font></strong> RRADQUADFORM;
+
+<strong><font color="#4169E1">PROCEDURE RRCSR</font></strong>(i,v,tf: LIST; <strong><font color="#228B22">VAR</font></strong> A,N,S,L: LIST): LIST;
+<font color="#B22222">(* Real root count solve and reduce. Subroutine of the RR*COUNT procedures.
+   i is an integer, v is a sign vector, tf is the trace-flag. 
+   A is an integral k x k- matrix, N is a subset of {-1,0,+1}**i of length k 
+   sorted in increasing lexicographical order, S is an integral vector of 
+   length k and L is a list of length k.
+   The system A*Z=S is solved and reduced by deleting the zero entries of Z
+   and the corresponding columns of A. Then the system is reduced to a regular
+   one by deleting linear dependend rows of A and the corresponding elements
+   of S and L. ZNL is a list of pairs (z,n) with z &gt; 0 is an element of Z and 
+   n is the corresponding element of N. If there does not exist an element n
+   in N satisfiing the sign condition v then the empty list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> ZNL,Z,z,zi,AL,AU,As,a,au,Ns,n,ni,Ss,s,Ls,l,k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(* solve linear system *)</font> 
+  IMGELUD(A,AL,AU);
+  Z := IMSDS(AL,AU,S);
+<font color="#B22222">(* delete zero entries of Z and corresponding columns of A and elements of N *)</font>
+  A := MTRANS(A); Ns := SIL; As := SIL; ZNL := SIL;
+  <font color="#4169E1">WHILE</font> Z &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(Z,z,Z); ADV(N,n,N); ADV(A,a,A);
+    <font color="#4169E1">IF</font> z &lt;&gt; 0 <font color="#4169E1">THEN</font>
+      zi := RNNUM(z); ni := CINV(n);
+      <font color="#4169E1">IF</font> tf = 1 <font color="#4169E1">THEN</font> SWRITE("Sign-Condition: "); OWRITE(ni);
+                     SWRITE("  Real Zeroes: "); OWRITE(zi); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+      ZNL := COMP(LIST2(zi,ni),ZNL);
+      Ns := COMP(n,Ns); As:= COMP(a,As);
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  N := INV(Ns); A := INV(As); ZNL := INV(ZNL);
+<font color="#B22222">(* test sign criterion *)</font>
+  <font color="#4169E1">IF</font> (LENGTH(v) &gt;= i) <font color="#4169E1">AND</font> 
+     (MEMBER(REDUCT(CINV(v),LENGTH(v)-i),N) = 0) <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* getting a regular system by deleting linear dependend rows of A *)</font>
+  k := LENGTH(FIRST(A));
+  IMGELUD(A,AL,AU);
+  A := MTRANS(A); As := SIL; Ss := SIL; Ls := SIL;
+  <font color="#4169E1">WHILE</font> AU &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(AU,au,AU); i := LENGTH(au);
+    ADV(A,a,A); ADV(S,s,S); ADV(L,l,L);
+    <font color="#4169E1">WHILE</font> i &lt; k <font color="#4169E1">DO</font>
+      ADV(A,a,A); ADV(S,s,S); ADV(L,l,L);
+      k := k - 1;
+    <strong><font color="#4169E1">END</font></strong>;
+    As := COMP(a,As); Ss:= COMP(s,Ss); Ls := COMP(l,Ls);
+    k := k - 1;
+  <strong><font color="#4169E1">END</font></strong>;
+  A := INV(As); S := INV(Ss); L := INV(Ls);
+  RETURN(ZNL);
+<strong><font color="#4169E1">END</font></strong> RRCSR;
+
+<strong><font color="#4169E1">PROCEDURE RRADCOUNT</font></strong>(D,G,H,v,tf: LIST): LIST;
+<font color="#B22222">(* Real root arbirary domain count. 
+   G is a monic reduced groebner basis of a zerodimensional ideal of domain D,
+   H is a list of polynomials of length s. v is a vektor of signs with length 
+   not greater than s. tf is the trace-flag.
+   ZNL is a list of pairs (z,n) with n is an element of {-1,0,+1}**s and z &gt; 0
+   is the number of real zeroes of G wrt the sign condition n for the elements
+   of H. ZNL is sorted wrt the invers lexicographical order of the n. If there
+   does not exist any real zero or a zero satisfiing the sign condition v, 
+   then the empty list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> ZNL,R,E,U,beta,s,S,m,N,A,W,L,i,h,S1,S2,m0,m1,m2,md,mh: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  R := RRREDTERMS(G);
+  E := ADUM(D,LENGTH(R));
+  RRADSTRCONST(D,G,R,U,beta);
+  s := ADSIG(D,RRADQUADFORM(D,R,U,beta,E));
+  <font color="#4169E1">IF</font> s = 0 <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> H = SIL <font color="#4169E1">THEN</font> ZNL := LIST1(LIST2(s,SIL)); RETURN(ZNL) <strong><font color="#4169E1">END</font></strong>;
+  S := LIST1(s); m := LIST1(E); N := LIST1(SIL);
+  A := LIST1(LIST1(1)); W := LIST3(LIST3(1,1,1),LIST3(-1,0,1),LIST3(1,0,1));
+  L := RRADVARMATRICES(G,R,U,beta);
+  i := 0;
+  <font color="#4169E1">REPEAT</font>
+    ADV(H,h,H); i := i+1;
+    <font color="#4169E1">IF</font> tf = 1 <font color="#4169E1">THEN</font> BLINES(1); 
+              SWRITE("Condition No. "); OWRITE(i); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+    RRADPOLMATRIX(D,R,h,mh,L);
+<font color="#B22222">(* expanding the system *)</font>
+    N := RRVTEXT(N,LIST3(-1,0,1));
+    A := IMRTPROD(W,A);
+    S1 := SIL; S2 := SIL; m1 := SIL; m2 := SIL; m0 := m;
+    <font color="#4169E1">WHILE</font> m0 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(m0,md,m0);
+      md := ADMPROD(D,md,mh); m1 := COMP(md,m1);
+      s := ADSIG(D,RRADQUADFORM(D,R,U,beta,md)); S1 := COMP(s,S1);
+      md := ADMPROD(D,md,mh); m2 := COMP(md,m2);
+      s := ADSIG(D,RRADQUADFORM(D,R,U,beta,md)); S2 := COMP(s,S2);
+    <strong><font color="#4169E1">END</font></strong>;
+    S := CONC(S,CONC(INV(S1),INV(S2)));
+    m := CONC(m,CONC(INV(m1),INV(m2)));
+<font color="#B22222">(* solving the linear equation A*Z=S and reduce the system *)</font>
+    ZNL := RRCSR(i,v,tf,A,N,S,m);
+  <font color="#4169E1">UNTIL</font> (ZNL = SIL) <font color="#4169E1">OR</font> (H = SIL);
+  RETURN(ZNL);
+<strong><font color="#4169E1">END</font></strong> RRADCOUNT;
+
+<strong><font color="#4169E1">END</font></strong> RRADOM.
+
+<font color="#B22222">(* -EOF- *)</font>
+
+
+</pre>
+</body>
+
+</html>

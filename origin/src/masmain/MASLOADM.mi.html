@@ -1,0 +1,104 @@
+
+<html>
+<head>
+<title>./masmain/MASLOADM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T10:04:49+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASLOADM.mi,v 1.1 1994/03/11 15:37:30 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASLOADM.mi,v $
+ * Revision 1.1  1994/03/11  15:37:30  pesch
+ * Diplomarbeit F. Lippold
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASLOADM;
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASLISPU IMPORT Declare,
+                     Compiledf1, Compiledf2, Compiledf3, Compiledf4,
+                     Compiledf5, Compiledp1, Compiledp1v2, Compiledp3v2, 
+                     Compiledp2v3; 
+
+FROM LINALG IMPORT ADUM, ADVSPROD, ADVSVPROD, ADVVSUM, ADSMPROD, ADMSUM, 
+                   ADMPROD, ADMTRACE, ADMPTRACE, ADCHARPOL, ADSIG, ADVWRITE,
+                   ADMWRITE, IMRTPROD, ICHARPOL, ISIG;
+
+FROM RRADOM IMPORT  EVUMSORT, EVSSPROD, RRVTEXT, RRZDIM, RRREDTERMS, 
+                    RRADSTRCONST, RRADVARMATRICES, RRADPOLMATRIX, RRADQUADFORM,
+                    RRADCOUNT;
+
+FROM RRINT IMPORT RRIPIQ, RRIPQSUM, RRISTRCONST, RRIQUADFORM, RRICOUNT;
+
+FROM RRUADOM IMPORT RRUADPOLTOVEC, RRUADSTRCONST, RRUADQUADFORM, RRUADCOUNT;
+
+FROM RRUINT IMPORT RRUIPOLTOVEC, RRUISTRCONST, RRUIQUADFORM, RRUICOUNT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASLOADM.mi,v 1.1 1994/03/11 15:37:30 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE InitExternalsM</font></strong>;
+<font color="#B22222">(*Initialize external compiled real root procedures. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+      Compiledf2(ADUM,"ADUM");                     <font color="#B22222">(* from LINALG *)</font>
+      Compiledf3(ADVSPROD,"ADVSPROD");
+      Compiledf2(ADVSVPROD,"ADVSVPROD");
+      Compiledf2(ADVVSUM,"ADVVSUM");
+      Compiledf2(ADSMPROD,"ADSMPROD");
+      Compiledf2(ADMSUM,"ADMSUM");
+      Compiledf3(ADMPROD,"ADMPROD");
+      Compiledf2(ADMTRACE,"ADMTRACE");
+      Compiledf3(ADMPTRACE,"ADMPTRACE");
+      Compiledf2(ADCHARPOL,"ADCHARPOL");
+      Compiledf2(ADSIG,"ADSIG");
+      Compiledp1(ADVWRITE,"ADVWRITE");
+      Compiledp1(ADMWRITE,"ADMWRITE");
+      Compiledf2(IMRTPROD,"IMRTPROD");
+      Compiledf1(ICHARPOL,"ICHARPOL");
+      Compiledf1(ISIG,"ISIG");
+      
+      Compiledf1(EVUMSORT,"EVUMSORT");             <font color="#B22222">(* from RRADOM *)</font>
+      Compiledf1(EVSSPROD,"EVSSPROD");
+      Compiledf2(RRVTEXT,"RRVTEXT");
+      Compiledf1(RRZDIM,"RRZDIM");
+      Compiledf1(RRREDTERMS,"RRREDTERMS");
+      Compiledp3v2(RRADSTRCONST,"RRADSTRCONST");
+      Compiledf4(RRADVARMATRICES,"RRADVARMATRICES");
+      Compiledp3v2(RRADPOLMATRIX,"RRADPOLMATRIX");
+      Compiledf5(RRADQUADFORM,"RRADQUADFORM");
+      Compiledf5(RRADCOUNT,"RRADCOUNT");
+      
+      Compiledp1v2(RRIPIQ,"RRIPIQ");               <font color="#B22222">(* from RRINT *)</font>
+      Compiledp3v2(RRIPQSUM,"RRIPQSUM");           
+      Compiledp2v3(RRISTRCONST,"RRISTRCONST");
+      Compiledf4(RRIQUADFORM,"RRIQUADFORM");
+      Compiledf4(RRICOUNT,"RRICOUNT");
+
+      Compiledf3(RRUADPOLTOVEC,"RRUADPOLTOVEC");   <font color="#B22222">(* from RRUADOM *)</font>
+      Compiledf3(RRUADSTRCONST,"RRUADSTRCONST");
+      Compiledf1(RRUADQUADFORM,"RRUADQUADFORM");
+      Compiledf5(RRUADCOUNT,"RRUADCOUNT");
+
+      Compiledf2(RRUIPOLTOVEC,"RRUIPOLTOVEC");     <font color="#B22222">(* from RRUINT *)</font>
+      Compiledf2(RRUISTRCONST,"RRUISTRCONST");
+      Compiledf1(RRUIQUADFORM,"RRUIQUADFORM");
+      Compiledf4(RRUICOUNT,"RRUICOUNT");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitExternalsM;
+
+<strong><font color="#4169E1">END</font></strong> MASLOADM.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

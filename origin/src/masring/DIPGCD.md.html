@@ -1,0 +1,60 @@
+
+<html>
+<head>
+<title>./masring/DIPGCD.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPGCD.md,v 1.2 1992/02/12 17:34:17 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPGCD.md,v $
+ * Revision 1.2  1992/02/12  17:34:17  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:33  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPGCD;
+
+
+<font color="#B22222">(* DIP GCD Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+     
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPGCD.md,v 1.2 1992/02/12 17:34:17 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIRFAC</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial factorisation.
+P is a distributive rational polynomial.
+PP=((e1,P1), ...,(en,Pn)), where P=P1**e1+ ... +Pn**en. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPLCM</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial least common multiple. A and B are integal
+polynomials. C=LCM(A,B), a nonnegative integral polynomial.*)</font>
+                                            
+
+<strong><font color="#4169E1">END</font></strong> DIPGCD.
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

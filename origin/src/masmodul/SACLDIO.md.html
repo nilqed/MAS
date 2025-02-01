@@ -1,0 +1,194 @@
+
+<html>
+<head>
+<title>./masmodul/SACLDIO.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:33:12+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACLDIO.md,v 1.2 1992/02/12 17:33:12 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACLDIO.md,v $
+ * Revision 1.2  1992/02/12  17:33:12  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:35  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACLDIO;
+
+<font color="#B22222">(* SAC Linear Diophantine Equation System Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACLDIO.md,v 1.2 1992/02/12 17:33:12 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE LDSMKB</font></strong>(A,BL: LIST;  <strong><font color="#228B22">VAR</font></strong> XLS,N: LIST); 
+<font color="#B22222">(*Linear diophantine system solution, modified Kannan and Bachem algorithm.  
+A is an m by n integral matrix.  A is represented
+column-wise.  b is an integral m-vector.  If the diophantine
+system A*x=b is consistent, then xs is a particular
+solution and N is a list of basis vectors of the solution
+module of A*x=0.  Otherwise, xs and N are null lists.  A and b are
+modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LDSSBR</font></strong>(A,BL: LIST;  <strong><font color="#228B22">VAR</font></strong> XLS,N: LIST); 
+<font color="#B22222">(*Linear diophantine system solution, based on Rosser ideas.  A is an
+m by n integral matrix.  A is represented column-wise.  b is
+an integral m-vector.  If the diophantine system A*x=b
+is consistent, then xs is a particular solution and N is
+a list of basis vectors of the solution module of A*x=0.  Otherwise,
+xs and N are null lists.  A and b are modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPDE</font></strong>(RL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials determinant, exact division algorithm.
+M is a square matrix of integral polynomials in r variables, r ge 0,
+represented as a list.  D is the determinant of M.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPDM</font></strong>(RL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials determinant, modular algorithm.  M is
+a square matrix of integral polynomials in r variables, r non-negative.
+D is the determinant of M.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPHM</font></strong>(RL,ML,A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials homomorphism.  A is a matrix of
+integral polynomials in r variables, r non-negative.  m is a
+positive beta-integer.  B is the matrix B(i,j) of polynomials in r
+variables  over Z sub m such that B(i,j)=H(m)(A(i,j)).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MAIPP</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Matrix of integral polynomials product.  A and B are matrices of
+integral polynomials in r variables, r ge 0, for which the matrix
+product A*B is defined.  C=A*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MIAIM</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers, adjoin identity matrix,  A is an m by n matrix
+of integers.  A is represented column-wise.  B is the matrix obtained
+by adjoining an n by n identity matrix to the bottom of A.  A is
+modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MICINS</font></strong>(A,V: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers column insertion.  A is an m by n integral
+matrix represented by the list (a(1),a(2), ...,a(n)), where a(i) is the
+list (a(1,i), ...,a(m,i)) representing column i of A and a(1,1)
+ge a(1,2) ge  ... ge a(1,m).  V=(v(1), ...,v(m)) is an integral
+vector with v(1) lt a(1,1). Let i be the largest integer such that
+a(1,i) ge v(1).  Then B is the matrix represented by the list (a(1), ...,
+a(i),V,a(i+1), ...,a(n)).  A is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MICS</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers column sort.  A is an integral matrix with non-
+negative elements in first row.  A is represented column-wise.  B is an
+integral matrix obtained by sorting columns of A such that elements
+of the first row are in descending order.  A is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MINNCT</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Matrix of integers, non-negative column transformation.
+A=(a(i,j)) is an m by n integral matrix.  A is represented
+column-wise. B=(b(i,j)) is the m by n integral matrix
+with b(i,j)=a(i,j) if a(1,j) ge 0 and b(i,j)=-a(i,j) if
+a(1,j) lt 0.  A is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MMDDET</font></strong>(PL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular digits determinant.  p is a prime beta-integer.
+M is a square matrix over GF(p), represented as a list.  d is the
+determinant of M.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MMDNSB</font></strong>(PL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular digits null space basis.  p is a prime beta-
+integer.  M is an m by n matrix over Z sub p.  B is a list (b(1), ...,
+b(r)) representing a basis for the null space of M, consisting of all
+x such that M*x=0.  r is the dimension of the null space.  B=() if
+the null space of M is 0.  Each b(i) is a list representing an
+m-vector.  M is modified.  Alternatively, if M represents a matrix by
+columns, then B is a basis for the null space consisting of all x such
+that x*M=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MMPDMA</font></strong>(RL,PL,M: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular polynomials determinant, modular algorithm.  M is a
+square matrix of modular polynomials in r variables over Z sub p,
+r non-negative, p a prime beta-integer.  D is the determinant of M.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MMPEV</font></strong>(RL,ML,A,KL,AL: LIST): LIST; 
+<font color="#B22222">(*Matrix of modular polynomials evaluation.  A is a matrix of
+polynomials in r variables over Z sub m, m a positive beta-integer.
+1 le k le r and a is an element of Z sub m.  B is the matrix of
+polynomials b(i,j) where b(i,j)(x(1), ...,x(k-1),x(k+1), ...,x(r))=
+a(i,j)(x(1), ...,x(k-1),a,x(k+1), ...,x(r)).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VIAZ</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Vector of integers, adjoin zeros.  A is the vector (a(1), ...,a(m)).
+n is a non-negative beta-integer.  B is the vector (a(1), ...,a(m),
+0, ...,0) of m+n components.  A is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VIDIF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Vector of integers difference.  A and B are vectors in Z sup n.
+C=A-B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VIERED</font></strong>(U,V,IL: LIST): LIST; 
+<font color="#B22222">(*Vector of integers, element reduction.  U=(u(1), ...,u(n)) and
+V=(v(1), ...,v(n)) are integral n-vectors.  1 le i le n.  v(i)
+ne 0.  W=U-q*V, where q=INTEGER(u(i)/v(i)).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VILCOM</font></strong>(AL,BL,A,B: LIST): LIST; 
+<font color="#B22222">(*Vector of integers linear combination.  a and b are integers.  A
+and B are integral vectors in Z sup n.  C=a*A+b*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VINEG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Vector of integers negation.  A is an integral vector.  B=-A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VISPR</font></strong>(AL,A: LIST): LIST; 
+<font color="#B22222">(*Vector of integers scalar product.  a is an integer.  A is an
+integral vector.  C=a*A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VISUM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Vector of integers sum.  A and B are vectors in Z sup n.  C=A+B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VIUT</font></strong>(U,V,IL: LIST;  <strong><font color="#228B22">VAR</font></strong> UP,VP: LIST); 
+<font color="#B22222">(*Vector of integers, unimodular transformation.  U=(u(1), ...,u(n))
+and V=(v(1), ...,v(n)) are vectors in Z sup n with u(i) ne 0.
+(UP,VP)=(U,V)*K where K is a unimodular matrix, depending on u(i)
+and v(i), whose elements are obtained from IDEGCD.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACLDIO.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

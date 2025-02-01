@@ -1,0 +1,938 @@
+
+<html>
+<head>
+<title>./maslog/TFORM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T21:10:08+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: TFORM.mi,v 1.1 1994/11/28 21:10:08 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: TFORM.mi,v $
+ * Revision 1.1  1994/11/28  21:10:08  dolzmann
+ * New modules PQBASE.md and PQBASE.mi:
+ *   Procedures for the manipulating first oder formulas over the language of
+ *   ordered rings.
+ * New modules RQEPRRC.md and RQEPRRC.mi:
+ *   Procedures for the real quantifier elimination.
+ * New modules TFORM.md and TFORM.mi:
+ *   Procedures for the computation of type formulas.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE TFORM;
+<font color="#B22222">(* Type Formula Implementation Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                   S E P E R A T I O N   F O R M U L A E                     *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Abstract: A program for the determination of type formulas.                 *
+******************************************************************************)</font>
+
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, CWRITE, DIBUFF, DIGIT,
+			LETTER, LISTS, MASORD, SWRITE;
+FROM MASBIOSU	IMPORT	CLTIS, INP, OUT, SHUT;
+FROM MASELEM	IMPORT	GAMMAINT, MASEVEN;
+FROM MASERR	IMPORT	ERROR, confusion, fatal, harmless, severe, spotless;
+FROM MASLISPU	IMPORT	Declare, PROCF1, PROCF2;
+FROM MASLOG	IMPORT	FORAPPLYAT, FORAPPLYATF2, FORCOUNTAF, FORELIMXOPS,
+			FORMKCNF, FORMKDNF, FORMKPOS, FORMKPRENEX,
+			FORMKPRENEX1, FORREPAFS, FORSIMPLIFY, FORSMPL;
+FROM MASSET	IMPORT	SetUnion;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, LISTVAR,
+			RED, SFIRST, SIL, SRED;
+FROM MASSYM	IMPORT	ATOM, MEMQ;
+FROM MASSYM2	IMPORT	ASSOC, ASSOCQ, EXPLOD, SREAD1, SYMBOL, UREAD, UWRIT1,
+			UWRITE;
+FROM MLOGBASE	IMPORT	EQUIV, ET, EXIST, FALSUM, FORALL, FORGARGS, FORGOP,
+			FORMKBINOP, FORMKFOR, FORMKQUANT, FORMKUNOP,
+			FORPARGS, FORPBINOP, FORPBINOPA, FORPFOR, FORPQUANT,
+			FORPQUANTA, FORPUNOP, FORPUNOPA, IMP, NON, REP, TVAR,
+			VEL, VERUM, XOR;
+FROM MLOGIO	IMPORT	FORIREAD, FORPPRT, FORPREAD, FORTEXW, KEYREAD;
+FROM LISTTOOLS	IMPORT	CLISTFA, LSRCHQ, UPCASE; 
+FROM PQBASE	IMPORT	EQU, GRE, GRQ, LES, LSQ, NEQ, PQCRELAND, PQCRELOR,
+			PQSIMPLIFY, PQSIMPLIFYP, pqgpol, pqgrel, pqmkaf,
+			pqpaf;
+FROM SACLIST	IMPORT	ADV2, ADV3, ADV4, AREAD, AWRITE, CCONC, CINV, CLOUT,
+			COMP2, CONC, EQUAL, FIRST2, LELT, LIST10, LIST2,
+			LIST3, LIST4, LIST5, MEMBER, RED2, SECOND, THIRD; 
+FROM SACSET	IMPORT	LBIBMS;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: TFORM.mi,v 1.1 1994/11/28 21:10:08 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1994 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+* Coefficient tuples:                                                         *
+* List of a length n representing a univariate polynomial of degree n-1.      *
+* The i-th entry in the list is the coefficient of X^(i-1). We consider       *
+* coefficients -1,0,1 representing arbitrary coefficients less than, equal    *
+* to or greater than 0.                                                       *
+* The characteristic coefficient J is represented by 2.                       *
+******************************************************************************)</font>
+
+<font color="#B22222">(* ***************************************************************************
+Classification.
+Let t the coefficient tuple (t_0,...,t_d) and -t:=(t_0,-t_1,...,(-1)^d t_d).
+A classification of a characteristic coefficient tuple t without joker entries
+is determined by the following rules. 
+If tau(t)-tau(-t)=0,  then the classification of t is Good.
+If tau(t)-tau(-t)&gt;0,  then the classification of t is Bad.
+If tau(t)-tau(-t)&lt;0,  then the classification of t is DontCare.
+If tau(t)-tau(-t)&lt;&gt;0, then the classification of t is Impossible.
+We represents the classification of tuple with an enumerate type or
+with a MAS symbol.
+*************************************************************************** *)</font>
+
+<font color="#B22222">(****************************************************************************
+Type formulas.
+
+Type formulas are MASLOG objects with the following representation of 
+atomic formulas.
+
+Atomic formulas are represented as lists
+	(REL,(id_0,id_1,...,id_n)),
+where REL is a relation symbol of \{NEQ, EQU, GRE, GRQ, LES LSQ\}, and
+id_i is an atom.
+Such an object has the following interpretation: 
+	id_0*id_1* ... *id_n REL 0.
+We think this representation suffices to store optimal type formulas:
+
+Powers of identifiers are not necessary, because you can transform a 
+formula id^n REL1 0 into id REL2 0.
+
+Sums are not necessary, because the sign of a sum of two or more
+parameters is not defined independently of the specialization of the 
+parameters. 
+
+Products are necessary: See the examples of type formulas in the 
+documentation!
+****************************************************************************)</font>
+
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong> TfGood, TfBad, TfImpossible, TfDontCare: LIST;
+
+<strong><font color="#228B22">VAR</font></strong> BbfParserSyms: LIST;	<font color="#B22222">(* The symbol table for the symbols of atomic
+				   formulas. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> TypeFormulaProc: PROCF1;	<font color="#B22222">(* Holds the procedure used for type formula 
+					computation. *)</font> 
+					
+
+<font color="#B22222">(******************************************************************************
+*                        A T O M I C _ F O R M U L A S                        *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE tfmkaf</font></strong>(rel:LIST;idl:LIST):LIST;
+<font color="#B22222">(* type formula make atomic formula.
+rel is a relation, idl is a list of atoms, 
+the atomic formula (rel,idl) is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST2(rel,idl);
+<strong><font color="#4169E1">END</font></strong> tfmkaf;
+
+<strong><font color="#4169E1">PROCEDURE tfpaf</font></strong>(af:LIST; <strong><font color="#228B22">VAR</font></strong> rel,idl:LIST);
+<font color="#B22222">(* type formula parse atomic formula. 
+af is an atomic formula; 
+the relation symbol of af is in rel returned; 
+the list of identifiers is in id returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FIRST2(af,rel,idl);
+<strong><font color="#4169E1">END</font></strong> tfpaf;
+
+<strong><font color="#4169E1">PROCEDURE tfgrel</font></strong>(af:LIST):LIST;
+<font color="#B22222">(* type formula get relation symbol. af 
+is an atomic formula. 
+The relation symbol of af is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FIRST(af);
+<strong><font color="#4169E1">END</font></strong> tfgrel;
+
+<strong><font color="#4169E1">PROCEDURE tfprtaf</font></strong>(af: LIST);
+<font color="#B22222">(* type formula print atomic formula. The atomic formula
+af is printed.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel,idl,id:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(af,rel,idl,af);
+	SWRITE("[ (");
+	ADV(idl,  id,idl);
+	SWRITE("a");
+	AWRITE(id);
+	<font color="#4169E1">WHILE</font> idl&lt;&gt;SIL <font color="#4169E1">DO</font>
+		SWRITE(" * ");
+		ADV(idl,  id,idl);
+		SWRITE("a");
+		AWRITE(id);
+	<strong><font color="#4169E1">END</font></strong>;
+	SWRITE(")");
+	<font color="#4169E1">IF</font>	rel=EQU <font color="#4169E1">THEN</font> SWRITE(" = 0]");
+	ELSIF	rel=NEQ <font color="#4169E1">THEN</font> SWRITE(" &lt;&gt; 0]");
+	ELSIF	rel=LES <font color="#4169E1">THEN</font> SWRITE(" &lt; 0]");
+	ELSIF	rel=GRE <font color="#4169E1">THEN</font> SWRITE(" &gt; 0]");
+	ELSIF	rel=LSQ	<font color="#4169E1">THEN</font> SWRITE(" &lt;= 0]");
+	ELSIF	rel=GRQ	<font color="#4169E1">THEN</font> SWRITE(" &gt;= 0]");
+	<font color="#4169E1">ELSE</font> 	ERROR(severe,"tfprtaf: unknown relation symbol");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> tfprtaf ;
+
+<strong><font color="#4169E1">PROCEDURE tfraf</font></strong>():LIST;
+<font color="#B22222">(* type formula read atomic formula. An atomic formula is read from the 
+input stream. The syntax is [(] id { [*] [a]n } [)]. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c: GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> ExpectOp: BOOLEAN;
+	<strong><font color="#228B22">VAR</font></strong> code,cl,ucl,rel,idl,sym,clp: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	idl:=SIL;
+	ExpectOp:=FALSE;
+	c:=CREADB();
+	<font color="#4169E1">IF</font> c&lt;&gt;MASORD("(") <font color="#4169E1">THEN</font> BKSP(); <strong><font color="#4169E1">END</font></strong>;
+	LOOP
+		c:=CREADB();
+		<font color="#4169E1">IF</font> DIGIT(c) <font color="#4169E1">THEN</font>
+			BKSP(); 
+			code:=AREAD();	
+			ExpectOp:=TRUE;
+			idl:=COMP(code,idl);
+		ELSIF c=MASORD("*") <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ExpectOp <font color="#4169E1">THEN</font>
+				DIBUFF();
+				ERROR(severe,"tfraf: operator expected.");
+			<font color="#4169E1">ELSE</font>
+				ExpectOp:=FALSE;
+			<strong><font color="#4169E1">END</font></strong>;
+		ELSIF c=MASORD(")") <font color="#4169E1">THEN</font> 
+			ucl:=KEYREAD();
+			sym:=ASSOCQ(ucl,BbfParserSyms);
+			<font color="#4169E1">IF</font> sym=SIL <font color="#4169E1">THEN</font> 
+				DIBUFF();
+				ERROR(severe,"tfraf: unknown relation symbol.");
+			<strong><font color="#4169E1">END</font></strong>;
+			EXIT;
+		<font color="#4169E1">ELSE</font>
+			BKSP();
+			<font color="#4169E1">IF</font> LETTER(c) <font color="#4169E1">THEN</font>
+				cl:=SREAD1();
+			<font color="#4169E1">ELSE</font>
+				cl:=KEYREAD();
+			<strong><font color="#4169E1">END</font></strong>;
+			ucl:=UPCASE(cl);
+			sym:=ASSOCQ(ucl,BbfParserSyms);
+			<font color="#4169E1">IF</font> sym&lt;&gt;SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>; 
+			<font color="#4169E1">IF</font> FIRST(cl)&gt;9 <font color="#4169E1">THEN</font> cl:=RED(cl); <strong><font color="#4169E1">END</font></strong>; 
+			code:=0;
+			<font color="#4169E1">WHILE</font> cl&lt;&gt;SIL <font color="#4169E1">DO</font>
+				ADV(cl,clp,cl);
+				code:=code*10+clp;
+			<strong><font color="#4169E1">END</font></strong>;
+			ExpectOp:=TRUE;
+			idl:=COMP(code,idl);		
+		<strong><font color="#4169E1">END</font></strong>;			
+	<strong><font color="#4169E1">END</font></strong>;
+	rel:=FIRST(sym);
+	c:=CREADB();	
+	<font color="#4169E1">IF</font> c&lt;&gt;0 <font color="#4169E1">THEN</font> 
+		DIBUFF();
+		ERROR(severe,"tfraf: 0 expected.");
+		<font color="#4169E1">IF</font> c=MASORD("]") <font color="#4169E1">THEN</font> BKSP(); <strong><font color="#4169E1">END</font></strong>; 
+	<strong><font color="#4169E1">END</font></strong>;
+	c:=CREADB(); <font color="#4169E1">IF</font> c&lt;&gt;MASORD(")") <font color="#4169E1">THEN</font> BKSP(); <strong><font color="#4169E1">END</font></strong>;
+	RETURN tfmkaf(rel,LBIBMS(idl)); <font color="#B22222">(* to do: delete repeated entries *)</font>
+<strong><font color="#4169E1">END</font></strong> tfraf;
+
+<strong><font color="#4169E1">PROCEDURE InitBbfParser</font></strong>();
+<font color="#B22222">(* Initialize black-box formula parser. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	BbfParserSyms:=SIL;
+	LISTVAR(BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("&lt;&gt;"),  NEQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("#"),   NEQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("!="),  NEQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("NEQ"), NEQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("="),   EQU, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("EQU"), EQU, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("&gt;"),   GRE, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("GRE"), GRE, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("&lt;"),   LES, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("LES"), LES, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("&lt;="),  LSQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("LSQ"), LSQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("LEQ"), LSQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("&gt;="),  GRQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("GRQ"), GRQ, BbfParserSyms);
+	BbfParserSyms:=COMP2( LISTS("GEQ"), GRQ, BbfParserSyms);
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> InitBbfParser;
+
+
+<font color="#B22222">(******************************************************************************
+*                       M A S L O G   I N T E R F A C E                       *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE TFPPRT</font></strong>(phi:LIST);
+<font color="#B22222">(* type formula pretty print. 
+phi is a tf-formula; 
+this procedure writes the formula phi formatted in the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPPRT(phi,tfprtaf);
+<strong><font color="#4169E1">END</font></strong> TFPPRT;
+
+<strong><font color="#4169E1">PROCEDURE TFIREAD</font></strong>():LIST;
+<font color="#B22222">(* type formula infix read. 
+A type formula is read from the input stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORIREAD(tfraf);
+<strong><font color="#4169E1">END</font></strong> TFIREAD;
+
+
+<font color="#B22222">(******************************************************************************
+*                     E X T E R N A L   I N T E R F A C E                     *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE TfUseDb</font></strong>();
+<font color="#B22222">(* type formula use data base. 
+The global variable TypeFormulaProc is set.
+Type formulas are computed only if they are not stored in the data base. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	TypeFormulaProc:=UseDb;
+<strong><font color="#4169E1">END</font></strong> TfUseDb;
+
+<strong><font color="#4169E1">PROCEDURE TfComputeTf</font></strong>();
+<font color="#B22222">(* type formula compute type formulas. 
+The global variable TypeFormulaProc is set.
+The data base of type formulas is not used. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	TypeFormulaProc:=ComputeTypeFormula;
+<strong><font color="#4169E1">END</font></strong> TfComputeTf;
+
+<strong><font color="#4169E1">PROCEDURE TfTypeFormula</font></strong>(deg: LIST):LIST;
+<font color="#B22222">(* type formula type formula.
+A type formula for polynomials of degree deg &gt; 0 is returned. 
+This is the interface for other modules. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN TypeFormulaProc(deg);
+<strong><font color="#4169E1">END</font></strong> TfTypeFormula;
+
+
+<font color="#B22222">(******************************************************************************
+* E F F I C I E N T   C O M P U T A T I O N   O F   T Y P E   F O R M U L A S *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ComputeTypeFormula</font></strong>(deg: LIST):LIST;
+<font color="#B22222">(* compute type formula. 
+deg is an atom &gt; 0.
+A type formula for polynomials of degree deg is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> deg &lt;=2 <font color="#4169E1">THEN</font>
+		result:=TfRecBasis(deg);
+	ELSIF (deg &lt;= 6) <font color="#4169E1">AND</font> (deg MOD 2 = 0) <font color="#4169E1">THEN</font>
+		result:=TfTypeFormula(deg-2);
+		result:=TfShiftVars(result,2);
+		result:=FORMKFOR(ET,LIST3(tfmkaf(EQU,LIST1(0)),
+					tfmkaf(EQU,LIST1(1)),
+					result));
+		result:=FORMKBINOP(VEL,result,TfRecBasis(deg));
+	ELSIF deg MOD 2 = 1 <font color="#4169E1">THEN</font>
+		result:=TfTypeFormula(deg-1);
+		result:=TfShiftVars(result,1);
+		result:=FORMKBINOP(ET,tfmkaf(EQU,LIST1(0)),result);
+	ELSIF deg MOD 2 = 0 <font color="#4169E1">THEN</font>
+		result:=TfTypeFormula(deg-2);
+		result:=TfShiftVars(result,2);
+		result:=FORMKFOR(ET,LIST3(tfmkaf(EQU,LIST1(0)),
+					tfmkaf(EQU,LIST1(1)),
+					result));
+		result:=FORMKBINOP(VEL,result,TFGENJ(deg));
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> ComputeTypeFormula;
+
+<strong><font color="#4169E1">PROCEDURE UseDb</font></strong>(deg: LIST): LIST;
+<font color="#B22222">(* Use data base. 
+A type formula for polynomials of degree deg &gt; 0 is returned. 
+If the type formula is already stored in the data base, this formula
+is returned. Otherwise the type formula is computed, stored in the 
+data base and returned. 
+Type formulas are stored in files with the name TF.d.db, where 
+d is the degree of the type formula.  *)</font>
+	<strong><font color="#228B22">VAR</font></strong> name, ret,phi: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	name:=LISTS("TF.");	
+	name:=CONC(name,CLISTFA(deg));
+	name:=CONC(name,LISTS(".db"));
+	ret:=INP(name);
+	<font color="#4169E1">IF</font> ret&lt;&gt;0 <font color="#4169E1">THEN</font> 
+		phi:=ComputeTypeFormula(deg);
+		ret:=OUT(name);
+		TFPPRT(phi);
+		SWRITE(".");
+		ret:=SHUT(name);
+	<font color="#4169E1">ELSE</font>
+		phi:=TFIREAD();
+		ret:=SHUT(name);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN phi;
+<strong><font color="#4169E1">END</font></strong> UseDb;
+
+<strong><font color="#4169E1">PROCEDURE TFGENJ</font></strong>(deg: LIST):LIST;
+<font color="#B22222">(* type formula generate with joker argument. 
+deg is an even atom greater than 1.
+computed. The computed formula is returned. 
+A strict type formula for polynomials of degree deg is computed.
+The joker argument is used in order to reduce the size of the type formula. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> R,r,result: LIST;
+	<strong><font color="#228B22">VAR</font></strong> last: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> deg MOD 4 = 0 <font color="#4169E1">THEN</font>
+		last:=tfmkaf(GRE,LIST1(0));
+	ELSIF deg MOD 4 = 2 <font color="#4169E1">THEN</font> 
+		last:=tfmkaf(LES,LIST1(0));
+	<font color="#4169E1">ELSE</font>
+		ERROR(severe,"TFGENJ: degree must be even.");
+		RETURN FALSUM;
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	R:=TfCtj(deg);
+	<font color="#4169E1">WHILE</font> R&lt;&gt;SIL <font color="#4169E1">DO</font> 
+		ADV(R,r,R);
+		result:=COMP(TFFTUPLE(r),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN FORMKBINOP(ET,last,FORMKFOR(VEL,INV(result)));
+<strong><font color="#4169E1">END</font></strong> TFGENJ;
+
+<strong><font color="#4169E1">PROCEDURE TfRecBasis</font></strong>(deg:LIST):LIST;
+<font color="#B22222">(* type formula recursion basis. 
+deg is an atom &lt; 6. 
+A type formula for polynomials with degree deg is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> sp: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">CASE</font> INTEGER(deg) <font color="#4169E1">OF</font> 
+	1: CLTIS(LISTS("( [a0 = 0] ) . "));
+	   RETURN TFIREAD();						|
+	2: CLTIS(LISTS("( [a1 = 0] \/ [a0 &lt; 0] ) . "));
+	   RETURN TFIREAD();						|
+	4: CLTIS(LISTS("( [ a0 &gt; 0 ] /\ ( [a2 &lt; 0] \/ [a1 a3 &lt; 0] )) . "));
+	   RETURN TFIREAD();						|
+	6: CLTIS(LISTS("([a0&lt;0]/\((([a2&gt;0]\/[a3 a1&lt;0])/\([a4&lt;0]\/[a5 a3&lt;0]))\/([a5 a1&gt;0]/\[a4 a2&lt;0]))) . "));
+	   RETURN TFIREAD(); 
+	<font color="#4169E1">ELSE</font>
+		ERROR(severe,"TfRecBasis: possible values <font color="#4169E1">for</font> deg: 1,2,4,6.");
+		RETURN FALSUM; <font color="#B22222">(* only a dummy *)</font>
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfRecBasis;
+	
+<strong><font color="#4169E1">PROCEDURE TfCtj</font></strong>(deg: LIST):LIST;
+<font color="#B22222">(* type formula coefficient tuples with joker argument.
+deg is an even atom.
+All good coefficients tuples with of polynomials of degree deg are computed.
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> deg MOD 2 = 1 <font color="#4169E1">THEN</font> 
+		ERROR(severe,"TfCtj: deg must be even.");
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> deg MOD 4 = 2 <font color="#4169E1">THEN</font> 
+		RETURN TfCtj1(deg,LIST1(1),-1,LIST2(-1,1),1,0,0);
+	<font color="#4169E1">ELSE</font>
+		RETURN TfCtj1(deg,LIST1(1),1,LIST2(-1,1),1,0,0);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfCtj;
+		
+<strong><font color="#4169E1">PROCEDURE TfCtj1</font></strong>(deg, <strong><font color="#4169E1">end</font></strong>, c0, ci,length, zp, zm: LIST):LIST;
+<font color="#B22222">(* type formula coefficient tuples with joker argument one.
+Auxiliary procedure for TfCtj1.
+deg is the degree of the characteristic polynomial.
+end is the end of a coefficient tuple.
+c0 is the first element of all coefficient tuples.
+ci is a list of possible elements for the next position. 
+length is the length of end.
+zp is the number of sign changes of end.
+zm is the number of sign chances of -(end). 
+A list of coefficient tuples is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result,first,c,l: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	l:= deg DIV 2;
+	<font color="#4169E1">IF</font> (zm &gt; l) <font color="#4169E1">OR</font> (zp &gt; l) <font color="#4169E1">THEN</font>
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	first:=FIRST(<strong><font color="#4169E1">end</font></strong>);
+	<font color="#4169E1">IF</font> length=deg+1 <font color="#4169E1">THEN</font> 
+		<font color="#B22222">(* end is the hole tuple. return if classification=good. *)</font>
+		<font color="#4169E1">IF</font> (zp+zm=deg) <font color="#4169E1">AND</font> (zp=zm) <font color="#4169E1">THEN</font> 
+			RETURN LIST1(<strong><font color="#4169E1">end</font></strong>);
+		<font color="#4169E1">ELSE</font>
+			RETURN SIL;
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF length=deg <font color="#4169E1">THEN</font>
+		<font color="#B22222">(* only one position is left. fix this position with c0 *)</font>
+		<font color="#4169E1">IF</font> c0*first=-1 <font color="#4169E1">THEN</font> zp:=zp+1; <font color="#4169E1">ELSE</font> zm:=zm+1 <strong><font color="#4169E1">END</font></strong>;
+		RETURN TfCtj1(deg,COMP(c0,<strong><font color="#4169E1">end</font></strong>),c0,SIL,length+1,zp,zm);
+		<font color="#B22222">(* to do. this recursive call is not necessary. *)</font>
+	ELSIF length=deg-1 <font color="#4169E1">THEN</font>
+		<font color="#B22222">(* two position are unspecified, but the last position is 
+		fixed by c0. *)</font>
+		<font color="#4169E1">IF</font> c0*first=-1 <font color="#4169E1">THEN</font> 
+			<font color="#B22222">(* The preultimate position is a joker, so 
+			fix the last two positions. *)</font>
+			RETURN TfCtj1(deg,COMP2(c0,2,<strong><font color="#4169E1">end</font></strong>),c0,SIL,length+2,
+					zp+1,zm+1);
+			<font color="#B22222">(* to do. this recursive call is not necessary. *)</font>
+		<font color="#4169E1">ELSE</font>
+			<font color="#B22222">(* the preultimate position is not a joker, 
+			so generate all possibilities. *)</font>
+			result:=SIL;
+			<font color="#4169E1">WHILE</font> ci&lt;&gt;SIL <font color="#4169E1">DO</font> 
+				ADV(ci,c,ci);
+				<font color="#4169E1">IF</font> first*c=-1 <font color="#4169E1">THEN</font>
+					result:=CONC(result,TfCtj1(deg,
+					COMP(c,<strong><font color="#4169E1">end</font></strong>),c0,SIL,length+1,zp+1,zm));
+				<font color="#4169E1">ELSE</font>	
+					result:=CONC(result,TfCtj1(deg,
+					COMP(c,<strong><font color="#4169E1">end</font></strong>),c0,SIL,length+1,zp,zm+1));
+				<strong><font color="#4169E1">END</font></strong>;
+			<strong><font color="#4169E1">END</font></strong>;
+			RETURN result;
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">ELSE</font> <font color="#B22222">(* general case *)</font>
+		<font color="#B22222">(* generate a joker on the actual position *)</font>
+		result:=TfCtj1(deg,COMP2(-first,2,<strong><font color="#4169E1">end</font></strong>),c0,LIST2(-1,1),
+			length+2,zp+1,zm+1);
+		<font color="#B22222">(* generate all possibilities without joker *)</font>
+		<font color="#4169E1">WHILE</font> ci&lt;&gt;SIL <font color="#4169E1">DO</font> 
+			ADV(ci,c,ci);
+			<font color="#4169E1">IF</font> first*c=-1 <font color="#4169E1">THEN</font>
+				result:=CONC(result,TfCtj1(deg,
+				COMP(c,<strong><font color="#4169E1">end</font></strong>),c0,LIST1(first),length+1,zp+1,zm));
+			<font color="#4169E1">ELSE</font>	
+				result:=CONC(result,TfCtj1(deg,
+				COMP(c,<strong><font color="#4169E1">end</font></strong>),c0,LIST1(first),length+1,zp,zm+1));
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+		RETURN result;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfCtj1;
+
+
+<font color="#B22222">(******************************************************************************
+*                            M I S C E L L A N E A                            *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE TFFTUPLE</font></strong>(tup:LIST):LIST;
+<font color="#B22222">(* type formula from coefficient tuple with joker entries.
+tup is a coefficient tuple.
+A formula in tf-format is returned. The formula is true, iff
+the instantiation of the variables suffice the relation conditions of
+the characteristic coefficients of tup. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c,i,result: LIST;	
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> tup=SIL <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* dummy *)</font>
+	i:=1;
+	result:=SIL;
+	ADV(tup,  c,tup); <font color="#B22222">(* ignore the lowest coefficient *)</font>
+	<font color="#4169E1">WHILE</font> RED(tup)&lt;&gt;SIL <font color="#4169E1">DO</font>	<font color="#B22222">(* ignore the highest coefficient *)</font>
+		ADV(tup,c,tup);
+		<font color="#4169E1">CASE</font> INTEGER(c) <font color="#4169E1">OF</font> 
+		-1:	result:=COMP(tfmkaf(LES,LIST1(i)),result); |
+		 0:	result:=COMP(tfmkaf(EQU,LIST1(i)),result); |
+		 1:	result:=COMP(tfmkaf(GRE,LIST1(i)),result); |
+ 		 2: 	
+		<strong><font color="#4169E1">END</font></strong>;
+		i:=i+1;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> result=SIL <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* dummy *)</font>
+	RETURN FORMKFOR(ET,INV(result));
+<strong><font color="#4169E1">END</font></strong> TFFTUPLE;
+
+<strong><font color="#4169E1">PROCEDURE TfShiftVars</font></strong>(phi,offset: LIST):LIST;
+<font color="#B22222">(* type formula shift variables. 
+phi is a type formula,
+offset is an atom. 
+All identifiers are shifted at offset positions to the right. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN FORAPPLYATF2(phi,offset,tfshiftaf);
+<strong><font color="#4169E1">END</font></strong> TfShiftVars;
+
+<strong><font color="#4169E1">PROCEDURE tfshiftaf</font></strong>(phi,offset:LIST):LIST;
+<font color="#B22222">(* type formula shift atomic formula. phi
+is an atomic formula, offset is an atom. all identifiers in phi are shifted. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel,idl,id,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	tfpaf(phi,  rel,idl);
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> idl&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(idl,  id,idl);
+		result:=COMP(id+offset,result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN tfmkaf(rel,INV(result));
+<strong><font color="#4169E1">END</font></strong> tfshiftaf;
+				
+<font color="#B22222">(******************************************************************************
+*                         C L A S S I F I C A T I O N                         *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE Class2Sym</font></strong>(class: TfClass):LIST;
+<font color="#B22222">(* classification to symbol. class is a constant of type class.
+The corresponding mas symbol is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> class=Tfgood 		<font color="#4169E1">THEN</font> RETURN TfGood;
+	ELSIF class=Tfbad		<font color="#4169E1">THEN</font> RETURN TfBad;
+	ELSIF class=Tfdontcare		<font color="#4169E1">THEN</font> RETURN TfDontCare;
+	ELSIF class=Tfimpossible	<font color="#4169E1">THEN</font> RETURN TfImpossible;
+	<font color="#4169E1">ELSE</font> ERROR(severe,"Class2Sym: Unknown Classification:");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> Class2Sym;
+
+<strong><font color="#4169E1">PROCEDURE Sym2Class</font></strong>(class: LIST):TfClass;
+<font color="#B22222">(* symbol to classification. 
+class is a mas-symbol the corresponding classification is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> class=TfGood 		<font color="#4169E1">THEN</font> RETURN Tfgood;
+	ELSIF class=TfBad		<font color="#4169E1">THEN</font> RETURN Tfbad;
+	ELSIF class=TfDontCare		<font color="#4169E1">THEN</font> RETURN Tfdontcare;
+	ELSIF class=TfImpossible	<font color="#4169E1">THEN</font> RETURN Tfimpossible;
+	<font color="#4169E1">ELSE</font> ERROR(severe,"Sym2Class: Unknown Classification:");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> Sym2Class;
+
+<strong><font color="#4169E1">PROCEDURE InitClassSyms</font></strong>();
+<font color="#B22222">(* Initialize classification symbols. 
+The mas symbols representing classification constants are initialized. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	Declare(TfGood,"TfGood");
+	Declare(TfBad,"TfBad");
+	Declare(TfImpossible,"TfImpossible");
+	Declare(TfDontCare,"TfDontCare");
+<strong><font color="#4169E1">END</font></strong> InitClassSyms;
+
+<strong><font color="#4169E1">PROCEDURE TfClassify</font></strong>(tup:LIST):TfClass;
+<font color="#B22222">(* type formula classify coefficient tuple.
+tup is a coefficient tuple. The classification of tup is returned.
+Let f the polynomial which is represented by tup.
+If tau(f)=0, then Tfgood is returned,
+if tau(f)&lt;0, then Tfdontcare is returned,
+if tau(f)&gt;0, then Tfbad is returned.
+Is the sum of the upper bounds of the real zeroes do not equal the
+degree of f, then TfImpossible is returned. *)</font>
+   	<strong><font color="#228B22">VAR</font></strong> <strong><font color="#228B22">type</font></strong>, CZeroes, ZeroesM, Zeroes0, ZeroesP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	TfZeroes(tup,   CZeroes, ZeroesM, Zeroes0, ZeroesP);
+	<font color="#4169E1">IF</font> CZeroes=SIL <font color="#4169E1">THEN</font> RETURN Tfimpossible; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> ZeroesM+Zeroes0+ZeroesP&lt;&gt;CZeroes <font color="#4169E1">THEN</font> RETURN Tfimpossible; <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#228B22">type</font></strong>:=ZeroesP-ZeroesM;
+	<font color="#4169E1">IF</font> <strong><font color="#228B22">type</font></strong>&gt;0 <font color="#4169E1">THEN</font>
+		RETURN Tfbad;
+	ELSIF <strong><font color="#228B22">type</font></strong>=0 <font color="#4169E1">THEN</font>
+		RETURN Tfgood;
+	<font color="#4169E1">ELSE</font> <font color="#B22222">(* IF type&lt;0 THEN *)</font>
+		RETURN Tfdontcare;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfClassify;
+
+<strong><font color="#4169E1">PROCEDURE TfClassifyI</font></strong>(tup:LIST):LIST;
+<font color="#B22222">(* type formula classify coefficient tuple interpreter version.
+tup is a coefficient tuple. The classification of tup is returned.
+Let f the polynomial which is represented by tup.
+If tau(f)=0, then TfGood is returned,
+if tau(f)&lt;0, then TfDontCare is returned,
+if tau(f)&gt;0, then TfBad is returned.
+Is the sum of the upper bounds of the real zeroes not equal to the
+degree of f, them TfImpossible is returned. 
+The classification is returned as an symbol, representing the classification.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN Class2Sym(TfClassify(tup));
+<strong><font color="#4169E1">END</font></strong> TfClassifyI;
+
+
+<font color="#B22222">(******************************************************************************
+*                    T H E   N A I V E   A L G O R I T H M                    *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE TFGENI</font></strong>(deg: LIST; class: LIST): LIST;
+<font color="#B22222">(* TFGEN interpreter version. Like TFGEN but the classification
+parameter is a MAS symbol. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN TFGEN(deg,Sym2Class(class));
+<strong><font color="#4169E1">END</font></strong> TFGENI;
+
+<strong><font color="#4169E1">PROCEDURE TFGEN</font></strong>(deg: LIST; class: TfClass): LIST;
+<font color="#B22222">(* type formula generate. 
+deg is an atom &gt; 1.
+A tf-formula is returned. This formula is true, iff 
+a tuple t with t_0&lt;&gt;0 has the classification class. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> pattern, tup, res: LIST;
+	<strong><font color="#228B22">VAR</font></strong> c: TfClass;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	PatternAStart(deg,  tup, pattern);
+	res:=SIL;
+	<font color="#4169E1">REPEAT</font>
+		c:=TfClassify(tup);
+		<font color="#4169E1">IF</font> c=class <font color="#4169E1">THEN</font> 
+			res:=COMP(TFFTUPLE(tup),res);
+		<strong><font color="#4169E1">END</font></strong>;
+		tup:=TfNextTuple(tup,pattern);
+	<font color="#4169E1">UNTIL</font> tup=SIL;
+	RETURN FORMKFOR(VEL,INV(res));
+<strong><font color="#4169E1">END</font></strong> TFGEN;
+
+<strong><font color="#4169E1">PROCEDURE PatternAStart</font></strong>(deg:LIST; <strong><font color="#228B22">VAR</font></strong> start, pattern:LIST);
+<font color="#B22222">(* pattern and start. A pattern and a start value for the computation of
+characteristic coefficient tuples is computed. Let (c_0,...,c_deg)
+the start value and (p_0,...,p_deg) the pattern. Then the following holds.
+If d MOD 4 = 0, then c_0=1 p_0=0. 
+If d MOD 4 = 1, then c_0=0 and c_1=1 and p_0=p_1=0.
+If d MOD 4 = 2, then c_0=-1 and p_0=0.
+If d MOD 4 = 3, then c_0=0 and c_1 = -1 and p_0=p_1=0.
+c_deg=1.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> deg&lt;=0 <font color="#4169E1">THEN</font> 
+		start:=SIL;
+		pattern:=SIL;
+		RETURN; 
+	<strong><font color="#4169E1">END</font></strong>;
+	start:=LIST1(1);
+	pattern:=LIST1(0);
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> deg-2 <font color="#4169E1">DO</font>
+		start:=COMP(-1,start);
+		pattern:=COMP(1,pattern);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">CASE</font> INTEGER(deg) MOD 4 <font color="#4169E1">OF</font>
+	0:	start:=COMP2(1,-1,start);
+		pattern:=COMP2(0,1,pattern); 	|
+	1:	start:=COMP2(0,1,start);
+		pattern:=COMP2(0,0,pattern); 	|
+	2:	start:=COMP2(-1,-1,start);
+		pattern:=COMP2(0,1,pattern); 	|
+	3:	start:=COMP2(0,-1,start);
+		pattern:=COMP2(0,0,pattern); 	
+	<strong><font color="#4169E1">END</font></strong>; 
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> PatternAStart;
+
+<strong><font color="#4169E1">PROCEDURE TfNextTuple</font></strong>(last,pattern:LIST):LIST;
+<font color="#B22222">(* type formula next tuple. 
+last is a list with n elements of the set \{0,-1,1\}. 
+pattern is a list with n elements of the set \{0,1\}.
+The lexicographic tuple which differs only an those positions that are
+1 in list pattern is returned. The constant SIL is returned, if no
+lexicographic tuple greater last exists. The result is generated
+non-constructive from last. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> lp, lpp, rel, modflag: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> last=SIL <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+	lp:=last;
+	<font color="#4169E1">REPEAT</font>
+		ADV(lp,rel,lpp);
+		ADV(pattern,modflag,pattern);
+		<font color="#4169E1">IF</font> modflag=1 <font color="#4169E1">THEN</font>
+			SFIRST(lp,NextRel(rel));
+		<strong><font color="#4169E1">END</font></strong>;
+		lp:=lpp;
+	<font color="#4169E1">UNTIL</font> (lp=SIL) <font color="#4169E1">OR</font> ((rel&lt;&gt;1) <font color="#4169E1">AND</font> (modflag=1)) ;
+	<font color="#4169E1">IF</font> (lp=SIL) <font color="#4169E1">AND</font> ((rel=1) <font color="#4169E1">OR</font> (modflag=0)) <font color="#4169E1">THEN</font>
+		RETURN SIL;
+	<font color="#4169E1">ELSE</font>
+		RETURN  last;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfNextTuple;
+
+<strong><font color="#4169E1">PROCEDURE NextRel</font></strong>(e: LIST):LIST;
+<font color="#B22222">(* next relation. 
+e is an code for a relation. 
+The code of the next relation (in order &lt;, =, &gt; ) is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">CASE</font> INTEGER(e) <font color="#4169E1">OF</font>
+	-1 : RETURN 0;	|
+	 0 : RETURN 1;	|
+	 1 : RETURN -1;
+	 <font color="#4169E1">ELSE</font>
+	 	ERROR(severe,"NextRel: unknown relation");
+	 <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> NextRel;
+
+<strong><font color="#4169E1">PROCEDURE TfCount</font></strong>(deg: LIST):LIST;
+<font color="#B22222">(* type formula count. 
+deg is an atom.
+Some characteristic coefficient tuples (c_0,...,c_d) in {-1,0,1}^(d+1) 
+are generated. The following holds.
+If d MOD 4 = 0, then c_0=1.
+If d MOD 4 = 1, then c_0=0 and c_1=1.
+If d MOD 4 = 2, then c_0=-1 
+If d MOD 4 = 3, then c_0=0 and c_1 = -1.
+c_deg=1.
+A list (Good,Bad,DontCare,Impossible) is returned. 
+Each element is the number  of coefficient tuples with the corresponding
+classification.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> start, pattern: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	PatternAStart(deg,  start,pattern);
+	RETURN TfCount1(start,pattern);
+<strong><font color="#4169E1">END</font></strong> TfCount;
+
+<strong><font color="#4169E1">PROCEDURE TfCount1</font></strong>(start, pattern: LIST):LIST;
+<font color="#B22222">(* type formula count 1. 
+start is a list (s_0,...s_d) with elements of the set \{-1,0,1\}, 
+pattern is a list (p_0,...,p_d) with elements of \{0,1\}.
+The set T := { t in {-1,0,1}^{d+1} | t &gt;= s , t_i=s_i, if p_i=0 }
+is computed. 
+A list (Good,Bad,DontCare,Impossible) is returned. 
+Each element is the number of coefficient tuples with the corresponding
+classification. *)</font> 
+	<strong><font color="#228B22">VAR</font></strong> c: TfClass;
+	<strong><font color="#228B22">VAR</font></strong> table: ARRAY TfClass <font color="#4169E1">OF</font> LIST;
+	<strong><font color="#228B22">VAR</font></strong> res, tup: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	tup:=start;
+	<font color="#4169E1">FOR</font> c:=Tfgood <font color="#4169E1">TO</font> Tfimpossible <font color="#4169E1">DO</font>
+		table[c]:=0;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		c:=TfClassify(tup);
+		table[c]:=table[c]+1;
+		tup:=TfNextTuple(tup,pattern);
+	<font color="#4169E1">UNTIL</font> tup=SIL;
+	res:=SIL;
+	<font color="#4169E1">FOR</font> c:=Tfimpossible <font color="#4169E1">TO</font> Tfgood BY -1 <font color="#4169E1">DO</font>
+		res:=COMP(table[c],res);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	RETURN res;
+<strong><font color="#4169E1">END</font></strong> TfCount1;
+
+
+<font color="#B22222">(******************************************************************************
+*                D E S C A R T E S   R U L E   O F   S I G N S                *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE TfZeroes0</font></strong>(tup: LIST):LIST;
+<font color="#B22222">(* type formula zeroes 0. 
+The numbers of the leading zeroes is returned. 
+This is the number of zeroes at the origin of the polynomial SUM tup_i X^i.
+For the tuple tup containing only zeroes and for the empty tuple 
+the constant SIL is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result,c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> tup=SIL <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	result:=0;
+	<font color="#4169E1">REPEAT</font>
+		ADV(tup,c,tup);
+		<font color="#4169E1">IF</font> c&lt;&gt;0 <font color="#4169E1">THEN</font>
+			RETURN result;
+		<font color="#4169E1">ELSE</font>
+			result:=result+1;
+		<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">UNTIL</font> tup=SIL;
+	RETURN SIL;
+<strong><font color="#4169E1">END</font></strong> TfZeroes0;
+
+<strong><font color="#4169E1">PROCEDURE TfZeroes</font></strong>(tup: LIST; <strong><font color="#228B22">VAR</font></strong> CZeroes, ZeroesM, Zeroes0, ZeroesP: LIST);
+<font color="#B22222">(* type formula zeroes. tup is a coefficient tuple of a univariate 
+polynomial f. A upper bound of the real zeroes of f, which are
+greater than zero (less than zero) is returned in ZeroesP (ZeroeseM).
+The number of zeroes at the origin are returned in Zeroes0. If f has only
+real zeroes then the numbers of zeroes are exactly. The computation
+of the numbers are done using Descartes rule of signs. The number of
+all complex zeroes (=deg(f)=length(tup)-1) is returned in CZeroes.
+If tup is a list containing only zeroes, then CZeroes is SIL, and all other
+variables are undefined. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> even, lzero: BOOLEAN;
+	<strong><font color="#228B22">VAR</font></strong> lastp, lastm, cp, cm: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	even:=FALSE;
+	lzero:=TRUE;
+	Zeroes0:=0; ZeroesM:=0; ZeroesP:=0; CZeroes:=0;
+	<font color="#4169E1">IF</font> tup=SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+	ADV(tup,lastp,tup);
+	lastm:=lastp;
+	<font color="#4169E1">IF</font> lastp=0 <font color="#4169E1">THEN</font>
+		Zeroes0:=1;
+	<font color="#4169E1">ELSE</font>
+		lzero:=FALSE;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> tup&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(tup,cp,tup);
+		CZeroes:=CZeroes+1;
+		<font color="#4169E1">IF</font> even <font color="#4169E1">THEN</font> cm:=cp; <font color="#4169E1">ELSE</font> cm:=-cp; <strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">IF</font> (cp=0) <font color="#4169E1">AND</font> lzero <font color="#4169E1">THEN</font>
+			Zeroes0:=Zeroes0+1;
+		ELSIF cp&lt;&gt;0 <font color="#4169E1">THEN</font>
+			lzero:=FALSE;
+			<font color="#4169E1">IF</font> lastp+cp=0 <font color="#4169E1">THEN</font>
+				ZeroesP:=ZeroesP+1;
+			<strong><font color="#4169E1">END</font></strong>;
+			<font color="#4169E1">IF</font> lastm+cm=0 <font color="#4169E1">THEN</font>
+				ZeroesM:=ZeroesM+1;
+			<strong><font color="#4169E1">END</font></strong>;
+			lastp:=cp; lastm:=cm;
+		<strong><font color="#4169E1">END</font></strong>;
+		even:=<font color="#4169E1">NOT</font>(even);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> lzero <font color="#4169E1">THEN</font> CZeroes:=SIL; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfZeroes;
+
+<strong><font color="#4169E1">PROCEDURE TfZeroesI</font></strong>(tup: LIST):LIST;
+<font color="#B22222">(* TfZeroes interpreter version.
+This procedure returns the 4 variable parameters of the procedure
+TfZeroes as a list containing 4 elements. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c,m,z,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	TfZeroes(tup,  c,m,z,p);
+	RETURN LIST4(c,m,z,p);
+<strong><font color="#4169E1">END</font></strong> TfZeroesI;
+
+<strong><font color="#4169E1">PROCEDURE TfSignChs</font></strong>(tup: LIST): LIST;
+<font color="#B22222">(* type formula sign changes. 
+tup is a list with elements of the set \{-1,0,1\}. 
+The number of sign changes of tup is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> last, coeff, result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> tup=SIL <font color="#4169E1">THEN</font> RETURN 0; <strong><font color="#4169E1">END</font></strong>;
+	result:=0;
+	ADV(tup,last,tup);
+	<font color="#4169E1">WHILE</font> tup&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(tup,coeff,tup);
+		<font color="#4169E1">IF</font> coeff&lt;&gt;0 <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> (coeff+last)=0 <font color="#4169E1">THEN</font>
+				result:=result+1;
+			<strong><font color="#4169E1">END</font></strong>;
+			last:=coeff;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> TfSignChs;
+
+
+<font color="#B22222">(******************************************************************************
+*                                   M A I N                                   *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+	InitClassSyms();
+	InitBbfParser();
+	TypeFormulaProc:=ComputeTypeFormula;
+<strong><font color="#4169E1">END</font></strong> TFORM.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

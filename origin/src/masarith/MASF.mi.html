@@ -1,0 +1,282 @@
+
+<html>
+<head>
+<title>./masarith/MASF.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASF.mi,v 1.4 1992/10/16 13:52:05 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASF.mi,v $
+ * Revision 1.4  1992/10/16  13:52:05  kredel
+ * Errors found by Mocka corrected
+ *
+ * Revision 1.3  1992/10/15  16:28:11  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  13:19:01  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:26  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASF;
+
+<font color="#B22222">(* MAS Floating Point Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT GAMMAINT, MASQREM, MASEXP;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    ADV, FIRST, RED, 
+                    LIST1;
+
+FROM SACLIST IMPORT CINV, LIST2;
+
+FROM SACI IMPORT IEXP, IPROD, ISUM;
+
+FROM SACRN IMPORT RNDEN, RNNUM, RNRED, 
+                  RNPROD;
+
+FROM MathLib IMPORT entier, real, sqrt, 
+                    sin, cos, arctan, exp, ln;
+                    <font color="#B22222">(* power, log, tan *)</font>
+
+<font color="#B22222">(* 
+FROM General IMPORT Exp2; 
+*)</font>
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASF.mi,v 1.4 1992/10/16 13:52:05 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE FFGI</font></strong>(N: GAMMAINT): MFLOAT;
+<font color="#B22222">(*Floating point from gamma integer.
+The gamma integer N is converted to the floating point number A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> f:=real(N); RETURN(f);
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> FFGI;
+ 
+
+<strong><font color="#4169E1">PROCEDURE IFF</font></strong>(F: MFLOAT): LIST;
+<font color="#B22222">(*Integer from floating point.
+The floating point number F is converted to the integer A. *)</font>
+<strong><font color="#228B22">VAR</font></strong> g, h: GAMMAINT;
+    f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*normalize. *)</font> 
+      <font color="#4169E1">IF</font> F &gt;= 0.0 <font color="#4169E1">THEN</font> f:=F; h:=1 <font color="#4169E1">ELSE</font> f:=-F; h:=-1 <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> f &gt;= FBETA <font color="#4169E1">DO</font> f:=f/FBETA; h:=IPROD(h,IBETA) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*convert beta digit. *)</font>
+      g:=entier(f);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*combine. *)</font>
+      h:=IPROD(h,g); RETURN(h);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IFF;
+
+ 
+<strong><font color="#4169E1">PROCEDURE FEXP</font></strong>(F: MFLOAT; N: GAMMAINT): MFLOAT;
+<font color="#B22222">(*Floating point exponentiation.
+The floating point number F raised to the n-th power. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i: INTEGER; 
+      f: MFLOAT; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> F = 0.0 <font color="#4169E1">THEN</font> RETURN(F) <strong><font color="#4169E1">END</font></strong>; 
+      f:=1.0; 
+      <font color="#4169E1">IF</font> N = 0 <font color="#4169E1">THEN</font> RETURN(f) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> N &lt; 0 <font color="#4169E1">THEN</font> N:=-N; f:=1.0/f <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font> f:=f*F <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(f);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> FEXP;
+
+ 
+<strong><font color="#4169E1">PROCEDURE FLOG10</font></strong>(F: MFLOAT): MFLOAT;
+<font color="#B22222">(*Floating point logarithm base 10.
+The logarithm of the floating point number F with base 10 is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> RETURN(ln(F)/ln(10.0));
+<font color="#B22222">(*1*)</font> <strong><font color="#4169E1">END</font></strong> FLOG10;
+
+
+<strong><font color="#4169E1">PROCEDURE FFINT</font></strong>(N: LIST): MFLOAT;
+<font color="#B22222">(*Floating point from integer.
+The integer N is converted to the floating point number f. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, a: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*n=0. *)</font> f:=0.0;
+      <font color="#4169E1">IF</font> N = 0 <font color="#4169E1">THEN</font> RETURN(f) <strong><font color="#4169E1">END</font></strong>;
+      A:=N; <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> A:=LIST1(A) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*use horner scheme. *)</font> A:=CINV(A);
+      <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(A,a,A);
+            f:=f*FBETA+FFGI(a) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(f);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> FFINT;
+
+
+<strong><font color="#4169E1">PROCEDURE FFRN</font></strong>(A: LIST): MFLOAT;
+<font color="#B22222">(*Floating point from rational number.
+The rational number A is converted to the floating point number f. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  d, n: LIST;
+     f, fd, fn: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0. *)</font> f:=0.0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(f) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*convert numerator and denomiator. *)</font> 
+      d:=RNDEN(A); n:=RNNUM(A);
+      fd:=FFINT(d); fn:=FFINT(n);
+      f:=fn/fd; 
+      RETURN(f);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> FFRN;
+
+
+<strong><font color="#4169E1">PROCEDURE RNFF</font></strong>(F: MFLOAT): LIST;
+<font color="#B22222">(*Rational number from floating point.
+The floating point number F is converted to the rational number R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  R, I, E: LIST;
+     f, i, l: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute logarithm. *)</font> f:=F; 
+      l:=FLOG10(f)+1.0; I:=IFF(l); 
+      i:=FEXP(10.0,I); E:=IEXP(10,I); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*shift and get numerator and denomiantor. *)</font> 
+      <font color="#4169E1">IF</font> I &gt;= 0 <font color="#4169E1">THEN</font> f:=f/i; f:=f*FBETA; 
+                     R:=IFF(f); 
+                     R:=IPROD(R,E); R:=RNRED(R,IBETA)
+                <font color="#4169E1">ELSE</font> f:=f*i; f:=f*FBETA; 
+                     R:=IFF(f); 
+                     E:=IPROD(E,IBETA); R:=RNRED(R,E) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> RNFF;
+
+
+<strong><font color="#4169E1">PROCEDURE SIN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Sinus. A is a rational number, the sinus of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute sinus. *)</font> 
+      f:=FFRN(A); f:=sin(f); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> SIN;
+
+
+<strong><font color="#4169E1">PROCEDURE COS</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Cosinus. A is a rational number, the cosinus of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute cosinus. *)</font> 
+      f:=FFRN(A); f:=cos(f); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> COS;
+
+
+<strong><font color="#4169E1">PROCEDURE TAN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Tangens. A is a rational number, the tangens of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute tangens. *)</font> 
+      f:=FFRN(A); f:=cos(f);
+      <font color="#4169E1">IF</font> f &lt;&gt; 0.0 <font color="#4169E1">THEN</font> f:=sin(f)/f; R:=RNFF(f);
+         <font color="#4169E1">ELSE</font> f:=sin(f); 
+              <font color="#4169E1">IF</font> f &lt; 0.0 <font color="#4169E1">THEN</font> R:=LIST2(-1,0); <font color="#B22222">(* -1/0 *)</font> 
+                 <font color="#4169E1">ELSE</font> R:=LIST2(1,0); <font color="#B22222">(* 1/0 *)</font> <strong><font color="#4169E1">END</font></strong>;  
+              <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> TAN;
+
+
+<strong><font color="#4169E1">PROCEDURE ARCTAN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arcus tangens. A is a rational number, the arctangens of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute arcus tangens. *)</font> 
+      f:=FFRN(A); f:=arctan(f); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> ARCTAN;
+
+
+<strong><font color="#4169E1">PROCEDURE EXPF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Exponential. A is a rational number, the exponential of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute exp. *)</font> 
+      f:=FFRN(A); f:=exp(f); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> EXPF;
+
+
+<strong><font color="#4169E1">PROCEDURE LN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Ln. A is a rational number, the natural logarithm of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute ln. *)</font> 
+      f:=FFRN(A); f:=ln(f); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> LN;
+
+
+<strong><font color="#4169E1">PROCEDURE LOG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Log. A is a rational number, the logarithm base 10 of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute log. *)</font> 
+      f:=FFRN(A); f:=ln(f)/ln(10.0); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> LOG;
+
+
+<strong><font color="#4169E1">PROCEDURE SQRT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Sqrt. A is a rational number, the square root of A is returned. *)</font>  
+<strong><font color="#228B22">VAR</font></strong>  R: LIST;
+     f: MFLOAT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert and compute sqrt. *)</font> 
+      f:=FFRN(A); f:=sqrt(f); R:=RNFF(f);
+      RETURN(R);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> SQRT;
+
+
+<strong><font color="#4169E1">PROCEDURE InitFLOAT</font></strong>;
+<font color="#B22222">(*Initialize floating point system. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute small beta. *)</font>
+      BETAH:=MASEXP(2,15); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute floating beta. *)</font> 
+      FBETA:=FFGI(MASEXP(2,29)); 
+      FBETAH:=FFGI(MASEXP(2,15)); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute integer beta. *)</font> 
+      IBETA:=IEXP(2,29); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> InitFLOAT;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+
+InitFLOAT;
+
+<strong><font color="#4169E1">END</font></strong> MASF.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

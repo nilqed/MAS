@@ -1,0 +1,374 @@
+
+<html>
+<head>
+<title>./masroot/RRINT.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-03-06T15:23:16+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: RRINT.mi,v 1.1 1994/03/11 15:21:51 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: RRINT.mi,v $
+ * Revision 1.1  1994/03/11  15:21:51  pesch
+ * Counting real roots of multivariate polynomials, Diplomarbeit F. Lippold
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE RRINT;
+<font color="#B22222">(* Real Root Integral Implementation Module *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, ADV, COMP, INV, FIRST, LENGTH, LIST1;
+
+FROM SACLIST IMPORT CINV, EQUAL, LIST2, ADV2, COMP2, FIRST4, LIST3, 
+                    LIST4, SECOND, CONC, MEMBER, REDUCT, OWRITE;
+
+FROM MASELEM IMPORT MASEVEN;
+
+FROM MASBIOS IMPORT BLINES, SWRITE;
+
+FROM MASI IMPORT IPROD;
+
+FROM SACI IMPORT IGCDCF, ILCM, IQ, IEXP, IMAX;
+
+FROM DIPI IMPORT DIIPIP, DIIPSM, DIIPIQ, DIIPCP, DIIPNG;
+
+FROM DIPC IMPORT DIPEVL, DIPFMO, DIPMAD, DIPMRD, DIPLBC,
+                 EVCADD, EVCOMP, EVSUM, EVDIF, EVSIGN, EVTDEG, EVLCM;
+
+FROM LINALGI IMPORT IUM, IMSUM, ISMPROD, IMPROD;
+
+FROM LINALGRN IMPORT VEL, MSET;
+
+FROM LINALG IMPORT IMPTRACE, ISIG, IMRTPROD;
+
+FROM RRADOM IMPORT RRREDTEST, RRREDTERMS, EVSSPROD, RRMMULT, RRVTEXT, RRCSR;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: RRINT.mi,v 1.1 1994/03/11 15:21:51 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE RRIPIQ</font></strong>(c: LIST; <strong><font color="#228B22">VAR</font></strong> A,a: LIST);
+<font color="#B22222">(* Real root integral polynomial integral quotient.
+   A is an integral polynomial. a and c are nonzero integers. New values for 
+   A and a are computed such that the equation A/a := (1/c)*(A/a) holds. If a 
+   and the content of A have gcd 1 then this is also true for the result. *)</font>
+<strong><font color="#228B22">VAR</font></strong> b,ct,pp,cts,cs: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> c &lt;&gt; 1 <font color="#4169E1">THEN</font>
+    DIIPCP(A,ct,pp);
+    IGCDCF(ct,c,b,cts,cs);
+    A := DIIPIP(pp,cts);
+    a := IPROD(a,cs);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRIPIQ;   
+
+<strong><font color="#4169E1">PROCEDURE RRIPQSUM</font></strong>(B,b,c: LIST; <strong><font color="#228B22">VAR</font></strong> A,a: LIST);
+<font color="#B22222">(* Real root integral polynomial quotient sum. 
+   A and B are integral polynomials. a,b and c are non zero integers. 
+   New values for A and a are computed such that the equation 
+   A/a := A/a + c*(B/b) holds. If b and the content of B have gcd 1 
+   and a and the content of A have gcd 1 then the new integral polynomial 
+   A has gcd 1 with the new value of a. *)</font>
+<strong><font color="#228B22">VAR</font></strong> as,bs,bss,cs,d,e,es,f,ct,cts,pp: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> B &lt;&gt; 0 <font color="#4169E1">THEN</font>
+  <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font>
+    <font color="#4169E1">IF</font> b = 1 <font color="#4169E1">THEN</font> A := DIIPIP(B,c); a := 1;
+    <font color="#4169E1">ELSE</font> IGCDCF(b,c,d,a,cs); A := DIIPIP(B,cs); <strong><font color="#4169E1">END</font></strong>;
+  ELSIF (a = 1) <font color="#4169E1">AND</font> (b = 1) <font color="#4169E1">THEN</font>
+    A := DIIPSM(A,DIIPIP(B,c));
+  ELSIF b = 1 <font color="#4169E1">THEN</font>
+    A := DIIPSM(A,DIIPIP(B,IPROD(a,c)));
+  ELSIF a = 1 <font color="#4169E1">THEN</font>
+    IGCDCF(b,c,d,a,cs);
+    A := DIIPSM(DIIPIP(A,a),DIIPIP(B,cs));
+  <font color="#4169E1">ELSE</font> 
+    IGCDCF(b,c,d,bs,cs);
+    IGCDCF(a,bs,e,as,bss);
+    A := DIIPSM(DIIPIP(A,bss),DIIPIP(B,IPROD(cs,as)));
+    DIIPCP(A,ct,pp);
+    IGCDCF(ct,e,f,cts,es);
+    A := DIIPIP(pp,cts);
+    a := IPROD(IPROD(as,es),bss);
+  <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRIPQSUM;
+
+<strong><font color="#4169E1">PROCEDURE RRINFORM</font></strong>(G,R: LIST; <strong><font color="#228B22">VAR</font></strong> a,NF: LIST);
+<font color="#B22222">(* Real root integral normal form. 
+   G reduced integral groebner basis of a nontrivial zerodimensional ideal, 
+   R is the set of reduced terms. NF is a list of entries (u,ut,ua,up) with: 
+   u is an element of R * R, RRREDTEST(G,u,_,ut), up is an integral polynomial
+   and ua is an integer such that up/ua is the normal form of u wrt G. 
+   a is the lcm of all integers ua in NF. The elements of NF are sorted with 
+   respect to the actual termorder in decreasing order of the first entry. *)</font>
+<strong><font color="#228B22">VAR</font></strong> N,L,U,u,ut,ua,up,ups,v,vt,va,vas,vp,w,wt,wa,wp,c,t,x,tx,g,i,is: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  a := 1; NF := SIL;
+  U := EVSSPROD(R);
+  <font color="#4169E1">WHILE</font> U &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(U,u,U);
+    RRREDTEST(G,u,g,ut);
+    <font color="#4169E1">IF</font> ut = -1 <font color="#4169E1">THEN</font> ua := 1; up := DIPFMO(1,u)
+    ELSIF ut = 0 <font color="#4169E1">THEN</font> ua := DIPLBC(g); up := DIIPNG(DIPMRD(g)) <font color="#4169E1">ELSE</font>
+<font color="#B22222">(* u is not in R and not in HM(G) *)</font>
+      ua := 1; up := 0; 
+      N := NF;
+<font color="#B22222">(* find element v in R x R with v*x = u and v not in R *)</font>
+      <font color="#4169E1">REPEAT</font>
+        <font color="#4169E1">REPEAT</font>
+          ADV(N,L,N);
+          FIRST4(L,v,vt,va,vp);
+        <font color="#4169E1">UNTIL</font> vt &lt;&gt; -1; 
+        x := EVDIF(u,v);
+      <font color="#4169E1">UNTIL</font> (EVSIGN(x) = 1) <font color="#4169E1">AND</font> (EVTDEG(x) = 1);
+<font color="#B22222">(* for all monomials c*t in vp: up=up+c*("normal-form of t*x") *)</font> 
+      N := NF;
+      <font color="#4169E1">WHILE</font> vp &lt;&gt; 0 <font color="#4169E1">DO</font>
+        DIPMAD(vp,c,t,vp);
+        <font color="#4169E1">IF</font> vp = SIL <font color="#4169E1">THEN</font> vp := 0 <strong><font color="#4169E1">END</font></strong>;
+        tx := EVSUM(t,x);
+        <font color="#4169E1">REPEAT</font>
+          ADV(N,L,N);
+          FIRST4(L,w,wt,wa,wp);
+        <font color="#4169E1">UNTIL</font> EQUAL(w,tx) = 1;
+        RRIPQSUM(wp,wa,c,up,ua);
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* up := (1/va) * up *)</font>
+      RRIPIQ(va,up,ua);
+    <strong><font color="#4169E1">END</font></strong>;
+    a := ILCM(a,ua);
+    NF := COMP(LIST4(u,ut,ua,up),NF);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRINFORM;
+
+<strong><font color="#4169E1">PROCEDURE RRISTRCONST</font></strong>(G,R: LIST; <strong><font color="#228B22">VAR</font></strong> U,a,beta: LIST);
+<font color="#B22222">(* Real root integral structure constants. 
+   G reduced integral groebner basis of a nontrivial zerodimensional ideal, 
+   R the set of reduced terms. beta is the integral matrix of combined 
+   structure constants beta[u,v] wrt the basis a*R with u from U = R * R and
+   v from R. U and the rows of the matrix beta are sorted with respect to the
+   actual termorder in increasing order. *)</font>
+<strong><font color="#228B22">VAR</font></strong> NF,L,u,ut,ua,up,uv,c,k,t,V,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  U := SIL; beta := SIL;
+  RRINFORM(G,R,a,NF);
+  <font color="#4169E1">WHILE</font> NF &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(NF,L,NF);
+    FIRST4(L,u,ut,ua,up);
+    k := IQ(a,ua);
+<font color="#B22222">(* convert polynomial to integer vector *)</font>
+    uv := SIL; V := CINV(R);
+    <font color="#4169E1">WHILE</font> up &lt;&gt; 0 <font color="#4169E1">DO</font>
+      DIPMAD(up,c,t,up);
+      <font color="#4169E1">IF</font> up = SIL <font color="#4169E1">THEN</font> up := 0 <strong><font color="#4169E1">END</font></strong>;
+      ADV(V,v,V);
+      <font color="#4169E1">WHILE</font> EQUAL(v,t) = 0 <font color="#4169E1">DO</font> ADV(V,v,V); uv := COMP(0,uv) <strong><font color="#4169E1">END</font></strong>;
+      uv := COMP(IPROD(k,c),uv);
+    <strong><font color="#4169E1">END</font></strong>; 
+    <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V,v,V); uv := COMP(0,uv) <strong><font color="#4169E1">END</font></strong>;
+    U := COMP(u,U);
+    beta := COMP(uv,beta);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRISTRCONST;
+
+<strong><font color="#4169E1">PROCEDURE RRIVARMATRICES</font></strong>(G,R,U,beta: LIST; <strong><font color="#228B22">VAR</font></strong> al,L: LIST);
+<font color="#B22222">(* Real root integral multiplication matrices of variables.
+   G reduced integral groebner basis  of a nontrivial zerodimensional ideal. 
+   R is the set of reduced terms in increasing order, U= R * R and beta is the
+   set of combined structure constants wrt c*R for some nonzero integer c.
+   al=(a(1),...,a(n)) is a list of integers and L is a list of entries of the 
+   form (1,M(i)) and M(i) is the matrix of multiplication with a(i)*X(i) wrt 
+   c*R. *)</font>
+<strong><font color="#228B22">VAR</font></strong> MXi,ai,i,j,n,s,c,t,f,g: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  L := SIL; al := SIL;
+  n := LENGTH(DIPEVL(FIRST(G)));
+  <font color="#4169E1">FOR</font> i := n <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font>
+    EVCADD(VEL(0,n),i,1,t,j);
+    RRREDTEST(G,t,g,s);
+    <font color="#4169E1">IF</font> s = -1 <font color="#4169E1">THEN</font> MXi := RRMMULT(t,R,U,beta); ai := 1 <font color="#4169E1">ELSE</font>
+      MXi := SIL; ai := DIPLBC(g); f := DIIPNG(DIPMRD(g));
+      <font color="#4169E1">WHILE</font> f &lt;&gt; 0 <font color="#4169E1">DO</font>
+        DIPMAD(f,c,t,f);
+        <font color="#4169E1">IF</font> f = SIL <font color="#4169E1">THEN</font> f := 0 <strong><font color="#4169E1">END</font></strong>;
+        MXi := IMSUM(MXi,ISMPROD(RRMMULT(t,R,U,beta),c));
+    <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+    al := COMP(ai,al);
+    L := COMP(LIST2(1,MXi),L);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRIVARMATRICES;
+
+<strong><font color="#4169E1">PROCEDURE RRIUPDATE</font></strong>(i,M1,M2: LIST; <strong><font color="#228B22">VAR</font></strong> l,ls: LIST);
+<font color="#B22222">(* Real root integral update. Subroutine of RRIPOLMATRIX. *)</font>
+<strong><font color="#228B22">VAR</font></strong> j,M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">WHILE</font> (l &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(l) &lt; i) <font color="#4169E1">DO</font>
+    ADV2(l,j,M,l);
+    ls := COMP2(M,j,ls);
+  <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> (l = SIL) <font color="#4169E1">OR</font> (FIRST(l) &gt; i) <font color="#4169E1">THEN</font>
+    M := IMPROD(M1,M2);
+    l := COMP2(i,M,l);
+  <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong> RRIUPDATE;
+
+<strong><font color="#4169E1">PROCEDURE RRIPOLMATRIX</font></strong>(R,h,f,fl: LIST; <strong><font color="#228B22">VAR</font></strong> Mh,L: LIST);
+<font color="#B22222">(* Real root integral polynomial matrix. 
+   R is the set of reduced terms in increasing order, 
+   h is a polynomial of domain D, f is a positive integer, fl=(f(1),...,f(n))
+   is a list of positive integers, L contains nonempty lists L(i) of the form
+   j(1),M(1),j(2),M(2),...,j(k),M(k) with 1=j(1)&lt;j(2)&lt;...&lt;j(k) and M(l) is the
+   integral matrix of multiplikation with (f*f(i)*X(i))**j(l) for the variable
+   X(i). L is extended with new calculated matrices. 
+   If d(i) is the maximal degree in the variable X(i) and d is the maximal 
+   total degree of the terms of the polynomial h, then Mh is the integral 
+   matrix of multiplication with (f**d)*(f(1)**d(1))*...*(f(1)**d(1)) * h. *)</font>
+<strong><font color="#228B22">VAR</font></strong> Mt,Ls,l,ls,A,a,B,b,i,k,p,c,t,hs,d,dl,di,dls,fi,fls: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  Mh := SIL;
+  <font color="#4169E1">IF</font> h = 0 <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+  p := LENGTH(R);
+<font color="#B22222">(* compute the maximal total-degree d of h and the *)</font>
+<font color="#B22222">(* list dl of maximal degrees in the variable X(i) *)</font>
+  hs := h;
+  DIPMAD(hs,c,dl,hs);
+  <font color="#4169E1">IF</font> hs = SIL <font color="#4169E1">THEN</font> hs := 0 <strong><font color="#4169E1">END</font></strong>;
+  d := EVTDEG(dl);
+  <font color="#4169E1">WHILE</font> hs &lt;&gt; 0 <font color="#4169E1">DO</font>
+    DIPMAD(hs,c,t,hs);
+    <font color="#4169E1">IF</font> hs = SIL <font color="#4169E1">THEN</font> hs := 0 <strong><font color="#4169E1">END</font></strong>;
+    dl := EVLCM(dl,t);
+    d := IMAX(d,EVTDEG(t));
+  <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* compute the integer matrix for multiplication with h *)</font>
+  <font color="#4169E1">WHILE</font> h &lt;&gt; 0 <font color="#4169E1">DO</font>
+    DIPMAD(h,c,t,h);
+    <font color="#4169E1">IF</font> h = SIL <font color="#4169E1">THEN</font> h := 0 <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> f &lt;&gt; 1 <font color="#4169E1">THEN</font> c := IPROD(c,IEXP(f,d-EVTDEG(t))) <strong><font color="#4169E1">END</font></strong>;
+    Mt := IUM(p,p); 
+    Ls := SIL;
+    dls := dl; fls := fl;
+    <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(L,l,L); ADV(t,k,t); ADV(dls,di,dls); ADV(fls,fi,fls);
+      <font color="#4169E1">IF</font> fi &lt;&gt; 1 <font color="#4169E1">THEN</font> c := IPROD(c,IEXP(fi,di-k)) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> k &lt;&gt; 0 <font color="#4169E1">THEN</font>
+        ls := SIL;
+        a := 0; A := IUM(p,p);
+        b := FIRST(l); B := SECOND(l);
+        <font color="#4169E1">WHILE</font> k &lt;&gt; 0 <font color="#4169E1">DO</font>
+          <font color="#4169E1">WHILE</font> MASEVEN(k) <font color="#4169E1">DO</font>
+            b := 2*b; k := k DIV 2;
+            RRIUPDATE(b,B,B,l,ls);
+            B := SECOND(l);
+          <strong><font color="#4169E1">END</font></strong>;
+          a := a+b; k:= k-1;
+          RRIUPDATE(a,A,B,l,ls);
+          A := SECOND(l);
+        <strong><font color="#4169E1">END</font></strong>;
+        Mt := IMPROD(Mt,A);
+        l := CONC(INV(ls),l);
+      <strong><font color="#4169E1">END</font></strong>;
+      Ls := COMP(l,Ls);
+    <strong><font color="#4169E1">END</font></strong>;
+    Mh := IMSUM(Mh,ISMPROD(Mt,c));
+    L := INV(Ls);
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RRIPOLMATRIX;
+
+<strong><font color="#4169E1">PROCEDURE RRIQUADFORM</font></strong>(R,U,beta,Mh: LIST): LIST;
+<font color="#B22222">(* Real root integral quadratic form. 
+   R is the set of reduced terms in increasing order, U = R * R and beta is 
+   the set of integral combined structure constants wrt a*R for some nonzero
+   integer a. Mh is the integral matrix of multiplication with c*h for some
+   positive constant c represented columnwise. The matrix Q = (q(i,j)) with 
+   q(i,j) = tr(M(h)*M(v(i))*M(v(j)) and v(i),v(j) from a*R is computed. *)</font>
+<strong><font color="#228B22">VAR</font></strong> Q,V,v,W,w,tab,t,p,betah,Mhv,i,j,e,q,s,u: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tab := SIL;
+  p := LENGTH(R);
+  Q := VEL(VEL(0,p),p);
+  betah := IMPROD(beta,Mh);
+  V := R; 
+  <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> p <font color="#4169E1">DO</font>
+    W := V;
+    ADV(V,v,V);
+    Mhv := RRMMULT(v,R,U,betah);
+    <font color="#4169E1">FOR</font> j := i <font color="#4169E1">TO</font> p <font color="#4169E1">DO</font>
+      ADV(W,w,W); 
+      u := EVSUM(v,w);
+      s := 0; t := tab;
+      <font color="#4169E1">WHILE</font> (t &lt;&gt; SIL) <font color="#4169E1">AND</font> (s = 0) <font color="#4169E1">DO</font>
+        ADV2(t,e,q,t);
+        s := EQUAL(u,e);
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> s = 0 <font color="#4169E1">THEN</font>
+        q := IMPTRACE(Mhv,RRMMULT(w,R,U,beta));
+        tab := COMP2(u,q,tab);
+      <strong><font color="#4169E1">END</font></strong>;
+      Q := MSET(Q,i,j,q);
+      <font color="#4169E1">IF</font> j &lt;&gt; i <font color="#4169E1">THEN</font> Q := MSET(Q,j,i,q) <strong><font color="#4169E1">END</font></strong>; 
+    <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(Q);
+<strong><font color="#4169E1">END</font></strong> RRIQUADFORM;
+
+<strong><font color="#4169E1">PROCEDURE RRICOUNT</font></strong>(G,H,v,tf: LIST): LIST;
+<font color="#B22222">(* Real root integral count. 
+   G is an integral reduced groebner basis of a zerodimensional ideal I, 
+   H is a list of polynomials of length s. v is a vector of signs with length 
+   not greater than s. tf is the trace-flag.
+   ZNL is a list of pairs (z,n) with n is an element of {-1,0,+1}**s and z &gt; 0
+   is the number of real zeroes of I wrt the sign condition n for the elements
+   of H. ZNL is sorted wrt the invers lexicographical order of the n. If there
+   does not exist any real zero or a zero satisfiing the sign condition v,
+   then the empty list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> ZNL,R,E,U,beta,s,S,S1,S2,m,m0,m1,m2,md,mh,h,N,A,W,L,a,al,p,i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  R := RRREDTERMS(G); p := LENGTH(R); E := IUM(p,p);
+  RRISTRCONST(G,R,U,a,beta);
+  s := ISIG(RRIQUADFORM(R,U,beta,E));
+  <font color="#4169E1">IF</font> s = 0 <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> H = SIL <font color="#4169E1">THEN</font> ZNL := LIST1(LIST2(s,SIL)); RETURN(ZNL) <strong><font color="#4169E1">END</font></strong>;
+  S := LIST1(s); m := LIST1(E); N := LIST1(SIL);
+  A := LIST1(LIST1(1)); W := LIST3(LIST3(1,1,1),LIST3(-1,0,1),LIST3(1,0,1));
+  RRIVARMATRICES(G,R,U,beta,al,L);
+  i := 0;
+  <font color="#4169E1">REPEAT</font>
+    ADV(H,h,H); i := i+1;
+    <font color="#4169E1">IF</font> tf = 1 <font color="#4169E1">THEN</font> BLINES(1); 
+                   SWRITE("Condition No. "); OWRITE(i); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+    RRIPOLMATRIX(R,h,a,al,mh,L);
+<font color="#B22222">(* expanding the system *)</font>
+    N := RRVTEXT(N,LIST3(-1,0,1));
+    A := IMRTPROD(W,A);
+    S1 := SIL; S2 := SIL; m1 := SIL; m2 := SIL; m0 := m;
+    <font color="#4169E1">WHILE</font> m0 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(m0,md,m0);
+      md := IMPROD(md,mh); m1 := COMP(md,m1);
+      s := ISIG(RRIQUADFORM(R,U,beta,md)); S1 := COMP(s,S1);
+      md := IMPROD(md,mh); m2 := COMP(md,m2);
+      s := ISIG(RRIQUADFORM(R,U,beta,md)); S2 := COMP(s,S2);
+    <strong><font color="#4169E1">END</font></strong>;
+    S := CONC(S,CONC(INV(S1),INV(S2)));
+    m := CONC(m,CONC(INV(m1),INV(m2)));
+<font color="#B22222">(* solving the linear equation A*Z=S and reduce the system *)</font>
+    ZNL := RRCSR(i,v,tf,A,N,S,m);
+  <font color="#4169E1">UNTIL</font> (ZNL = SIL) <font color="#4169E1">OR</font> (H = SIL);
+  RETURN(ZNL);
+<strong><font color="#4169E1">END</font></strong> RRICOUNT;
+
+<strong><font color="#4169E1">END</font></strong> RRINT.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

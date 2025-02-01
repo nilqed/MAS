@@ -1,0 +1,398 @@
+
+<html>
+<head>
+<title>./masdom/CGBSYS.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T16:47:14+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: CGBSYS.md,v 1.9 1996/06/08 16:47:14 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1996 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: CGBSYS.md,v $
+ * Revision 1.9  1996/06/08 16:47:14  pesch
+ * Reformatted, removed obsolete procedures.
+ *
+ * Revision 1.8  1995/03/06  15:49:41  pesch
+ * Added new procedure GSYSF, Groebner system with factorization. This uses
+ * the new procedures GBSYSF and CONSGBF (also added).
+ *
+ * Added new procedures DIP2AD, AD2DIP and DIPPFACTAV.
+ *
+ * Fixed error in CHECK.
+ *
+ * New option for factorization of conditions: factorize with optimization
+ * of variable ordering.
+ *
+ * Revision 1.7  1994/04/10  16:57:44  pesch
+ * Modified CONSGB. Returns its result now. When a condition is ramified,
+ * we continue with this new case distinction first. This is useful to
+ * have the generic case computed first.
+ *
+ * Revision 1.6  1994/04/09  18:06:01  pesch
+ * Reformatted parts of the CGB sources. Updated comments in CGB*.md.
+ *
+ * Revision 1.5  1994/03/11  15:58:17  pesch
+ * Major changes to CGB.
+ * C-Preprocessor now used for .mip files. The corresponding .mi files have
+ * been removed.
+ * Many new CGB-Functions and fixes of old ones.
+ *
+ * Revision 1.4  1993/04/15  13:14:23  kredel
+ * Further corrections by Pesch
+ *
+ * Revision 1.3  1993/03/17  11:45:39  kredel
+ * Changes and corrections by Pesch.
+ *
+ * Revision 1.2  1992/02/12  17:31:18  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:08:58  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE CGBSYS;
+
+<font color="#B22222">(* Comprehensive-Groebner-Bases System Definition Module. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: CGBSYS.md,v 1.9 1996/06/08 16:47:14 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1996 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE GRED</font></strong>(COND,PCO,PCI,RE: LIST; <strong><font color="#228B22">VAR</font></strong> RCO,HA: LIST); 
+<font color="#B22222">(*Parametric reduction. COND is a condition, PCO and PCI are coloured
+polynomials. PCI is determined by cond. RE is a term in PCO coloured
+red or white by COND. RE is a multiple of the headterm (wrt cond) of PCI.
+RCO is the result
+of one step reduction of PCO ( by PCI ) to eliminate the term RE. HA
+is the multiple factor of PCO. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GBDIFF</font></strong>(COND,A,ACOLS,B,BCOLS: LIST; <strong><font color="#228B22">VAR</font></strong> C,CCOLS: LIST); 
+<font color="#B22222">(*Parametric difference. COND is a condition. A and B are polynomials.
+ACOLS is the colouring of A wrt cond, BCOLS is the colouring of B wrt
+COND. C=A-B. CCOLS is the colouring of C wrt COND. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE COLPRD</font></strong>(COL1,TTERM: LIST): LIST; 
+<font color="#B22222">(*Colour product. COL1 contains a list of red terms and a list of white
+terms. TTERM is a term. Every term in COL1 is multiplied with TTERM.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CMULT</font></strong>(ONECL,TTERM,B: LIST): LIST; 
+<font color="#B22222">(*Colour multiplication.
+If B=1 then ONECL is a list of (red) terms.
+If B=2 then ONECL is a list of pairs, each containing a (white) term
+and the white part of its coefficient.
+TTERM is a term. Every term in ONECL is multiplicated with TTERM.
+CCOL is the result. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WHSRT</font></strong>(COL,TTERM,ALIST: LIST): LIST; 
+<font color="#B22222">(*White sort. COL contains a list of red terms and a list of white terms.
+The form of COL is
+((r1,... ,rn),((w1,(wp11,; ,wp1s)),... ,(wm,(wpm1,; ,wpms)))).
+TTERM is a term. ALIST is a list of coefficients.
+The form of ALIST is (a1,... ,at).
+Every term of COL is multiplied with TTERM. The resulting terms are
+coloured white by adding ALIST to its white part. The list of red terms
+is empty. The list of white terms z is as follows
+( (r1*tterm,(a1,... ,at)),... ,(rn*tterm,(a1,... ,at)),
+(w1*tterm,(a1,... ,at,wp11,... ,wp1s)),... ,
+(wm*tterm,(a1,... ,at,wpm1,... ,wpms)) ).
+CWHIT0  contains the same terms as z in a nondecreasing order.
+COLS is pair containg an empty list of red terms and the list CWHIT0. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WUPD</font></strong>(ALIST,BLIST: LIST): LIST; 
+<font color="#B22222">(*White part update. ALIST and BLIST are sets of coefficients.
+Returns the union of ALIST and BLIST. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE COLDIF</font></strong>(T,ACOLS,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Colour difference. T is term. ACOLS contains a list of red terms
+and a list of white terms. COLR is a list of red terms. COLW is
+a list of white terms.
+If T is member of the red terms in ACOLS, it is added to COLR. The
+result is CRED.
+If T is member of the white terms in ACOLS, it is added to COLW with
+its white part. The result is CWHITE. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE KEYCOL</font></strong>(EL,ACOLS: LIST; <strong><font color="#228B22">VAR</font></strong> KEY,ALIST: LIST); 
+<font color="#B22222">(*Key colour. EL is a term.
+ACOLS contains a list of red terms and a list of white terms.
+If EL is member of the red terms in ACOLS then KEY=1 and ALIST is empty.
+If EL is member of the white terms in ACOLS then KEY=2 and ALIST is
+the white part of EL.
+If EL is not in ACOLS (EL is coloured green) then KEY=0 and ALIST is empty. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKACOL</font></strong>(ALIST,EL,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Make colour. ALIST is a list of coefficients. EL is a term.
+COLR is a list of red terms. COLW is a list of white terms.
+If ALIST is empty, EL is added to COLR. The result is CRED.
+If ALIST is not empty, the pair of EL and ALIST is added to COLW. the
+result is CWHITE. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKCOL</font></strong>(COND,CA,CE,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Make new colour. COND is a condition. CA is a coefficient. CE is
+a term. COLR is a list of red terms. COLW is a list of white terms.
+If CA is coloured red by COND, CE is added to COLR. the result is CRED.
+If CA is coloured white by COND, the pair with CE and the white factors
+of CA are added to COLW. the result is CWHITE. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE FINCOL</font></strong>(APP,ACOLS,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Finish colouring. APP is a polynomial.
+ACOLS contains a list of red terms and a list of white terms.
+COLR is a list of red terms. COLW is a list of white terms.
+The red terms of APP are added to COLR. the result is CRED.
+The white terms of APP are added to COLW with their white part.
+The result is CWHITE. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NFORM</font></strong>(GA,FCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> N0,N1: LIST); 
+<font color="#B22222">(*Parametric normalform.
+GA is a condition. FCO is a polynomial coloured wrt GA.
+P is a list of polynomials coloured wrt GA.
+FCO is reduced modulo P wrt GA. N0 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+coloured completely green by cond and c is a multiplicative factor.
+N1 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+not coloured completely green by cond and c is a multiplicative
+factor. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NFTOP</font></strong>(GA,FCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> N0,N1: LIST); 
+<font color="#B22222">(*Normalform by topreduction.
+GA is a condition. FCO is a polynomial coloured wrt GA.
+P is a list of polynomials coloured wrt GA.
+FCO is reduced modulo P wrt GA. N0 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+coloured completely green by cond and c is a multiplicative factor.
+N1 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+not coloured completely green by cond and c is a multiplicative
+factor. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FINDPI</font></strong>(PCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> PCI,RE: LIST); 
+<font color="#B22222">(*Find polynomial.
+PCO is a coloured polynomial.
+P is a list of coloured polynomials. 
+A polynomial for the reduction over all terms of PCO modulo P
+is searched.
+PCI is emtpy if no polynomial is found, else PCI is the found
+polynomial and RE is the term of PCO to be eliminated. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FINDPITOP</font></strong>(PCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> PCI,RE: LIST); 
+<font color="#B22222">(*Find polynomial.
+PCO is a coloured polynomial.
+P is a list of coloured polynomials.
+A polynomial for the topreduction of PCO modulo P is searched.
+PCI is emtpy if no polynomial is found, else PCI is the found
+polynomial and RE is the term of PCO to be eliminated. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SPOL</font></strong>(COND,HA,HB: LIST): LIST; 
+<font color="#B22222">(*Parametric spolynom. COND is a condition. HA and HB are coloured
+polynomials.
+Returns the spolynom of HA and HB with colouring. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GBSYS</font></strong>(CNDS,P: LIST): LIST;
+<font color="#B22222">(*Groebner system.
+CNDS is a case distinction.
+P is a list of polynomials.
+Returns a Groebner-system for P relative to CNDS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GBSYSF</font></strong>(CNDS,P: LIST): LIST;
+<font color="#B22222">(*Groebner system with factorization.
+CNDS is a case distinction.
+P is a list of polynomials.
+Returns a Groebner-system for P relative to CNDS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE VRNORM</font></strong>(COND,PP,N0,N1,PPAIRS: LIST;
+                 <strong><font color="#228B22">VAR</font></strong> P,PAIRS,PAIRSL,GSYS: LIST);
+<font color="#B22222">(*Verify normalforms. COND is a condition. PP is a polynomials list
+determined by COND. N0 is a set of tripel (ga,pco,c), where ga is
+a condition, pco is a normalform determined and coloured completely
+green by ga and c is a multiplicative factor. N1 is a set of tripel
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+not coloured completely green by ga and c is a multiplicative factor.
+PPAIRS is the polynomials pairs list of PP.
+The normalforms are checked. PP is updated to P.
+PPAIRS is updated to PAIRS. PAIRSL is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn) constructed from the information
+of the N0 and N1.
+GSYS is a list of pairs, each containing a condition and a groebner
+base wrt this condition. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CHDEGL</font></strong>(PLIST: LIST): LIST; 
+<font color="#B22222">(*Check degree of polynomial list. PLIST is a list of coloured
+polynomials. PCO is an element of PLIST, such that the degree wrt
+the colouring of the polynomial is 0. PCO is emtpy if no such
+polynomial exists. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKN1</font></strong>(NN1,P,PAIRS: LIST; <strong><font color="#228B22">VAR</font></strong> PPLIST,GSYS: LIST); 
+<font color="#B22222">(* Make n1.
+NN1 is a set of tripel of the form
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+not coloured completely green by ga and c is a multiplicative
+factor.
+P is a list of coloured polynomials.
+PAIRS is the polynomials pairs list of P.
+PPLIST is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn) constructed from the information
+of the NN1.
+GSYS is a list of pairs, each containing a condition and a groebner
+basis wrt this condition. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKN0</font></strong>(NN0,P,PAIRS: LIST; <strong><font color="#228B22">VAR</font></strong> PPLIST: LIST); 
+<font color="#B22222">(*Make n0.
+NN0 is a set of tripel of the form
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+coloured completely green by ga and c is a multiplicative
+factor.
+P is a list of coloured polynomials.
+PAIRS is the polynomials pairs list of P.
+PPLIST is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn) constructed from the information
+of the NN0. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GSYSN0</font></strong>(NN0,P: LIST; <strong><font color="#228B22">VAR</font></strong> GSYS: LIST); 
+<font color="#B22222">(*Groebner-System n0 update.
+NN0 is a set of tripel of the form
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+coloured completely green by ga and c is a multiplicative
+factor.
+P is a list of coloured polynomials.
+for each GA in NN0, the pair of the form (ga,p) is added to GSYS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MINPP</font></strong>(PP,PCO: LIST): LIST; 
+<font color="#B22222">(*Minimize polynomials list. PP is a list of coloured polynomials.
+PCO is a coloured polynomial.
+P is a list of PCO and those polynomials in PP, such that their
+headterms wrt the colouring can not be divided by the headterm of PCO
+relative to its colouring. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UPDPP</font></strong>(COND,P: LIST): LIST; 
+<font color="#B22222">(*Update polynomials. COND is a condition. P is a list of polynomials
+determined and coloured wrt a predecessor of COND. The colouring of
+each polynomial is updated. The result is the polynomial-list PP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GBUPD</font></strong>(COND,P,GBSYS: LIST): LIST; 
+<font color="#B22222">(*Groebner-system update. COND is a condition. P is a list of polynomials
+determined and coloured wrt a predecessor of COND. GBSYS is the actual
+Groebner-system. The colouring of each polynomial
+in P is updated relative to COND. Extraneous polynomials are elminiated.
+The condititon and the resulting polynomials list are added to GBSYS.
+The result is GSYS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKPAIR</font></strong>(PP: LIST): LIST; 
+<font color="#B22222">(*Make pairs. PP is a list of coloured polynomials. The polynomials
+pairs list is constructed containing those polynomials whose headterm
+relative to the colouring is defined. The list pairs is in a
+nondecreasing order. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PRSCOP</font></strong>(PAIRS: LIST): LIST; 
+<font color="#B22222">(*Pairs copy. PAIRS is a polynomials pairs list. PPAIRS is a copy of PAIRS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKNEWP</font></strong>(P,POL,PRS: LIST): LIST; 
+<font color="#B22222">(*Make new pairs. P is a list of coloured polynomials. POL is a
+coloured polynomial. PRS is the polynomials pairslist of P. The new
+pairs between POL and P are constructed and added to PRS. The result
+is PPAIRS. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MKCGB</font></strong>(PL: LIST; <strong><font color="#228B22">VAR</font></strong> X,I: LIST); 
+<font color="#B22222">(*Make Comprehensive-Groebner-Basis. PL is a Groebner-System.
+X is the Comprehensive-Groebner-Basis from PL. I is the number of
+conditions in PL. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ADDCGB</font></strong>(PLIST,P: LIST): LIST; 
+<font color="#B22222">(*Add polynomials to comprehensive-groebner-basis. PLIST is
+list of coloured polynomials. P is a list of polynomials.
+Those polynomials that are not in P, are added to P without their
+colouring. the result is PP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GSRED</font></strong>(GS: LIST): LIST; 
+<font color="#B22222">(*Groebner-System reduction. GS is a groebner-system. 
+Returns the reduced groebner-system. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE REDUCT</font></strong>(PELEM: LIST): LIST; 
+<font color="#B22222">(*Reduct. PELEM is a pair containing a condition and a polynomials
+list determined and coloured wrt the condition.
+The polynomials list is to be reduced.
+The result together with the condition is R. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE REXTP</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Remove extraneous polynomials. P is a list of coloured polynomials.
+extraneous polynomials relative to their colouring are to be removed.
+PP is the resulting list. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RDNORM</font></strong>(COND,FCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> NCO: LIST);
+<font color="#B22222">(*Reduction normalform. COND is a condition. FCO is a coloured
+polynomial. P is a list of polynomials determined and coloured by COND.
+NCO is the normalform of fco modulo P relative to COND. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE REFIND</font></strong>(PCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> PLI,RE: LIST); 
+<font color="#B22222">(*Reduction find polynomial. PCO is a coloured polynomial.
+P is a list of determined and coloured polynomials.
+A polynomial for the reduction of PCO modulo P is searched.
+PLI is emtpy if no polynomial is found. Else PLI is the found
+polynomial and RE is the term of PCO to be eliminated. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RMGRT</font></strong>(COND,PP: LIST): LIST; 
+<font color="#B22222">(*Remove green terms. COND is a condition. PP is a list of polynomials
+determined and coloured relative to COND. If COND contains coefficients
+to be zero, all green monomials of the polynomials in PP are removed.
+P is the resulting polynomials list. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GLOBRE</font></strong>(COND,P: LIST): LIST; 
+<font color="#B22222">(*Global reduction. COND is a condition. P is a list of polynomials.
+CGB is the coloured polynomials list after global reduction. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GLEXTP</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Global extraneous polynomials remove. P is a list of
+coloured polynomials. Determined polynomials that are extraneous, are
+removed. The resulting polynomials list is PP. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> CGBSYS.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,839 @@
+
+<html>
+<head>
+<title>./masmodul/LINALGI.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:29+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: LINALGI.mi,v 1.6 1995/11/05 09:23:13 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: LINALGI.mi,v $
+ * Revision 1.6  1995/11/05 09:23:13  kredel
+ * Fixed comments and code of: IVSVSUM, ISMPROD, IMDETL, IMDET, IMGELUD, IMLT.
+ *
+ * Revision 1.5  1994/03/11  15:43:31  pesch
+ * Corrections by Lippold.
+ *
+ * Revision 1.4  1992/10/15  16:29:15  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.3  1992/08/24  10:05:42  kredel
+ * Corrected error in IMDET: wrong check for square matrix.
+ *
+ * Revision 1.2  1992/02/12  17:33:09  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:48  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE LINALGI;
+
+<font color="#B22222">(* MAS Linear Algebra Integer Implementation Module. *)</font>
+
+
+<font color="#B22222">(*-------------------------------------------------------------------------
+
+Implementation Module: Linear Algebra Integer 
+
+Programmierpraktikum SS 1990 JUERGEN MUELLER, Heinz Kredel 
+
+Contents: Standartoperations for matrix and vector manipulations,  
+          Gaussian elimination, LU-Decomposition, Solve,    
+          Inversion, Nullspace, Determinant. 
+
+Stand : 27.09.90, Juergen Mueller                         
+        from then date of the file, Heinz Kredel             
+
+Remarks: A vector is represented as a list of elements.
+         The elements may be integers or rational numbers.
+         A matix is represented as a list of vectors.
+         In most circumstances these vectors are interpreted row 
+         vectors, but they can also be interpreted as column vectors.
+
+--------------------------------------------------------------------------*)</font>
+
+
+  FROM MASELEM IMPORT GAMMAINT, MASMIN, MASEVEN;
+
+  FROM MASBIOS IMPORT SWRITE, BLINES;
+
+  FROM MASSTOR IMPORT LIST, SIL, BETA,
+                      ADV, FIRST, RED, INV, LIST1, COMP, LENGTH;
+
+  FROM MASERR IMPORT ERROR, severe;
+
+  FROM SACLIST IMPORT OWRITE, LIST2, FIRST2, CCONC, CINV, CONC;
+
+  FROM SACI IMPORT IWRITE, IABSF, ISUM, 
+                   IPROD, INEG, ICOMP, ISIGNF, 
+                   ILCM, IQ, IQR, IMIN, IDIF, IMAX;
+
+  FROM SACRN IMPORT RNDEN, RNNUM, RNRED, RNINT,
+                    RNPROD, RNQ, RNSUM, RNDIF;
+
+  FROM LINALGRN IMPORT MTRANS, MFILL, MDELCOL, 
+                       RNMUT, RNUM, RNMUNS, RNMFIM, RNVFIV;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: LINALGI.mi,v 1.6 1995/11/05 09:23:13 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#228B22">TYPE</font></strong> F2 = PROCEDURE(LIST,LIST): LIST;
+
+<font color="#B22222">(*The TDI compiler accepts only global functions in expressions. *)</font>   
+
+<strong><font color="#4169E1">PROCEDURE ium</font></strong>(i,j: LIST): LIST; <font color="#B22222">(*unit matrix*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> <font color="#4169E1">IF</font> i = j <font color="#4169E1">THEN</font> RETURN(1) <font color="#4169E1">ELSE</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ium;
+
+
+<font color="#B22222">(*---------------- arbitrary matices --------------------*)</font>
+
+<strong><font color="#4169E1">PROCEDURE MAT</font></strong>(f: F2; m, n: LIST): LIST;
+<font color="#B22222">(*Matrix. An (m x n) matrix with elements given by f(i,j) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, j, V, M, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M:=SIL;
+      <font color="#4169E1">IF</font> (m &lt;= 0) <font color="#4169E1">OR</font> (n &lt;= 0) <font color="#4169E1">THEN</font> RETURN(M) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> i:=0;
+      <font color="#4169E1">WHILE</font> i &lt; m <font color="#4169E1">DO</font> i:=i+1; j:=0; V:=SIL; 
+            <font color="#4169E1">WHILE</font> j &lt; n <font color="#4169E1">DO</font> j:=j+1;
+                  v:=f(i,j); V:=COMP(v,V) <strong><font color="#4169E1">END</font></strong>;
+            V:=INV(V); M:=COMP(V,M);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> M:=INV(M); RETURN(M);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MAT;
+
+
+<font color="#B22222">(*---------------- integer matices --------------------*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IUM</font></strong>(m, n: LIST): LIST;
+<font color="#B22222">(*Integer unit matrix. m, n integer. An (m x n) integer unit 
+matrix is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> RETURN(MAT(ium,m,n));
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IUM;
+
+
+<strong><font color="#4169E1">PROCEDURE IVWRITE</font></strong>(A : LIST);
+<font color="#B22222">(*Integer vector write. A is an integer vector. A is written 
+to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("(");
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A#SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            IWRITE(a);
+            <font color="#4169E1">IF</font> A#SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> SWRITE(")");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE IMWRITE</font></strong>(A : LIST);
+<font color="#B22222">(*Integer matrix write. A is an integer matrix. A is written 
+to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BLINES(0); SWRITE("(");
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A#SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            IVWRITE(a);
+            <font color="#4169E1">IF</font> A#SIL <font color="#4169E1">THEN</font> SWRITE(", "); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> SWRITE(")"); BLINES(0);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE IKM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector component product. IKM returns the difference of 
+the product of the integer vector A with FIRST(B) and the product of 
+the integer vector B with FIRST(A). C = A * FIRST(B) - B * FIRST(A).
+C is an integer vector. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, d, C, D : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; D := SIL;
+      a := FIRST(A); b := FIRST(B);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> a # LIST(0) <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> b # LIST(0) <font color="#4169E1">THEN</font>
+            <font color="#4169E1">WHILE</font> A # SIL  <font color="#4169E1">DO</font>
+                  ADV(A, c, A);
+                  c := IPROD(c,b);
+                  C := COMP(c,C);
+                  ADV(B, d, B);
+                  d := IPROD(d,a);
+                  D := COMP(d,D);
+                  <strong><font color="#4169E1">END</font></strong>;
+            A := INV(C); B := INV(D);
+            B := IVVDIF(B,A);
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(B);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IKM;
+
+
+<strong><font color="#4169E1">PROCEDURE IVVDIF</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector difference. A and B are integer vectors. 
+The integer vector C = A - B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C, test : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := IDIF(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVVDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE IVVSUM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector vector sum. A and B are integer vectors. 
+An integer vector C = A + B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C, test : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := ISUM(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVVSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE IVSVSUM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector scalar and vector sum. A and B are integer vectors.
+An integer vector C = A + FIRST(B) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; b:=FIRST(B); 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := ISUM(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVSVSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE IVSSUM</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Integer vector scalar sum. A is an integer vector. An integer 
+C = a1 + a2 + ... + an is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, c : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := ISUM(a,c);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(c);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVSSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE IVSVPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector scalar and vector product. A and B are integer vectors.
+An integer vector C = (a1*FIRST(B), ..., an*FIRST(B) ) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; b:=FIRST(B);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := IPROD(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVSVPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE IVVPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector vectors product. A and B are integer vectors.
+An integer vector C = (a1*b1, ..., an*bn) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := IPROD(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVVPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE IVSPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer vector scalar product. A and B are integer vectors.
+An integer C = a1*b1 + ... + an*bn is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := IPROD(a,b);
+            C := ISUM(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVSPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE IVMAX</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Integer vector maximum norm. M is an integer vector. 
+An integer a = maximum absolute value M(i) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   g, zeile, element, max : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> max := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M # SIL <font color="#4169E1">DO</font>
+            ADV(M, element, M);
+            element := IABSF(element);
+            max:=IMAX(max,element);  
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(max);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVMAX;
+
+
+<strong><font color="#4169E1">PROCEDURE IMPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer matrix product. A and B are integer matrices. 
+An integer matrix C = A * B is returned, if the number of 
+coloums of A is equal to the number of rows of B, 
+otherwise the empty matrix is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   H1, H2, C, C1, a, c, BP, BT, b : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+      H1 := LENGTH(FIRST(A));
+      H2 := LENGTH(B);
+      <font color="#4169E1">IF</font> H1 # H2 <font color="#4169E1">THEN</font> RETURN(C) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> BT:=MTRANS(B); <font color="#B22222">(*transpose B. *)</font>
+      <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font> ADV(A, a, A);
+            C1:=SIL; BP:=BT;
+            <font color="#4169E1">WHILE</font> BP # SIL <font color="#4169E1">DO</font> ADV(BP,b,BP);
+                  c:=IVSPROD(a,b);   
+                  C1:=COMP(c,C1);
+                  <strong><font color="#4169E1">END</font></strong>;
+            C1 := INV(C1);
+            C := COMP(C1,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE ISMPROD</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer scalar and matrix product. A is an integer matrix. 
+B is an integer. An integer matrix C = A * B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font> RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+      C := SIL; b:=LIST1(B);
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            c := IVSVPROD(a,b); <font color="#B22222">(* geaendert *)</font>
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ISMPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE IMDIF</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer matrix difference. A and B are integer matrices. 
+An integer matrix C = A - B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font>
+         B := ISMPROD(B,-1); <font color="#B22222">(*geaendert*)</font>
+         RETURN(B);
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B=SIL <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+      C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := IVVDIF(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE IMSUM</font></strong>(A, B : LIST): LIST;
+<font color="#B22222">(*Integer matrix sum. A and B are integer matrices. 
+An integer matrix C = A + B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, C : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B=SIL <font color="#4169E1">THEN</font> RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+      C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            ADV(B, b, B);
+            c := IVVSUM(a,b);
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE IMMAX</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Integer matrix maximum norm. M is an integer matrix. 
+An integer a = maximum absolute value M(i,j) is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   g, zeile, element, max : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> max := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M # SIL <font color="#4169E1">DO</font>
+            ADV(M, zeile, M);
+            element := IVMAX(zeile);
+            max:=IMAX(max,element);  
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(max);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMMAX;
+
+
+<strong><font color="#4169E1">PROCEDURE IVFRNV</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integer vector from rational number vector. A is a rational 
+number vector. A is muliplied by a common multiple of its 
+denominators, then the denominators are removed. An integer 
+vector C = lcm(denom(A)) * A is returned.  *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, BP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IVFRNV1(A,SIL, AP,BP); RETURN(AP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVFRNV;
+
+
+<strong><font color="#4169E1">PROCEDURE IVFRNV1</font></strong>(A, B : LIST; <strong><font color="#228B22">VAR</font></strong> C, D: LIST);
+<font color="#B22222">(*Integer vector from rational number vector. A and B are 
+rational number vectors. A and B are muliplied by a common 
+multiple of their denominators, then the denominators are 
+removed. C and D are integer vectors, such that 
+C = lcm(denom(A),denom(B))*A and D = lcm(denom(A),denom(B))*B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ap, bp, d, a, c, b: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL; D:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*determine lcm. *)</font> ap:=A; bp:=B; d:=1;
+      <font color="#4169E1">WHILE</font> ap # SIL <font color="#4169E1">DO</font> ADV(ap, a, ap);
+            c := RNDEN(a); d:=ILCM(d,c);
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> bp # SIL <font color="#4169E1">DO</font> ADV(bp, a, bp);
+            c := RNDEN(a); d:=ILCM(d,c);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*clear denominators. *)</font> ap:=A; bp:=B; 
+      <font color="#4169E1">WHILE</font> ap # SIL <font color="#4169E1">DO</font> ADV(ap, a, ap);
+            c := RNDEN(a); b:=IQ(d,c); 
+            c:=RNNUM(a); c:=IPROD(c,b); 
+            C:=COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> bp # SIL <font color="#4169E1">DO</font> ADV(bp, a, bp);
+            c := RNDEN(a); b:=IQ(d,c); 
+            c:=RNNUM(a); c:=IPROD(c,b); 
+            D:=COMP(c,D);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> C := INV(C); D:=INV(D);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVFRNV1;
+
+
+<strong><font color="#4169E1">PROCEDURE IMFRNM</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Integer matrix from rational number matrix. A is a rational 
+number row matix. The rows of A are muliplied by a common 
+multiple of its denominators, then the denominators are 
+removed. An integer matix C is returned, such that for 
+all rows C(i) = lcm(denom(A(i))) * A(i). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, BP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IMFRNM1(A,SIL, AP,BP); RETURN(AP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMFRNM;
+
+
+<strong><font color="#4169E1">PROCEDURE IMFRNM1</font></strong>(A, B : LIST; <strong><font color="#228B22">VAR</font></strong> C, D: LIST);
+<font color="#B22222">(*Integer matrix from rational number matrix. A is a rational 
+number row matix. B is a rational number column matix. 
+The rows of A and the rows of B are muliplied by
+a common multiple of their denominators, then the 
+denominators are removed. C and D are integer matices,
+such that C(i) = lcm(denom(A(i)),B(i)) * A(i) and
+D(i) = lcm(denom(A(i)),B(i)) * B(i). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, c, d: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:= SIL; D:=SIL; B:=MTRANS(B); 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, a, A);
+            <font color="#4169E1">IF</font> B # SIL <font color="#4169E1">THEN</font> ADV(B, b, B) <font color="#4169E1">ELSE</font> b:=SIL <strong><font color="#4169E1">END</font></strong>; 
+            IVFRNV1(a,b,c,d);
+            C:=COMP(c,C);
+            <font color="#4169E1">IF</font> d # SIL <font color="#4169E1">THEN</font> D:=COMP(d,D) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C:=INV(C); D:=INV(D); D:=MTRANS(D);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMFRNM1;
+
+
+<font color="#B22222">(* ------------ *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IVLC</font></strong>(a, A, b, B : LIST): LIST;
+<font color="#B22222">(*Integer vector linear combination. A and B are integer vectors. 
+a and b are integers. An integer vector C = a*A + b*B is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>    c, cp, C, ap, bp : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialization*)</font> C := SIL;
+      <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> a:=b; A:=B; b:=0; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a or b zero*)</font>
+      <font color="#4169E1">IF</font> b = 0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+               ADV(A, ap, A);  
+               c := IPROD(a,ap); 
+               C := COMP(c,C);
+               <strong><font color="#4169E1">END</font></strong>;
+         C:=INV(C); RETURN(C); <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case*)</font>
+      <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, ap, A);  ADV(B, bp, B);
+            c := IPROD(a,ap); cp := IPROD(b,bp);
+            c := ISUM(c,cp); C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVLC;
+
+
+<strong><font color="#4169E1">PROCEDURE IVSQ</font></strong>(a, A: LIST): LIST;
+<font color="#B22222">(*Integer vector scalar quotient. A is an integer vector. 
+a is an integer. An integer vector C = A/a is returned. 
+a must divide each element of A exactly.  *)</font>
+<strong><font color="#228B22">VAR</font></strong>    c, C, ap, r: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> A # SIL <font color="#4169E1">DO</font>
+            ADV(A, ap, A);  
+            IQR(ap,a,c,r);
+            <font color="#4169E1">IF</font> r # 0 <font color="#4169E1">THEN</font> ERROR(severe,"IVSQ: non zero remainder.") <strong><font color="#4169E1">END</font></strong>;
+            C := COMP(c,C);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> C := INV(C); RETURN(C);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IVSQ;
+
+<font color="#B22222">(*
+PROCEDURE IMGELUD0(M : LIST; VAR L, U: LIST);
+(* Integer matrix Gaussian elimination. LU-decomposition. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, M1, MP, L1, a, b, c, MP1, V, n, Z : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M1 := M; MP := SIL; L := SIL; U := SIL;
+      <font color="#4169E1">IF</font> M1 = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      n := 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M1 # SIL <font color="#4169E1">DO</font>
+            L1 := SIL; MP1 := M1; M1 := SIL;
+            a := 0;
+            <font color="#B22222">(*search pivot row. *)</font>
+            <font color="#4169E1">WHILE</font> (MP1 # SIL) <font color="#4169E1">AND</font> (a = 0) <font color="#4169E1">DO</font>
+                  ADV(MP1, C, MP1);
+                  ADV(C, a, C);
+                  <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> M1 := COMP(C,M1); L1 := COMP(a,L1); <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> C:=COMP(a,C); M1:=RED(M1); 
+               <font color="#4169E1">ELSE</font>  
+               L1 := COMP(a,L1);
+               <font color="#4169E1">WHILE</font> MP1 # SIL <font color="#4169E1">DO</font>
+                     ADV(MP1, V, MP1);
+                     ADV(V, b, V);
+                     <font color="#4169E1">IF</font> b # 0 <font color="#4169E1">THEN</font> V := IVLC(a,V,INEG(b),C) <strong><font color="#4169E1">END</font></strong>;
+                     M1 := COMP(V,M1);
+                     L1 := COMP(b,L1);
+                     <strong><font color="#4169E1">END</font></strong>;
+               C := COMP(a,C);
+               <strong><font color="#4169E1">END</font></strong>;
+            MP := COMP(C,MP); 
+            L1 := INV(L1); L := COMP(L1,L);
+            M1 := INV(M1); 
+            <font color="#4169E1">IF</font> M1 # SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*if not square matrix *)</font>
+               <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> M1 := SIL <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> U := INV(MP); L := INV(L);
+      RETURN;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMGELUD0;
+*)
+
+<strong><font color="#4169E1">PROCEDURE IMGELUD</font></strong>(M : LIST; <strong><font color="#228B22">VAR</font></strong> L, U: LIST);
+<font color="#B22222">(*Integer matrix Gaussian elimination LU-decomposition. 
+M is an integer matrix represented rowwise. L is a lower 
+triangular integer matrix represented columnwise.
+U is an upper triangular integer matrix represented rowwise.
+M = L * U for appropriate modifications of L and U. The pivot 
+operations and exact division factors are also recorded in L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   F, C, CP, M1, MP, L1, a, b, c, MP1, MP2, V, n, Z : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M1 := M; MP := SIL; L := SIL; U := SIL;
+      <font color="#4169E1">IF</font> M1 = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      n := 0; F:=1; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M1 # SIL <font color="#4169E1">DO</font>
+            L1 := SIL; MP1 := M1; M1 := SIL;
+            a := 0; 
+            <font color="#B22222">(*search pivot row. *)</font>
+            <font color="#4169E1">WHILE</font> (MP1 # SIL) <font color="#4169E1">AND</font> (a = 0) <font color="#4169E1">DO</font>
+                  ADV(MP1, C, MP1);
+                  ADV(C, a, CP);
+                  <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> M1 := COMP(CP,M1); L1 := COMP(a,L1); <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> <font color="#B22222">(*M1:=RED(M1);*)</font> F:=1  
+               <font color="#4169E1">ELSE</font> L1 := COMP(a,L1); L1 := COMP(F,L1); 
+               <font color="#B22222">(*transform rest matrix. *)</font>
+               MP2:=INV(M1); M1:=SIL;
+               <font color="#4169E1">WHILE</font> MP2 # SIL <font color="#4169E1">DO</font> ADV(MP2, V, MP2);
+                     V:=IVLC(a,V,0,CP);
+                     <font color="#4169E1">IF</font> F # 1 <font color="#4169E1">THEN</font> V:=IVSQ(F,V) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*Bareiss factor *)</font>
+                     M1 := COMP(V,M1);
+                     <strong><font color="#4169E1">END</font></strong>;
+               <font color="#4169E1">WHILE</font> MP1 # SIL <font color="#4169E1">DO</font> ADV(MP1, V, MP1);
+                     ADV(V, b, V);
+                     V:=IVLC(a,V,INEG(b),CP);
+                     <font color="#4169E1">IF</font> F # 1 <font color="#4169E1">THEN</font> V:=IVSQ(F,V) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*Bareiss factor *)</font>
+                     M1 := COMP(V,M1);
+                     L1 := COMP(b,L1);
+                     <strong><font color="#4169E1">END</font></strong>;
+               F:=a;
+               MP := COMP(C,MP); 
+               <strong><font color="#4169E1">END</font></strong>;
+            M1 := INV(M1); 
+            L1 := INV(L1); L := COMP(L1,L);
+            <font color="#4169E1">IF</font> M1 # SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*if not square matrix *)</font>
+               <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> M1 := SIL <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> U := INV(MP); L := INV(L);
+      RETURN;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMGELUD;
+
+
+<strong><font color="#4169E1">PROCEDURE IMLT</font></strong>(L, b : LIST): LIST;
+<font color="#B22222">(*Integer lower triangular matrix transformation. 
+L is a lower triangular integer matrix represented 
+columnwise as generated by IMGELUD. b is an integer vector. 
+An integer vector u = L * b is returned, such that 
+if M * x = b and M = L * U, then U * x = u. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   F, u, L1, b1, b2, c, l, d, a, e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> u := SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> L # SIL <font color="#4169E1">DO</font>
+            ADV(L, L1, L);
+            b1 := b; b := SIL; b2:=SIL; 
+            l := 0;
+            <font color="#4169E1">WHILE</font> (L1 # SIL) <font color="#4169E1">AND</font> (l = 0) <font color="#4169E1">DO</font>
+                  ADV(L1, l, L1);
+                  ADV(b1, c, b1);
+                  <font color="#4169E1">IF</font> l = 0 <font color="#4169E1">THEN</font> b2 := COMP(c,b2) <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> l = 0 
+               <font color="#4169E1">THEN</font> <font color="#B22222">(*u := COMP(c,u);*)</font> b:=b2; 
+               <font color="#4169E1">ELSE</font> <font color="#B22222">(* l # 0 *)</font>
+                    u := COMP(c,u); e:=l; ADV(L1,F,L1);
+                    b2:=INV(b2); 
+                    <font color="#4169E1">WHILE</font> b2 # SIL <font color="#4169E1">DO</font>
+                          ADV(b2, d, b2);
+                          a := IPROD(e,d);
+                          <font color="#4169E1">IF</font> F # 1 <font color="#4169E1">THEN</font> a:=IQ(a,F) <strong><font color="#4169E1">END</font></strong>;
+                          b := COMP(a,b);
+                          <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">WHILE</font> L1 # SIL <font color="#4169E1">DO</font>
+                          ADV(L1, l, L1);
+                          ADV(b1, d, b1);
+                          d := IPROD(e,d);
+                          a := IPROD(l,c);
+                          a := IDIF(d,a); 
+                          <font color="#4169E1">IF</font> F # 1 <font color="#4169E1">THEN</font> a:=IQ(a,F) <strong><font color="#4169E1">END</font></strong>;
+                          b := COMP(a,b);
+                          <strong><font color="#4169E1">END</font></strong>;
+                    <strong><font color="#4169E1">END</font></strong>;
+            b := INV(b);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#4169E1">WHILE</font> b &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(b,c,b); <font color="#B22222">(*unsolvable ? *)</font>
+            <font color="#4169E1">IF</font> c # 0 <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> u := INV(u); RETURN(u);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMLT;
+
+
+<strong><font color="#4169E1">PROCEDURE IMUT</font></strong>(U, b : LIST): LIST;
+<font color="#B22222">(*Integer upper triangular matrix transformation. 
+U is an upper triangular integer matrix represented rowwise
+as generated by IMGELUD. b is an integer vector 
+b = L * b' as generated by IMLT. A rational number (!) vector x, 
+such that U * x = b is returned. If no such x exists, then an 
+empty vector is returned. If more than one such x exists, then 
+for free x(i), x(i) = 0 is taken. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   UP, x, bp : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UP:=RNMFIM(U); bp:=RNVFIV(b); x:=RNMUT(UP,bp);
+<font color="#B22222">(*3*)</font> RETURN(x);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMUT;
+
+
+<strong><font color="#4169E1">PROCEDURE IMGE</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Integer matrix Gaussian elimination. M is a (n x m) integer 
+matrix. A (n x m) integer matrix resulting from Gaussian 
+elimination is returned. IMGELUD is called. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, j, u, MP, l: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>  
+<font color="#B22222">(*1*)</font> i:=LENGTH(M);
+      <font color="#4169E1">IF</font> M # SIL <font color="#4169E1">THEN</font> j:=LENGTH(FIRST(M))
+                 <font color="#4169E1">ELSE</font> j:=0 <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> IMGELUD(M, l, u);
+<font color="#B22222">(*3*)</font> MP:=MFILL(u,i,j);
+      RETURN(MP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMGE;
+
+
+<strong><font color="#4169E1">PROCEDURE IMSDS</font></strong>(L, U, b : LIST): LIST;
+<font color="#B22222">(*Integer matrix solve decomposed system. L is a lower 
+triangular integer matrix represented columnwise, U is an upper 
+triangular integer matrix represented rowwise. L and U as 
+generated by IMGELUD. If M = L * U, then a rational number (!) 
+vector x, such that M * x = b is returned. If no such x exists, 
+then an empty vector is returned. If more than one such x exists, 
+then for free x(i), x(i) = 0 is taken. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   u, x : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> u := IMLT(L,b);
+      <font color="#4169E1">IF</font> u # SIL <font color="#4169E1">THEN</font> x := IMUT(U,u);
+                 <font color="#4169E1">ELSE</font> x := SIL; <font color="#B22222">(*unsolvable*)</font> <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(x);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMSDS;
+
+
+<strong><font color="#4169E1">PROCEDURE RNMINVI</font></strong>(A : LIST): LIST;
+<font color="#B22222">(*Rational number matrix inversion, integer algorithm. A is a 
+rational number matrix represented rowwise. If it exists, 
+the inverse matrix of A is returned, otherwise an empty matrix 
+is returned. The integer Gaussian elimination IMGELUD is used. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, C, n, E, e, x, AP, EP, u, UP, L, U: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> n := LENGTH(A); B := SIL;
+      <font color="#4169E1">IF</font> n &lt;= 0 <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> n # LENGTH(FIRST(A)) <font color="#4169E1">THEN</font> RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+      E := RNUM(n,n);
+      IMFRNM1(A,E,AP,EP);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*LU-decomposition. *)</font>
+      IMGELUD(AP, L, U);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*solve A Ainv = E. *)</font>
+      UP:=RNMFIM(U);
+      <font color="#4169E1">WHILE</font> EP # SIL <font color="#4169E1">DO</font>
+            ADV(EP, e, EP);
+            u := IMLT(L,e);
+            <font color="#4169E1">IF</font> u = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*singular *)</font>
+            u:=RNVFIV(u); x:=RNMUT(UP,u);
+            <font color="#4169E1">IF</font> x = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*singular *)</font>
+            B := COMP(x,B);
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> B := INV(B); RETURN(B);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> RNMINVI;
+
+
+<strong><font color="#4169E1">PROCEDURE IMUNS</font></strong>(U : LIST): LIST;
+<font color="#B22222">(*Integer matrix upper triangular matrix solution null space. 
+U is an upper triangular integer matrix represented rowwise
+as generated by IMGELUD. A matrix X of linear independent rational 
+number vectors x is returned, such that for each x in X, U * x = 0 holds. 
+If only x = 0 satisfies the condition U * x = 0, then the 
+matrix X is empty. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   UP, N: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> UP:=RNMFIM(U); N:=RNMUNS(UP); RETURN(N);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMUNS;
+
+
+<strong><font color="#4169E1">PROCEDURE IMDETL</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Integer matrix determinant, using Laplace expansion. 
+M is an integer matrix. The determinant of M is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, d, dp, s, N, MP, V, VP, v : LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> d := 0;
+      <font color="#4169E1">IF</font> M = SIL <font color="#4169E1">THEN</font> RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+      ADV(M, V, MP);
+      <font color="#4169E1">IF</font> MP = SIL <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+         ADV(V,d,V); 
+         <font color="#4169E1">IF</font> V # SIL <font color="#4169E1">THEN</font> d:=0 <strong><font color="#4169E1">END</font></strong>;
+         RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+      s := 1; i := 0;   
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> V # SIL <font color="#4169E1">DO</font>
+            ADV(V, v, V);
+            i := i+1;
+            <font color="#4169E1">IF</font> v # 0 <font color="#4169E1">THEN</font>
+               N := MDELCOL(MP,i);
+               dp := IMDETL(N);
+               dp := IPROD(v,dp);
+               <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> dp := INEG(dp); <strong><font color="#4169E1">END</font></strong>;
+               d := ISUM(d,dp);
+               <strong><font color="#4169E1">END</font></strong>;
+            s := -s;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(d);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMDETL;
+
+
+<strong><font color="#4169E1">PROCEDURE IMDET</font></strong>(M : LIST): LIST;
+<font color="#B22222">(*Integer matrix determinant, using Gaussian elimination. 
+M is an integer matrix. The determinant of M is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   F, d, s, i, C, CP, M1, MP, a, b, c, MP1, MP2, V, e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M1 := M; d := 0; s := 1;
+      <font color="#4169E1">IF</font> M1 = SIL <font color="#4169E1">THEN</font> RETURN(d) <strong><font color="#4169E1">END</font></strong>;
+      V:=FIRST(M1); 
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> RETURN(d) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> LENGTH(M1) # LENGTH(V) <font color="#4169E1">THEN</font> RETURN(d) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* not square *)</font> 
+      e:=1; d:=e; F:=1;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> M1 # SIL <font color="#4169E1">DO</font>
+            MP1 := M1; M1 := SIL;
+            a := 0; i:=0;
+            <font color="#B22222">(*search pivot row and count sign changes. *)</font>
+            <font color="#4169E1">WHILE</font> (MP1 # SIL) <font color="#4169E1">AND</font> (a = 0) <font color="#4169E1">DO</font>
+                  ADV(MP1, C, MP1); i:=i+1;
+                  ADV(C, a, CP);
+                  <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> M1 := COMP(CP,M1) <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> a = 0 <font color="#4169E1">THEN</font> d:=0; RETURN(d); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> MASEVEN(i) <font color="#4169E1">THEN</font> s:=-s <strong><font color="#4169E1">END</font></strong>;
+            <font color="#B22222">(*rest matrix. *)</font>
+            d:=a; <font color="#B22222">(* d:=IPROD(d,a); *)</font> 
+            MP2:=INV(M1); M1:=SIL;
+            <font color="#4169E1">WHILE</font> MP2 # SIL <font color="#4169E1">DO</font> ADV(MP2, V, MP2);
+                  V:=IVLC(a,V,0,CP);
+                  <font color="#4169E1">IF</font> F # 1 <font color="#4169E1">THEN</font> V:=IVSQ(F,V) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*Bareiss factor *)</font>
+                  M1 := COMP(V,M1);
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">WHILE</font> MP1 # SIL <font color="#4169E1">DO</font>
+                  ADV(MP1, V, MP1);
+                  ADV(V, b, V);
+                  V := IVLC(a,V,INEG(b),CP);
+                  <font color="#4169E1">IF</font> F # 1 <font color="#4169E1">THEN</font> V:=IVSQ(F,V) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*Bareiss factor *)</font>
+                  M1 := COMP(V,M1);
+                  <strong><font color="#4169E1">END</font></strong>;
+            M1 := INV(M1); F:=a;
+            <font color="#4169E1">IF</font> M1 # SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*not square matrix ? *)</font>
+               <font color="#4169E1">IF</font> FIRST(M1) = SIL <font color="#4169E1">THEN</font> d := 0; RETURN(d) <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> d:=INEG(d) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(d);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IMDET;
+
+
+<strong><font color="#4169E1">END</font></strong> LINALGI.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,177 @@
+
+<html>
+<head>
+<title>./masring/DIPIDGB.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T10:13:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPIDGB.md,v 1.1 1993/05/11 10:13:18 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPIDGB.md,v $
+ * Revision 1.1  1993/05/11  10:13:18  kredel
+ * Initial Revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPIDGB;
+
+<font color="#B22222">(* DIP Integral D-Groebner Bases Definition Module. *)</font>
+
+
+<font color="#B22222">(* Author: Mark, Uni Passau, 1992. *)</font>
+
+
+FROM MASSTOR IMPORT LIST;
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPELIMDGB</font></strong>(P : LIST) : LIST;
+<font color="#B22222">(*Distributive integral polynomial eliminate D-groebner base.
+P is a list of non zero polynomials in distributive
+integral representation in r variables.
+ELIMDGB eliminates the polynominials with respect
+to the divisibility of the highest monominials. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPTDR</font></strong>(P, lcmHT, pair : LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial top-D-reduzibel. P is a list
+of non zero polynomials in distributive integral
+representation in r variables.
+pair is a pair two integral polynomials in
+distributive representation.
+lcmHT is the lcm of the highest terms of the two
+polynomials.
+TDR is a boolean value which equals 1, if g is top-D-
+reduzibel modulo P and 0 if not. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPCPLMS1</font></strong>(P : LIST) : LIST;
+<font color="#B22222">(*Distributive integral polynomial list construct pairs list merge sort.
+P is a list of non zero polynomials in distributive
+integral representation in r variables.
+CPLMS1 sorts a constructed pairs list in the
+following ascending order:
+1. lcm of the highest terms
+2. lcm of the highest coefficients
+P will be changed. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPLM1</font></strong>(onestep, twostep : LIST) : LIST;
+<font color="#B22222">(*Distributive integral polynomial list merge sort.
+P is a list of non zero polynomials in distributive
+integral representation in r variables.
+LM1 merges two (onestep, twostep) constructed
+pairs lists in the same manner as DIIPLCPLMS1.
+The lists onestep and twostep will be changed. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPUCPL1</font></strong>(P, g, Old : LIST) : LIST;
+<font color="#B22222">(*Distributive polynomial D-update constructed pairs list.
+P is a list of integral polynomials in distributive
+representation. g ist a polynomial in distributive
+representation. Both are polynomials in r variables.
+Old is the constructed and sorted pairs
+list to be updated. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPGPOL</font></strong>(g1,g2: LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial g polynomial. g1 and g2 are
+integral polynomials in distributive representation. GPOL is
+the G-polynomial of g1 and g2. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPSPOL2</font></strong>(g1, g2, lcmHT, lcmHK: LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial s polynomial. g1 and g2 are
+integral polynomials in distributive representation.
+lcmHT is the lcm of the highest terms of g1 and g2.
+lcmHK is the lcm of the highest coefficients of g1 and g2.
+polynomials in pair.
+SPol is the S-polynomial of g1 and g2. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPLEXTAL</font></strong>(AL, g : LIST) : LIST;
+<font color="#B22222">(*Distributive integral polynomial list extend array list.
+AL is an array list.
+g is a polynomial in distributive representation
+in r variables.
+Ag is the extended array list of AL.
+The list AL is modified. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPLCPL4</font></strong>(P : LIST; <strong><font color="#228B22">VAR</font></strong> CPL, AL : LIST);
+<font color="#B22222">(*Distributive integral polynomial list construct pair list.
+P is a list of polynomials in distributive
+representation in r variables.
+CPL is the constructed pairs list, AL is the
+Array list. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPALCMPC</font></strong>(AL, g1, g2, flag : LIST) : LIST;
+<font color="#B22222">(*Distributive integral polynomial array list check and mark polynomials.
+AL is an array list. g1, g2 are polynomials in
+distributive representation in r variables.
+flag determines whether the pair will be
+marked as computed or only checked. 1 means to
+mark 0 only to check.
+The value 1 is returned if the pair (g1,g2) is
+already computed otherwise 0 is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPENF</font></strong>(P,varl,g: LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial e-normal form. P is a list
+of non zero polynomials in distributive integral
+representation in r variables. g is a distributive
+integral polynomial. ENF is a polynomial such that
+g is e-reducible to ENF modulo P and ENF is in
+E-normalform modulo P. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPREDDGB</font></strong>(P : LIST) : LIST;
+<font color="#B22222">(*Distributive integral polynomial reduce D-groebner base.
+P is a list of non zero polynomials in distributive
+integral representation in r variables.
+REDDGB reduces the polynominials.
+It is nescessary that the highest monomials are
+pairwise disjoint. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPSPOL</font></strong>(g1,g2: LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial s polynomial. g1 and g2 are
+integral polynomials in distributive representation.
+SPol is the S-polynomial of g1 and g2. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPDNF</font></strong>(P,varl,g: LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial normal form. P is a list
+of non zero polynomials in distributive integral
+representation in r variables. g is a distributive
+integral polynomial. NF is a polynomial such that
+g is reducible to NF modulo P and NF is in
+D-normalform modulo P. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPDGB</font></strong>(F, TF : LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial D-groebner basis. F is a
+list of integral polynomials in distributive representation
+in r variables. G is the groebner basis of F. TF the trace flag. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPEGB</font></strong>(F, TF : LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial E-groebner basis. F is a
+list of integral polynomials in distributive representation
+in r variables. G is the groebner basis of F. TF the trace flag. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPIDGB.
+
+</pre>
+</body>
+
+</html>

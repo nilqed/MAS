@@ -1,0 +1,209 @@
+
+<html>
+<head>
+<title>./maslisp/SACSYM.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:32:35+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACSYM.md,v 1.2 1992/02/12 17:32:35 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACSYM.md,v $
+ * Revision 1.2  1992/02/12  17:32:35  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:11  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACSYM;
+
+<font color="#B22222">(* SAC Symbol System Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT GAMMAINT;
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">VAR</font></strong> COUNT, TRMAX: GAMMAINT;
+
+    SYMTB: LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACSYM.md,v 1.2 1992/02/12 17:32:35 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ACOMP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Alphabetic comparison. A and B are symbols. t=+1,0,-1 according
+to whether A preceds, is equal, or follows B alphabetically.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ACOMP1</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Alphabetic comparison, 1. subalgorithm. A and B are packed strings.
+s=-1,0,1 according to whether a preceds, is equal, or succeeds B
+alphabetically.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ASSOC</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Associate. L=(a1 b1, a2 b2, ...,a sub n b sub n), n ge 0,
+a is an object. If there is an i such that a=a sub i then
+P=(b sub i, ...,a sub n b sub n), otherwise P=().*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ASSOCQ</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Associate equal. L=(a1 b1, a2 b2, ...,a sub n b sub n), n ge 0,
+a is an object. If there is an i such that a is equal to a sub i then
+P=(b sub i, ...,a sub n b sub n), otherwise P=().*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ATTRIB</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Attribute. L is a symbol. Returns the attributes of L.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EXPLOD</font></strong>(S: LIST): LIST;
+<font color="#B22222">(*Explode symbol. S is a symbol, L its character list.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ENTER</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Enter into symbol table. L is a character list, S the pointer
+to the corresponding symbol. If the symbol is not yet in the
+symbol table SYMTB, then a new node is created.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GENSYM</font></strong>(): LIST;
+<font color="#B22222">(*Generate symbol. S is a newly generated symbol. NAM is advanced.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GET</font></strong>(S,AL: LIST): LIST;
+<font color="#B22222">(*Get property. The property list of the symbol S is searched
+under indicator a. A is the property under a, if any, otherwise
+A is set to beta.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NAME</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Name. L is a symbol. Returns the name of L.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PACK</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Pack character list. L is a non-empty character list. B is the
+packed list.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PUT</font></strong>(S,AL,A: LIST);
+<font color="#B22222">(*Put. The property A is stored on the property list of
+the symbol S under the indicator a.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE REMPRP</font></strong>(S,AL: LIST);
+<font color="#B22222">(*Remove property. Under indicator a on the property list of
+symbol S the property is removed.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SMEMB</font></strong>(S,L: LIST): LIST;
+<font color="#B22222">(*Symbol membership. S is a symbol, L a list containing possibly
+also symbols. b=1 if S or a copy of S occurs in L, b=0 otherwise.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SREAD</font></strong>(): LIST;
+<font color="#B22222">(*Symbol read. The next symbol is read from input. S is the symbol in
+the symbol table SYMTB.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SREAD1</font></strong>(): LIST;
+<font color="#B22222">(*Symbol read, 1. The first non-alphanumeric character of the
+input stream terminates the symbol.  L is the character list of 
+the symbol, which is not entered in the symbol table.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STCNT</font></strong>(T: LIST;    <strong><font color="#228B22">VAR</font></strong> S,P: LIST);
+<font color="#B22222">(*Symbol table tree count. T is a symbol tree, S is the number
+of symbols in T, P the number of properties of all symbols of the tree.
+Since every symbol has a name property, P ge S.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STINS</font></strong>(B: LIST): LIST;
+<font color="#B22222">(*Symbol tree insertion. B is a packed list of characters. S is a
+pointer to the corresponding symbol in the symbol table. If
+it is not yet in, a new node is created.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STLST</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*Symbol tree list. T is a symbol tree, L is the list of its symbols
+in alphabetic order.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STLSTI</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*Symbol tree list, in-order. T is a binary tree of symbols, L is a
+list of its symbols, with the root symbol appearing first.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STSRCH</font></strong>(T,AP: LIST): LIST;
+<font color="#B22222">(*Symbol tree search. T is a binary tree of symbols, AP is a packed
+list of characters. If the symbol with the name AP occurs already
+in the symbol table T then S=() and otherwise S points to the entry.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE STWRT</font></strong>(T: LIST);
+<font color="#B22222">(*Symbol tree write. T is a binary tree of symbols. The symbols
+followed by their properties are printed in alphabetic order.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SYMBOL</font></strong>(AP: LIST): BOOLEAN;
+<font color="#B22222">(*Symbol. AP is an object. Returns true if it is a symbol and 
+false else.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SymSummary</font></strong>();
+<font color="#B22222">(*Summary of symbol system. The number of symbols in SYMTB and
+the number of their properties is written.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SYWRIT</font></strong>(S: LIST);
+<font color="#B22222">(*Symbol write. The symbol S is written in the output stream.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SUBLIS</font></strong>(L,A: LIST): LIST;
+<font color="#B22222">(*Substitution with list. L=(x1 e1, ...,x sub n e sub n),
+a and e sub i are objects. The x sub i are beta-digits
+or pointers to uniquely stored lists like symbols. B is A
+with the x sub i substituted by the e sub i.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UREAD</font></strong>(): LIST;
+<font color="#B22222">(*Universal read. The next atom, symbol or list over atoms
+and symbols is read and stored under L. Blanks may occur anywhere,
+elements of a list may or may not be separated by a comma.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UWRITE</font></strong>(L: LIST);
+<font color="#B22222">(*Universal write. L is an atom, symbol or a list over
+atoms and symbols. L is written in the output stream,
+followed by BLINES(0). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE UWRIT1</font></strong>(L: LIST);
+<font color="#B22222">(*Universal write, 1. subalgorithm. L is an atom, a symbol
+or a list over atoms or symbols. L is written in the output
+stream followed by a blank character, but not by BLINES. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACSYM.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,75 @@
+
+<html>
+<head>
+<title>./maspoly/DIPIPOL.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:33:50+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPIPOL.md,v 1.2 1992/02/12 17:33:50 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPIPOL.md,v $
+ * Revision 1.2  1992/02/12  17:33:50  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:40  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPIPOL;
+
+
+<font color="#B22222">(* DIP Integer Polynomial Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPIPOL.md,v 1.2 1992/02/12 17:33:50 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE VIPIIP</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Vector of integral polynomials with vector of integers inner product. 
+A is a vector of integral polynomials in r variables, r non-negative.
+B is a vector of integers. C is the inner product of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE HIPRAN</font></strong>(RL,KL,QL,NL: LIST): LIST; 
+<font color="#B22222">(*Homogeneous integral polynomial random.  k is a positive
+beta-digit. q is a rational number q1/q2 with
+0 lt q1 le q2 lt beta. n is a non-negative beta-digit
+r ge 0.  A is a random homogeneous integral polynomial
+in r variables with homogeneous degree n. max norm of
+A lt 2**k and q is the probability that any
+particular term of A has a non-zero coefficient.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPRAN</font></strong>(RL,KL,QL,N: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial random.  k is a positive beta-digit.
+q is a rational number q1/q2 with 0 lt q1 le q2 lt beta.
+N is a list (n sub r, ...,n sub 1) of non-negative beta-digits
+r ge 0.  A is a random integral polynomial in r variables
+with deg sub i of a le n sub i + 1 for 1 le i le r.
+Max norm of A lt 2**k and q is the probability that any
+particular term of A has a non-zero coefficient. Modified
+version, original version by G. E. Collins. *)</font>
+                                            
+
+<strong><font color="#4169E1">END</font></strong> DIPIPOL.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

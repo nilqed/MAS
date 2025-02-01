@@ -1,0 +1,210 @@
+
+<html>
+<head>
+<title>./maslisp/MASLISPU.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:32:24+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASLISPU.md,v 1.2 1992/02/12 17:32:23 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASLISPU.md,v $
+ * Revision 1.2  1992/02/12  17:32:23  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:59  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASLISPU;
+
+<font color="#B22222">(* MAS Lisp Utility Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+
+FROM MASSTOR IMPORT LIST; 
+
+
+<strong><font color="#228B22">CONST</font></strong> EXPR = 1;
+
+
+<font color="#B22222">(* Types, S-Expresion Types and Indicators. *)</font>
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASLISPU.md,v 1.2 1992/02/12 17:32:23 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#228B22">TYPE</font></strong> PROCF0 = PROCEDURE():LIST;
+<strong><font color="#228B22">TYPE</font></strong> PROCF1 = PROCEDURE(LIST):LIST;
+<strong><font color="#228B22">TYPE</font></strong> PROCF2 = PROCEDURE(LIST, LIST):LIST;
+<strong><font color="#228B22">TYPE</font></strong> PROCF3 = PROCEDURE(LIST, LIST, LIST):LIST;
+<strong><font color="#228B22">TYPE</font></strong> PROCF4 = PROCEDURE(LIST, LIST, LIST, LIST):LIST;
+<strong><font color="#228B22">TYPE</font></strong> PROCF5 = PROCEDURE(LIST, LIST, LIST, LIST, LIST):LIST;
+
+<strong><font color="#228B22">TYPE</font></strong> PROCP0 = PROCEDURE();
+<strong><font color="#228B22">TYPE</font></strong> PROCP1 = PROCEDURE(LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP2 = PROCEDURE(LIST, LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP3 = PROCEDURE(LIST, LIST, LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP4 = PROCEDURE(LIST, LIST, LIST, LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP5 = PROCEDURE(LIST, LIST, LIST, LIST, LIST);
+
+<strong><font color="#228B22">TYPE</font></strong> PROCP0V1 = PROCEDURE(<strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP0V2 = PROCEDURE(<strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+
+<strong><font color="#228B22">TYPE</font></strong> PROCP1V1 = PROCEDURE(LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP1V2 = PROCEDURE(LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP1V3 = PROCEDURE(LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+
+<strong><font color="#228B22">TYPE</font></strong> PROCP2V1 = PROCEDURE(LIST, LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP2V2 = PROCEDURE(LIST, LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP2V3 = PROCEDURE(LIST, LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+
+<strong><font color="#228B22">TYPE</font></strong> PROCP3V1 = PROCEDURE(LIST, LIST, LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP3V2 = PROCEDURE(LIST, LIST, LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+<strong><font color="#228B22">TYPE</font></strong> PROCP3V3 = PROCEDURE(LIST, LIST, LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST, <strong><font color="#228B22">VAR</font></strong> LIST);
+
+
+<strong><font color="#228B22">VAR</font></strong> EXTYP, ARITY, SUBR: LIST; <font color="#B22222">(*indicators*)</font>
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CallCompiled</font></strong>(F, PI: LIST; <strong><font color="#228B22">VAR</font></strong> PO: LIST; <strong><font color="#228B22">VAR</font></strong> fu: BOOLEAN);
+<font color="#B22222">(*Call compiled function or procedure. F is a function or procedure 
+symbol. PI is the list of input parameters. fu is TRUE if F is a 
+function and FALSE if F is a procedure. PO is a list of output 
+parameters if F is a procedure and PO is the output parameter if 
+F is a function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledp0</font></strong>(F: PROCP0; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p0. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledp1</font></strong>(F: PROCP1; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p1. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledp2</font></strong>(F: PROCP2; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p2. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledp3</font></strong>(F: PROCP3; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p3. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledp4</font></strong>(F: PROCP4; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p4. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledp5</font></strong>(F: PROCP5; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p5. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledf0</font></strong>(F: PROCF0; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration f0. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Compiledf1</font></strong>(F: PROCF1; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration f1. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledf2</font></strong>(F: PROCF2; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration f2. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledf3</font></strong>(F: PROCF3; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration f3. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledf4</font></strong>(F: PROCF4; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration f4. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledf5</font></strong>(F: PROCF5; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration f5. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledp1v2</font></strong>(F: PROCP1V2; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p1v2. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledp1v3</font></strong>(F: PROCP1V3; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p1v3. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledp2v2</font></strong>(F: PROCP2V2; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p2v2. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledp2v3</font></strong>(F: PROCP2V3; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p2v3. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledp3v2</font></strong>(F: PROCP3V2; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p3v2. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+                       
+
+<strong><font color="#4169E1">PROCEDURE Compiledp3v3</font></strong>(F: PROCP3V3; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Compiled function declaration p3v3. F is a Modula-2 procedure, S is 
+the print name of F. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CompSummary</font></strong>;
+<font color="#B22222">(*Compiled function and procedure summary. Write out all 
+compiled functions with their signature from symbol table SYMTB. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Declare</font></strong>(<strong><font color="#228B22">VAR</font></strong> X: LIST; <strong><font color="#228B22">VAR</font></strong> S: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Declare. X is declared as symbol with print name S. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PROCP</font></strong>(X: LIST): BOOLEAN;
+<font color="#B22222">(*Procedure Pointer. Test if the symbol X is a compiled function. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Signature</font></strong>(F: LIST; <strong><font color="#228B22">VAR</font></strong> PI, PO: LIST; <strong><font color="#228B22">VAR</font></strong> def: BOOLEAN);
+<font color="#B22222">(*Signature of a compiled function or procedure. F is a function or 
+procedure symbol. PI is the number of input parameters. def is TRUE if 
+F is defined as compiled function or procedure else def is FALSE. 
+PO is the number of output parameters if F is a procedure, 
+PO = -1 if F is a function. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASLISPU.
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

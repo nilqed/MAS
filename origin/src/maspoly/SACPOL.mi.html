@@ -1,0 +1,459 @@
+
+<html>
+<head>
+<title>./maspoly/SACPOL.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:38+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACPOL.mi,v 1.3 1992/10/15 16:28:43 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACPOL.mi,v $
+ * Revision 1.3  1992/10/15  16:28:43  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:03  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:18  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACPOL;
+
+<font color="#B22222">(*SAC Polynomial System Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASELEM IMPORT MASMIN, MASMAX;
+
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, LISTVAR, 
+                    FIRST, RED, COMP, INV, ADV, LIST1;
+
+
+FROM SACLIST IMPORT LIST2, COMP2, ADV2, 
+                    CLOUT, CINV, RED2, SECOND, EQUAL;
+
+
+FROM MASBIOS IMPORT CREAD, CREADB, CWRITE, 
+                    DIBUFF, LETTER, DIGIT, 
+                    MASORD, BKSP, BLINES, SWRITE;
+
+
+FROM SACPRIM IMPORT DPGEN;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACPOL.mi,v 1.3 1992/10/15 16:28:43 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE BEGIN3</font></strong>();
+<font color="#B22222">(*Begin 3.  Begin3 calls Begin2, then creates a list of primes
+just less than beta which is assigned to the global variable PRIME.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LISTVAR(PRIME); PRIME:=DPGEN(BETA-1000,500); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> BEGIN3;
+
+
+<strong><font color="#4169E1">PROCEDURE PBIN</font></strong>(AL1,EL1,AL2,EL2: LIST): LIST;
+<font color="#B22222">(*Polynomial binomial.  a1 and a2 are elements of a coefficient ring
+R.  e1 and e2 are non-negative beta-integers e1 gt e2.  A is the
+polynomial A(x)=a1*x**e1+a2*x**e2, a univariate polynomial
+over R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> A:=BETA;
+      <font color="#4169E1">IF</font> AL2 &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=LIST2(EL2,AL2); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> AL1 &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(EL1,AL1,A); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PBIN;
+
+
+<strong><font color="#4169E1">PROCEDURE PCL</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial coefficient list.  A is a non-zero polynomial.  L is the
+list (a(n),a(n-1), ...,a(0)) where n=DEG(A) and A(x)=a(n)*x**n+
+a(n-1)*x**(n-1)+ ...+a(0).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, EL, L, ML, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; NL:=FIRST(AP); L:=BETA;
+      <font color="#4169E1">FOR</font> ML:=NL <font color="#4169E1">TO</font> 0 BY -1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> EL:=-1; <font color="#4169E1">ELSE</font> EL:=FIRST(AP); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> EL = ML <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+          L:=COMP(AL,L); <strong><font color="#4169E1">END</font></strong>;
+      L:=INV(L); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PCL;
+
+
+<strong><font color="#4169E1">PROCEDURE PDBORD</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial divided by order.  A is a non-zero polynomial.  B(x)=
+A(x)/x**k where k is the order of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL, KL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> KL:=PORD(A);
+      <font color="#4169E1">IF</font> KL = 0 <font color="#4169E1">THEN</font> B:=A; <font color="#4169E1">ELSE</font> B:=BETA; AP:=A;
+         <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); EL:=EL-KL; B:=COMP2(AL,EL,B);
+                <font color="#4169E1">UNTIL</font> AP = SIL;
+         B:=INV(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PDBORD;
+
+
+<strong><font color="#4169E1">PROCEDURE PDEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial degree.  A is a polynomial.  n is the degree of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> NL:=0; <font color="#4169E1">ELSE</font> NL:=FIRST(A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(NL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PDEG;
+
+
+<strong><font color="#4169E1">PROCEDURE PDEGSV</font></strong>(RL,A,IL: LIST): LIST;
+<font color="#B22222">(*Polynomial degree, specified variable.  A is a polynomial in r
+variables, r ge 1.  1 le i le r.  n is the degree of A in the i-th
+variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, EL, NL, NL1, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> NL:=0; RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font>
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> NL:=PDEG(A); RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> NL:=0; AP:=A; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); NL1:=PDEGSV(RLP,AL,IL);
+             NL:=MASMAX(NL,NL1);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(NL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> PDEGSV;
+
+
+<strong><font color="#4169E1">PROCEDURE PDEGV</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial degree vector.  A is a polynomial A(x(1), ...,x(r)) in
+r variables.  V is the list (v(r), ...,v(1)) where v(i) is the
+degree of a in x(i).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, IL, NL, RLP, V, V1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> V:=BETA;
+         <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> V:=COMP(0,V); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(V); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font> NL:=PDEG(A);
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> V:=LIST1(NL); RETURN(V); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 1.*)</font> RLP:=RL-1; A1:=PLDCF(A); V:=PDEGV(RLP,A1);
+      AP:=PRED(A);
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; 0 <font color="#4169E1">DO</font> A1:=PLDCF(AP); V1:=PDEGV(RLP,A1);
+            V:=VMAX(V,V1); AP:=PRED(AP); <strong><font color="#4169E1">END</font></strong>;
+      V:=COMP(NL,V); RETURN(V);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> PDEGV;
+
+
+<strong><font color="#4169E1">PROCEDURE PDPV</font></strong>(RL,A,IL,NL: LIST): LIST;
+<font color="#B22222">(*Polynomial division by power of variable.  A is a polynomial in
+r variables.  1 le i le r and n is a beta-integer such that
+x sub i sup n divides A.  B eq A/x sub i sup n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0 or n eq 0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (NL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> BL:=AL; FL:=EL-NL; <font color="#4169E1">ELSE</font>
+                BL:=PDPV(RLP,AL,IL,NL); FL:=EL; <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,FL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PDPV;
+
+
+<strong><font color="#4169E1">PROCEDURE PFDP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial from dense polynomial.  A is a dense polynomial in
+r variables, r ge 0.  B is the result of converting A to recursive
+polynomial representation.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B, BL, NL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (RL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      ADV(A, NL,AP); B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV(AP, BL,AP);
+             <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> RLP &lt;&gt; 0 <font color="#4169E1">THEN</font> BL:=PFDP(RLP,BL); <strong><font color="#4169E1">END</font></strong>;
+                B:=COMP2(BL,NL,B); <strong><font color="#4169E1">END</font></strong>;
+             NL:=NL-1;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PFDP;
+
+
+<strong><font color="#4169E1">PROCEDURE PINV</font></strong>(RL,A,KL: LIST): LIST;
+<font color="#B22222">(*Polynomial introduction of new variables.  A is a polynomial in r
+variables, r ge 0.  k ge 0.  B(y(1), ...,y(k),x(1), ...,x(r))
+=A(x(1), ...,x(r)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, B, B1, EL1, IL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or kl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (KL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=A;
+         <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> KL <font color="#4169E1">DO</font> B:=LIST2(0,B); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 0.*)</font> RLP:=RL-1; AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,A1,AP); B1:=PINV(RLP,A1,KL);
+             B:=COMP2(B1,EL1,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> PINV;
+
+
+<strong><font color="#4169E1">PROCEDURE PLBCF</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial leading base coefficient.  A is a polynomial in r
+variables.  a is the leading base coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> AL:=A;
+         <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> AL:=PLDCF(AL); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PLBCF;
+
+
+<strong><font color="#4169E1">PROCEDURE PLDCF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial leading coefficient.  A is a polynomial.  a is the
+leading coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> AL:=SECOND(A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PLDCF;
+
+
+<strong><font color="#4169E1">PROCEDURE PMDEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial modified degree.  A is a polynomial.  If A=0 then n=-1
+and otherwise n=DEG(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> NL:=-1; <font color="#4169E1">ELSE</font> NL:=FIRST(A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(NL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PMDEG;
+
+
+<strong><font color="#4169E1">PROCEDURE PMON</font></strong>(AL,EL: LIST): LIST;
+<font color="#B22222">(*Polynomial monomial.  a is an element of a coefficient ring R.
+e is a non-negative beta-integer.  A is the polynomial
+A(x)=a*x**e, a univariate polynomial over R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> A:=0; <font color="#4169E1">ELSE</font> A:=LIST2(EL,AL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PMON;
+
+
+<strong><font color="#4169E1">PROCEDURE PMPMV</font></strong>(A,KL: LIST): LIST;
+<font color="#B22222">(*Polynomial multiplication by power of main variable.  A is a
+polynomial in r variables, r ge 1.  k is a non-negative integer.
+B(x sub 1 , ..., x sub r ) eq A(x sub 1 , ..., x sub r ) *
+x sub r sup k .*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0 or k eq 0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (KL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> B:=BETA; AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); J1Y:=EL+KL; B:=COMP2(AL,J1Y,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PMPMV;
+
+
+<strong><font color="#4169E1">PROCEDURE PORD</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial order.  A is a non-zero polynomial.  k is the order of A.
+that is, if A(x)=a(n)*x**n+ ...+a(0), then k is the smallest
+integer such that a(k) ne 0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, KL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AP, KL,AP); AP:=RED(AP);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(KL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PORD;
+
+
+<strong><font color="#4169E1">PROCEDURE PRED</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial reductum.  A is a polynomial.  B is the reductum of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=RED2(A);
+         <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PRED;
+
+
+<strong><font color="#4169E1">PROCEDURE PRT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Polynomial reciprocal transformation.  A is a non-zero polynomial.
+let n=DEG(A).  Then B(x)=x**n*A(1/x), where x is the main
+variable of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> NL:=FIRST(A); AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); EL:=NL-EL; B:=COMP2(EL,AL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PRT;
+
+
+<strong><font color="#4169E1">PROCEDURE PTBCF</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial trailing base coefficient.  A is an r-variate polynomial,
+r ge 0.  a=trailing base coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> (RL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">THEN</font> AL:=A; RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> RLP:=RL-1; AS:=CINV(A); ADV2(AS, BL,EL,AS);
+      <font color="#4169E1">IF</font> EL = 0 <font color="#4169E1">THEN</font> AL:=PTBCF(RLP,BL); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PTBCF;
+
+
+<strong><font color="#4169E1">PROCEDURE PUFP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial, univariate, from polynomial.  A is an r-variate
+polynomial, r ge 0.  B, a univariate polynomial, equals A(0, ...,0,x).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> (RL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> RLP:=RL-1; B:=BETA; AP:=A;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AP, EL,AL,AP); BL:=PTBCF(RLP,AL);
+            <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,EL,B); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> PUFP;
+
+
+<strong><font color="#4169E1">PROCEDURE VCOMP</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Vector comparison.  U=(u(1), ...,u(r)) and V=(v(1), ...,v(r))
+are lists of beta-integers with common length r ge 1.  If U=V
+then t=0.  If U is not equal to V then t=1 if u(i) le v(i) for
+all i and t=2 if v(i) le u(i) for all i.  Otherwise t=3.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, TL1, TL2, UL, US, VL, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> TL1:=0; TL2:=0; US:=U; VS:=V;
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS);
+             <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL1:=1; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> VL &lt; UL <font color="#4169E1">THEN</font> TL2:=2; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> US = SIL;
+      TL:=TL1+TL2; RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE VLREAD</font></strong>(): LIST;
+<font color="#B22222">(*Variable list read.  V, a list of variables, is read from the input
+stream.  Any preceding blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, V, VL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read variables.*)</font> V:=SIL; C:=CREADB();
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> 
+         SWRITE("ERROR FOUND BY VLREAD."); DIBUFF; <strong><font color="#4169E1">END</font></strong>;
+      C:=CREADB();
+      <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> RETURN(V); <font color="#4169E1">ELSE</font> BKSP; <strong><font color="#4169E1">END</font></strong>;
+      LOOP VL:=VREAD(); V:=COMP(VL,V); C:=CREADB();
+           <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> V:=INV(V); RETURN(V); <font color="#4169E1">ELSE</font>
+              <font color="#4169E1">IF</font> C &lt;&gt; MASORD(",") <font color="#4169E1">THEN</font> 
+                 SWRITE("ERROR FOUND BY VLREAD."); DIBUFF; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> VLREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE VLSRCH</font></strong>(VL,V: LIST): LIST;
+<font color="#B22222">(*Variable list search.  v is a variable.  V is a list of variables
+(v(1), ...,v(n)), n non-negative.  If v=v(j) for some j then
+i=j.  Otherwise i=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   IL, VL1, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> VP:=V; IL:=1;
+      <font color="#4169E1">WHILE</font> VP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(VP, VL1,VP);
+            <font color="#4169E1">IF</font> EQUAL(VL,VL1) = 1 <font color="#4169E1">THEN</font> RETURN(IL); <strong><font color="#4169E1">END</font></strong>;
+            IL:=IL+1; <strong><font color="#4169E1">END</font></strong>;
+      IL:=0; RETURN(IL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VLSRCH;
+
+
+<strong><font color="#4169E1">PROCEDURE VLWRIT</font></strong>(V: LIST);
+<font color="#B22222">(*Variable list write.  V, a list of variables, is written in the
+output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  VL, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> VP:=V; SWRITE("(");
+      <font color="#4169E1">IF</font> VP = SIL <font color="#4169E1">THEN</font> SWRITE(")"); RETURN; <font color="#4169E1">ELSE</font> ADV(VP, VL,VP);
+         CLOUT(VL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> VP &lt;&gt; SIL <font color="#4169E1">DO</font> SWRITE(","); ADV(VP, VL,VP); CLOUT(VL);
+      <strong><font color="#4169E1">END</font></strong>;
+      SWRITE(")"); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VLWRIT;
+
+
+
+<strong><font color="#4169E1">PROCEDURE VMAX</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Vector maximum.  U=(u(1), ...,u(r)) and V=(v(1), ...,v(r)) are
+lists of beta-integers with common length r ge 1.  W=(w(1), ...,
+w(r)) where w(i)=MAX(u(i),v(i)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, VL, VS, W, WL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> W:=BETA; US:=U; VS:=V;
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS); WL:=MASMAX(UL,VL);
+             W:=COMP(WL,W);
+             <font color="#4169E1">UNTIL</font> US = SIL;
+      W:=INV(W); RETURN(W);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VMAX;
+
+
+<strong><font color="#4169E1">PROCEDURE VMIN</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Vector maximum.  U=(u(1), ...,u(r)) and V=(v(1), ...,v(r)) are
+lists of beta-integers with common length r ge 1.  W=(w(1), ...,
+w(r)) where w(i)=MIN(u(i),v(i)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, VL, VS, W, WL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> W:=BETA; US:=U; VS:=V;
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS); WL:=MASMIN(UL,VL);
+             W:=COMP(WL,W);
+             <font color="#4169E1">UNTIL</font> US = SIL;
+      W:=INV(W); RETURN(W);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VMIN;
+
+
+<strong><font color="#4169E1">PROCEDURE VREAD</font></strong>(): LIST;
+<font color="#B22222">(*Variable read.  The variable v is read from the input stream.  Any
+number of preceding blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, IDUM, VL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=CREADB();
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> LETTER(C) <font color="#4169E1">THEN</font> SWRITE("ERROR found by VREAD."); DIBUFF;
+         <strong><font color="#4169E1">END</font></strong>;
+      VL:=BETA;
+      <font color="#4169E1">REPEAT</font> VL:=COMP(C,VL); C:=CREAD();
+             <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font> ( LETTER(C) <font color="#4169E1">OR</font> DIGIT(C) );
+      VL:=INV(VL); BKSP; RETURN(VL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> VREAD;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+
+BEGIN3;
+
+<strong><font color="#4169E1">END</font></strong> SACPOL.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

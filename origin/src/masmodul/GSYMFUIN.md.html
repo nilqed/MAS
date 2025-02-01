@@ -1,0 +1,116 @@
+
+<html>
+<head>
+<title>./masmodul/GSYMFUIN.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T15:57:24+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: GSYMFUIN.md,v 1.1 1995/11/05 15:57:24 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: GSYMFUIN.md,v $
+ * Revision 1.1  1995/11/05 15:57:24  pesch
+ * Diplomarbeit Manfred Goebel, Reduktion G-symmetrischer Polynome fuer
+ * beliebige Permutationsgruppen G, slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE GSYMFUIN;
+<font color="#B22222">(* G-Symmetric Integral Polynomial System Definition Module. *)</font>
+
+FROM MASSTOR	IMPORT	LIST;
+
+FROM MASELEM	IMPORT	GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: GSYMFUIN.md,v 1.1 1995/11/05 15:57:24 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE GSYINF</font></strong>();
+<font color="#B22222">(*G-Symmetric Polynomial System Information. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYPGR</font></strong>(M: GAMMAINT): LIST;
+<font color="#B22222">(*G-Symmetric Permutation Group Read.
+Input of producing elements for a permutation group with M variables. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYPGW</font></strong>(PG: LIST);
+<font color="#B22222">(*G-Symmetric Permutation Group Write.
+Output of producing elements for the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINORP</font></strong>(PG, MO: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Integral Orbit Polynomial.
+The PG-symmetric orbit polynomial of the monomial MO is computed
+with respect to the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYORD</font></strong>(PG: LIST): GAMMAINT;
+<font color="#B22222">(*G-Symmetric Permutation Group Order.
+The order of the permutation group PG is computed. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYNSP</font></strong>(PG: LIST);
+<font color="#B22222">(*G-Symmetric Number of Special Polynomials.
+The number of special polynomials is computed. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYSPG</font></strong>(N: GAMMAINT): LIST;
+<font color="#B22222">(*Symmetric Permutation Group.
+The symmetric permutation group is computed for N variables. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINOPL</font></strong>(PG, ML: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Integral Orbit Polynomial List.
+The PG-symmetric orbit polynomial list is calculated from the monomial
+list ML and the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINCUT</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> POL_1, POL_2: LIST);
+<font color="#B22222">(*G-Symmetric Integral Polynomial Cut.
+The Polynomial POL is splitted up into the G-symmetric polynomial POL_1
+and the remainder polynomial POL_2 with respect to the permutation group PG
+and the termorder. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINCHK</font></strong>(PG, BASE, POL: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Integral Polynomial Check.
+The original polynomial is computed from the polynomial POL and the
+PG-symmetric base polynomials BASE with respect to the permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINCHKBAS</font></strong>(<strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<font color="#B22222">(*G-Symmetric Integral Base Check.
+The procedure removes not used base orbit polynomials from BASE and
+make an update of POL. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYTWG</font></strong>(TERM1, TERM2: LIST): GAMMAINT;
+<font color="#B22222">(*G-Symmetric Term Weight.
+The weigth between TERM1 and TERM2 is computed w.r.t. the default term order.
+The result is 1, if wg(TERM1) &gt; wg(TERM2), and 0, if wg(TERM1) = wg(TERM2);
+otherwise the result is -1. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYMLT</font></strong>(N: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*G-Symmetric Multilinear Terms.
+The result of the preocedure ist a list off all multilinear terms in
+N variables. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GSYADD</font></strong>(TERM: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Term Adder.
+The result of the procedure is the next highest descend term after TERM. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINRED</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, BASE_POL, REM_POL: LIST);
+<font color="#B22222">(*G-Symmetric Integral Polynomial Reduction.
+The PG-symmetric polynomial BASE_POL, which is the PG-symmetric polynomial
+reconstruction with respect to the base polynomials BASE, and the remainder
+polynomial REM_POL are computed from the polynomial POL with respect to the
+permutation group PG. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE GINBAS</font></strong>(PG: LIST): LIST;
+<font color="#B22222">(*G-Symmetric Integral Base Construction.
+The PG-symmetric base polynomials for the permutation
+group PG are computed. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> GSYMFUIN.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

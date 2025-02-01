@@ -1,0 +1,158 @@
+
+<html>
+<head>
+<title>./masarith/SACRN.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T13:19:18+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACRN.md,v 1.2 1992/02/12 13:19:18 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACRN.md,v $
+ * Revision 1.2  1992/02/12  13:19:18  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:20  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACRN;
+
+<font color="#B22222">(* SAC Rational Number Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACRN.md,v 1.2 1992/02/12 13:19:18 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE RIRNP</font></strong>(I,CL: LIST): LIST;
+<font color="#B22222">(*Rational interval rational number product.  I is an interval with
+rational endpoints.  c is a rational number.  J is the interval I*c.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNABS</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number absolute value.  R is a rational number.  S is the
+absolute value of R.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNCEIL</font></strong>(RL: LIST): LIST;
+<font color="#B22222">(*Rational number, ceiling of.  r is a rational number.  a=CEILING(r), 
+an integer.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNCOMP</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number comparison.  R and S are rational numbers.
+t=SIGN(R-S).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNDEN</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number denominator.  R is a rational number.  b is the
+denominator of R, a positive integer.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNDIF</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number difference.  R and S are rational numbers.  T=R-S.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNDWR</font></strong>(R,NL: LIST);
+<font color="#B22222">(*Rational number decimal write.  R is a rational number.  n is a
+non-negative integer.  R is approximated by a decimal fraction D with
+n decimal digits following the decimal point and D is written in the
+output stream.  The inaccuracy of the approximation is at most
+(1/2)*10**-n.  If ABS(D) is greater than ABS(R) then the last digit is
+followed by a minus sign, if ABS(D) is less than ABS(R) then by a
+plus sign.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNFCL2</font></strong>(AL: LIST; <strong><font color="#228B22">VAR</font></strong> ML,NL: LIST);
+<font color="#B22222">(*Rational number floor and ceiling of logarithm, base 2.  a is a non-
+zero rational number.  m=FLOOR(LOG2(ABS(a))) and n=CEILING(LOG2(ABS(a))) 
+are gamma-integers.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNFLOR</font></strong>(RL: LIST): LIST;
+<font color="#B22222">(*Rational number, floor of.  r is a rational number.  a=FLOOR(r),
+an integer.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNINT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Rational number from integer.  A is an integer.  R is the rational
+number A/1.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNINV</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number inverse.  R is a non-zero rational number.  S=1/R.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNNEG</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number negative.  R is a rational number.  S=-R.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNNUM</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number numerator.  R is a rational number.  a is the
+numerator of R, an integer.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNPROD</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number product.  R and S are rational numbers.  T=R*S.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNP2</font></strong>(KL: LIST): LIST;
+<font color="#B22222">(*Rational number power of 2.  k is a gamma-integer.  r=2**k, a
+rational number.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNQ</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number quotient.  R and S are rational numbers, S non-zero.
+T=R/S.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNRAND</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Rational number, random.  n is a positive beta-integer.  Random
+integers A and B are generated using IRAND(n).  Then R=A/(ABS(B)+1),
+reduced to lowest terms.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNREAD</font></strong>(): LIST;
+<font color="#B22222">(*Rational number read.  The rational number R is read from the input
+stream.  Any preceding blanks are skipped.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNRED</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Rational number reduction to lowest terms.  A and B are integers,
+B non-zero.  R is the rational number A/B in canonical form.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNSIGN</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Rational number sign.  R is a rational number.  s=SIGN(R).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNSUM</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Rational number sum.  R and S are rational numbers.  T=R+S.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNWRIT</font></strong>(R: LIST);
+<font color="#B22222">(*Rational number write. R is a rational number.  R is converted 
+to decimal and written in the output stream.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACRN.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

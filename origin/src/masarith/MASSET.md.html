@@ -1,0 +1,117 @@
+
+<html>
+<head>
+<title>./masarith/MASSET.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T14:36:30+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASSET.md,v 1.2 1995/12/16 15:03:27 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MASSET.md,v $
+ * Revision 1.2  1995/12/16 15:03:27  kredel
+ * Comments slightly edited.
+ *
+ * Revision 1.1  1994/11/28  20:39:35  dolzmann
+ * New modules MASCOMB.md, MASCOMB.mi, MASSET.md, and MASSET.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASSET;
+<font color="#B22222">(* MAS Set Definition Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*				 M A S S E T				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Abstract: Implementation of procedures for the manipulation of sets.        *
+*           Sets are only a special view of lists.                            *
+******************************************************************************)</font>
+
+FROM MASSTOR	IMPORT	LIST;
+
+<strong><font color="#228B22">TYPE</font></strong> SetRel=(subset,superset,setequal,setnorel); 
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASSET.md,v 1.2 1995/12/16 15:03:27 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+* A set is only a list containing the elements of the set. Elements are       *
+* arbitrary MAS objects. The comparison between elements is with EQUAL or =   *
+* done. Procedures with the suffix Q use EQUAL the other procedures use       *
+* =                                                                           *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetAdd</font></strong>(e,S:LIST):LIST;
+<font color="#B22222">(* Set add. S is a set, e is an element. A set containing all elements of S
+and the element e is returned. If e is not a element of the set S, e is the
+first element in the list representing S. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetAddQ</font></strong>(e,S:LIST):LIST;
+<font color="#B22222">(* Set add equal. S is a set, e is an element. 
+A set containing all elements of S
+and the element e is returned. If e is not a element of the set S, e is the
+first element in the list representing S. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetUnion</font></strong>(S1,S2:LIST):LIST;
+<font color="#B22222">(* Set union. S1 and S2 are sets. The union of S1 and S2 is returned. 
+The elements of S2 not occuring in set1 are added to S1. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetUnionQ</font></strong>(S1,S2:LIST):LIST;
+<font color="#B22222">(* Set union equal. S1 and S2 are sets. The union of S1 and S2 is returned. 
+The elements of S2 not occuring in set1 are added to S1. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetElementP</font></strong>(e,S:LIST):BOOLEAN;
+<font color="#B22222">(* Set element predicate. e is an element, S is a set. 
+SetElementP returns true iff e is a element of S *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetElementPQ</font></strong>(e,S:LIST):BOOLEAN;
+<font color="#B22222">(* Set element predicate equal. e is an element, S is a set. 
+SetElementP returns true iff e is a element of S *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetMinus</font></strong>(e,S:LIST):LIST;
+<font color="#B22222">(* Set minus. e is an element. S is a set. If e is an element of the set
+S then a set containing all elements of S except of the element e is returned.
+Otherwise the set S is returned. S is modified to build the result. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetMinusQ</font></strong>(e,S:LIST):LIST;
+<font color="#B22222">(* Set minus equal. e is an element. S is a set. If e is an element of the set
+S then a set containing all elements of S except of the element e is returned.
+Otherwise the set S is returned. S is modified to build the result. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetMinusC</font></strong>(e,S:LIST):LIST;
+<font color="#B22222">(* Set minus constructive. 
+e is an element. S is a set. If e is an element of the set
+S then a set containing all elements of S except of the element e is returned.
+Otherwise the set S is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetMinusCQ</font></strong>(e,S:LIST):LIST;
+<font color="#B22222">(* Set minus constructive equal. 
+e is an element. S is a set. If e is an element of the set
+S then a set containing all elements of S except of the element e is returned.
+Otherwise the set S is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetComplement</font></strong>(S1,S2:LIST):LIST;
+<font color="#B22222">(* Set complement. S1 and S2 are sets.
+The complement of S1 with respect to S2 is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetComplementQ</font></strong>(S1,S2:LIST):LIST;
+<font color="#B22222">(* set complement. S1 and S2 are sets.
+The complement of S1 with respect to S2 is returned. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> MASSET.
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,80 @@
+
+<html>
+<head>
+<title>./masarith/MASRN.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T13:19:05+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASRN.md,v 1.2 1992/02/12 13:19:04 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASRN.md,v $
+ * Revision 1.2  1992/02/12  13:19:04  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:06  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASRN;
+
+<font color="#B22222">(* MAS Rational Number Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASRN.md,v 1.2 1992/02/12 13:19:04 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE RNDRD</font></strong>(): LIST; 
+<font color="#B22222">(*Rational number decimal read.  The rational number R is read
+from the input stream.  Any preceding blanks are skipped.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNDWR</font></strong>(R,NL: LIST); 
+<font color="#B22222">(*Rational number decimal write.  R is a rational number.  n is a
+non-negative integer.  R is approximated by a decimal fraction D with
+n decimal digits following the decimal point and D is written in the
+output stream.  The inaccuracy of the approximation is at most
+(1/2)*10**-n. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNDWRS</font></strong>(A,S: LIST); 
+<font color="#B22222">(*Rational number decimal write special.
+Call RNDWR. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Rational number exponentiation.  A is a rational number,
+n is a non-negative beta-integer.  B=A**n.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNMAX</font></strong>(AL,BL: LIST): LIST; 
+<font color="#B22222">(*Rational number maximum.  a and b are rational numbers.
+c is the maximum of a and b.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNONE</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational number one.  R is a rational number.  s=1 if R=1,
+s=0 else. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASRN.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

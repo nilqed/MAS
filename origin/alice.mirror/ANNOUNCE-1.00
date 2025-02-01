@@ -1,0 +1,137 @@
+	    MAS, the Modula-2 Algebra System, Version 1.00
+	    ==============================================
+
+			  27th October 1996
+
+
+A new version of MAS, the Modula-2 Algebra System is now available
+from
+     ftp://alice.fmi.uni-passau.de/pub/ComputerAlgebraSystems/mas
+or
+	       http://alice.fmi.uni-passau.de/mas.html
+
+as source code and executables for
+
+ o HP 9000, running HP-UX,
+ o IBM RS/6000, running AIX,
+ o Intel PC, running Linux,
+ o Intel PC, running OS/2,
+ o Intel station, running Nextstep,
+ o NeXTstation, running Nextstep and
+ o Sun Sparc, running SunOS.
+
+MAS (Modula-2 Algebra System) is an experimental computer algebra
+system, developed at the University of Passau. MAS combines imperative
+programming facilities with algebraic specification capabilities for
+design and study of algebraic algorithms. It contains a large library
+of implemented Groebner basis algorithms for nearly all algebraic
+structures where such methods exist. MAS further includes algorithms
+for real quantifier elimination, parametric real root counting, and
+for computing in (noncommutative) polynomial rings.
+
+The last released version of MAS was version 0.7. From version 0.7 to
+version 1.0 the following major changes have been made:
+
+Mathematical library improvements
+---------------------------------
+
+- Groebner bases
+  An optimized Groebner base package, which includes the
+  ``sugar''-method and a better exploitation of Buchberger's second
+  criterion has been implemented.
+
+- Factorized Groebner Bases
+  A package to compute factorized Groebner bases has been added.
+
+- Comprehensive Groebner Bases 
+  The CGB package for computing comprehensive Groebner bases has been
+  extended. The occuring conditions can be exploited (by
+  detecting implications and inconsistencies) to avoid unnecessary cases
+  and factorized comprehensive Groebner bases can be computed.
+
+- Involutive Bases 
+  A package for computing involutive bases and factorized involutive
+  has been added.
+
+- Invariant Polynomials
+  A package for reduction of invariant polynomials has been included.
+
+- Counting Real Roots
+  A package for counting real roots has been implemented. 
+
+- Logic Formulae 
+  A package for representation of logic formulae was included. It
+  makes methods for formula simplification available on a new data
+  structure for logic formulae.
+
+- Linear Algebra
+  The linear algebra package of MAS has been improved.
+
+System Improvements
+-------------------
+
+- MAS language 
+  The MAS language now accepts small letter key words. Braces {} can
+  be used to denote list expressions.
+
+- Makefiles and GNU autoconf 
+  The installation of MAS has been simplified by using the GNU autoconf
+  system and a new Makefile. done by the configure script.
+
+- GNU Readline and History Library
+  The terminal input and output interface has been modified to make use
+  of the freely available GNU readline and history libraries.
+
+- Kpathsearch Library
+  The kpathsea library by K. Berry is now used by MAS.
+
+- Shell command line options
+  GNU getopt is now used as parser for this options and new command line
+  options have been added to MAS.
+
+- Interrupt handling
+  An interrupt handler has been added to MAS which can react on the
+  \verb/USR1/ signal by printing the actual state of computation.
+
+- Garbage collection
+  The garbage collector has been modified to automatically detect the
+  necessary information on stack structure at runtime (to allow
+  cross-compiling). It is no longer necessary to give values for
+  "stack-offset" before compiling MAS. Furthermore the garbage
+  collector now works on machines with reverse stack growth like those
+  from HP.
+
+- Compiler optimizations
+  MAS has now been modified to allow use of the optimization
+  possibilities of gcc.
+
+- New Data Structure Concept
+  This concept has been used in the DIPAGB package, the CGB package and
+  to some extent in the MASIB, MASLOG and DIPDCGB packages.
+
+- Generic Functions
+  Generic functions on polynomial system over ``arbitrary domains'' have
+  been designed and implemented.
+
+- Selection of Options
+  A concept for implementing run time options has been introduced.
+  Options (e.g. how much intermediate output should be produced, which
+  term order should be used, which strategy should be followed) can be
+  set from the interpreter by special functions. 
+
+
+You can get more information about MAS from:
+	       http://alice.fmi.uni-passau.de/mas.html
+
+Send bug-reports, questions, remarks to:
+		  mailto:mas@alice.fmi.uni-passau.de
+
+
+Heinz Kredel				Michael Pesch
+Universitaet Mannheim			Universitaet Passau
+D-68131 Mannheim			D-94030 Passau
+Germany					Germany
+
+kredel@rz.uni-mannheim.de		pesch@alice.fmi.uni-passau.de
+
+-EOF-

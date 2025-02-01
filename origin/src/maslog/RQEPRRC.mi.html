@@ -1,0 +1,1812 @@
+
+<html>
+<head>
+<title>./maslog/RQEPRRC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T14:36:49+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: RQEPRRC.mi,v 1.3 1996/05/19 07:54:56 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: RQEPRRC.mi,v $
+ * Revision 1.3  1996/05/19 07:54:56  dolzmann
+ * Fixed a bug in RqeNoEq.
+ *
+ * Revision 1.2  1995/11/04  18:00:30  pesch
+ * Changed comments violating documentation rules. Should be rewritten.
+ *
+ * Revision 1.1  1994/11/28  21:10:06  dolzmann
+ * New modules PQBASE.md and PQBASE.mi:
+ *   Procedures for the manipulating first oder formulas over the language of
+ *   ordered rings.
+ * New modules RQEPRRC.md and RQEPRRC.mi:
+ *   Procedures for the real quantifier elimination.
+ * New modules TFORM.md and TFORM.mi:
+ *   Procedures for the computation of type formulas.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE RQEPRRC;
+<font color="#B22222">(* Real Quantifier Elimination with Parametric Real Root Count. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                                R Q E C G B                                  *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Abstract: A program for quantifier elimination for the theory of the real   *
+*           numbers.                                                          *
+*           The quantifier elimination algorithm is described                 *
+*           in Volker Weispfenning, A New Approach to Quantifier Elimination  *
+*           for Real Algebra; Universitaet Passau; MIP 9305 July 1993.        *
+******************************************************************************)</font>
+
+FROM ADTOOLS	IMPORT	INTDDCMP, IPDDADV, IPDDCMP, IPDECMP, RFDDADV,
+			RFDDFIPDD;
+FROM CGBDSTR	IMPORT	CdpCons, CondCons, CondEmpty, CondIsEmpty, CondParts,
+			CondWrite, FormFCond, GsParts, GsS, GsWrite, VdCons,
+			VdD, VdV;
+FROM CGBFUNC	IMPORT	GREPOL;
+FROM CGBMISC	IMPORT	EvordReset, EvordSet, PAR, ValisReset, ValisSet;
+FROM CGBMAIN	IMPORT	GSYS, GSYSRED;
+FROM DIPADOM	IMPORT	DILWR, DIPNEG, DIPROD, DIPSUM, DIWRIT;
+FROM DIPC	IMPORT	DILPERM, DIPBSO, DIPERM, DIPFP, DIPINV, DIPLPM,
+			DIPMAD, DIPMCP, EVORD, PFDIP, VALIS;
+FROM DIPDIM	IMPORT	DILDIM, IXSUBS;
+FROM DIPRF	IMPORT	RFDEN, RFNOV, RFNUM;
+FROM DIPTOOLS	IMPORT	ADDDFDIL, ADDDFDIP, ADPFDIP, DILCONV, DILINV, DILMOC,
+			DIMPAD, DIPCNST, DIPCNSTR, DIPCT, DIPDEGI, DIPFADIP,
+			DIPFDIPP, DIPFIP, DIPIMO, DIPONE, DIPPAD, DIPPFDIP,
+			DIPXCM, EVCNSTR, EvordPop, EvordPush, VVECC,
+			VVECFVLIST, ValisPop, ValisPush;
+FROM LINALG	IMPORT	ADCHARPOL, ADSIG, ADUM, ADVWRITE;
+FROM LISTTOOLS	IMPORT	LIST6, LPAIRS, LSRCHQ;
+FROM MASADOM	IMPORT	ADFI, ADPROD, ADSIGN, ADWRIT;
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, DIGIT, LETTER, LISTS,
+			MASORD, SWRITE;
+FROM MASCOMB	IMPORT	INVPERM, PVFLISTS;
+FROM MASELEM	IMPORT	GAMMAINT;
+FROM MASERR	IMPORT	ERROR, fatal, harmless, severe, spotless;
+FROM MASLOG	IMPORT	FORAPPLYAT, FORAPPLYATF2, FORMKPRENEXI;
+FROM MASSET	IMPORT	SetComplementQ;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, LISTVAR,
+			RED, SFIRST, SIL, SRED, TIME;
+FROM MASSYM2	IMPORT	UWRIT1, UWRITE;
+FROM MLOGBASE	IMPORT	ANY, ET, EXIST, FALSUM, FORALL, FORGARGS, FORGLVAR,
+			FORGOP, FORMKBINOP, FORMKFOR, FORMKLVAR, FORMKQUANT,
+			FORMKUNOP, FORMKVAR, FORPFOR, FORPQUANT, FORPVAR,
+			FORVTENTER, FORVTGET, NON, VEL, VERUM;
+FROM PQBASE	IMPORT	EQU, GRE, GRQ, LES, LSQ, NEQ, PQELIMXOPS, PQMKCNF,
+			PQMKDNF, PQMKPOS, PQPPRT, PQPRING, PQSIMPLIFY,
+			PQSIMPLIFYP, PQSMPL, lvarfvlist, pqmkaf, pqpaf,
+			vlistflvar;
+FROM RRADOM	IMPORT	RRADPOLMATRIX, RRADQUADFORM, RRADSTRCONST,
+			RRADVARMATRICES, RRREDTERMS;
+FROM SACCOMB	IMPORT	LPERM;
+FROM SACIPOL	IMPORT	IPPROD;
+FROM SACLIST	IMPORT	ADV2, ADV3, AREAD, AWRITE, CCONC, CINV, CLOUT, COMP2,
+			COMP3, CONC, EQUAL, FIRST2, FIRST3, FIRST4, FOURTH,
+			LAST, LELT, LIST2, LIST3, LIST4, LIST5, LWRITE,
+			MEMBER, OWRITE, RED2, SECOND, THIRD;
+FROM SACPOL	IMPORT	VLREAD, VLWRIT;
+FROM SYSINFO	IMPORT	SYSINFO, SysInfoStart, SysInfoStop, SysInfoWrite;
+FROM TFORM	IMPORT	TFPPRT, TfTypeFormula, tfmkaf, tfpaf; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: RQEPRRC.mi,v 1.3 1996/05/19 07:54:56 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1994 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong> PolFmtStack: LIST;
+<font color="#B22222">(* ***************************************************************************
+For temporary changing of the contents of the variable PolFmt 
+we define a stack to store and restore old contents of PolFmt.
+*************************************************************************** *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> RqeIterate: BOOLEAN;
+<font color="#B22222">(* ***************************************************************************
+We use the global variable RqeIterate to control the iteration 
+of the quantifier elimination of quantifier blocks. If only zero 
+dimensional ideals are eliminated, then the result formula can contain
+quantifiers. In this case we cannot iterate the elimination procedure.
+If an ideal with a dimension greater than 0 occurs and 
+RqeOpt.DimensionZeroOnly is true, then  the variable RqeIterate 
+is set to true.
+*************************************************************************** *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> AdjoinedEq: BOOLEAN; <font color="#B22222">(* TRUE, if RqeNoEq is active. *)</font>
+<font color="#B22222">(* ***************************************************************************
+We know from the theory, that the adjoined equation is not trivial. 
+Instead of adjoining the non-trivial condition to the conjunction, 
+we call the elimination procedure for the conjunction over the side 
+conditions and the adjoined equation. During the elimination of this 
+conjunction the n-dimensional case can be entered. In this case 
+we do not make a recursion but we generate the elimination result FALSE.
+We use the global variable AdjoinedEq to mark, that a equation was 
+adjoined to the input. RqeNoEq terminates with the result FALSUM, 
+if AdjoinedEq is TRUE. 
+*************************************************************************** *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                            T E R M I N O L O G Y                            *
+******************************************************************************)</font>
+
+<font color="#B22222">(* 
+"formula":
+==========
+With the term formula we denotes a formula of the polynomial equation system
+(short "PQ-SYSTEM") It is a formula in the language of ordered rings. 
+The terms in these formulas are represented as distributive polynomials over
+an arbitrary domain. 
+For technical reasons, we can use only the domain INT in this package. 
+
+"common polynomial format":
+=========================== 
+Distributive polynomials over the domain INT. Z[U_1,...,U_m,X_1,...,X_n]
+
+"recursive polynomial format":
+==============================
+Distributive polynomials over the domain IP. Z[U_1,...,U_m][X_1,...,X_n]
+
+"parameter polynomial format":
+==============================
+Elements of the arbitrary domain IP. Z[U_1,...,U_m].
+
+"XPL" (extracted polynomial list)
+=================================
+A XPL (w.r.t. to a variable list V) represents a conjunction of atomic 
+formulas. 
+A XPL has the following form (NC,C), where 
+NC=(E,G,N) and C=(CLES, CLEQ, CEQ, CNEQ, CGEQ, CGR).
+Each element E, G, CLES, CLEQ, CEQ, CNEQ, CGEQ, and CGR is a list of 
+distributive polynomials in the common polynomial format. 
+The list NC of a XPL contains polynomials in which at least one 
+variable of V occurs. The list C contains only polynomials in which no 
+variable of V occurs.
+Let A a list of polynomials. We define A rho 0 as the conjunction 
+and a in A a rho 0. Then a XPL represents the formula 
+AND E=0 and AND G&gt;0 and AND N&lt;&gt;0 and 
+AND CLES&lt;0 and AND CLEQ&lt;=0 and AND CEQ=0 and 
+AND CNEQ&lt;&gt;0 and AND CGEQ&gt;=0 and CGR&gt;0.
+*)</font>
+
+<font color="#B22222">(******************************************************************************
+*                            E L I M I N A T I O N                            *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE RQEQE</font></strong>(phi:LIST):LIST;
+<font color="#B22222">(* real quantifier elimination quantifier elimination.  
+phi is a formula. 
+A formula psi equivalent to phi is returned. 
+All quantifiers must bound different variables. No variable
+is allowed to occur free and bound.  An automatic renaming of
+variables is not done. Atomic formulas must be truth values or must
+have the form "(rel term)", where rel is an relation and term is
+distributive polynomial over the domain INT.  All atomic formulas of
+the latter form of atomic formulas must contains polynomials in the
+same polynomial ring, which is determined by the global variables
+VALIS, EVORD , and DOMAIN. 
+In the normal case psi contains no quantifier. 
+See the documentation of the options of the RQE-SYSTEM for more informations.
+The global variables VALIS, EVORD and DOMAIN must be set 
+appropriately. The options for the CGB-SYSTEM must be set appropriately.
+VALIS must contain the variable list of the polynomials used in the 
+atomic formulas. 
+EVORD must contain the term order of the polynomials used in the 
+atomic formulas. 
+DOMAIN must contain the domain descriptor for the PQ-SYSTEM.
+Only the domain INT is valid.
+The term orders of the CGB-SYSTEM and the variable EVORD must be set
+compatible. All term orders should be equal.
+Tracing of intermediate output, conditions to the output formula and other 
+things are controlled by the RqeOpt variable.
+This procedure calls the CGB-SYSTEM. Use the options of this system for 
+controlling the computation of an Groebner system.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> psi: LIST;
+	<strong><font color="#228B22">VAR</font></strong> qf, vars, bvlist: LIST;
+	<strong><font color="#228B22">VAR</font></strong> quantifiers, bvariables: LIST;
+	<strong><font color="#228B22">VAR</font></strong> s: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	SysInfoStart(s);
+	<font color="#4169E1">IF</font> phi=SIL <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+	psi:=PQSIMPLIFY(FORMKPRENEXI(PQMKPOS(PQELIMXOPS(PQSMPL(phi))),EXIST));
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 2 <font color="#4169E1">THEN</font> 
+			SWRITE("Input in prenex normal form");BLINES(0);
+			PQPPRT(psi);
+		<strong><font color="#4169E1">END</font></strong>;
+		BLINES(0);SWRITE("[");
+	<strong><font color="#4169E1">END</font></strong>;
+	qf:=FORGOP(psi);
+	quantifiers:=SIL;
+	bvariables:=SIL;
+	<font color="#4169E1">WHILE</font> (qf=EXIST) <font color="#4169E1">OR</font> (qf=FORALL) <font color="#4169E1">DO</font>
+		FORPQUANT(psi,qf,vars,psi);
+		quantifiers:=COMP(qf,quantifiers);
+		bvariables:=COMP(vars,bvariables);
+		qf:=FORGOP(psi);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+			SWRITE("Number <font color="#4169E1">of</font> quantifier blocks: ");
+			UWRITE(LENGTH(quantifiers));
+		<font color="#4169E1">ELSE</font> 
+			SWRITE(" QB=");UWRIT1(LENGTH(quantifiers));SWRITE(" ");
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RqeIterate:=TRUE;
+	<font color="#4169E1">WHILE</font> (quantifiers&lt;&gt;SIL) <font color="#4169E1">AND</font> (psi &lt;&gt; VERUM) <font color="#4169E1">AND</font> (psi&lt;&gt;FALSUM) 
+		<font color="#4169E1">AND</font> RqeIterate 
+	<font color="#4169E1">DO</font>
+		ADV(quantifiers,  qf,quantifiers);
+		ADV(bvariables,  vars,bvariables);
+		bvlist:=vlistflvar(vars);	
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+				SWRITE("Elimination <font color="#4169E1">of</font> an "); UWRIT1(qf);
+				SWRITE(" quantifier"); BLINES(0);
+				SWRITE("bound Variables"); VLWRIT(bvlist); 
+				BLINES(0);
+			<font color="#4169E1">ELSE</font>
+				SWRITE(" QB ");
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">IF</font> qf=FORALL <font color="#4169E1">THEN</font>
+			psi:=PQMKPOS(FORMKUNOP(NON,psi));
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#B22222">(* Eliminate an existential quantifier. *)</font>
+		psi:=PQSIMPLIFY(RqeExists(psi,bvlist)); 
+		<font color="#4169E1">IF</font> qf=FORALL <font color="#4169E1">THEN</font>
+			psi:=PQMKPOS(FORMKUNOP(NON,psi));
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 2 <font color="#4169E1">THEN</font>
+			SWRITE("Result <font color="#4169E1">of</font> the elimination:");BLINES(0);
+			PQPPRT(psi);BLINES(0);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> RqeIterate <font color="#4169E1">THEN</font>
+		<font color="#4169E1">WHILE</font> quantifiers&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(quantifiers,  qf, quantifiers);
+			ADV(bvariables,  vars,bvariables);
+			psi:=FORMKQUANT(qf,vars,psi);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	SysInfoStop(s);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font> 
+			SysInfoWrite(s);
+		<strong><font color="#4169E1">END</font></strong>;
+		SWRITE("]");BLINES(0);
+	<strong><font color="#4169E1">END</font></strong>;
+		RETURN psi;
+<strong><font color="#4169E1">END</font></strong> RQEQE;
+
+<strong><font color="#4169E1">PROCEDURE RqeExists</font></strong>(phi,bvlist: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination exists. 
+phi is a quantifier free formula. 
+bvlist is a variable list. 
+A quantifier free equivalent of the formula (EX bvlist: phi) is returned. 
+The global variables VALIS, EVORD DOMAIN must be set 
+appropriately. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> psi, result,conj, InterRes: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	psi:=PQMKDNF(RQERSNF(phi,bvlist,VALIS));
+	psi:=FORGARGS(psi);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+			SWRITE("Number <font color="#4169E1">of</font> arguments <font color="#4169E1">of</font> the disjunction:");
+			UWRITE(LENGTH(psi));
+		<font color="#4169E1">ELSE</font>
+			SWRITE("CS=");UWRIT1(LENGTH(psi));SWRITE(" ");
+		<strong><font color="#4169E1">END</font></strong>
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> psi&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(psi,  conj,psi);
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+				SWRITE("Eliminating one conjunction.");
+				BLINES(0);
+				<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 2 <font color="#4169E1">THEN</font>
+					PQPPRT(conj);
+					BLINES(0);
+				<strong><font color="#4169E1">END</font></strong>;
+			<font color="#4169E1">ELSE</font>
+				SWRITE(" CS ");
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;		
+		InterRes:=RqeConjunction(conj,VERUM,bvlist);
+		<font color="#4169E1">IF</font> InterRes=VERUM <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+		result:=COMP(InterRes,result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN FORMKFOR(VEL,INV(result));
+<strong><font color="#4169E1">END</font></strong> RqeExists;
+
+<strong><font color="#4169E1">PROCEDURE RqeConjunction</font></strong>(phi,psi,bvlist: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination conjunction. 
+phi is a conjunction of  atomic formulas of the form (f=0),(f&lt;&gt;0), or (f&gt;0). 
+psi is a conjunction of atomic formulas with polynomials constant w.r.t. 
+bvlist or the truth values VERUM or FALSUM. 
+A formula gamma is returned. 
+(gamma and psi) is equivalent to ( (ex bvlist(phi)) and psi).
+The result of the elimination of (EX bvlist: phi) is returned.
+The global variables VALIS, EVORD DOMAIN must be set 
+appropriately. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> E, G, N, fvlist, perm, newdd, result,qff,p: LIST; 
+	<strong><font color="#228B22">VAR</font></strong> gsys, S, VD, CD, Cond, Plist, CP: LIST;
+	<strong><font color="#228B22">VAR</font></strong> pols,pols2,NC: LIST;
+	<strong><font color="#228B22">VAR</font></strong> Initial: LIST;
+	<strong><font color="#228B22">VAR</font></strong> s: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> psi=FALSUM <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+	pols:=ExtractPolynomials(phi,bvlist,VALIS);
+	NC:=FIRST(pols);
+	ADV(NC,  E,NC); ADV(NC,  G,NC); ADV(NC,  N,NC);
+	<font color="#B22222">(* phi is independent from bound variables. *)</font>
+	<font color="#4169E1">IF</font> (E=SIL) <font color="#4169E1">AND</font> (G=SIL) <font color="#4169E1">AND</font> (N=SIL) <font color="#4169E1">THEN</font> 
+		RETURN phi;
+	<font color="#B22222">(* phi is a conjunction of formulas of the form h&lt;&gt;0. *)</font>
+	ELSIF (E=SIL) <font color="#4169E1">AND</font> (G=SIL) <font color="#4169E1">THEN</font>
+		result:=SIL;
+		<font color="#4169E1">WHILE</font> N&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(N,  p,N);
+			result:=COMP(nontrivial(p,bvlist,VALIS),result);
+		<strong><font color="#4169E1">END</font></strong>;
+		result:=FORMKFOR(ET,INV(result));
+		result:=FORMKBINOP(ET,result,PqFC(SECOND(pols)));
+		RETURN result
+	<font color="#B22222">(* No non-trivial equation is present. *)</font>
+	ELSIF E=SIL <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.DimensionZeroOnly <font color="#4169E1">THEN</font>
+			RqeIterate:=FALSE;
+			RETURN FORMKQUANT(EXIST,lvarfvlist(bvlist),phi);
+		<font color="#4169E1">ELSE</font>
+			RETURN RqeNoEq(phi,bvlist);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	fvlist:=SetComplementQ(bvlist,VALIS);
+	newdd:=IPDDCMP(fvlist);
+	E:=CommonPol2RecPolL(E,fvlist,bvlist,VALIS,  perm);
+	PolFmtPush(VALIS,bvlist,fvlist,perm);
+		Initial:=CondFC(SECOND(pols));
+		<font color="#4169E1">IF</font> psi&lt;&gt;VERUM <font color="#4169E1">THEN</font> 
+			pols2:=ExtractPolynomials(psi,bvlist,VALIS);
+			Initial:=CondUnion(Initial,CondFC(SECOND(pols2)));
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+			SWRITE("Computing a reduced Groebner system ...");
+			SysInfoStart(s);	
+			BLINES(0);
+		<strong><font color="#4169E1">END</font></strong>;
+		gsys:=GSYSRED(GSYS(cgbinput1(E,bvlist,newdd,Initial)));
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font> 	
+			SysInfoStop(s);
+			SWRITE(" finished.");BLINES(0);
+			SysInfoWrite(s);
+		<strong><font color="#4169E1">END</font></strong>;
+	GsParts(gsys,  S,VD,CD);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt;1 <font color="#4169E1">THEN</font> 
+			SWRITE("Number <font color="#4169E1">of</font> cases in the Groebner system: ");
+			UWRITE(LENGTH(S));
+		<font color="#4169E1">ELSE</font>
+			SWRITE(" B=");UWRIT1(LENGTH(S));SWRITE(" ");
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	qff:=FALSUM;
+	<font color="#4169E1">WHILE</font> (S&lt;&gt;SIL) <font color="#4169E1">AND</font> (qff&lt;&gt;VERUM) <font color="#4169E1">DO</font>
+		ADV(S,  CP,S);
+		FIRST2(CP,  Cond,Plist);
+		Plist:=GREPOL(Plist);
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;0  <font color="#4169E1">THEN</font> 
+			<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font> 
+				SWRITE("Handle one <font color="#4169E1">case</font> <font color="#4169E1">of</font> the Groebner system.");
+				BLINES(0);
+				<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 2 <font color="#4169E1">THEN</font>
+					CondWrite(Cond);
+				<strong><font color="#4169E1">END</font></strong>;	
+			<font color="#4169E1">ELSE</font>
+				SWRITE(" B ");
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+		qff:=PQSIMPLIFY(RqeBranch(Cond,Plist,G,N,SECOND(pols)));
+		result:=COMP(PQSIMPLIFY(qff),result);
+	<strong><font color="#4169E1">END</font></strong>;
+
+	<font color="#4169E1">IF</font> qff&lt;&gt;VERUM <font color="#4169E1">THEN</font>
+		result:=FORMKFOR(VEL,INV(result));
+		result:=FORMKBINOP(ET,PqFC(SECOND(pols)),result);
+	<font color="#4169E1">ELSE</font>
+		result:=PqFC(SECOND(pols));
+	<strong><font color="#4169E1">END</font></strong>;
+	PolFmtPop();
+	RETURN PQSIMPLIFYP(result,2);	
+<strong><font color="#4169E1">END</font></strong> RqeConjunction;
+
+<strong><font color="#4169E1">PROCEDURE RqeBranch</font></strong>(Cond, Plist, Gre, Neq, CPols:LIST):LIST;
+<font color="#B22222">(* real quantifier elimination eliminate branch.
+Cond is a condition (terminology of the CGB-package)
+Plist is a list of polynomials in Z[U_1,...,U_m][X_1,...,X_m]. 
+Gre, Neq are lists of distributive polynomials in K[U_1,...,U_m,X_1,...,X_n].
+A formula phi is returned. phi is true iff the ideal ID(PLIST) have 
+at least one real zero which suffices the side conditions G &gt; 0 and N # 0. 
+Cpols is a C part of a XPL. *)</font>
+		<strong><font color="#228B22">VAR</font></strong> d,n,Smaxvl,newdd,D,res,perm,dep,indep: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ValisPush(PolFmt.BoundVars);
+	d:=DIMISS(Plist,PolFmt.BoundVars,  Smaxvl);
+	n:=LENGTH(VALIS);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+		SWRITE("Dimension <font color="#4169E1">of</font> the ideal = ");UWRITE(d);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> d=0 <font color="#4169E1">THEN</font> 
+		WITH PolFmt <font color="#4169E1">DO</font>
+			ValisPush(AllVars);
+			Gre:=CommonPol2RecPolL(Gre,FreeVars,BoundVars,VALIS,  perm);
+			Neq:=CommonPol2RecPolL(Neq,FreeVars,BoundVars,VALIS,  perm);
+			ValisPop();
+		<strong><font color="#4169E1">END</font></strong>;
+		D:=ADDDFDIL(Plist);		<font color="#B22222">(* d=0: PLIST not empty!: *)</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 2 <font color="#4169E1">THEN</font>
+			BLINES(0);
+			SWRITE("Groebner Basis:");
+			DILWR(Plist,PolFmt.BoundVars);
+			BLINES(0);
+			SWRITE("Side conditions <font color="#666666">'&gt;'</font>:");
+			DILWR(Gre,PolFmt.BoundVars);
+			BLINES(0);
+			SWRITE("Side conditions <font color="#666666">'&lt;&gt;'</font>:");
+			DILWR(Neq,PolFmt.BoundVars);
+		<strong><font color="#4169E1">END</font></strong>;
+		Plist:=DILCONV(Plist,RFDDFIPDD(D));
+		Gre:=DILCONV(Gre,RFDDFIPDD(D));
+		Neq:=DILCONV(Neq,RFDDFIPDD(D));
+		res:=RQEPRRC(Plist,Gre,Neq);
+		<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> CondIsEmpty(Cond) <font color="#4169E1">THEN</font> 
+			res:=FORMKBINOP(ET,PqFCond(Cond),res);
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF ((d&gt;0) <font color="#4169E1">AND</font> (d&lt;n)) <font color="#4169E1">AND</font> RqeOpt.DimensionZeroOnly <font color="#4169E1">THEN</font>
+		ValisPush(PolFmt.AllVars);
+		res:=forfdata(Cond,Plist,Gre,Neq);
+		res:=FORMKBINOP(ET,res,PqFC(CPols));
+		res:=FORMKQUANT(EXIST,lvarfvlist(PolFmt.BoundVars),res);
+		ValisPop();
+		RqeIterate:=FALSE;
+	ELSIF (d&gt;0) <font color="#4169E1">AND</font> (d&lt;n) <font color="#4169E1">THEN</font>
+		res:=forfdata(Cond,Plist,Gre,Neq);
+		res:=FORMKBINOP(ET,res,PqFC(CPols));
+		indep:=FIRST(Smaxvl);
+		dep:=SetComplementQ(indep,PolFmt.BoundVars);
+		res:=FORMKQUANT(EXIST,lvarfvlist(dep),res);
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;=2 <font color="#4169E1">THEN</font> 
+			SWRITE("first recursive call <font color="#4169E1">of</font> RQEQE in the <font color="#4169E1">case</font> 0 &lt; d &lt; n");
+			BLINES(0);
+			SWRITE("eliminating the variables: ");BLINES(0);
+			VLWRIT(dep);BLINES(0);
+			SWRITE("in the formula");BLINES(0);
+			ValisPush(PolFmt.AllVars);
+			PQPPRT(res);BLINES(0);
+			ValisPop();
+		<strong><font color="#4169E1">END</font></strong>;
+		ValisPush(PolFmt.AllVars);
+		res:=RQEQE(res);
+		ValisPop();
+		res:=FORMKQUANT(EXIST,lvarfvlist(indep),res);
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;=2 <font color="#4169E1">THEN</font> 
+			SWRITE("second recursive call <font color="#4169E1">of</font> RQEQE in the <font color="#4169E1">case</font> 0 &lt; d &lt; n");
+			BLINES(0);
+			SWRITE("eliminating the variables: ");BLINES(0);
+			VLWRIT(indep);BLINES(0);
+			SWRITE("in the formula");BLINES(0);
+			ValisPush(PolFmt.AllVars);
+			PQPPRT(res);BLINES(0);
+			ValisPop();
+		<strong><font color="#4169E1">END</font></strong>;
+		ValisPush(PolFmt.AllVars);
+		res:=RQEQE(res);
+		ValisPop();
+	ELSIF (d=n) <font color="#4169E1">AND</font> RqeOpt.DimensionZeroOnly <font color="#4169E1">THEN</font>
+		ValisPush(PolFmt.AllVars);
+		res:=forfdata(Cond,Plist,Gre,Neq);
+		res:=FORMKBINOP(ET,res,PqFC(CPols));
+		res:=FORMKQUANT(EXIST,lvarfvlist(PolFmt.BoundVars),res);
+		ValisPop();
+		RqeIterate:=FALSE;
+	ELSIF (d=n) <font color="#4169E1">THEN</font>
+		res:=forfdata(Cond,SIL,Gre,Neq);
+		res:=FORMKBINOP(ET,res,PqFC(CPols));
+		res:=FORMKQUANT(EXIST,lvarfvlist(PolFmt.BoundVars),res);
+		ValisPush(PolFmt.AllVars);
+		res:=RQEQE(res);
+		ValisPop();
+	ELSIF d=-1 <font color="#4169E1">THEN</font>
+		res:=FALSUM;
+	<font color="#4169E1">ELSE</font>
+		ERROR(severe,"RqeBranch: incorrect dimension -1&gt;d <font color="#4169E1">or</font> d&gt;n.");
+		res:=FALSUM; <font color="#B22222">(* dummy *)</font>
+	<strong><font color="#4169E1">END</font></strong>;
+	ValisPop();
+	RETURN res;
+<strong><font color="#4169E1">END</font></strong> RqeBranch;
+
+<font color="#B22222">(******************************************************************************
+*             P A R A M E T R I C   R E A L   R O O T   C O U N T             *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE RQEPRRC</font></strong>(G,F,NQ: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination parametric real root count.
+G is a Groebner basis, 
+F is a list of side conditions of the form f &gt; 0,
+NQ is a list of side conditions of the form f &lt;&gt; 0.
+A formula phi is returned. phi is true iff the ideal ID(PLIST) have 
+at least one real zero which suffices the side conditions G &gt; 0 and N # 0. *)</font> 
+	<strong><font color="#228B22">VAR</font></strong> R,E,U,Q,beta,s:LIST;
+	<strong><font color="#228B22">VAR</font></strong> D:LIST;
+	<strong><font color="#228B22">VAR</font></strong> prod:LIST;
+	<strong><font color="#228B22">VAR</font></strong> tf,ct,deg,i,ctp,c: LIST;
+	<strong><font color="#228B22">VAR</font></strong> result: LIST;
+	<strong><font color="#228B22">VAR</font></strong> TotalS,sysinfo: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	SysInfoStart(TotalS);
+	G:=DIPLPM(DILMOC(G));
+	D:=ADDDFDIL(G);			<font color="#B22222">(* Determine the domain descriptor. *)</font>
+	R:=RRREDTERMS(G);		<font color="#B22222">(* Compute the reduced terms. 	    *)</font>
+	E:=ADUM(D,LENGTH(R));		<font color="#B22222">(* Unit matrix.			    *)</font>
+	RRADSTRCONST(D,G,R,  U,beta);	<font color="#B22222">(* Structure constants.		    *)</font>
+	Q:=RRADQUADFORM(D,R,U,beta,E);	<font color="#B22222">(* The matrix Q.		    *)</font>
+	SysInfoStart(sysinfo);
+	<font color="#4169E1">IF</font> (F&lt;&gt;SIL) <font color="#4169E1">OR</font> (NQ&lt;&gt;SIL) <font color="#4169E1">THEN</font>
+		prod:=PiChi(F,NQ,G,R,U,beta);
+	<font color="#4169E1">ELSE</font>
+		prod:=CharPolQ1(G,R,U,beta);
+	<strong><font color="#4169E1">END</font></strong>;
+	SysInfoStop(sysinfo);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt;= 2 <font color="#4169E1">THEN</font> 
+		SWRITE("Time <font color="#4169E1">for</font> computation <font color="#4169E1">of</font> characteristic polynomial: ");
+		BLINES(0);
+		SysInfoWrite(sysinfo);
+	<strong><font color="#4169E1">END</font></strong>; 
+	ct:=DIPCT(prod);	<font color="#B22222">(* Coefficient tuple of prod. *)</font>
+	deg:=LENGTH(ct)-1;
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;2 <font color="#4169E1">THEN</font> 
+		i:=0;
+		BLINES(0);
+		SWRITE("<strong><font color="#228B22">Type</font></strong> formula <font color="#4169E1">to</font> compute: T");
+		UWRIT1(deg);
+		SWRITE("(c), where");
+		BLINES(0);
+		ctp:=ct;
+		<font color="#4169E1">WHILE</font> ctp&lt;&gt;SIL <font color="#4169E1">DO</font> 
+			ADV(ctp,c,ctp);
+			SWRITE("c");AWRITE(i);SWRITE(" = ");
+			SWRITE("  ");
+			ADWRIT(c);
+			BLINES(0);
+			i:=i+1;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+		SysInfoStart(sysinfo);
+	tf:=TfTypeFormula(deg);
+	SysInfoStop(sysinfo);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt;=2 <font color="#4169E1">THEN</font> 
+		SWRITE("Time <font color="#4169E1">for</font> computing <strong><font color="#228B22">type</font></strong> formula: ");BLINES(0);
+		SysInfoWrite(sysinfo);
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=FORMKUNOP(NON,TfEvalVars(tf,ct));
+	SysInfoStop(TotalS);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt;= 2 <font color="#4169E1">THEN</font> 
+		SWRITE("Time <font color="#4169E1">for</font> real root count: ");BLINES(0);
+		SysInfoWrite(TotalS);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> RQEPRRC;
+
+<font color="#B22222">(******************************************************************************
+*             C H A R A C T E R I S T I C   P O L Y N O M I A L S             *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CharPolQ1</font></strong>(G,R,U,beta:LIST):LIST;
+<font color="#B22222">(* characteristic polynomial of the matrix Q_1.
+G is a reduced Groebner basis, (Polynomials in K(U)[X]), 
+R is the set of reduced terms,
+U = R x R,
+beta is the matrix of structure constants w.r.t. R.
+The characteristic polynomial of the matrix Q_1 is returned. 
+The returned polynomial is a univariate distributive polynomial over 
+the domain RF. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> D, L, CVL, chiq1: LIST;
+	<strong><font color="#228B22">VAR</font></strong> s: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	CVL:=LIST1(LISTS("Y"));		<font color="#B22222">(* The variable list for Char-Pol. *)</font>
+	D:=ADDDFDIL(G);
+	L:=RRADVARMATRICES(G,R,U,beta);
+	chiq1:=ChiQf(DIPONE(D),D,R,U,beta,  L);	<font color="#B22222">(* Compute the X_Q_f. *)</font>
+	RETURN chiq1;
+<strong><font color="#4169E1">END</font></strong> CharPolQ1;
+
+<strong><font color="#4169E1">PROCEDURE PiChi</font></strong>(F,N,G,R,U,beta: LIST): LIST;
+<font color="#B22222">(* product of characteristic polynomials.
+F is a list of side conditions of the form f &gt; 0 ,
+N is a list of side conditions of the form f &lt;&gt; 0,
+G is Groebner basis,
+R is the set od reduced terms,
+U = R x R 
+beta: matrix of structure constants.
+Returns the product $PI_{e\in \{1,2\}^s} X_{Q_{f^e}}$.
+This product is a univariate polynomial in Z(U)[Y].
+F or N is not empty and contains at least a polynomial not equal to 0. *)</font>
+		<strong><font color="#228B22">VAR</font></strong> D, FC, CVL, L, chiqf, f, ev, ChiProd, FProd,i: LIST;
+		<strong><font color="#228B22">VAR</font></strong> s, TotalS: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> (F=SIL) <font color="#4169E1">AND</font> (N=SIL) <font color="#4169E1">THEN</font> 
+		RETURN CharPolQ1(G,R,U,beta);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> F&lt;&gt;SIL <font color="#4169E1">THEN</font>
+		D:=ADDDFDIL(F);		<font color="#B22222">(* The domain descriptor from f. *)</font>
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (F=SIL) <font color="#4169E1">OR</font> (D=0) <font color="#4169E1">THEN</font> 
+		D:=ADDDFDIL(N);
+	<strong><font color="#4169E1">END</font></strong>;	
+	<font color="#4169E1">IF</font> D=0 <font color="#4169E1">THEN</font> 
+		ERROR(severe,"ChiQf: Cannot determine domain descriptor!");
+		RETURN SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+	CVL:=LIST1(LISTS("Y"));		<font color="#B22222">(* The variable list for the Chi. *)</font>
+	L:=RRADVARMATRICES(G,R,U,beta);
+	FProd:=DIPONE(D);	<font color="#B22222">(* Initialize the product of f_i^{e_i}. *)</font>
+	ValisPush(CVL);
+	ChiProd:=DIPONE(D);  	<font color="#B22222">(* Initialize the product of all Chi.  *)</font>
+	ValisPop();
+	FC:=F;
+	<font color="#4169E1">WHILE</font> FC&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(FC,  f,FC);
+		FProd:=DIPROD(FProd,f);
+	<strong><font color="#4169E1">END</font></strong>;
+	FC:=N;
+	<font color="#4169E1">WHILE</font> FC&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(FC,  f,FC);
+		FProd:=DIPROD(FProd,DIPROD(f,f));
+	<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> 
+			<font color="#B22222">(* Only one characteristic polynomial have to be computed. *)</font>
+			chiqf:=ChiQf(FProd,D,R,U,beta,  L);
+			RETURN chiqf;
+		<strong><font color="#4169E1">END</font></strong>;
+	ev:=SIL;
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> LENGTH(F) <font color="#4169E1">DO</font>
+		ev:=COMP(0,ev);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		NextProduct(F,ev,f);		<font color="#B22222">(* Next exponent tuple.	*)</font>
+		f:=DIPROD(f,FProd);		<font color="#B22222">(* Compute the product.	*)</font>
+		chiqf:=ChiQf(f,D,R,U,beta,  L);	<font color="#B22222">(* Compute the X_Q_f	*)</font>
+		ValisPush(CVL);
+		ChiProd:=DIPROD(ChiProd,chiqf);
+		ValisPop();
+	<font color="#4169E1">UNTIL</font> ev=SIL;
+	RETURN ChiProd;
+<strong><font color="#4169E1">END</font></strong> PiChi;
+
+<strong><font color="#4169E1">PROCEDURE ChiQf</font></strong>(f,D,R,U,beta:LIST;  <strong><font color="#228B22">VAR</font></strong> L:LIST):LIST;
+<font color="#B22222">(* chi q f. 
+f is a polynomial in Z(U)[X]
+D is the domain descriptor of Z(U)
+R is the set od reduced terms,
+U = R x R,
+beta is the matrix of structure constants.
+Returns the characteristic polynomial of Q_f.
+L contains nonempty lists L(i) of the form 
+j(1),M(1),j(2),M(2),...,j(k),M(k) with 1=j(1)&lt;j(2)&lt;...&lt;j(k) and M(l) ist 
+the matrix of multiplication with X(i)**j(l) for the variable X(i).
+L must be initialized, L is updated.  *)</font>
+	<strong><font color="#228B22">VAR</font></strong> Q,Mf: LIST;
+	<strong><font color="#228B22">VAR</font></strong> ChiCoeff,Chi,Coeff,zero: LIST;
+	<strong><font color="#228B22">VAR</font></strong> i: LIST;
+	<strong><font color="#228B22">VAR</font></strong> s,t: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RRADPOLMATRIX(D,R,f,  Mf,L);
+	Q:=RRADQUADFORM(D,R,U,beta,Mf);
+	ChiCoeff:=INV(ADCHARPOL(D,Q));
+	Chi:=SIL;
+	i:=0;
+	zero:=ADFI(D,0);
+	<font color="#4169E1">WHILE</font> ChiCoeff&lt;&gt;SIL <font color="#4169E1">DO</font>;
+		ADV(ChiCoeff,  Coeff,ChiCoeff);
+		<font color="#4169E1">IF</font> EQUAL(Coeff,zero)=0 <font color="#4169E1">THEN</font>
+			Chi:=DIPMCP(Coeff,LIST1(i),Chi);
+		<strong><font color="#4169E1">END</font></strong>;
+		i:=i+1;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN Chi;
+<strong><font color="#4169E1">END</font></strong> ChiQf;
+
+<strong><font color="#4169E1">PROCEDURE NextProduct</font></strong>(F:LIST;  <strong><font color="#228B22">VAR</font></strong> last,PF: LIST);
+<font color="#B22222">(* next product. 
+F is a not empty list of polynomials.
+last is an exponent vector of length |F| with entries of {0,1}.
+The lexicographic next exponent vector is computed non constructive.
+The product $PF:=\Pi f_i^{e_i}$ is computed. 
+If there is no next exponent vector, then last is set to SIL.
+The global variable VALIS must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> lp,lpp,e,f: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Special case. *)</font>
+	<font color="#4169E1">IF</font> last=SIL <font color="#4169E1">THEN</font> last:=SIL; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Initialization. *)</font>
+	PF:=DIPONE(ADDDFDIL(F));
+	lp:=last;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Compute next vector and product. *)</font>
+	<font color="#4169E1">REPEAT</font>
+		ADV(lp,  e,lpp);
+		ADV(F,  f,F);
+		<font color="#4169E1">IF</font> e=0 <font color="#4169E1">THEN</font>
+			SFIRST(lp,1);
+		ELSIF e=1 <font color="#4169E1">THEN</font>
+			SFIRST(lp,0);
+			PF:=DIPROD(PF,f);
+		<font color="#4169E1">ELSE</font>
+			ERROR(severe,"NextProduct: incorrect exponent.");
+		<strong><font color="#4169E1">END</font></strong>;
+		lp:=lpp;
+	<font color="#4169E1">UNTIL</font> (lp=SIL) <font color="#4169E1">OR</font> (e=0);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* New exponent vector computed? *)</font>
+	<font color="#4169E1">IF</font> (lp=SIL) <font color="#4169E1">AND</font> (e=1) <font color="#4169E1">THEN</font> last:=SIL; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* Finish the computation of the product. *)</font>
+	<font color="#4169E1">WHILE</font> lp&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(lp,  e,lp);
+		ADV(F,  f,F);
+		<font color="#4169E1">IF</font> e=1 <font color="#4169E1">THEN</font>
+			PF:=DIPROD(PF,f);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN;
+<strong><font color="#4169E1">END</font></strong> NextProduct;
+
+<strong><font color="#4169E1">PROCEDURE TfEvalVars</font></strong>(phi,A:LIST):LIST;
+<font color="#B22222">(* type formula evaluate variables. 
+phi is a type formula in variables a_0,...,a_{d-1}. 
+A is a list of distributive polynomials over the arbitrary domain RF. 
+A formula in PQ-format is returned. 
+This formula is computed from phi using the following rules:
+1) a_i is substituted by the (i-1)th element of A.
+2) a) (f/g) &lt;  0 is replaced with (f*g) &lt;  0
+   b) (f/g) &lt;= 0 is replaced with (f*g) &lt;= 0 
+   c) (f/g) =  0 is replaced with (f)    = 0
+   d) (f/g) &lt;&gt; 0 is replaced with (f)   &lt;&gt; 0
+   e) (f/g) &gt;= 0 is replaced with (f*g) &gt;= 0
+   f) (f/g) &gt;  0 is replaced with (f*g) &lt;  0  
+The result is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> s: SYSINFO;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	SysInfoStart(s);
+	RETURN FORAPPLYATF2(phi,A,tfevaf);
+	SysInfoStop(s);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt;= 3 <font color="#4169E1">THEN</font>
+		SWRITE("Time <font color="#4169E1">for</font> evaluating <strong><font color="#228B22">type</font></strong> formula: ");
+		BLINES(0);
+		SysInfoWrite(s);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> TfEvalVars;
+
+<strong><font color="#4169E1">PROCEDURE tfevaf</font></strong>(phi,A:LIST):LIST;
+<font color="#B22222">(* type formula evaluate variables atomic formulas. 
+phi is an atomic formula of a type formula. 
+A is a list of distributive polynomials over the arbitrary domain RF. 
+The global variable PolFmt is used.
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel, idl, id,result,rf: LIST;
+	<strong><font color="#228B22">VAR</font></strong> r, p, drf, vl, num, den : LIST;
+	<strong><font color="#228B22">VAR</font></strong> lf, lb: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	tfpaf(phi,  rel,idl);
+	ValisPush(PolFmt.FreeVars);
+	result:=DIPONE(INTDDCMP());
+	ValisPop();
+	<font color="#4169E1">WHILE</font> idl&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(idl,  id,idl);
+		drf:=LELT(A,id+1);
+		RFDDADV(drf,  rf,vl);
+		r:=RFNOV(rf);
+		num:=RFNUM(rf);
+		den:=RFDEN(rf);
+		<font color="#4169E1">IF</font> (rel=EQU) <font color="#4169E1">OR</font> (rel=NEQ) <font color="#4169E1">THEN</font>
+			p:=DIPFIP(num,r);
+		<font color="#4169E1">ELSE</font>
+			<font color="#B22222">(* p := num/den * den**2 = num * den *)</font>
+			p:=IPPROD(r,num,den);
+			p:=DIPFIP(p,r);
+		<strong><font color="#4169E1">END</font></strong>;
+		result:=DIPROD(result,p);
+	<strong><font color="#4169E1">END</font></strong>;
+	lf:=LENGTH(PolFmt.FreeVars);
+	lb:=LENGTH(PolFmt.BoundVars);
+	result:=DIPINV(result,lf+1,lb);
+	RETURN pqmkaf(rel,DIPERM(result,INVPERM(PolFmt.Permutation)));
+<strong><font color="#4169E1">END</font></strong> tfevaf;
+
+<font color="#B22222">(******************************************************************************
+*                                R Q E N O E Q                                *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE RqeNoEq</font></strong>(phi,bvlist: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination no equation. 
+The formula phi is a conjunction over atomic formulas. 
+In all atomic formulas dependent of the variable occuring first in 
+bvlist must occur the relation &gt; or &lt;&gt;.  
+The formula (exists bvlist(phi)) is eliminated and the result is returned.  
+The global variable AdjoinedEq is used. 
+The global variable VALIS must be set appropriately. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> NC,G,N,pols: LIST;
+	<strong><font color="#228B22">VAR</font></strong> result, psi, GreaterCond, NotZero, InterResult: LIST;
+	<strong><font color="#228B22">VAR</font></strong> univlist, redlist,op: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>   <font color="#B22222">(* Terminate the procedure, if a equation was already adjoined. *)</font>
+	<font color="#4169E1">IF</font> AdjoinedEq <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Extract the polynomials from the formula. *)</font>
+	univlist:=LIST1(FIRST(bvlist));
+	redlist:=RED(bvlist);
+	pols:=ExtractPolynomials(phi,univlist,VALIS);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Extract the non-constant polynomials from the variable pols. *)</font>
+	NC:=FIRST(pols);
+	G:=SECOND(NC);
+	N:=THIRD(NC);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* Generate formula from the extracted constant polynomials. *)</font>
+	psi:=PQSIMPLIFY(PqFC(SECOND(pols)));
+	op:=FORGOP(psi);
+	<font color="#4169E1">IF</font> (op&lt;&gt;ET) <font color="#4169E1">AND</font> (op&lt;&gt;VERUM) <font color="#4169E1">AND</font> (op&lt;&gt;FALSUM) <font color="#4169E1">THEN</font>	
+		psi:=FORMKUNOP(ET,psi);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> psi=FALSUM <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* Generate non triviality condition for side conditions f &lt;&gt; 0.*)</font>
+	NotZero:=RqeNonTriviality(N,univlist);
+	<font color="#4169E1">IF</font> NotZero=FALSUM <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font>	<font color="#B22222">(* Generate condition that quantified formula is valid at infinity. *)</font>
+	InterResult:=RqeLimitCondition(G,univlist);
+	<font color="#4169E1">IF</font> InterResult=VERUM <font color="#4169E1">THEN</font> RETURN psi; <strong><font color="#4169E1">END</font></strong>;
+	result:=LIST1(InterResult);
+<font color="#B22222">(*6*)</font>	<font color="#B22222">(* Generate condition for greater side conditions. *)</font>
+	GreaterCond:=PQFDIL(G,GRE,ET);
+<font color="#B22222">(*7*)</font>   <font color="#B22222">(* Generate and eliminate the conjunction with equations from the 
+           derivation condition. *)</font>
+	InterResult:=RqeDerivationCondition(G,GreaterCond,univlist,psi);
+	<font color="#4169E1">IF</font> InterResult=VERUM <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+	result:=COMP(InterResult,result);
+<font color="#B22222">(*7*)</font>   <font color="#B22222">(* Generate and eliminate the conjunction with equations from the 
+           difference condition. *)</font>
+	InterResult:=RqeDifferenceCondition(G,GreaterCond,univlist,psi);
+	<font color="#4169E1">IF</font> InterResult=VERUM <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+	result:=COMP(InterResult,result);
+<font color="#B22222">(*8*)</font>	<font color="#B22222">(* Generate result of elimination of one variable. *)</font>
+	result:=FORMKFOR(VEL,INV(result));
+	result:=FORMKFOR(ET,LIST3(result,psi,NotZero));
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* Eliminate the remaining variables. *)</font>
+	<font color="#4169E1">IF</font> redlist&lt;&gt;SIL <font color="#4169E1">THEN</font>
+		result:=FORMKQUANT(EXIST,lvarfvlist(redlist),result);
+		result:=RQEQE(result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result; 
+<strong><font color="#4169E1">END</font></strong> RqeNoEq;
+
+<strong><font color="#4169E1">PROCEDURE RqeNonTriviality</font></strong>(N,<strong><font color="#228B22">var</font></strong>: LIST): LIST;
+<font color="#B22222">(* real quantifier elimination non triviality. 
+N is alist of polynomials.
+The variable var contains the list of the main variables of the polynomials
+in N. 
+A formula psi is returned. psi is true iff no polynomial in N is trivial
+w.r.t. the main variables, i.e. it is not the zero polynomial.
+The global variable VALIS must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> n,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Special case. *)</font>
+	<font color="#4169E1">IF</font> N=SIL <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Initialization. *)</font>
+	result:=SIL;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Main loop. *)</font>	
+	<font color="#4169E1">REPEAT</font>
+		ADV(N,  n,N);
+		result:=COMP(nontrivial(n,<strong><font color="#228B22">var</font></strong>,VALIS),result);
+	<font color="#4169E1">UNTIL</font> N=SIL; 
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* Return the result. *)</font>
+	RETURN PQSIMPLIFY(FORMKFOR(ET,INV(result)));
+<strong><font color="#4169E1">END</font></strong> RqeNonTriviality;
+
+<strong><font color="#4169E1">PROCEDURE RqeDerivationCondition</font></strong>(G,phi,<strong><font color="#228B22">var</font></strong>,psi: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination derivation condition. 
+G is a list of polynomials. 
+phi and psi are a formulas.
+var is a variable list with one element.
+A disjunction of formulas gamma_i is returned. 
+Each gamma_i is the result of the elimination of the formula 
+(ex var: dg_i/dx(x)=0 AND phi) under the premise that psi is valid.
+The global variable VALIS must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> VarIndex, g, result, DeriveCond, InterResult: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 0 <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+			SWRITE("RqeDerivationCondition: maximal ");
+			UWRIT1(LENGTH(G));
+			SWRITE(" conjunctions <font color="#4169E1">to</font> generate");BLINES(0);
+		<font color="#4169E1">ELSE</font>
+			SWRITE("(DC=");UWRITE(LENGTH(G));
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	VarIndex:=LSRCHQ(FIRST(<strong><font color="#228B22">var</font></strong>),VALIS);
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(G,  g,G);
+		<font color="#4169E1">IF</font> DIPDEGI(g,VarIndex)&gt;=2 <font color="#4169E1">THEN</font>
+			DeriveCond:=pqmkaf(EQU,DIPPAD(g,VarIndex));
+			AdjoinedEq:=TRUE; 
+			DeriveCond:=FORMKFOR(ET,
+				COMP(DeriveCond,FORGARGS(phi)));
+			InterResult:=RqeConjunction(DeriveCond,psi,<strong><font color="#228B22">var</font></strong>);
+			AdjoinedEq:=FALSE;
+			<font color="#4169E1">IF</font> InterResult=VERUM <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;
+			result:=COMP(InterResult,result); 
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;0 <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+			SWRITE("RqeDerivationCondition: All conjunctions generated.");
+			BLINES(0);
+		<font color="#4169E1">ELSE</font>
+			SWRITE(")");
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> result=SIL <font color="#4169E1">THEN</font>
+		RETURN FALSUM;
+	<font color="#4169E1">ELSE</font>
+		RETURN FORMKFOR(VEL,INV(result));
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RqeDerivationCondition;
+
+<strong><font color="#4169E1">PROCEDURE RqeDifferenceCondition</font></strong>(G,phi,<strong><font color="#228B22">var</font></strong>,psi: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination difference condition. 
+G is a list of polynomials. 
+phi and psi are a formulas.
+var is a variable list with one element.
+A disjunction of formulas gamma_i is returned. 
+Each gamma_i is the result of the elimination of the formula 
+(ex var: g_i-g_j(x)=0 AND phi) under the premise that psi is valid.
+The global variable VALIS must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, pairs, p, DiffCond, InterResult: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	pairs:=LPAIRS(G);
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel &gt; 1 <font color="#4169E1">THEN</font>
+			SWRITE("RqeDifferenceCondition: ");
+			UWRIT1(LENGTH(pairs));
+			SWRITE("  conjunctions <font color="#4169E1">to</font> generate.");
+			BLINES(0);
+		<strong><font color="#4169E1">END</font></strong>;	
+	<strong><font color="#4169E1">END</font></strong>;	
+	<font color="#4169E1">WHILE</font> pairs&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(pairs,  p,pairs);
+		DiffCond:=pqmkaf(EQU,DIPSUM(FIRST(p),DIPNEG(SECOND(p))));
+		DiffCond:=FORMKFOR(ET,COMP(DiffCond,FORGARGS(phi)));
+		AdjoinedEq:=TRUE;
+		InterResult:=RqeConjunction(DiffCond,psi,<strong><font color="#228B22">var</font></strong>);
+		AdjoinedEq:=FALSE;
+		<font color="#4169E1">IF</font> InterResult=VERUM <font color="#4169E1">THEN</font> RETURN VERUM; <strong><font color="#4169E1">END</font></strong>;		
+		result:=COMP(InterResult,result);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;0 <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> RqeOpt.TraceLevel&gt;1 <font color="#4169E1">THEN</font> 
+			SWRITE("RqeDifferenceCondition: All conjunctions generated.");
+			BLINES(0);
+		<font color="#4169E1">ELSE</font>
+			SWRITE(")");
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;	
+	<font color="#4169E1">IF</font> result=SIL <font color="#4169E1">THEN</font>
+		RETURN FALSUM;
+	<font color="#4169E1">ELSE</font>
+		RETURN PQSIMPLIFY(FORMKFOR(VEL,INV(result)));
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RqeDifferenceCondition;
+
+<strong><font color="#4169E1">PROCEDURE RqeLimitCondition</font></strong>(G,<strong><font color="#228B22">var</font></strong>: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination limit condition. 
+G is the list of polynomials.
+var is a variable list with one element.
+A formula is returned. 
+This formula is true iff the limits of all polynomials 
+at infinity or minus infinity is greater than zero.
+The global variable VALIS must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> GU, GP, g, LimCond, result,fvlist,newdd,perm: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Initialization. *)</font>
+	result:=SIL;
+	LimCond:=SIL;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Transform all polynomials in univariate polynomials in the main
+	    variable var. *)</font>
+	fvlist:=SetComplementQ(<strong><font color="#228B22">var</font></strong>,VALIS);
+	GU:=CommonPol2RecPolL(G,fvlist,<strong><font color="#228B22">var</font></strong>,VALIS,  perm);
+	PolFmtPush(VALIS,<strong><font color="#228B22">var</font></strong>,fvlist,perm);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Condition for infinity. *)</font>
+	GP:=GU;
+	<font color="#4169E1">WHILE</font> GP&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(GP,  g,GP);
+		LimCond:=COMP(RqeLimP(g),LimCond);
+	<strong><font color="#4169E1">END</font></strong>;
+	LimCond:=FORMKFOR(ET,INV(LimCond));
+	result:=COMP(LimCond,result);
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* Condition for minus infinity. *)</font>
+	GP:=GU;
+	LimCond:=SIL;
+	<font color="#4169E1">WHILE</font> GP&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(GP,  g,GP);
+		LimCond:=COMP(RqeLimN(g),LimCond);
+	<strong><font color="#4169E1">END</font></strong>;
+	LimCond:=FORMKFOR(ET,INV(LimCond));
+	result:=COMP(LimCond,result);
+<font color="#B22222">(*4*)</font> 	<font color="#B22222">(* Clear PolFmt and return result. *)</font>
+	PolFmtPop();
+	RETURN PQSIMPLIFY(FORMKFOR(VEL,result));
+<strong><font color="#4169E1">END</font></strong> RqeLimitCondition;
+
+<strong><font color="#4169E1">PROCEDURE RqeLimP</font></strong>(p: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination limes infinity positive. 
+p is a univariate distributive polynomial. 
+A formula is returned. The returned formula is true 
+iff $\lim_{x\rightarrow\infty} p(x)&gt;0$. 
+We construct the formula recursively. 
+The global variable PolFmt is used. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> invperm,c,cp,e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Special case. *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Initialization. *)</font>
+	invperm:=INVPERM(PolFmt.Permutation);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Generate condition for the highest coefficient. *)</font>
+	DIPMAD(p,  c,e,p);
+	WITH PolFmt <font color="#4169E1">DO</font>
+		cp:=ParamPol2CommonPol(c,FreeVars,BoundVars,invperm);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* If HC(p) contains no parameter, return the result. *)</font>
+	<font color="#4169E1">IF</font> DIPCNST(cp) <font color="#4169E1">THEN</font> 
+		<font color="#4169E1">IF</font> ADSIGN(c)=1 <font color="#4169E1">THEN</font>
+			RETURN VERUM;
+		<font color="#4169E1">ELSE</font>
+			RETURN FALSUM;
+		<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* If p-HC(p)=0, return restrictive condition. *)</font>
+	ELSIF p=SIL <font color="#4169E1">THEN</font>
+		RETURN pqmkaf(GRE,cp);
+	<font color="#4169E1">ELSE</font> 
+<font color="#B22222">(*5*)</font>	<font color="#B22222">(* Call RqeLimP recursively and return the result. *)</font>
+		RETURN FORMKBINOP(VEL,pqmkaf(GRE,cp),
+			FORMKBINOP(ET,pqmkaf(EQU,cp),RqeLimP(p)));
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RqeLimP;
+
+<strong><font color="#4169E1">PROCEDURE RqeLimN</font></strong>(p: LIST):LIST;
+<font color="#B22222">(* real quantifier elimination limes infinity negative. 
+p is a univariate distributive polynomial. 
+A formula is returned.  The returned formula is true 
+iff $\lim_{x\rightarrow-\infty} p(x)&gt;0$. 
+We construct the formula recursively. 
+The global variable PolFmt is used. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> invperm,c,cp,e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Special case. *)</font>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Initialization. *)</font>
+	invperm:=INVPERM(PolFmt.Permutation);
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Generate condition for the highest coefficient. *)</font>
+	DIPMAD(p,  c,e,p);
+	WITH PolFmt <font color="#4169E1">DO</font>
+		cp:=ParamPol2CommonPol(c,FreeVars,BoundVars,invperm);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* HM(p)=HC(p)*X^{2e} *)</font>
+	<font color="#4169E1">IF</font> FIRST(e) MOD 2 = 0  <font color="#4169E1">THEN</font>
+<font color="#B22222">(*4*)</font>	<font color="#B22222">(* If HC(p) contains no parameter, return the result. *)</font>
+		<font color="#4169E1">IF</font> DIPCNST(cp) <font color="#4169E1">THEN</font> 
+			<font color="#4169E1">IF</font> ADSIGN(c)=1 <font color="#4169E1">THEN</font>
+				RETURN VERUM;
+			<font color="#4169E1">ELSE</font>
+				RETURN FALSUM;
+			<strong><font color="#4169E1">END</font></strong>;
+		ELSIF p=SIL <font color="#4169E1">THEN</font>
+			RETURN pqmkaf(GRE,cp);
+		<font color="#4169E1">ELSE</font> 
+			RETURN FORMKBINOP(VEL,pqmkaf(GRE,cp),
+				FORMKBINOP(ET,pqmkaf(EQU,cp),RqeLimN(p)));
+		<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font>	<font color="#B22222">(* HM(p)=HC(p)*X^{2e+1} *)</font>
+	<font color="#4169E1">ELSE</font>
+<font color="#B22222">(*6*)</font>	<font color="#B22222">(* If HC(p) contains no parameter, return the result. *)</font>
+		<font color="#4169E1">IF</font> DIPCNST(cp) <font color="#4169E1">THEN</font> 
+			<font color="#4169E1">IF</font> ADSIGN(c)=-1 <font color="#4169E1">THEN</font>
+				RETURN VERUM;
+			<font color="#4169E1">ELSE</font>
+				RETURN FALSUM;
+			<strong><font color="#4169E1">END</font></strong>;
+		ELSIF p=SIL <font color="#4169E1">THEN</font>
+<font color="#B22222">(*7*)</font>	<font color="#B22222">(* If p-HC(p)=0, return restrictive condition. *)</font>
+			RETURN pqmkaf(LES,cp);
+		<font color="#4169E1">ELSE</font> 
+<font color="#B22222">(*8*)</font>	<font color="#B22222">(* Call RqeLimN recursively and return the result. *)</font>
+			RETURN FORMKBINOP(VEL,pqmkaf(LES,cp),
+				FORMKBINOP(ET,pqmkaf(EQU,cp),RqeLimN(p)));
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RqeLimN;
+
+<font color="#B22222">(******************************************************************************
+*                            C G B   -   S T U F F                            *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE cgbinput1</font></strong>(P,V,D,Cond:LIST):LIST;
+<font color="#B22222">(* comprehensive Groebner basis input.
+P is a list of polynomials, with domain descriptor D and variable list V.
+Cond is a condition. It is used as the initial case distinction.
+C0 and C1 builds the initial case distinction.
+C0 are coefficient polynomials with the interpretation c in C0 = 0 
+and C1 are coefficient polynomials with the interpretation c in C1 &lt;&gt; 0.
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN CdpCons(LIST1(Cond),LIST2(INV(DIPLPM(P)),0),
+		VdCons(V,D));
+<strong><font color="#4169E1">END</font></strong> cgbinput1;
+
+<strong><font color="#4169E1">PROCEDURE CondFC</font></strong>(C:LIST):LIST;
+<font color="#B22222">(* condition from constant polynomials. 
+C is a list of the form  (cle, clq, ceq, cnqm cgq, cgr). 
+A condition (terminology of the CGB-module) is returned. 
+The global variable PolFmt is used. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> red, green, L, p, i: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+	red:=SIL; green:=SIL;
+	ADV(C,  L,C);				<font color="#B22222">(* side conditions &lt; *)</font>
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font> 
+		ADV(L, p,L);
+		red:=COMP(p,red);
+	<strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  L,C);				<font color="#B22222">(* side conditions &lt;= *)</font>
+	ADV(C,  L,C);				<font color="#B22222">(* side conditions = *)</font>
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font> 
+		ADV(L, p,L);
+		green:=COMP(p,red);
+	<strong><font color="#4169E1">END</font></strong>;	
+	ADV(C,  L,C);				<font color="#B22222">(* side conditions &lt;&gt; *)</font>
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font> 
+		ADV(L, p,L);
+		red:=COMP(p,red);
+	<strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  L,C);				<font color="#B22222">(* side conditions &gt;= *)</font>
+	ADV(C,  L,C);				<font color="#B22222">(* side conditions &gt; *)</font>
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font> 
+		ADV(L, p,L);
+		red:=COMP(p,red);
+	<strong><font color="#4169E1">END</font></strong>;
+	WITH PolFmt <font color="#4169E1">DO</font>
+		red:=CommonPol2ParamPolL(red,FreeVars,BoundVars,AllVars,
+			Permutation);
+		green:=CommonPol2ParamPolL(green,FreeVars,BoundVars,AllVars,
+			Permutation);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN CondCons(green,red);
+<strong><font color="#4169E1">END</font></strong> CondFC; 
+
+<strong><font color="#4169E1">PROCEDURE DIMISS</font></strong>(PL,VL: LIST; <strong><font color="#228B22">VAR</font></strong> SMAXVL: LIST): LIST; 
+<font color="#B22222">(* Dimension and set of maximal independent sets.
+PL is a list of polynomials.
+VL is the variable list.
+SMAXVL need not be initialized.
+Returns the dimension of PP and maximal independent sets in SMAXVL. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> M, m, S,DL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font>	<font color="#B22222">(* Special case: empty set. *)</font>
+	<font color="#4169E1">IF</font> PL = SIL <font color="#4169E1">THEN</font> 
+		SMAXVL:=LIST1(VL);
+		RETURN LENGTH(VL);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* Determine the dimension and the set of maximal independent sets. *)</font>
+	DILDIM(PL, DL,S,M);
+	<font color="#4169E1">IF</font> DL=-1 <font color="#4169E1">THEN</font> SMAXVL:=SIL; RETURN -1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* Get the maximal independent sets from the returned indexed sets. *)</font>
+	SMAXVL:=SIL;
+	<font color="#4169E1">WHILE</font> M&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(M,m,M);
+		SMAXVL:=COMP(IXSUBS(VL,m),SMAXVL);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	<font color="#B22222">(* Return the result. *)</font>
+	SMAXVL:=INV(SMAXVL);
+	RETURN(DL);
+<strong><font color="#4169E1">END</font></strong> DIMISS; 
+
+<strong><font color="#4169E1">PROCEDURE CondUnion</font></strong>(c1,c2: LIST):LIST;
+<font color="#B22222">(* condition union. 
+c1 and c2 are conditions. 
+The union c of the two  conditions is returned. 
+Let phi1, phi2 the formulas which are represented by the conditions c1, c2 
+then c represents the formula (phi1 and phi2). *)</font>
+	<strong><font color="#228B22">VAR</font></strong> green1, red1, green2, red2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> CondIsEmpty(c1) <font color="#4169E1">THEN</font> 
+		RETURN c2;
+	ELSIF CondIsEmpty(c2) <font color="#4169E1">THEN</font> 
+		RETURN c1; 
+	<strong><font color="#4169E1">END</font></strong>;
+	CondParts(c1,  green1,red1);
+	CondParts(c2,  green2,red2);
+	RETURN CondCons(CCONC(green1,green2),CCONC(red1,red2));
+<strong><font color="#4169E1">END</font></strong> CondUnion;
+
+<font color="#B22222">(******************************************************************************
+*                     P O L Y N O M I A L   F O R M A T S                     *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ParamPol2CommonPol</font></strong>(p, Uvlist, Xvlist,iperm: LIST):LIST;
+<font color="#B22222">(* parameter polynomial to common polynomial format.
+p is a polynomial in K[U] represented as a arbitrary domain element.
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+iperm is a permutation to reorder the variables in the result.
+p is converted to the common polynomial format K[U,X]. 
+EVORD must be set. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	p:=DIPFADIP(p);
+	p:= DIPINV(p,LENGTH(Uvlist)+1,LENGTH(Xvlist));
+	RETURN DIPERM(p,iperm);
+<strong><font color="#4169E1">END</font></strong> ParamPol2CommonPol;			   
+
+<strong><font color="#4169E1">PROCEDURE ParamPol2CommonPolL</font></strong>(P, Uvlist, Xvlist,iperm: LIST):LIST;
+<font color="#B22222">(* parameter polynomial list to common polynomial format.
+Each p in P is a polynomial in K[U] represented as a arbitrary domain element.
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+iperm is a permutation to reorder the variables in the result.
+Each p is converted to the common polynomial format K[U,X]. 
+EVORD must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p,res,lfv,lbv,luv,lxv: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	res:=SIL;
+	luv:=LENGTH(Uvlist);
+	lxv:=LENGTH(Xvlist);
+	<font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(P,  p,P);
+		p:=DIPFADIP(p);
+		p:= DIPINV(p,luv+1,lxv);
+		res:=COMP(DIPERM(p,iperm),res);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(res);
+<strong><font color="#4169E1">END</font></strong> ParamPol2CommonPolL;
+
+<strong><font color="#4169E1">PROCEDURE RecPol2CommonPol</font></strong>(p,Uvlist,Xvlist,iperm: LIST):LIST;
+<font color="#B22222">(* recursive polynomial to common polynomial format.
+p is a polynomial in K[U][X]. 
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+iperm is a permutation to reorder the variables in the result.
+p is converted to the common polynomial format K[U,X].
+EVORD must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> d,q,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	d:=INTDDCMP();
+	ValisPush(Xvlist);
+	DIPFDIPP(p,d,  q,v);
+	ValisPop();
+	q:=DIPERM(q,iperm);
+	RETURN q;
+<strong><font color="#4169E1">END</font></strong> RecPol2CommonPol;
+
+<strong><font color="#4169E1">PROCEDURE RecPol2CommonPolL</font></strong>(P,Uvlist,Xvlist,iperm: LIST):LIST;
+<font color="#B22222">(* recursive polynomial list to common polynomial format.
+Each p in P is a polynomial in K[U][X]. 
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+iperm is a permutation to reorder the variables in the result.
+Each P is converted into a polynomial in K[U,X].
+EVORD must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> d,q,v,p,res: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ValisPush(Xvlist);
+	res:=SIL;
+	d:=INTDDCMP();
+	<font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(P,  p,P);
+		DIPFDIPP(p,d,  q,v);
+		q:=DIPERM(q,iperm);
+		res:=COMP(q,res);
+	<strong><font color="#4169E1">END</font></strong>;
+	ValisPop();
+	RETURN INV(res);
+<strong><font color="#4169E1">END</font></strong> RecPol2CommonPolL;
+
+<strong><font color="#4169E1">PROCEDURE CommonPol2RecPol</font></strong>(p,Uvlist,Xvlist,valis: LIST; <strong><font color="#228B22">VAR</font></strong> perm: LIST):LIST;
+<font color="#B22222">(* common polynomial to recursive polynomial format. 
+valis is the list of all variables.
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+perm is a permutation to achieve (Uvlist,Xvlist) from (valis).
+p is converted into a polynomial in K[U][X]. 
+EVORD and must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> q,v,r,newdd: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	perm:=PVFLISTS(valis,CCONC(Uvlist,Xvlist));
+	r:=LENGTH(Uvlist);
+	newdd:=IPDDCMP(Uvlist);
+	ValisPush(LPERM(valis,perm));
+	DIPPFDIP(DIPERM(p,perm),r,newdd,q,v);
+	ValisPop();
+	RETURN q;
+<strong><font color="#4169E1">END</font></strong> CommonPol2RecPol;
+
+<strong><font color="#4169E1">PROCEDURE CommonPol2RecPolL</font></strong>(P,Uvlist,Xvlist,valis: LIST; <strong><font color="#228B22">VAR</font></strong> perm: LIST):LIST;
+<font color="#B22222">(* common polynomial list to recursive polynomial format. 
+Each p in P is a polynomial in K[Y_1,...,Y_n] {Y_i}={X_i,U_i}. 
+valis is the list of all variables.
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+perm is a permutation to achieve (Uvlist,Xvlist) from (valis).
+Each p is converted into a polynomial in K[U][X]. 
+EVORD must be set. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> q,v,p,res,r,newdd: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	res:=SIL;
+	perm:=PVFLISTS(valis,CCONC(Uvlist,Xvlist));
+	r:=LENGTH(Uvlist);
+	newdd:=IPDDCMP(Uvlist);
+	ValisPush(LPERM(valis,perm));
+	<font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(P,  p,P);
+		DIPPFDIP(DIPERM(p,perm),r,newdd,q,v);
+		res:=COMP(q,res);
+	<strong><font color="#4169E1">END</font></strong>;
+	ValisPop();
+	RETURN INV(res);
+<strong><font color="#4169E1">END</font></strong> CommonPol2RecPolL;
+
+<strong><font color="#4169E1">PROCEDURE CommonPol2ParamPol</font></strong>(p,Uvlist,Xvlist,valis:LIST; <strong><font color="#228B22">VAR</font></strong> perm : LIST):LIST;
+<font color="#B22222">(* common polynomial to parameter polynomial. 
+p is a polynomial in K[U][X] which is constant with respect to the main 
+variables.
+valis is the list of all variables. 
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+perm is a permutation to achieve (Uvlist,Xvlist) from (valis).
+The polynomial p represented as an element in K[U] as an arbitrary domain 
+object. 
+EVORD must be set.*)</font>
+	<strong><font color="#228B22">VAR</font></strong> q,v,c,r,e,newdd: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	perm:=PVFLISTS(valis,CCONC(Uvlist,Xvlist));
+	r:=LENGTH(Uvlist);
+	newdd:=IPDDCMP(Uvlist);
+	ValisPush(LPERM(valis,perm));
+	DIPPFDIP(DIPERM(p,perm),r,newdd,  q,v);
+	DIPMAD(q,  c,e,q);
+	ValisPop();
+	RETURN c;
+<strong><font color="#4169E1">END</font></strong> CommonPol2ParamPol;
+
+<strong><font color="#4169E1">PROCEDURE CommonPol2ParamPolL</font></strong>(P,Uvlist,Xvlist,valis:LIST; <strong><font color="#228B22">VAR</font></strong> perm: LIST):LIST;
+<font color="#B22222">(* common polynomial list to parameter polynomial. 
+Each p in P is a polynomial in K[U][X] which is constant with respect 
+to the main variables.
+valis is the list of all variables. 
+Uvlist is the variable list of the parameters U, 
+Xvlist is the variable list of the main variables X. 
+perm is a permutation to achieve (Uvlist,Xvlist) from (valis).
+Each p is converted to an parameter polynomial.
+EVORD must be set.*)</font>
+	<strong><font color="#228B22">VAR</font></strong> q,v,p,res,r,c,e,newdd: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	res:=SIL;
+	perm:=PVFLISTS(valis,CCONC(Uvlist,Xvlist));
+	r:=LENGTH(Uvlist);
+	newdd:=IPDDCMP(Uvlist);
+	ValisPush(LPERM(valis,perm));
+	<font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(P,  p,P);
+		DIPPFDIP(DIPERM(p,perm),r,newdd,  q,v);
+		DIPMAD(q,  c,e,q);
+		res:=COMP(c,res);
+	<strong><font color="#4169E1">END</font></strong>;
+	ValisPop();
+	RETURN INV(res);	
+<strong><font color="#4169E1">END</font></strong> CommonPol2ParamPolL;
+
+<strong><font color="#4169E1">PROCEDURE PqFC</font></strong>(C: LIST):LIST;
+<font color="#B22222">(* polynomial equation from constant polynomials. C is a list of the form
+(cle, clq, ceq, cnq cgq, cgr). A formula 
+AND (cle &lt; 0, clq &lt;= 0, ceq = 0, cnq # 0, cgq &gt;= 0, cgr &gt; 0) 
+is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, dil,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	ADV(C,  dil,C);
+	<font color="#4169E1">IF</font> dil&lt;&gt;SIL <font color="#4169E1">THEN</font> result:=COMP(PQFDIL(dil,LES,ET),result); <strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  dil,C);
+	<font color="#4169E1">IF</font> dil&lt;&gt;SIL <font color="#4169E1">THEN</font> result:=COMP(PQFDIL(dil,LSQ,ET),result); <strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  dil,C);
+	<font color="#4169E1">IF</font> dil&lt;&gt;SIL <font color="#4169E1">THEN</font> result:=COMP(PQFDIL(dil,EQU,ET),result); <strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  dil,C);
+	<font color="#4169E1">IF</font> dil&lt;&gt;SIL <font color="#4169E1">THEN</font> result:=COMP(PQFDIL(dil,NEQ,ET),result); <strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  dil,C);
+	<font color="#4169E1">IF</font> dil&lt;&gt;SIL <font color="#4169E1">THEN</font> result:=COMP(PQFDIL(dil,GRQ,ET),result); <strong><font color="#4169E1">END</font></strong>;
+	ADV(C,  dil,C);
+	<font color="#4169E1">IF</font> dil&lt;&gt;SIL <font color="#4169E1">THEN</font> result:=COMP(PQFDIL(dil,GRE,ET),result); <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> result&lt;&gt;SIL <font color="#4169E1">THEN</font> 
+		RETURN FORMKFOR(ET,INV(result));
+	<font color="#4169E1">ELSE</font>
+		RETURN VERUM;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PqFC;
+
+<strong><font color="#4169E1">PROCEDURE PQFDIL</font></strong>(dil,pqop,op:LIST):LIST;
+<font color="#B22222">(* polynomial equation from distributive polynomial list.
+dil is a list of distributive polynomials. pqop is a relation symbol. 
+op is maslog operator. The formula op_i( dil_i pqop 0) is returned. 
+If dil is empty and the operator is ET (VEL), VERUM (FALSUM) is returned.
+Otherwise an error is generated. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dip, result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> dil=SIL <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> op=ET <font color="#4169E1">THEN</font>
+			RETURN VERUM;
+		ELSIF op=VEL <font color="#4169E1">THEN</font>
+			RETURN FALSUM;
+		<font color="#4169E1">ELSE</font>
+			ERROR(severe,"PQFDIL: cannot create formula from empty list.");
+			RETURN FALSUM;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> dil&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(dil,  dip,dil);
+		result:=COMP(pqmkaf(pqop,dip),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN FORMKFOR(op,INV(result));
+<strong><font color="#4169E1">END</font></strong> PQFDIL;
+
+<strong><font color="#4169E1">PROCEDURE forfdata</font></strong>(Cond, Plist, Gre, Neq:LIST):LIST;
+<font color="#B22222">(* formula from data.
+Cond is a condition, 
+Plist is a list of polynomials in K[U][X],
+Gre and Neq are list of polynomials in K[U,X]. 
+Let cond=(R,G). A conjunction of the following atomic formulas is generated:
+(r&lt;&gt;0), (g=0), (p=0), (gr&gt;0) and (n&lt;&gt;), where  
+r\in R, g\in G, p\in P, gr\in Gre and n\in Neq.
+The global variable PolFmt is used. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> G,R,result,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH PolFmt <font color="#4169E1">DO</font>
+		Plist:=RecPol2CommonPolL(Plist,
+			FreeVars,BoundVars,INVPERM(Permutation));
+	<strong><font color="#4169E1">END</font></strong>;
+	ValisPush(PolFmt.BoundVars);
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> Neq&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(Neq,  p,Neq);
+		result:=COMP(pqmkaf(NEQ,p),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> Gre&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(Gre,  p,Gre);
+		result:=COMP(pqmkaf(GRE,p),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">WHILE</font> Plist&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(Plist,  p,Plist);
+		result:=COMP(pqmkaf(EQU,p),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> result=SIL <font color="#4169E1">THEN</font> 
+		result:=VERUM;
+	<font color="#4169E1">ELSE</font>
+		result:=FORMKFOR(ET,INV(result));
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> CondIsEmpty(Cond) <font color="#4169E1">THEN</font>
+		result:=FORMKBINOP(ET,
+			PqFCond(Cond),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	ValisPop();
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> forfdata;
+
+<strong><font color="#4169E1">PROCEDURE PqFCond</font></strong>(Cond:LIST):LIST;
+<font color="#B22222">(* polynomial equation from condition. 
+Cond is a condition (in the sense of the CGB module.) 
+The condition is transformed into a formula. 
+The global variable PolFmt is used. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> G,R,p,result: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> CondIsEmpty(Cond) <font color="#4169E1">THEN</font>
+		CondParts(Cond,  G,R);
+		WITH PolFmt <font color="#4169E1">DO</font>
+			G:=ParamPol2CommonPolL(G, 
+				FreeVars,BoundVars,INVPERM(Permutation));
+			R:=ParamPol2CommonPolL(R,
+				FreeVars,BoundVars,INVPERM(Permutation));
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">WHILE</font> R&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(R,  p,R);
+			result:=COMP(pqmkaf(NEQ,p),result);
+		<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">WHILE</font> G&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(G,  p,G);
+			result:=COMP(pqmkaf(EQU,p),result);
+		<strong><font color="#4169E1">END</font></strong>;
+		result:=FORMKFOR(ET,INV(result));
+	<font color="#4169E1">ELSE</font> 
+		result:=VERUM;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> PqFCond;
+
+<strong><font color="#4169E1">PROCEDURE ExtractPolynomials</font></strong>(phi, bvlist, valis: LIST):LIST;
+<font color="#B22222">(* extract polynomials. 
+phi is conjunction over atomic formulas.
+valis is the variable list os all polynomials occuring in phi.
+bvlist is a subset of valis.
+A XPL w.r.t. bvlist is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> p,op,args,af,rel,bvv: LIST;
+	<strong><font color="#228B22">VAR</font></strong> eq, gr, nq, cle, clq, ceq, cnq, cgq, cgr: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	bvv:=VVECFVLIST(bvlist,valis);
+	eq:=SIL; gr:=SIL; nq:=SIL;
+	cle:=SIL; clq:=SIL; ceq:=SIL; cnq:=SIL; cgq:=SIL; cgr:=SIL;
+	FORPFOR(phi,  op,args);
+	<font color="#4169E1">WHILE</font> args&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(args,  af,args);
+		pqpaf(af,  rel,p);
+		<font color="#4169E1">IF</font> DIPCNSTR(p,bvv) <font color="#4169E1">THEN</font>
+			<font color="#4169E1">IF</font> rel=LES <font color="#4169E1">THEN</font>
+				cle:=COMP(p,cle);
+			ELSIF rel=LSQ <font color="#4169E1">THEN</font> 	
+				clq:=COMP(p,clq);
+			ELSIF rel=EQU <font color="#4169E1">THEN</font> 	
+				ceq:=COMP(p,ceq);
+			ELSIF rel=NEQ <font color="#4169E1">THEN</font> 	
+				cnq:=COMP(p,cnq);
+			ELSIF rel=GRQ <font color="#4169E1">THEN</font> 	
+				cgq:=COMP(p,cgq);
+			ELSIF rel=GRE <font color="#4169E1">THEN</font> 	
+				cgr:=COMP(p,cgr);
+			<font color="#4169E1">ELSE</font>
+				ERROR(severe,"ExtractPolynomials: incorrect relation symbol");
+			<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">ELSE</font>
+			<font color="#4169E1">IF</font> rel=EQU <font color="#4169E1">THEN</font>
+				eq:=COMP(p,eq);
+			ELSIF rel=GRE <font color="#4169E1">THEN</font>
+				gr:=COMP(p,gr);
+			ELSIF rel=NEQ <font color="#4169E1">THEN</font>
+				nq:=COMP(p,nq);
+			<font color="#4169E1">ELSE</font>
+				ERROR(severe,"ExtractPolynomials: incorrect relation symbol");
+			<strong><font color="#4169E1">END</font></strong>;
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN LIST2(LIST3(INV(eq), INV(gr), INV(nq)),
+		LIST6(INV(cle),INV(clq),INV(ceq),INV(cnq),INV(cgq),INV(cgr)));
+<strong><font color="#4169E1">END</font></strong> ExtractPolynomials;
+
+<strong><font color="#4169E1">PROCEDURE RQERSNF</font></strong>(phi,bvlist,valis:LIST):LIST;
+<font color="#B22222">(* relation symbol normal form. 
+phi is conjunction of atomic formulas of the form "(rel pol)". 
+valis is the variable list of all polynomials occuring in phi.
+bvlist is a subset of valis.
+A formula psi equivalent to phi is returned. Each atomic formula in psi 
+has the form (nfrel pol), where nfrel is a relation of {&gt;,=&lt;&gt;}. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> bvv: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	bvv:=VVECFVLIST(bvlist,valis);
+	RETURN FORAPPLYATF2(phi,bvv,RelSymNf);
+<strong><font color="#4169E1">END</font></strong> RQERSNF;
+
+<strong><font color="#4169E1">PROCEDURE RelSymNf</font></strong>(phi,bvv:LIST):LIST;
+<font color="#B22222">(* relation symbol normal form. 
+phi is an atomic formula. 
+bvv is a variable vector.
+A formula psi equivalent to phi is returned. Each atomic formula in psi 
+has the form (nfrel pol), where nfrel is a relation of {&gt;,=&lt;&gt;}. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> rel,pol: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	pqpaf(phi,  rel,pol);
+	<font color="#4169E1">IF</font> DIPCNSTR(pol,bvv) <font color="#4169E1">THEN</font> RETURN phi; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (rel=EQU) <font color="#4169E1">OR</font> (rel=NEQ) <font color="#4169E1">OR</font> (rel=GRE) <font color="#4169E1">THEN</font>
+		RETURN phi;
+	ELSIF rel=LSQ <font color="#4169E1">THEN</font>
+		RETURN FORMKFOR(VEL,LIST2(
+			pqmkaf(GRE,DIPNEG(pol)),
+			pqmkaf(EQU,pol)));
+	ELSIF rel=GRQ <font color="#4169E1">THEN</font>
+		RETURN FORMKFOR(VEL,LIST2(
+			pqmkaf(GRE,pol),
+			pqmkaf(EQU,pol)));
+	ELSIF rel=LES <font color="#4169E1">THEN</font>
+		RETURN pqmkaf(GRE,DIPNEG(pol));
+	<font color="#4169E1">ELSE</font>
+		UWRITE(rel);
+		ERROR(severe,"RelSymNf: unknown relation symbol");
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RelSymNf;
+
+<strong><font color="#4169E1">PROCEDURE exvlist</font></strong>(vlist1,vlist2:LIST):LIST;
+<font color="#B22222">(* extend variable list.
+vlist1 is a variable list.
+vlist2 is a subset of vlist1.
+All elements of vlist2 which are not in vlist1 are appended to vlist1. 
+The result is returned. vlist1 are not modified. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> v,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=CINV(vlist1);
+	<font color="#4169E1">WHILE</font> vlist2&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(vlist2,  v,vlist2);
+		<font color="#4169E1">IF</font> MEMBER(v,vlist1)=0 <font color="#4169E1">THEN</font>
+			result:=COMP(v,result)
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> exvlist;
+
+<strong><font color="#4169E1">PROCEDURE nontrivial</font></strong>(p,bvlist,allvars:LIST):LIST;
+<font color="#B22222">(* non trivial. 
+p is a distributive polynomial in Z[allvars]. 
+allvars is the variable list of the polynomial p.
+bvlist is a subset of allvars. 
+p is transformed in a polynomial q in Z[allvars-bvars][bvars]. 
+A formula psi is returned. psi is true, iff q is not the zero polynomial.
+Only the domain INT is supported for p. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c,e,result,perm,invperm,fvlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> p=0 <font color="#4169E1">THEN</font> RETURN FALSUM; <strong><font color="#4169E1">END</font></strong>;
+	fvlist:=SetComplementQ(bvlist,allvars);
+	p:=CommonPol2RecPol(p,fvlist,bvlist,VALIS,  perm);
+	result:=SIL;
+	invperm:=INVPERM(perm);
+	<font color="#4169E1">WHILE</font> p&lt;&gt;SIL <font color="#4169E1">DO</font>
+		DIPMAD(p,  c,e,p);
+		c:=ParamPol2CommonPol(c,fvlist,bvlist,invperm);
+		result:=COMP(pqmkaf(NEQ,c),result);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN PQSIMPLIFY(FORMKFOR(VEL,INV(result)));
+<strong><font color="#4169E1">END</font></strong> nontrivial;
+
+<font color="#B22222">(******************************************************************************
+*                                O P T I O N S                                *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE RQEOPTSET</font></strong>(opt:LIST):LIST;
+<font color="#B22222">(* real quantifier elimination options set. 
+opt is a list of options. 
+The first element of opt is the trace level. 
+The second element of opt is a flag. If this flag is true, then 
+partial elimination of zero dimensional ideals are done. Otherwise full
+quantifier elimination is done.
+The old option list is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> old,flag: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> RqeOpt.DimensionZeroOnly <font color="#4169E1">THEN</font> 
+		old:=LIST1(1); 
+	<font color="#4169E1">ELSE</font> 
+		old:=LIST1(0); 
+	<strong><font color="#4169E1">END</font></strong>;
+	old:=COMP(RqeOpt.TraceLevel,old);		
+	<font color="#4169E1">IF</font> opt=SIL <font color="#4169E1">THEN</font> RETURN old; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> opt&lt;&gt;SIL <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> FIRST(opt)&lt;&gt;-1 <font color="#4169E1">THEN</font>
+			ADV(opt,  RqeOpt.TraceLevel,opt);
+		<font color="#4169E1">ELSE</font>
+			opt:=RED(opt);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> opt&lt;&gt;SIL <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> FIRST(opt)&lt;&gt;-1 <font color="#4169E1">THEN</font>
+			ADV(opt,  flag,opt);
+			<font color="#4169E1">IF</font> flag=1 <font color="#4169E1">THEN</font> 
+				RqeOpt.DimensionZeroOnly:=TRUE;
+			<font color="#4169E1">ELSE</font>
+				RqeOpt.DimensionZeroOnly:=FALSE;
+			<strong><font color="#4169E1">END</font></strong>;
+		<font color="#4169E1">ELSE</font>
+			opt:=RED(opt);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN old;
+<strong><font color="#4169E1">END</font></strong> RQEOPTSET;
+
+<strong><font color="#4169E1">PROCEDURE RQEOPTWR</font></strong>();
+<font color="#B22222">(* real quantifier elimination option write. 
+The actual options are written to the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	BLINES(1);
+	SWRITE("Options <font color="#4169E1">for</font> the RQE - System");BLINES(0);
+	SWRITE("The trace level is: ");UWRITE(RqeOpt.TraceLevel);
+	<font color="#4169E1">IF</font> RqeOpt.DimensionZeroOnly <font color="#4169E1">THEN</font>
+		SWRITE("Only partial quantifier elimination is done.");
+	<font color="#4169E1">ELSE</font>
+		SWRITE("Full quantifier elimination is done.");
+	<strong><font color="#4169E1">END</font></strong>;
+	BLINES(1);
+<strong><font color="#4169E1">END</font></strong> RQEOPTWR;
+
+<strong><font color="#4169E1">PROCEDURE RqeOptInit</font></strong>();
+<font color="#B22222">(* real quantifier elimination option initialization. 
+The global variable RqeOption containing the options for the 
+computation is initialized. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH RqeOpt <font color="#4169E1">DO</font>
+		TraceLevel:=3;
+		DimensionZeroOnly:=FALSE;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> RqeOptInit;
+
+<strong><font color="#4169E1">PROCEDURE PolFmtInit</font></strong>();
+<font color="#B22222">(* polynomial format initialize. 
+The entries of the record PolFmt and the PolFmtStack is initialized.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	PolFmtStack:=SIL;
+	LISTVAR(PolFmtStack);
+	WITH PolFmt <font color="#4169E1">DO</font>
+		AllVars:=SIL;
+		BoundVars:=SIL;
+		FreeVars:=SIL;
+		Permutation:=SIL;
+		LISTVAR(AllVars);
+		LISTVAR(BoundVars);
+		LISTVAR(FreeVars);
+		LISTVAR(Permutation);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PolFmtInit;
+
+<strong><font color="#4169E1">PROCEDURE PolFmtPush</font></strong>(vars,bvlist,fvlist,perm:LIST);
+<font color="#B22222">(* polynomial format push. 
+The old values of PolFmt are pushed onto the PolFmtStack. 
+The new values are stored in PolFmt. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	WITH PolFmt <font color="#4169E1">DO</font>
+		PolFmtStack:=COMP(
+			LIST4(AllVars,BoundVars,FreeVars,Permutation),
+			PolFmtStack);
+		AllVars:=vars;
+		BoundVars:=bvlist;
+		FreeVars:=fvlist;
+		Permutation:=perm;
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PolFmtPush;
+
+<strong><font color="#4169E1">PROCEDURE PolFmtPop</font></strong>();
+<font color="#B22222">(* polynomial format push. 
+The old values of PolFmt are restored from the PolFmtStack.
+The top entry of the PolFmtStack is deleted. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> elem:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> PolFmtStack=SIL <font color="#4169E1">THEN</font>
+		ERROR(severe,"PolFmtPop: stack empty.");
+		RETURN;
+	<strong><font color="#4169E1">END</font></strong>;
+	ADV(PolFmtStack,  elem,PolFmtStack);
+	WITH PolFmt <font color="#4169E1">DO</font>
+		FIRST4(elem,  AllVars, BoundVars, FreeVars,Permutation);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> PolFmtPop;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RqeOptInit();
+	PolFmtInit();
+	AdjoinedEq:=FALSE;
+
+<strong><font color="#4169E1">END</font></strong> RQEPRRC.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

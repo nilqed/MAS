@@ -1,0 +1,234 @@
+
+<html>
+<head>
+<title>./sacring/SACPGCD.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:35:02+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACPGCD.md,v 1.2 1992/02/12 17:35:01 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACPGCD.md,v $
+ * Revision 1.2  1992/02/12  17:35:01  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:43  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACPGCD;
+
+<font color="#B22222">(* SAC Polynomial GCD and RES System Definition Module. *)</font>
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACPGCD.md,v 1.2 1992/02/12 17:35:01 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IPC</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial content.  A is an integral polynomial in r
+variables.  C is the content of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPCPP</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> C,AB: LIST); 
+<font color="#B22222">(*Integral polynomial content and primitive part.  A is an integral
+polynomial in r variables.  C is the content of A and AB is the
+primitive part of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPGCDC</font></strong>(RL,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,AB,BB: LIST); 
+<font color="#B22222">(*Integral polynomial greatest common divisor and cofactors.  A and B
+are integral polynomials in r variables, r ge 0.  C=GCD(A,B).
+If C is non-zero then AB=A/C and BB=B/C.  Otherwise AB=0 and BB=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPIC</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial integer content.  A is an integral polynomial in
+r variables.  c is the integer content of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPICPP</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> AL,AB: LIST); 
+<font color="#B22222">(*Integral polynomial integer content and primitive part.  A is an
+integral polynomial in r variables.  a is the integer content of A.
+AB=A/a if A is non-zero and AB=0 if A=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPICS</font></strong>(RL,A,CL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial integer content subroutine.  A is a non-zero
+integral polynomial in r variables.  c is an integer.  d is the
+greatest common divisor of c and the integer content of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPIPP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial integer primitive part.  A is an integral
+polynomial in r variables.  If A ne 0 then AB=A/a where a is the
+integer content of A.  If A=0 then AB=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPPGSD</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial primitive greatest squarefree divisor.  A is an
+integral polynomial in r variables.  If A=0 then B=0.  Otherwise B is
+the greatest squarefree divisor of the primitive part of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPPP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial primitive part.  A is an integral polynomial in
+r variables.  AB is the primitive part of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPRES</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial resultant.  A and B are integral polynomials in
+r variables, r ge 1, of positive degrees.  C is the resultant of A and
+B with respect to the main variable, an integral polynomial in r-1
+variables.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPRPRS</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial reduced polynomial remainder sequence.  A and B
+are non-zero integral polynomials in r variables with deg(A) ge deg(B).
+S is the reduced polynomial remainder sequence of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPSCPP</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> SL,C,AB: LIST); 
+<font color="#B22222">(*Integral polynomial sign, content, and primitive part.  A is
+an integral polynomial in R ge 1 variables.  s is
+the sign of A, C is the content of A, and AB is the primitive
+part of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPSF</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial squarefree factorization.  A is a positive pri-
+mitive integral polynomial in r variables of positive degree.  L is
+the list ((e sub 1,A sub 1), ...,(e sub l,A sub l)) where A equal to
+the product of (A sub i)**(e sub i) for i = 1, ...,k is the
+squarefree factorization of A in which 1 le e sub 1 lt e sub 2 lt  ...
+lt e sub k and each A sub i is a positive squarefree polynomial of
+positive degree.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPSPRS</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial subresultant polynomial remainder sequence.
+A and B are non-zero integral polynomials in r variables with
+deg(A) ge deg(B).  S is the subresultant p.r.s. of the first kind
+of A and B.*)</font>
+
+ 
+<strong><font color="#4169E1">PROCEDURE IPSRP</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> AL,AB: LIST); 
+<font color="#B22222">(*Integral polynomial similiar to rational polynomial.  A is a
+rational polynomial in r variables, r ge 0.  a is a
+rational number, and AB is an integral polynomial such that A=a*AB. If
+A eq 0 then a=AB=0. Otherwise AB is integer primitive and positive.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPGCDC</font></strong>(RL,PL,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,AB,BB: LIST); 
+<font color="#B22222">(*Modular polynomial greatest common divisor and cofactors.  p is a
+prime beta-integer.  A and B are polynomials in r variables over
+Z sub p.  C=gcd(A,B).  If C is non-zero then AB=A/C and BB=B/C.
+Otherwise AB=0 and BB=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPRES</font></strong>(RL,PL,A,B: LIST): LIST; 
+<font color="#B22222">(*Modular polynomial resultant.  p is a prime beta-digit.  A and B are
+polynomials over Z sub p in r variables, r ge 1, of positive degree.
+C is the resultant of A and B, a polynomial over Z sub p in r-1
+variables.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPSPRS</font></strong>(RL,PL,A,B: LIST): LIST; 
+<font color="#B22222">(*Modular polynomial subresultant polynomial remainder sequence.
+A and B are non-zero polynomials in r variables over Z sub p,
+p a prime beta-integer, with deg(A) ge deg(B).
+S is the subresultant p.r.s. of the first kind of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPUC</font></strong>(RL,PL,A: LIST): LIST; 
+<font color="#B22222">(*Modular polynomial univariate content.  A is a polynomial in r
+variables, r ge 2, over Z sub p, p a prime beta-integer.  c is the
+univariate content of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPUCPP</font></strong>(RL,PL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> AL,AB: LIST); 
+<font color="#B22222">(*Modular polynomial univariate content and primitive part.  A is a
+polynomial in r variables, r ge 2, over Z sub p, p a prime
+beta-integer.  a is the univariate content of A.  AB=A/a if A is
+non-zero and AB=0 if A=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPUCS</font></strong>(RL,PL,A,CL: LIST): LIST; 
+<font color="#B22222">(*Modular polynomial univariate content subroutine.  A is a non-zero
+polynomial in r variables, r ge 2, over Z sub p, p a prime
+beta-integer.  c is a univariate polynomial over Z sub p.  d is the
+greatest common divisor of c and the univariate content of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MPUPP</font></strong>(RL,PL,A: LIST): LIST; 
+<font color="#B22222">(*Modular polynomial univariate primitive part.  A is a polynomial in
+r variables, r ge 2, over Z sub p, p a prime beta-integer.  If A is
+non-zero then AB=A/a where a is the univariate content of A.  If A=0
+then AB=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MUPEGC</font></strong>(PL,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,U,V: LIST); 
+<font color="#B22222">(*Modular univariate polynomial extended greatest common divisor.  p
+is a prime beta-integer.  A and B are univariate polynomials over Z sub
+p. C=gcd(A,B).  A*U+B*V=C, and, if deg(A/C) gt 0, then deg(V) lt
+deg(A/C), else deg(V)=0.  Similarly, if deg(B/C) gt 0, then deg(U) lt
+deg(B/C), else deg(U)=0.  If A=0, U=0.  If B=0, V=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MUPGCD</font></strong>(PL,A,B: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial greatest common divisor.  A and B are
+univariate polynomials over Z sub p, p a prime beta-integer.
+C=gcd(A,B).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MUPHEG</font></strong>(PL,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,V: LIST); 
+<font color="#B22222">(*Modular univariate polynomial half-extended greatest common divisor.
+p is a prime beta-integer.  A and B are univariate polynomials over
+Z sub p.  C=gcd(A,B).  There exists a polynomial U such that
+A*U+B*V=C, and, if deg(A/C) gt 0, then deg(V) lt deg(A/C).  If
+deg(A/C)=0, deg(V) is also 0.  If B=0, V=0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MUPRES</font></strong>(PL,A,B: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial resultant.  p is a prime beta-digit.
+A and B are univariate polynomials over Z sub p of positive degrees.
+C is the resultant of A and B, an element of Z sub p.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MUPSFF</font></strong>(PL,A: LIST): LIST; 
+<font color="#B22222">(*Modular univariate polynomial squarefree factorization.  p is a
+prime beta-integer.  A is a monic univariate polynomial over Z sub p
+of positive degree.  L is a list ((i(1),A(1)), ...,(i(r),A(r))) with
+i(1) lt i(2) lt  ... lt i(r), A(j) a monic squarefree factor of a
+of positive degree for 1 le j le r and A the product of A(j)**i(j)
+for j=1, ...,r.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RPBLGS</font></strong>(RL,A: LIST;  <strong><font color="#228B22">VAR</font></strong> AL,BL,SL: LIST); 
+<font color="#B22222">(*Rational polynomial base coefficients least common multiple, greatest common divisor, and sign.  
+A is a rational polynomial in r variables, r ge 0.  If A=0 then 
+a=b=s=0.  Otherwise, a is the lcm of the denominators of the 
+base coefficients of A, b is the gcd of the numerators of 
+the base coefficients of A, and s is the sign of the leading base 
+coefficient of A.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACPGCD.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

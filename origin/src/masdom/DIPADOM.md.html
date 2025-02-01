@@ -1,0 +1,206 @@
+
+<html>
+<head>
+<title>./masdom/DIPADOM.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-10-21T14:49:35+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPADOM.md,v 1.7 1994/10/21 12:33:46 pfeil Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPADOM.md,v $
+ * Revision 1.7  1994/10/21  12:33:46  pfeil
+ * added procedure DIPLIR.
+ *
+ * Revision 1.6  1994/09/01  13:21:41  pfeil
+ * modified comment
+ *
+ * Revision 1.5  1994/06/16  12:53:59  pfeil
+ * changed number of parameters in procedure DIPSFF.
+ * changed parameter type of procedures SetPFactFunc, SetPSqfrFunc.
+ *
+ * Revision 1.4  1994/06/10  12:06:57  pfeil
+ * Minor changes.
+ *
+ * Revision 1.3  1994/06/09  14:48:22  pfeil
+ * Added DIPFAC, DIPIRL, DIPNF, DIPRLF, DIPS, DIPSFF for DIPDCGB.
+ *
+ * Revision 1.2  1992/02/12  17:31:20  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:09:00  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+  
+DEFINITION MODULE DIPADOM;
+
+<font color="#B22222">(* DIP Arbitrary Domain Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPADOM.md,v 1.7 1994/10/21 12:33:46 pfeil Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial exponentiation.  D is a non zero
+distributive polynomial. n is a non-negative beta-integer.
+B=A**n. If n=0 then a polynomial in zero variables is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIFIP</font></strong>(A,D: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial from distributive integral polynomial.
+A is a distributive integral polynomial with inverse
+lexicographical term ordering. D is the domain
+descriptor for the distributive polynomial B. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILRD</font></strong>(V,D: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial list read. V is a variable list. 
+A list of distributive polynomials
+in r variables, where r=length(V), r ge 0, is read from
+the input stream. Any blanks preceding a are skipped. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILSUM</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial list sum. D is a circular
+list of distributive polynomials. B is the sum of all
+polynomials in A. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILWR</font></strong>(A,V: LIST); 
+<font color="#B22222">(*Distributive polynomial list write. V is a
+variable list. A list of distributive polynomials
+in r variables, where r=length(V), r ge 0, is written to
+the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPBCP</font></strong>(A,BL: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial base coefficient product. A is a
+distributive polynomial, b is a base coefficient. C=A*b.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDIF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial difference. A and B are
+distributive polynomials. C=A-B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPFAC</font></strong>(A,VOO: LIST): LIST;
+<font color="#B22222">(* distributive polynomial factorization.
+   A is a polynomial in distributive representation,
+   VOO is a flag, use variable order optimization iff VOO = 1,
+   returns a list ((e1,f1),...,(ek,fk)), ei positive integers,
+   fi irreducible polynomials in distributive representation,
+   where A = u * f1**e1 * ... * fk**ek and u unit.
+   The ordering of the factors is non-deterministic !! *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPIRL</font></strong>(<strong><font color="#228B22">VAR</font></strong> P: LIST; <strong><font color="#228B22">VAR</font></strong> CS: BOOLEAN);
+<font color="#B22222">(* distributive polynomials interreduced list of polynomials.
+   P is a list of polynomials in distributive representation
+   over an arbitrary domain,
+   CS is a flag, CS = TRUE iff P is changed,
+   returns a interreduced list of polynomials R=(p1,...,pk),
+   R is the result of reducing each pi modulo R-(pi)
+   until no further reductions are possible. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLIR</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* distributive polynomial list interreduce.
+   P is a list of polynomials in distributive representation
+   over an arbitrary domain,
+   returns a interreduced list of polynomials R=(p1,...,pk),
+   R is the result of reducing each pi modulo R-(pi)
+   until no further reductions are possible. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPRLF</font></strong>(P,p: LIST): LIST;
+<font color="#B22222">(* distributive polynomials reduce list of polynomials with factor.
+   P is a list of polynomials in distributive representation
+   over an arbitrary domain, p is a polynomial of same kind,
+   returns a list of reduced polynomials R=(p1,...,pk),
+   R is the result of reducing each polynomial of P  modulo (p) *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMOC</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial monic. A and A are
+distributive polynomials, C=A/lbc(A) if A ne 0
+C=0 if A eq 0. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNEG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial negative. B= -A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNF</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* distributive polynomial normalform.
+   A is a list of polynomials in distributive representation,
+   B is a polynomial as above,
+   returns a polynomial h such that B is reducible to h
+   modulo A and h is in normalform with respect to A *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPQR</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> Q,R: LIST); 
+<font color="#B22222">(*Distributive polynomial quotient and remainder.
+A and B are distributive polynomials with B ne 0.
+Q and R are unique distributive rational polynomials such
+that either B divides A, so Q=A/B and R=0  or B does not
+divide A, so A=B*Q+R with deg(R) lt deg(B). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPROD</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial product. A and B are
+distributive polynomials. C=A*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPS</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* distributive polynomial S-polynomial.
+   A and B are polynomials in distributive representation,
+   returns the S-polynomial of A and B *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPSFF</font></strong>(A,VOO: LIST): LIST;
+<font color="#B22222">(* distributive polynomial squarefree factorization.
+   A is a polynomial in distributive representation,
+   VOO is a flag, use variable order optimization iff VOO = 1,
+   returns a list ((e1,p1),...,(ek,pk)), ei positive integers,
+   pi squarefree polynomials in distributive representation,
+   where A = u * p1**e1 * ... * pk**ek and u unit. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIPSUM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial sum. A and B are
+distributive polynomials. C=A+B. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIREAD</font></strong>(V,D: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial read. V is a variable list.
+a distributive polynomial A in r variables, where
+r=length(V), r ge 0, is read from the input stream. any
+blanks preceding A are skipped. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIWRIT</font></strong>(A,V: LIST); 
+<font color="#B22222">(*Distributive polynomial write. A is a distributive
+polynomial in r variables, r ge 0. V is a variable list
+for A. A is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPADOM.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

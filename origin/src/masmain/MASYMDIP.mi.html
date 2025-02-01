@@ -1,0 +1,441 @@
+
+<html>
+<head>
+<title>./masmain/MASYMDIP.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-04T22:14:42+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASYMDIP.mi,v 1.7 1995/11/04 22:14:42 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASYMDIP.mi,v $
+ * Revision 1.7  1995/11/04 22:14:42  pesch
+ * New procedures EVOWRITE and EvordWrite.
+ *
+ * Revision 1.6  1993/05/11  10:56:36  kredel
+ * Added modules MASUGB DIPIDGB DIPDDGB
+ *
+ * Revision 1.5  1993/03/23  12:13:51  kredel
+ * Improved linear form processing
+ *
+ * Revision 1.4  1992/10/16  14:23:30  kredel
+ * Change in DIPVDEF
+ *
+ * Revision 1.3  1992/10/15  16:30:44  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:57  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:23  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASYMDIP;
+ 
+<font color="#B22222">(* MAS Symbol to DIP Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR	IMPORT	ADV, BETA, COMP, FIRST, INV, LENGTH, LIST, LIST1,
+			RED, SIL;
+
+FROM MASERR	IMPORT	ERROR, severe;
+
+
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREADB, LISTS, MASORD, SWRITE;
+
+FROM MASBIOSU	IMPORT	CLTIS;
+
+FROM SACLIST	IMPORT	CCONC, CINV, CLOUT, COMP2, LIST2, LIST3;
+
+FROM SACSET	IMPORT	USDIFF, USUN;
+
+FROM MASSYM2	IMPORT	ENTER, EXPLOD, GET, PUT, SYMBOL;
+
+FROM MASSYM	IMPORT	ELEMP, UWRITE;
+
+FROM MASLISPU	IMPORT	Compiledf0, Compiledf1, Compiledf2, Compiledp0,
+			Compiledp1, Compiledp2, Declare, EXPR, EXTYP;
+
+FROM MASLISP	IMPORT	ADD, DF, ENV, MUL, POW, QUOT, QUOTE, STRNG, SUB;
+
+FROM MASSPEC	IMPORT	EVALUATE;
+
+FROM SACRN	IMPORT	RNCOMP, RNDEN, RNINT, RNNEG, RNNUM, RNRED;
+
+FROM MASAPF	IMPORT	RNDRD;
+
+FROM SACPOL	IMPORT	PFDP, VLREAD, VLSRCH, VLWRIT;
+
+FROM DIPC	IMPORT	DILFPL, DIPFMO, DIPFP, DIPMAD, DIPMPV, EVORD,
+			EVOWRITE, IGRLEX, INVLEX, PFDIP, PLFDIL, VALIS;
+
+FROM DIPI	IMPORT	DIIFRP, DIILFR, DIILFRCD, DIILRD, DIILWR;
+
+FROM DIPRN	IMPORT	DIRFIP, DIRLRD, DIRLWR, DIRPDF, DIRPEX, DIRPNG,
+			DIRPPR, DIRPSM;
+
+FROM DIPTOO	IMPORT	LFCHECK;
+
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASYMDIP.mi,v 1.7 1995/11/04 22:14:42 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1995 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+<font color="#B22222">(* --- bios - dip interface --- *)</font>
+
+<strong><font color="#4169E1">PROCEDURE dirlwr</font></strong>(a, b, c: LIST): LIST;
+<font color="#B22222">(*write polynomial list. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> DIRLWR(a,b,c); 
+      RETURN(c);  
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> dirlwr;
+
+
+<strong><font color="#4169E1">PROCEDURE pdread</font></strong>(): LIST;
+<font color="#B22222">(*read polynomial descriptor, i.e. variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, T, V, E, Q, r, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;
+<font color="#B22222">(*1*)</font> <font color="#4169E1">REPEAT</font> V:=VLREAD(); BLINES(1);
+             <font color="#4169E1">UNTIL</font> V &lt;&gt; SIL;
+      VALIS:=V;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font> E:=CREADB(); BLINES(1);
+             <font color="#4169E1">UNTIL</font>    (E = MASORD("(")) 
+                   <font color="#4169E1">OR</font> (E = MASORD("L")) 
+                   <font color="#4169E1">OR</font> (E = MASORD("G"));
+      <font color="#4169E1">IF</font> E = MASORD("L") <font color="#4169E1">THEN</font> EVORD:=INVLEX <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> E = MASORD("G") <font color="#4169E1">THEN</font> EVORD:=IGRLEX <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> E = MASORD("(") <font color="#4169E1">THEN</font> BKSP; T:=LIST1(LIST1(MASORD("T"))); 
+         X:=EVORD; EVORD:=INVLEX;
+         P:=DIRLRD(T); 
+         P:=DIILFRCD(P); <font color="#B22222">(* jetzt richtig, ist auf hauptnenner *)</font>
+         PLFDIL(P, r,Q); 
+         EVORD:=X;
+         <font color="#4169E1">IF</font> LENGTH(Q) &lt;&gt; LENGTH(V) <font color="#4169E1">THEN</font> 
+            SWRITE("Wrong number <font color="#4169E1">of</font> polynomials."); BLINES(0);
+            <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> LFCHECK(Q,1) <font color="#4169E1">THEN</font> EVORD:=INV(Q) <strong><font color="#4169E1">END</font></strong>
+                 <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+       RETURN(COMP(V,LIST1(EVORD)))
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> pdread;
+
+
+<strong><font color="#4169E1">PROCEDURE preadd</font></strong>(D: LIST): LIST;
+<font color="#B22222">(*read polynomial list, for given variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;
+<font color="#B22222">(*1*)</font> V:=FIRST(D);
+<font color="#B22222">(*3*)</font> <font color="#4169E1">REPEAT</font> P:=DIRLRD(V); 
+             <font color="#4169E1">UNTIL</font> P &lt;&gt; SIL;
+      RETURN(P)
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> preadd;
+
+
+<strong><font color="#4169E1">PROCEDURE pread</font></strong>(): LIST;
+<font color="#B22222">(*read polynomial list, including variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, V, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;
+<font color="#B22222">(*1*)</font> X:=pdread(); V:=FIRST(X);
+<font color="#B22222">(*3*)</font> <font color="#4169E1">REPEAT</font> SWRITE("Enter polynomial list: "); P:=DIRLRD(V); BLINES(0);
+             <font color="#4169E1">UNTIL</font> P &lt;&gt; SIL;
+      RETURN(P)
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> pread;
+
+
+<strong><font color="#4169E1">PROCEDURE preadi</font></strong>(): LIST;
+<font color="#B22222">(*read polynomial list, including variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   P, V, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> P:=SIL;
+<font color="#B22222">(*1*)</font> X:=pdread(); V:=FIRST(X);
+<font color="#B22222">(*3*)</font> <font color="#4169E1">REPEAT</font> SWRITE("Enter polynomial list: "); P:=DIILRD(V); BLINES(0);
+             <font color="#4169E1">UNTIL</font> P &lt;&gt; SIL;
+      RETURN(P)
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> preadi;
+
+
+<strong><font color="#4169E1">PROCEDURE pdwrite</font></strong>(D: LIST);
+<font color="#B22222">(*write polynomial descriptor, i.e. variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   V, E, L, T, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> ADV(D, V, E); E:=FIRST(E);
+<font color="#B22222">(*1*)</font> SWRITE("Polynomial in the variables: "); VLWRIT(V); BLINES(1);
+<font color="#B22222">(*2*)</font> SWRITE("Term ordering: "); 
+      EVOWRITE(E);
+      BLINES(1);
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> pdwrite;
+
+
+<strong><font color="#4169E1">PROCEDURE pwrite</font></strong>(P: LIST);
+<font color="#B22222">(*write polynomial list, including variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, L, T, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> D:=COMP(VALIS,LIST1(EVORD)); pdwrite(D);
+<font color="#B22222">(*3*)</font> SWRITE("Polynomial list: "); DIRLWR(P,VALIS,-1); BLINES(1);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> pwrite;
+
+
+<strong><font color="#4169E1">PROCEDURE pwritei</font></strong>(P: LIST);
+<font color="#B22222">(*write polynomial list, including variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, L, T, X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> D:=COMP(VALIS,LIST1(EVORD)); pdwrite(D);
+<font color="#B22222">(*3*)</font> SWRITE("Polynomial list: "); DIILWR(P,VALIS); BLINES(1);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> pwritei;
+
+
+<strong><font color="#4169E1">PROCEDURE pwrited</font></strong>(D, P: LIST);
+<font color="#B22222">(*write polynomial list, not including variable list and term order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> V:=FIRST(D);
+<font color="#B22222">(*3*)</font> DIRLWR(P,V,-1); BLINES(0);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> pwrited;
+
+
+<font color="#B22222">(* --- sym - dip interface --- *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIPVDEF</font></strong>(V: LIST): LIST;
+<font color="#B22222">(*DIP define distributive polynomial variable list. 
+V is a variable list. The new variable list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   VP, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> VP:=SIL;
+      <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V, v, V);
+            <font color="#4169E1">IF</font> v &lt;&gt; SIL <font color="#4169E1">THEN</font> <font color="#B22222">(*remove STRING tag *)</font> 
+               <font color="#4169E1">IF</font> FIRST(v) &gt;= SIL <font color="#4169E1">THEN</font> v:=RED(v) <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>;
+            VP:=COMP(v,VP); <strong><font color="#4169E1">END</font></strong>;  
+      VP:=INV(VP); 
+      VALIS:=VP; RETURN(VP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIPVDEF;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTODEF</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*DIP define distributive polynomial term order. 
+V is a term order indicator. The old term order indicator 
+is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   TP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> TP:=EVORD; EVORD:=T;
+      RETURN(TP);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIPTODEF;
+
+
+<strong><font color="#4169E1">PROCEDURE SYM2DIP</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*Symbol term list to distributive rational polynomial list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, DP, TP, VP, V, v, n: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> VP:=TVARS(T); V:=SIL;
+      <font color="#4169E1">WHILE</font> VP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(VP,v,VP);
+            n:=EXPLOD(v);
+            V:=COMP(n,V); 
+            <strong><font color="#4169E1">END</font></strong>;
+      V:=INV(V); 
+      V:=USDIFF(V,VALIS);
+      <font color="#4169E1">IF</font> V &lt;&gt; SIL <font color="#4169E1">THEN</font> VP:=V;
+         BLINES(0); SWRITE("Variable(s) added <font color="#4169E1">to</font> VALIS: "); 
+         <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V,v,V); CLOUT(v);
+               <font color="#4169E1">IF</font> V &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", ") <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+         BLINES(0); VALIS:=CCONC(VALIS,VP);
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> D:=SIL;
+      <font color="#4169E1">WHILE</font> T &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(T,TP,T);
+            DP:=DIRPFT(TP,VALIS); D:=COMP(DP,D); 
+            <strong><font color="#4169E1">END</font></strong>;
+      D:=INV(D); RETURN(D);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SYM2DIP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIP2SYM</font></strong>(D: LIST): LIST;
+<font color="#B22222">(*Distributive rational polynomial list to symbol term list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DP, TP, T, V, VP, v, n: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> V:=VALIS; VP:=SIL;
+      <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V,n,V);
+            v:=ENTER(n);
+            VP:=COMP(v,VP); 
+            <strong><font color="#4169E1">END</font></strong>;
+      VP:=INV(VP);
+<font color="#B22222">(*2*)</font> T:=SIL;
+      <font color="#4169E1">WHILE</font> D &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(D,DP,D);
+            TP:=TFDIRP(DP,VP); T:=COMP(TP,T); 
+            <strong><font color="#4169E1">END</font></strong>;
+      T:=INV(T);  
+      RETURN(T);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIP2SYM;
+
+
+<strong><font color="#4169E1">PROCEDURE TVARS</font></strong>(T: LIST): LIST;
+<font color="#B22222">(*Term variables. T is a term. The list of variables 
+occuring in T is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   V, v, t, TP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*recursion base. *)</font> V:=SIL; 
+      <font color="#4169E1">IF</font> T &lt;= BETA <font color="#4169E1">THEN</font> RETURN(V) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> SYMBOL(T) <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> GET(T,EXTYP) &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(V) <strong><font color="#4169E1">END</font></strong>; 
+         V:=LIST1(T); RETURN(V) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*list. *)</font> TP:=T;
+      <font color="#4169E1">WHILE</font> TP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(TP,t,TP);
+            v:=TVARS(t); 
+            <font color="#4169E1">IF</font> v &lt;&gt; SIL <font color="#4169E1">THEN</font> V:=USUN(v,V) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(V);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> TVARS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPFT</font></strong>(T, V: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial from term. T is a term,
+V is a variable list. A distributive rational polynomial 
+A in r variables, where r=length(V), r ge 0, is formed 
+from term T. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, A1, AP, TP, t, tp, v, IL, JL, RL, ES: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*r=0 or a=0.*)</font> A:=0;  
+      <font color="#4169E1">IF</font> T = 0 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialise.*)</font>  
+      RL:=LENGTH(V); ES:=SIL; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> ES:=COMP(0,ES); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*base.*)</font>  
+      <font color="#4169E1">IF</font> ELEMP(T) <font color="#4169E1">THEN</font> A:=DIPFMO(RNINT(T),ES); RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+      A1:=DIPFMO(RNINT(1),ES); 
+      <font color="#4169E1">IF</font> SYMBOL(T) <font color="#4169E1">THEN</font> v:=EXPLOD(T); JL:=VLSRCH(v,V);
+         <font color="#4169E1">IF</font> JL = 0 <font color="#4169E1">THEN</font> SWRITE("variable: "); CLOUT(v); BLINES(0);
+            ERROR(severe,"DIRPFT variable <font color="#4169E1">not</font> defined.") <strong><font color="#4169E1">END</font></strong>;
+         A:=DIPMPV(A1,JL,1); RETURN(A) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*functional term. determine next action. *)</font> ADV(T,t,TP); 
+      <font color="#4169E1">IF</font>    t = ADD <font color="#4169E1">THEN</font> A:=0;
+                    <font color="#4169E1">WHILE</font> TP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(TP,t,TP); 
+                          AP:=DIRPFT(t,V); A:=DIRPSM(A,AP);
+                          <strong><font color="#4169E1">END</font></strong>;
+      ELSIF t = SUB <font color="#4169E1">THEN</font> ADV(TP,t,TP); AP:=DIRPFT(t,V);
+                    <font color="#4169E1">IF</font> TP = SIL 
+                       <font color="#4169E1">THEN</font> A:=DIRPNG(AP);
+                       <font color="#4169E1">ELSE</font> A:=AP;
+                       <font color="#4169E1">WHILE</font> TP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(TP,t,TP); 
+                             AP:=DIRPFT(t,V); A:=DIRPDF(A,AP);
+                            <strong><font color="#4169E1">END</font></strong>;
+                       <strong><font color="#4169E1">END</font></strong>;
+      ELSIF t = MUL <font color="#4169E1">THEN</font> A:=A1;
+                    <font color="#4169E1">WHILE</font> TP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(TP,t,TP); 
+                          AP:=DIRPFT(t,V); A:=DIRPPR(A,AP);
+                          <strong><font color="#4169E1">END</font></strong>;
+      ELSIF t = QUOT <font color="#4169E1">THEN</font> ADV(TP,t,TP); tp:=FIRST(TP);
+                          AP:=RNRED(t,tp); A:=DIPFMO(AP,ES);
+      ELSIF t = POW <font color="#4169E1">THEN</font> ADV(TP,t,TP); A:=DIRPFT(t,V);
+                    t:=FIRST(TP); A:=DIRPEX(A,t);
+      ELSIF t = STRNG <font color="#4169E1">THEN</font> TP:=CCONC(TP,LISTS(" ")); 
+                      CLTIS(TP); AP:=RNDRD();
+                      A:=DIPFMO(AP,ES);
+       <font color="#4169E1">ELSE</font> BLINES(0); SWRITE("name="); UWRITE(t); 
+            ERROR(severe,"DIRPFT, no allowed function.");
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIRPFT; 
+
+
+<strong><font color="#4169E1">PROCEDURE TFDIRP</font></strong>(A, V: LIST): LIST; 
+<font color="#B22222">(*Term from distributive rational polynomial. A is a distributive 
+rational polynomial in r variables, where r=length(V), r ge 0,
+V is a symbol list. A term T is formed from A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, AP, TP, t, tp, VP, v, a, E, EP, e, s: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> AP:=A; T:=SIL;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP,a,E,AP); t:=SIL;
+             s:=RNCOMP(a,0);
+             <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> a:=RNNEG(a) <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> RNDEN(a) &lt;&gt; 1 <font color="#4169E1">THEN</font> t:=LIST3(QUOT,RNNUM(a),RNDEN(a))
+                              <font color="#4169E1">ELSE</font> a:=RNNUM(a);
+                                   <font color="#4169E1">IF</font> (a &lt;&gt; 1) <font color="#4169E1">OR</font> (s &lt; 0) <font color="#4169E1">THEN</font> t:=a <strong><font color="#4169E1">END</font></strong>; 
+                                   <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> s &lt; 0 <font color="#4169E1">THEN</font> t:=LIST2(SUB,t) <strong><font color="#4169E1">END</font></strong>;
+             EP:=CINV(E); VP:=V;
+             <font color="#4169E1">WHILE</font> EP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(EP,e,EP); ADV(VP,v,VP);
+                   <font color="#4169E1">IF</font> e &gt; 0 <font color="#4169E1">THEN</font>
+                      <font color="#4169E1">IF</font> e &gt; 1 <font color="#4169E1">THEN</font> tp:=LIST3(POW,v,e)
+                               <font color="#4169E1">ELSE</font> tp:=v <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">IF</font> t = SIL <font color="#4169E1">THEN</font> t:=tp
+                                 <font color="#4169E1">ELSE</font> t:=LIST3(MUL,t,tp) <strong><font color="#4169E1">END</font></strong>;
+                      <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> t = SIL <font color="#4169E1">THEN</font> t:=1 <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> T = SIL <font color="#4169E1">THEN</font> T:=t
+                        <font color="#4169E1">ELSE</font> T:=LIST3(ADD,T,t) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(T); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> TFDIRP; 
+
+
+<strong><font color="#4169E1">PROCEDURE TERM</font></strong>(P: LIST): LIST;
+<font color="#B22222">(*Return quoted term from DIP2SYM. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> X:=DIP2SYM(P);
+      X:=LIST2(QUOTE,X); RETURN(X);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> TERM;
+
+
+<strong><font color="#4169E1">PROCEDURE mkpoly</font></strong>;
+<font color="#B22222">(*Make POLY F-expression. 
+(DF POLY (X) (SYM2DIP X)). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, f, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> Declare(X,"X"); Declare(f,"SYM2DIP");
+      Z:=LIST1(X); Y:=COMP(f,Z); 
+      Y:=LIST2(Z,Y);
+<font color="#B22222">(*2*)</font> Declare(f,"POLY");
+      Y:=COMP2(DF,f,Y); 
+<font color="#B22222">(*3*)</font> Y:=EVALUATE(Y,ENV);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> mkpoly;
+
+
+<strong><font color="#4169E1">PROCEDURE InitExternalsI</font></strong>;
+<font color="#B22222">(*Initialize external compiled interface procedures. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*from symbol interface. *)</font>
+      Compiledf1(TVARS,"TVARS");
+      Compiledf1(DIPVDEF,"DIPVDEF");
+      Compiledf1(DIPTODEF,"DIPTODEF");
+      Compiledf2(DIRPFT,"DIRPFT");
+      Compiledf2(TFDIRP,"TFDIRP");
+      Compiledf1(SYM2DIP,"SYM2DIP");
+      Compiledf1(DIP2SYM,"DIP2SYM");
+      Compiledf1(TERM,"TERM");
+      mkpoly;
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*from bios interface. *)</font>
+      Compiledf0(pread,"PREAD");
+      Compiledp1(pwrite,"PWRITE");
+      Compiledf0(preadi,"PREADI");
+      Compiledp1(pwritei,"PWRITEI");
+      Compiledf0(pdread,"PDREAD");
+      Compiledp1(pdwrite,"PDWRITE");
+      Compiledf1(preadd,"PREADD");
+      Compiledp2(pwrited,"PWRITED");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitExternalsI;
+
+
+<strong><font color="#4169E1">END</font></strong> MASYMDIP.
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

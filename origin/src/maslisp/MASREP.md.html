@@ -1,0 +1,90 @@
+
+<html>
+<head>
+<title>./maslisp/MASREP.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:32:28+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASREP.md,v 1.2 1992/02/12 17:32:28 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASREP.md,v $
+ * Revision 1.2  1992/02/12  17:32:28  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:04  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASREP;
+
+<font color="#B22222">(* MAS Representation Definition Module. *)</font>
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASREP.md,v 1.2 1992/02/12 17:32:28 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE NewRep</font></strong>(): LIST;
+<font color="#B22222">(*New representation. A new representation is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetRep</font></strong>(n,e,r: LIST);
+<font color="#B22222">(*Set representation. r is a representation. n is a unique 
+label, e is an expression. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GetRep</font></strong>(n,r: LIST): LIST;
+<font color="#B22222">(*Get representation. r is a representation. n is a unique 
+label, An expression e stored under n is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CopyRep</font></strong>(r: LIST): LIST;
+<font color="#B22222">(*Copy representation. r is a representation. A copy of r is 
+returned. Step counters are reset. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE StepRep</font></strong>(r: LIST): LIST;
+<font color="#B22222">(*Step through representation. r is a representation. 
+The next expression e and its label n are returned as pair (n,e). 
+If all pairs (n,e) of representation r have been processed, 
+then NIL is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ForEachinRep</font></strong>(r, f, E: LIST): LIST;
+<font color="#B22222">(*For each pair (n,e) in r apply function f. r is a representation. 
+(n, e) is a pair in r, where e is an expression and n is its label.
+f is applied to (n, e) such that p = f(n,e) with p = (n', e') or p = NIL. 
+If p &lt;&gt; NIL, then the pair (n', e') is added to the returned 
+representation r' = { n' e' : f(n,e) &lt;&gt; NIL, n e in r }. E is a 
+LISP environment, if E = NIL, then the top level environment is used. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE FullRep</font></strong>(r: LIST): LIST;
+<font color="#B22222">(*Full representation. Test for non-empty representation.
+r is a representation. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ForEachinList</font></strong>(r, f, E: LIST): LIST;
+<font color="#B22222">(*For each element e in r apply function f. r is a list. e is an 
+element in r. f is applied to e such that e' = f(e). 
+E is a LISP environment, if E = NIL, then the top level environment 
+is used. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> MASREP.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,132 @@
+
+<html>
+<head>
+<title>./masring/DIPRF.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:22+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPRF.md,v 1.2 1992/02/12 17:34:21 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPRF.md,v $
+ * Revision 1.2  1992/02/12  17:34:21  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:39  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPRF;
+
+<font color="#B22222">(* DIP Rational Function Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPRF.md,v 1.2 1992/02/12 17:34:21 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IFWRIT</font></strong>(R,V: LIST); 
+<font color="#B22222">(*Integral function write. R is an integral function.  
+R is the variable list. R is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFDEN</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function denominator.  R is a rational function.
+BL is the denominator of R, a positive integral polynomial
+in RL variables. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFDIF</font></strong>(R,S: LIST): LIST; 
+<font color="#B22222">(*Rational function difference.  R and S are rational functions.
+T=R-S. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Rational function exponentiation.  A is a rational function,
+n is a non-negative beta-integer.  B=A**n. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFFIP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Rational function from integral polynomial. A is an integral
+polynomial in RL variables. R is the rational function A/1. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFINV</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function inverse. R is a non-zero rational
+function. S=1/R. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFNEG</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function negative. R is a rational function. S=-R. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFNOV</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function number of variables. R is a rational
+function. RL is the number of variables of the numerator
+and denumerator of R. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFNUM</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function numerator.  R is a rational function.
+AL is the numerator of R, an integral polynomial. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFONE</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function one.  R is a rational function.  s=1 if R=1,
+s=0 else. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFPROD</font></strong>(R,S: LIST): LIST; 
+<font color="#B22222">(*Rational function product.  R and S are rational functions.
+T=R*S. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFQ</font></strong>(R,S: LIST): LIST; 
+<font color="#B22222">(*Rational function quotient. R and S are rational functions,
+S non-zero. T=R/S. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFREAD</font></strong>(V: LIST): LIST; 
+<font color="#B22222">(*Rational function read. The rational function R is read
+from the input stream. V is the variable list. any preceding
+blanks are skipped. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFRED</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Rational function reduction to lowest terms.  A and B are
+integral polynomials in RL variables, B non-zero. R is the
+rational function A/B in canonical form. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFSIGN</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational function sign.  R is a rational function.  s=sign(R). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFSUM</font></strong>(R,S: LIST): LIST; 
+<font color="#B22222">(*Rational function sum.  R and S are rational functions.  T=R+S. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RFWRIT</font></strong>(R,V: LIST); 
+<font color="#B22222">(*Rational function write. R is a rational function.  V is the 
+variable list. R is written in the output stream. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPRF.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

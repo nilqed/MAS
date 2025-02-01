@@ -1,0 +1,89 @@
+
+<html>
+<head>
+<title>./maskern/SYSINFO.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T20:32:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYSINFO.md,v 1.1 1994/11/28 20:32:52 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: SYSINFO.md,v $
+ * Revision 1.1  1994/11/28  20:32:52  dolzmann
+ * New modules SYSINFO.md, SYSINFO.mi, LISTTOOLS.md, and LISTTOOLS.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SYSINFO;
+<font color="#B22222">(* System Informations Definition Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*		    S Y S T E M   I N F O R M A T I O N	S	      	      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: Modula II                                                         *
+* System:   This program is written for the computer algebra system MAS by    *
+*           Heinz Kredel.                                                     *
+* Remark:   Only mas kernel algorithms are used.                              *
+*           The computation of the number of used cells is time expensive.    *
+*           So the number of used cells is not reported normally.             *
+* Abstract: This module implements procedures for system resource statistics. *
+*           It uses the type SYSINFO to store the information over the        *
+*           resources. It is possible to record statistical dates on one      *
+*           time and print theses data later.                                 *
+******************************************************************************)</font>
+
+FROM MASELEM	IMPORT	GAMMAINT;
+FROM MASSTOR	IMPORT	LIST;
+
+<strong><font color="#228B22">TYPE</font></strong> SYSINFO = 
+	RECORD
+		GarbageCollections:	GAMMAINT; 
+		ReclaimedCells:		GAMMAINT; 
+		Time: 			GAMMAINT;	
+		UsedCells:		GAMMAINT;
+		GarbageCollectionTime:	GAMMAINT;
+	<strong><font color="#4169E1">END</font></strong>; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SYSINFO.md,v 1.1 1994/11/28 20:32:52 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#228B22">VAR</font></strong> Cells: BOOLEAN; <font color="#B22222">(* If true, report cells statistics. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SysInfoStart</font></strong>(<strong><font color="#228B22">VAR</font></strong> s:SYSINFO);
+<font color="#B22222">(* system information start. The variable s needs no initialization.
+All data in s are lost.
+Informations over the usage of system resources are stored. 
+Use this procedure to start the recording of statistical data over system 
+resource usage. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SysInfoStop</font></strong>(<strong><font color="#228B22">VAR</font></strong> s:SYSINFO);
+<font color="#B22222">(* system information stop. The variable s contains informations over system
+resources. The usage of this resources between the time of the initialization 
+of s and now are stored in s.
+Use this procedure to stop the recording of statistical data over system 
+resource usage. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SysInfoSum</font></strong>(a,b:SYSINFO; <strong><font color="#228B22">VAR</font></strong> s:SYSINFO);
+<font color="#B22222">(* system information sum. The variable s needs no initialization.
+The sum of all data in a and b are stored in s. 
+Use this procedure to join statistical data of two registration period. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SysInfoWrite</font></strong>(s: SYSINFO);
+<font color="#B22222">(* system information write. The variable s contains informations over system
+resources. All informations in s are written out. 
+Use this procedure to write out the statistical data of a registration *)</font>
+
+<strong><font color="#4169E1">END</font></strong> SYSINFO.
+</pre>
+</body>
+
+</html>

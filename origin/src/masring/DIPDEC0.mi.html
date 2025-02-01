@@ -1,0 +1,504 @@
+
+<html>
+<head>
+<title>./masring/DIPDEC0.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:41+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPDEC0.mi,v 1.3 1992/10/15 16:29:31 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPDEC0.mi,v $
+ * Revision 1.3  1992/10/15  16:29:31  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:15  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:48  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPDEC0;
+
+<font color="#B22222">(* DIP Ideal Decomposition 0 System Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, BETA, SIL, LENGTH,
+                    LIST1, ADV, FIRST, RED, SFIRST, SRED, COMP, INV;
+
+FROM MASERR IMPORT ERROR, fatal, severe;
+
+FROM MASBIOS IMPORT MASORD, SWRITE, BLINES, SOLINE;
+
+FROM SACLIST IMPORT COMP2, COMP3, COMP4, LIST2, LIST3, LIST4, FIRST3, 
+                    FIRST4, FIRST2, 
+                    SECOND, RED2, RED3, CCONC, CINV, LELT, OWRITE, 
+                    MEMBER, CLOUT, CONC, AWRITE, ADV2, ADV3, ADV4;
+
+FROM SACSET IMPORT USDIFF, USUN;
+
+FROM SACCOMB IMPORT LPERM; 
+
+FROM SACPOL IMPORT VLSRCH, VLWRIT;
+
+FROM SACRN IMPORT RNINT;
+
+FROM DIPC IMPORT DIPMRD, DIPEVL, DIPEXC, DIPLBC, DIPNOV, DIPADM, 
+                 VALIS, DIPUV, EVDOV, EVTDEG,
+                 DIPLDC, DIPFMO, DIPMPV, DIPINV, 
+                 DIPERM, PFDIP, DIPADV, DIPFP;
+
+FROM DIPTOO IMPORT DIPDEV;
+
+FROM DIPI IMPORT DIIFRP;
+
+FROM DIPRN IMPORT DIRFIP, DIRLWR, DIRPWR, DIRPEV, 
+                  DIRPPR, DIRPDF, DIRPRP, DIRPSM;
+
+FROM DIPRNGB IMPORT DIRPGB, DIRGBA;
+
+FROM DIPIDEAL IMPORT DIPLDV, DIRLPI;
+
+FROM DIPZ IMPORT DIRMPG;
+
+FROM DIPDIM IMPORT DIGBZT;
+
+FROM SACUPFAC IMPORT IUPFAC;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPDEC0.mi,v 1.3 1992/10/15 16:29:31 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIGFET</font></strong>(P,IL,JL: LIST): LIST; 
+<font color="#B22222">(*DIP G base successful extension test. P is a Groebner base of 
+an ideal of dimension 0 in inverse lexicographical term ordering. 
+i and j are indexes of variables where an field extension is required. 
+t=1 if the extension was successful t=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, EL, IP, IS1, IS2, J1Y, PL, PP, RL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> PP:=P; J1Y:=FIRST(PP); J1Y:=DIPNOV(J1Y); 
+      RL:=J1Y+1; IS1:=RL-IL; IS2:=RL-JL; TL:=0; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test linearity of the head terms in the variable il. *)</font> 
+      LOOP <font color="#4169E1">IF</font> PP = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           ADV(PP, PL,PP); EL:=DIPEVL(PL); 
+           IP:=EVDOV(EL); 
+           <font color="#4169E1">IF</font> FIRST(IP) = IS1 <font color="#4169E1">THEN</font> DL:=EVTDEG(EL); 
+              <font color="#4169E1">IF</font> DL = 1 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 3;*)</font> <font color="#4169E1">ELSE</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*test linearity of the head terms in the variable jl. *)</font> PP:=P; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); EL:=DIPEVL(PL); 
+            IP:=EVDOV(EL); 
+            <font color="#4169E1">IF</font> FIRST(IP) = IS2 <font color="#4169E1">THEN</font> DL:=EVTDEG(EL); 
+               <font color="#4169E1">IF</font> DL = 1 <font color="#4169E1">THEN</font> TL:=1; <strong><font color="#4169E1">END</font></strong>; 
+               RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> DIGFET; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIGISM</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*DIP G base index search for extension multiple univariats. 
+P is a Groebner base of dimension 0 in inverse lexicographical term 
+ordering. I is a list of indexes of variables where an field extension
+is required or I=() if no field extension is neccessary. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, EL, I, IP, IS, IS1, IS2, J1Y, PL, PP, RL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> PP:=P; IP:=SIL; 
+LOOP 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*search multiple nonlinear univariat polynomials. *)</font> 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); EL:=DIPDEV(PL); 
+           TL:=EVTDEG(EL); IS:=EVDOV(EL); 
+           <font color="#4169E1">IF</font> (LENGTH(IS) = 1) <font color="#4169E1">AND</font> (TL &gt;= 2) <font color="#4169E1">THEN</font>
+              <font color="#4169E1">IF</font> IP = SIL <font color="#4169E1">THEN</font> IP:=IS; 
+                 <font color="#4169E1">ELSE</font> IP:=CONC(IS,IP); EXIT <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*search univariat polynomials with non linear headterms. *)</font> 
+      PP:=P; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); EL:=DIPEVL(PL); 
+            DL:=EVTDEG(EL); 
+            <font color="#4169E1">IF</font> DL &gt;= 2 <font color="#4169E1">THEN</font> EL:=DIPDEV(PL); IP:=EVDOV(EL); 
+               <font color="#4169E1">IF</font> LENGTH(IP) &gt;= 2 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      I:=SIL; RETURN(I);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*adjust index. *)</font> J1Y:=LENGTH(EL); RL:=J1Y+1; IP:=INV(IP); 
+      FIRST2(IP, IS1,IS2); IS1:=RL-IS1; IS2:=RL-IS2; I:=LIST2(IS1,IS2); 
+      RETURN(I);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> DIGISM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIGISR</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*DIP G base index search for extension reductas. P is a Groebner 
+base of an ideal of dimension 0 in inverse lexicographical term 
+ordering. I is a list of indexes of variables where an field 
+extension is required or I=() if no field extension is neccessary. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, I, IP, IS, IS1, IS2, J1Y, PL, PP, QL, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> PP:=P; I:=SIL; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test dependency of variables for each polynomial. *)</font> 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); EL:=DIPEVL(PL); 
+            IP:=EVDOV(EL); 
+            <font color="#4169E1">IF</font> LENGTH(IP) &gt;= 2 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            QL:=DIPMRD(PL); EL:=DIPDEV(QL); IS:=EVDOV(EL); 
+            IP:=USDIFF(IS,IP); 
+            <font color="#4169E1">IF</font> LENGTH(IP) &gt;= 2 <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      I:=SIL; RETURN(I); 
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*adjust index. *)</font> J1Y:=LENGTH(EL); RL:=J1Y+1; IP:=INV(IP); 
+      FIRST2(IP, IS1,IS2); IS1:=RL-IS1; IS2:=RL-IS2; I:=LIST2(IS1,IS2); 
+      RETURN(I);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIGISR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINTFE</font></strong>(T,IL,JL: LIST): LIST; 
+<font color="#B22222">(*DIP normalized tupel field extension. T is a normalized tupel 
+of a zero set with a final Groebner base of dimension 0.
+i and j determine the variable indexes for the field extension.
+TP is a list of normalized tupels for the field extension for T. 
+Trial values are used for the transcendent parameter. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AI, AIP, AJ, AP, AS, EINS, EL, ELS, FL, ILP, JLP, KL, N, PL, PP,
+     PS, RL, T0, T0P, TB, TL, TP, VL, VL1, VL2, VP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> TP:=SIL; ADV3(T, FL,VP,PP,TB); RL:=LENGTH(VP); 
+      VL1:=LELT(VP,IL); VL2:=LELT(VP,JL); VL:=CCONC(VL1,VL2); 
+      VL:=COMP(MASORD("e"),VL); 
+      SWRITE("Introduction <font color="#4169E1">of</font> the new variable "); CLOUT(VL); 
+      BLINES(2); VP:=COMP(VL,VP); VALIS:=VP; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare Groebner base. *)</font> ELS:=SIL; 
+      <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> RL+1 <font color="#4169E1">DO</font> ELS:=COMP(0,ELS); <strong><font color="#4169E1">END</font></strong>; 
+      ILP:=IL+1; JLP:=JL+1; EINS:=RNINT(1); AP:=DIPFMO(EINS,ELS); 
+      AI:=DIPMPV(AP,ILP,1); AJ:=DIPMPV(AP,JLP,1); AP:=DIPMPV(AP,1,1); 
+      PS:=SIL; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); PL:=DIPINV(PL,0,1); 
+            PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>; 
+      PP:=INV(PS); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute new Groebner base over q(xj + t0 xi). *)</font> T0:=0; 
+      <font color="#4169E1">REPEAT</font> T0:=T0-1; T0P:=RNINT(T0); AIP:=DIRPRP(AI,T0P); 
+             AS:=DIRPSM(AIP,AJ); AS:=DIRPDF(AP,AS); PS:=DIRGBA(AS,PP,1); 
+             TL:=DIGFET(PS,ILP,JLP); 
+             <font color="#4169E1">UNTIL</font> TL = 1; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*create new normalized tupel set. *)</font> N:=DIRGZS(VP,PS,VP); 
+      TP:=DINTZS(N); 
+<font color="#B22222">(*7*)</font> RETURN(TP); <strong><font color="#4169E1">END</font></strong> DINTFE; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINTSR</font></strong>(T: LIST): LIST; 
+<font color="#B22222">(*DIP normalized tupel separation refinement. T is a list of 
+normalized tupels with final Groebner base of dimension 0.
+TP is a list of normalized tupels for some field extensions for T. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  FL, I, IL, JL, PP, TB, TL, TP, TS, VP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> TP:=SIL; TB:=T; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine each tupel. *)</font> 
+      <font color="#4169E1">REPEAT</font> ADV(TB, TL,TB); FIRST3(TL, FL,VP,PP); I:=DIGISR(PP); 
+             <font color="#4169E1">IF</font> I = SIL <font color="#4169E1">THEN</font> TP:=COMP(TL,TP); <font color="#4169E1">ELSE</font> FIRST2(I,
+                IL,JL); TS:=DINTFE(TL,IL,JL); TB:=CONC(TS,TB); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> TB = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> TP:=INV(TP); 
+<font color="#B22222">(*6*)</font> RETURN(TP); <strong><font color="#4169E1">END</font></strong> DINTSR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINTSS</font></strong>(T: LIST): LIST; 
+<font color="#B22222">(*DIP normalized tupel strong separation. T is a list of normalized 
+tupels with final Groebner base of dimension 0. TP is a list of 
+normalized tupels for some field extensions for T. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL1, EL2, FL, FL1, I, IL, J1Y, JL, KL, PL, PL1, PP, PP1, PS, QL,
+     RL, RLP, RLS, TB, TL, TLS, TP, VL1, VP, VP1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> TP:=SIL; TB:=T; 
+      <font color="#4169E1">IF</font> TB = SIL <font color="#4169E1">THEN</font> RETURN(TP); <strong><font color="#4169E1">END</font></strong>; 
+      J1Y:=FIRST(TB); J1Y:=SECOND(J1Y); RL:=LENGTH(J1Y); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refinements of each tupel. *)</font> 
+      <font color="#4169E1">REPEAT</font> ADV(TB, TL,TB); FIRST3(TL, FL,VP,PP); I:=DIGISR(PP); 
+             <font color="#4169E1">IF</font> I = SIL <font color="#4169E1">THEN</font> I:=DIGISM(PP); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> I = SIL <font color="#4169E1">THEN</font> TP:=COMP(TL,TP); <font color="#4169E1">ELSE</font> FIRST2(I,
+                IL,JL); TLS:=DINTFE(TL,IL,JL); TB:=CONC(TLS,TB); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> TB = SIL; 
+      TB:=INV(TP); TP:=SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*extraction of unneccessary variables. *)</font> 
+      <font color="#4169E1">REPEAT</font> ADV(TB, TLS,TB); ADV3(TLS, FL,VP,PP,TLS); RLS:=LENGTH(VP); 
+             J1Y:=RLS-RL; RLP:=J1Y-1; 
+             <font color="#4169E1">IF</font> RLP &gt;= 1 <font color="#4169E1">THEN</font> ADV3(TLS, FL1,VP1,PP1,TLS); ADV(VP,
+                VL1,VP); ADV(PP, PL1,PP); 
+                <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> RLP <font color="#4169E1">DO</font> TLS:=RED3(TLS); PP:=RED(PP); 
+                    VP:=RED(VP); <strong><font color="#4169E1">END</font></strong>; 
+                TLS:=COMP3(FL1,VP1,PP1,TLS); VP:=COMP(VL1,VP); 
+                PP:=COMP(PL1,PP); PS:=SIL; 
+                <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); 
+                      <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> RLP <font color="#4169E1">DO</font> DIPADV(PL,2, EL1,EL2,PL,QL); 
+                          <strong><font color="#4169E1">END</font></strong>; 
+                      PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>; 
+                PP:=INV(PS); <strong><font color="#4169E1">END</font></strong>; 
+             TLS:=COMP3(FL,VP,PP,TLS); TP:=COMP(TLS,TP); 
+             <font color="#4169E1">UNTIL</font> TB = SIL; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish. *)</font> TP:=INV(TP); 
+<font color="#B22222">(*7*)</font> RETURN(TP); <strong><font color="#4169E1">END</font></strong> DINTSS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DINTZS</font></strong>(N: LIST): LIST; 
+<font color="#B22222">(*DIP nomalized tupels from system zero. N is a zero set. 
+T is the list of nomalized tupels of N. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  TUP: ARRAY[1..200] <font color="#4169E1">OF</font> LIST; 
+<strong><font color="#228B22">VAR</font></strong>  FL, J, NP, PL, RL, T, T1, T2, TL, TP, TS, U, V, 
+     VL, VP, VS: LIST; 
+     I: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*empty or initialise. *)</font> NP:=N; 
+      <font color="#4169E1">IF</font> NP = SIL <font color="#4169E1">THEN</font> T:=SIL; RETURN(T); <strong><font color="#4169E1">END</font></strong>; 
+      T:=DITFZS(N); VS:=VALIS; RL:=LENGTH(VS); 
+      <font color="#4169E1">IF</font> RL &gt; 200 <font color="#4169E1">THEN</font> ERROR(fatal,"tup overflow in DINTZS"); 
+         RETURN(T); <strong><font color="#4169E1">END</font></strong>; 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*nomalize tupels. *)</font> TP:=SIL; 
+      <font color="#4169E1">WHILE</font> T &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(T, TL,T); T1:=SIL; TS:=SIL; 
+            <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> INTEGER(RL) <font color="#4169E1">DO</font> TUP[I]:=SIL; <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">WHILE</font> TL &lt;&gt; SIL <font color="#4169E1">DO</font> ADV3(TL, FL,V,PL,TL); 
+                  <font color="#4169E1">CASE</font> INTEGER(FL) <font color="#4169E1">OF</font>
+                       1 : VL:=FIRST(V); I:=INTEGER(VLSRCH(VL,VS)); 
+                           <font color="#4169E1">IF</font> TUP[I] &lt;&gt; SIL <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+                           TS:=COMP(VL,TS); TUP[I]:=LIST3(FL,V,PL); |
+                       4 : T1:=T1; |
+                       5 : <font color="#4169E1">IF</font> TL = SIL <font color="#4169E1">THEN</font> TS:=SIL; <strong><font color="#4169E1">END</font></strong>; |
+                       6 : T1:=COMP3(FL,V,PL,T1); |
+                       3 : <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V, VL,V); 
+                                 VP:=LIST1(VL); I:=INTEGER(VLSRCH(VL,VS)); 
+                                 <font color="#4169E1">IF</font> TUP[I] &lt;&gt; SIL <font color="#4169E1">THEN</font> EXIT <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+                                 TS:=COMP(VL,TS); 
+                                 TUP[I]:=LIST3(FL,VP,PL); <strong><font color="#4169E1">END</font></strong>; 
+                           |
+                       2 : T1:=COMP3(FL,V,PL,T1); U:=DIPLDV(PL,VS); 
+                           TS:=USUN(TS,U); 
+                      <font color="#4169E1">ELSE</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> TS &lt;&gt; SIL <font color="#4169E1">THEN</font> V:=USDIFF(VS,TS); 
+               <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V, VL,V); VP:=LIST1(VL); 
+                     I:=INTEGER(VLSRCH(VL,VS)); 
+                     <font color="#4169E1">IF</font> TUP[I] = SIL <font color="#4169E1">THEN</font> TUP[I]:=LIST3(3,VP,0); 
+                        <strong><font color="#4169E1">END</font></strong>; 
+                     <strong><font color="#4169E1">END</font></strong>; 
+               T2:=SIL; 
+               <font color="#4169E1">FOR</font> I:=INTEGER(RL) <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> T2:=CONC(TUP[I],T2); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> FIRST(T1) = 6 <font color="#4169E1">THEN</font> T1:=CONC(T1,T2); <font color="#4169E1">ELSE</font>
+                  T1:=CONC(T2,T1); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font>  MEMBER(T1,TP) &lt;&gt; 1 <font color="#4169E1">THEN</font> TP:=COMP(T1,TP); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      T:=INV(TP); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> RETURN(T); 
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*error. *)</font> SWRITE("Tup non empty"); SWRITE("I="); OWRITE(LIST(I)); 
+      BLINES(2); SWRITE("TUP[I]="); OWRITE(TUP[I]); BLINES(2); 
+      SWRITE("T1="); OWRITE(T1); BLINES(2); SWRITE("T2="); OWRITE(T2); 
+      BLINES(2); SWRITE("FL="); OWRITE(FL); BLINES(2); SWRITE("V ="); 
+      OWRITE(V); BLINES(2); SWRITE("PL="); OWRITE(PL); BLINES(2); 
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> SWRITE("TUP(J)="); OWRITE(TUP[INTEGER(J)]); 
+          BLINES(2); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(SIL);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> DINTZS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRGZS</font></strong>(VB,PB,W: LIST): LIST; 
+<font color="#B22222">(*Distributive rational Groebner base zero set. VB is a rest of a 
+variable list. PB is a Groebner base. W is the total variable 
+list. N is the zero set of P. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, EL, IL, J1Y, J2Y, KL, LEN, LL, N, NP, P, PL, PLS, PP,
+     PS, QL, QLP, QLS, QP, QPP, QS, RL, RLS, SL, TL, V, VL, VP,
+     VS, WL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*dimension of p. *)</font> P:=PB; V:=VB; 
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> N:=LIST4(3,V,0,SIL); RETURN(N) <strong><font color="#4169E1">END</font></strong>; 
+      TL:=DIGBZT(P); N:=SIL; J1Y:=FIRST(P); RL:=DIPNOV(J1Y); 
+      J1Y:=RL+1; J2Y:=LENGTH(V); IL:=J1Y-J2Y; 
+      <font color="#4169E1">IF</font> TL = -1 <font color="#4169E1">THEN</font> N:=LIST4(2,W,PB,SIL); RETURN(N) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> N:=LIST4(4,W,PB,SIL); RETURN(N) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl = 1. *)</font> 
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> 
+         PL:=FIRST(P); PL:=DIIFRP(PL); PFDIP(PL, RLS,QL); 
+         IUPFAC(QL,SL,CL,QP); 
+         <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, QS,QP); 
+               N:=COMP4(1,V,QS,SIL,N); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(N) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*il = rl. *)</font> 
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font>  
+         PL:=DIRMPG(IL,P); PL:=DIIFRP(PL); PFDIP(PL, RLS,QL); 
+         IUPFAC(QL, SL,CL,QP); LEN:=LENGTH(QL); 
+         <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, QLS,QP); FIRST2(QLS, SL,QL); 
+               <font color="#4169E1">IF</font> (LEN = 1) <font color="#4169E1">AND</font> (SL = 1) 
+                  <font color="#4169E1">THEN</font> PP:=P; 
+                  <font color="#4169E1">ELSE</font> QL:=DIPFP(1,QL); QL:=DIRFIP(QL); J1Y:=IL-1; 
+                  SL:=DIPINV(QL,0,J1Y); J1Y:=RL-IL; SL:=DIPINV(SL,IL,J1Y); 
+                  PP:=DIRGBA(SL,P,1); <strong><font color="#4169E1">END</font></strong>; 
+               NP:=LIST4(6,W,PP,SIL); N:=COMP4(1,V,QLS,NP,N); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(N) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*il lt rl. *)</font> PL:=DIRMPG(IL,P); PL:=DIIFRP(PL); 
+      PFDIP(PL,RLS,QL); IUPFAC(QL, SL,CL,QP); LEN:=LENGTH(QP); 
+      ADV(V, VL,VP); VL:=LIST1(VL); 
+      <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(QP, QLS,QP); FIRST2(QLS, SL,QL); 
+            <font color="#4169E1">IF</font> (LEN = 1) <font color="#4169E1">AND</font> (SL = 1) <font color="#4169E1">THEN</font> PP:=P; <font color="#4169E1">ELSE</font>
+               QL:=DIPFP(1,QL); QL:=DIRFIP(QL); J1Y:=IL-1; 
+               SL:=DIPINV(QL,0,J1Y); J1Y:=RL-IL; SL:=DIPINV(SL,IL,J1Y); 
+               PP:=DIRGBA(SL,P,1); <strong><font color="#4169E1">END</font></strong>; 
+            NP:=DIRGZS(VP,PP,W); N:=COMP4(1,VL,QLS,NP,N); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(N);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIRGZS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLPD</font></strong>(A,VP: LIST): LIST; 
+<font color="#B22222">(*DIP rational polynomial ideal primary ideal decomposition.
+A is a non empty list of distributive rational polynomials 
+representing a Groebner base. The polynomials in A have r variables.
+L=(l1, ...,ln) with li=(pi,ei,vpi,qi) i=1, ...,n where 
+qi = ideal(pi**e,A) with A contained in qi and e maximal.
+Ideal(pi) is a prime ideal in at most r+1 variables. VPI is the 
+variable list vor pi. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, EL1, EL2, FL, FLP, IL, J1Y, L, N, P, PB, PL, PP, QL, QLS,
+     RL, RLS, SL, T, T0, T0P, T1, TL, TLS, VL, VLP,
+     VS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*zero set. *)</font> DL:=DIGBZT(A); L:=SIL; 
+      <font color="#4169E1">IF</font> DL = -1 <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+      N:=DIRGZS(VP,A,VP);  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*zero set refined tupels. *)</font> T:=DINTZS(N); DITSPL(T, T0,T1); 
+      <font color="#4169E1">IF</font> T0 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+      T0:=DINTSS(T0);  
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*invert variable odering. *)</font> T0P:=SIL; RL:=LENGTH(VP); 
+      RLS:=RL+1; VS:=LIST1(1); 
+      <font color="#4169E1">FOR</font> IL:=RL+1 <font color="#4169E1">TO</font> 2 BY -1 <font color="#4169E1">DO</font> VS:=COMP(IL,VS); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">WHILE</font> T0 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(T0, TL,T0); FIRST3(TL, FL,VL,P); 
+            <font color="#4169E1">IF</font> LENGTH(VL) &gt; RL <font color="#4169E1">THEN</font> TLS:=RED3(TL); 
+               VL:=LPERM(VL,VS); VALIS:=VL; PP:=SIL; IL:=0; 
+               <font color="#4169E1">IF</font> TLS &lt;&gt; SIL <font color="#4169E1">THEN</font> TLS:=RED3(TLS); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">WHILE</font> TLS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV3(TLS, FLP,VLP,QLS,TLS); 
+                     IL:=IL+1; FIRST2(QLS, SL,QL); QL:=DIPFP(1,QL); 
+                     QL:=DIRFIP(QL); J1Y:=IL-1; PL:=DIPINV(QL,0,J1Y); 
+                     J1Y:=RLS-IL; PL:=DIPINV(PL,IL,J1Y); 
+                     PP:=COMP(PL,PP); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> P &lt;&gt; SIL <font color="#4169E1">THEN</font> P:=RED(P); <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P, PL,P); PL:=DIPERM(PL,VS); 
+                     PP:=COMP(PL,PP); <strong><font color="#4169E1">END</font></strong>; 
+               PP:=DIRPGB(PP,1); VL:=CINV(VL); VL:=RED(VL); VL:=INV(VL); 
+               VALIS:=VL; PP:=CINV(PP); PP:=RED(PP); PP:=INV(PP); P:=PP; 
+               PP:=SIL; 
+               <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P, PL,P); 
+                     DIPADM(PL,EL1,EL2,PL,PB); PP:=COMP(PL,PP); <strong><font color="#4169E1">END</font></strong>; 
+               P:=INV(PP); <strong><font color="#4169E1">END</font></strong>; 
+            J1Y:=LIST3(FL,VL,P); T0P:=COMP(J1Y,T0P); <strong><font color="#4169E1">END</font></strong>; 
+      T0:=INV(T0P); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*get primary ideals. *)</font> L:=SIL; 
+      <font color="#4169E1">WHILE</font> T0 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(T0, TL,T0); FIRST3(TL, FL,VL,P); 
+            QL:=DIRLPI(A,P,VL); 
+            L:=COMP(QL,L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*finish. *)</font> L:=INV(L); RETURN(L); 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> DIRLPD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLPW</font></strong>(A,V,L: LIST); 
+<font color="#B22222">(*DIP rational polynomial ideal primary ideal decomposition write.
+A is a non empty list of distributive rational polynomials 
+representing a Groebner base. The polynomials in a have r variables.
+L=(l1, ...,ln) with li=(pi,eli,vpi,qi) i=1, ...,n where 
+qi = ideal(pi)**e with A contained in qi and e maximal.
+Ideal(pi) is a prime ideal in at most r+1 variables. VPI is the 
+variable list for pi. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, LP, LS, P, Q, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*write a. *)</font> SWRITE("The given ideal"); DIRLWR(A,V,-1); 
+      BLINES(1); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write decomposition of a. *)</font> LP:=L; 
+      SWRITE("The decomposition <font color="#4169E1">of</font> the ideal"); BLINES(2); 
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP, LS,LP); FIRST4(LS, P,EL,VL,Q); 
+            SWRITE("The prime ideal"); DIRLWR(P,VL,-1); BLINES(1); 
+            SWRITE("The primary ideal"); DIRLWR(Q,VL,-1); BLINES(1); 
+            SWRITE("The exponent is "); AWRITE(EL); BLINES(2); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRLPW; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPDA</font></strong>(A,VP: LIST): LIST; 
+<font color="#B22222">(*DIP rational polynomial ideal primary ideal decomposition over Q(alpha).
+A is a non empty list of distributive rational polynomials 
+representing a Groebner base. The polynomials in A have r variables.
+L=(l1, ...,ln) with li=(pi,ei,vpi,qi) i=1, ...,n where 
+qi = ideal(pi**e,A) with A contained in qi and e maximal.
+Ideal(pi) is a prime ideal in at most r+1 variables. VPI is the 
+variable list vor pi. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, FL, L, N, P, QL, T, T0, T1, TL, TP, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*zero set. *)</font> DL:=DIGBZT(A); L:=SIL; 
+      <font color="#4169E1">IF</font> DL = -1 <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+      N:=DIRGZS(VP,A,VP);  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*zero set refined tupels. *)</font> T:=DINTZS(N); DITSPL(T, T0,T1); 
+      <font color="#4169E1">IF</font> T0 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+      T0:=DINTSS(T0); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*get primary ideals. *)</font> L:=SIL; 
+      <font color="#4169E1">WHILE</font> T0 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(T0, TL,T0); FIRST3(TL, FL,VL,P); 
+            QL:=DIRLPI(A,P,VL); L:=COMP(QL,L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish. *)</font> L:=INV(L); 
+<font color="#B22222">(*7*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> DIRPDA; 
+
+
+<strong><font color="#4169E1">PROCEDURE DITFZS</font></strong>(N: LIST): LIST; 
+<font color="#B22222">(*DIP tupel from zero set. N is a zero set. T is a list of 
+tupels of the zero set. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EPS, FL, M, NP, PL, T, TL, TP, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*empty or initialise. *)</font> T:=SIL; NP:=N; 
+      <font color="#4169E1">IF</font> NP = SIL <font color="#4169E1">THEN</font> T:=COMP(SIL,T); RETURN(T); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*roots, Groebner base and recursion. *)</font> 
+      <font color="#4169E1">WHILE</font> NP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV4(NP, FL,V,PL,M,NP); TP:=DITFZS(M); 
+            <font color="#4169E1">WHILE</font> TP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(TP, TL,TP); 
+                  TL:=COMP3(FL,V,PL,TL); T:=COMP(TL,T); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(T); <strong><font color="#4169E1">END</font></strong> DITFZS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DITSPL</font></strong>(T: LIST;  <strong><font color="#228B22">VAR</font></strong> T0,T1: LIST); 
+<font color="#B22222">(*DIP zero set tupel split. T is a list of normalized tupels 
+of a zero set. T0 is a list of normalized tupels of a zero set 
+with a final Groebner base of a ideal of dimension 0. T1=T-T0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  FL, IL, J1Y, PL, RL, TL, TLP, TP, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise. *)</font> T0:=SIL; T1:=SIL; TP:=T; 
+      <font color="#4169E1">IF</font> T = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*split. *)</font> 
+      <font color="#4169E1">REPEAT</font> ADV(TP, TL,TP); TLP:=TL; IL:=0; RL:=-1; 
+             <font color="#4169E1">WHILE</font> TL &lt;&gt; SIL <font color="#4169E1">DO</font> ADV3(TL, FL,V,PL,TL); 
+                   <font color="#4169E1">CASE</font> INTEGER(FL) <font color="#4169E1">OF</font>
+                        1 : IL:=IL+1; |
+                        2 : IL:=IL; |
+                        3 : IL:=IL; |
+                        4 : IL:=IL; |
+                        5 : IL:=IL; |
+                        6 : J1Y:=FIRST(PL); RL:=DIPNOV(J1Y); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> T0:=COMP(TLP,T0); 
+                        <font color="#4169E1">ELSE</font> T1:=COMP(TLP,T1); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> TP = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish. *)</font> T0:=INV(T0); T1:=INV(T1); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DITSPL; 
+
+
+<strong><font color="#4169E1">END</font></strong> DIPDEC0.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

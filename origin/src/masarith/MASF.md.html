@@ -1,0 +1,130 @@
+
+<html>
+<head>
+<title>./masarith/MASF.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASF.md,v 1.3 1992/10/16 13:52:04 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASF.md,v $
+ * Revision 1.3  1992/10/16  13:52:04  kredel
+ * Errors found by Mocka corrected
+ *
+ * Revision 1.2  1992/02/12  13:19:01  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:02  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASF;
+
+<font color="#B22222">(* MAS Floating Point Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT GAMMAINT;
+
+
+FROM MASSTOR IMPORT LIST;
+ 
+
+<strong><font color="#228B22">TYPE</font></strong> MFLOAT = REAL;
+
+
+<strong><font color="#228B22">VAR</font></strong> FBETA:  MFLOAT;
+    FBETAH: MFLOAT;
+    BETAH:  GAMMAINT;
+    IBETA:  LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASF.md,v 1.3 1992/10/16 13:52:04 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE FFGI</font></strong>(N: GAMMAINT): MFLOAT;
+<font color="#B22222">(*Floating point from gamma integer.
+The gamma integer N is converted to the floating point number A. *)</font>
+ 
+
+<strong><font color="#4169E1">PROCEDURE IFF</font></strong>(F: MFLOAT): LIST;
+<font color="#B22222">(*Integer from floating point.
+The floating point number F is converted to the integer A. *)</font>
+
+ 
+<strong><font color="#4169E1">PROCEDURE FEXP</font></strong>(F: MFLOAT; N: GAMMAINT): MFLOAT;
+<font color="#B22222">(*Floating point exponentiation.
+The floating point number F raised to the n-th power. *)</font>
+
+ 
+<strong><font color="#4169E1">PROCEDURE FLOG10</font></strong>(F: MFLOAT): MFLOAT;
+<font color="#B22222">(*Floating point logarithm base 10.
+The logarithm of the floating point number F with base 10 is returned. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE FFINT</font></strong>(N: LIST): MFLOAT;
+<font color="#B22222">(*Floating point from integer.
+The integer N is converted to the floating point number f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE FFRN</font></strong>(A: LIST): MFLOAT;
+<font color="#B22222">(*Floating point from rational number.
+The rational number A is converted to the floating point number f. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNFF</font></strong>(F: MFLOAT): LIST;
+<font color="#B22222">(*Rational number from floating point.
+The floating point number F is converted to the rational number R. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SIN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Sinus. A is a rational number, the sinus of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE COS</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Cosinus. A is a rational number, the cosinus of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE TAN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Tangens. A is a rational number, the tangens of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE ARCTAN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arcus tangens. A is a rational number, the arctangens of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE EXPF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Exponential. A is a rational number, the exponential of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE LN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Ln. A is a rational number, the natural logarithm of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE LOG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Log. A is a rational number, the logarithm base 10 of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">PROCEDURE SQRT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Sqrt. A is a rational number, the square root of A is returned. *)</font>  
+
+
+<strong><font color="#4169E1">END</font></strong> MASF.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

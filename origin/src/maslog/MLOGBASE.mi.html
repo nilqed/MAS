@@ -1,0 +1,511 @@
+
+<html>
+<head>
+<title>./maslog/MLOGBASE.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:53+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MLOGBASE.mi,v 1.3 1994/11/28 21:04:13 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MLOGBASE.mi,v $
+ * Revision 1.3  1994/11/28  21:04:13  dolzmann
+ * New revision of the MASLOG system: New functions and bug fixes of old one.
+ *
+ * Revision 1.2  1993/12/20  19:56:03  dolzmann
+ * Printable names for the operator symbols are changed.
+ *
+ * Revision 1.1  1993/12/17  17:12:13  dolzmann
+ * MASLOG is divided into three parts. (MLOGBASE, MLOGIO, MASLOG)
+ * Additional input procedures are added.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MLOGBASE;
+<font color="#B22222">(* Maslog Base Implementation Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			       M L O G B A S E				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: MODULA II (mocka or mtc are possible.)                            *
+* System:   Program for the computer algebra system MAS by Heinz Kredel.      *
+* Project:  MASLOG
+* Remark:   Libraries maskern, maslisp are used.                              *
+* Abstract: A package for the MAS computer algebra system by Heinz Kredel.    *
+*           This package implements basic routins on formulas of the first    *
+*           order predicate calculus.                                         *
+******************************************************************************)</font>
+
+FROM MASBIOS	IMPORT	LISTS;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, LIST, LIST1, LISTVAR, RED, SIL; 
+FROM MASLISPU	IMPORT	Declare;
+FROM MASSYM	IMPORT	ATOM;
+FROM MASSYM2	IMPORT	ASSOC, ASSOCQ, SYMBOL; 
+FROM SACLIST	IMPORT	ADV2, ADV3, COMP2, LIST2, LIST3, SECOND;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MLOGBASE.mi,v 1.3 1994/11/28 21:04:13 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong> VARTAB: LIST;	<font color="#B22222">(* Symbol table for all identifier of variables. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			 B A S I C   R O U T I N E S                          *
+******************************************************************************)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE FORGOP</font></strong>(phi: LIST): LIST;
+<font color="#B22222">(* formula get operation. phi is a formula; the operation keyword of the
+formula phi is returned.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> phi=SIL <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> SYMBOL(phi) <font color="#4169E1">THEN</font> RETURN phi; <strong><font color="#4169E1">END</font></strong>;
+	RETURN FIRST(phi);
+<strong><font color="#4169E1">END</font></strong> FORGOP;
+
+<strong><font color="#4169E1">PROCEDURE FORGARGS</font></strong>(phi: LIST): LIST;
+<font color="#B22222">(* formula get arguments. phi is a formula; the arguments of the top level
+operation of the formula phi are returned. You must not apply FORGARGS to
+formulas without arguments! *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN RED(phi);
+<strong><font color="#4169E1">END</font></strong> FORGARGS;
+
+<strong><font color="#4169E1">PROCEDURE FORGLVAR</font></strong>(lvar: LIST): LIST;
+<font color="#B22222">(* formula get list of variables. lvar is an object that describes a list of
+variables; FORGLVAR returns a list of all variables in lvar.  *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN RED(lvar);
+<strong><font color="#4169E1">END</font></strong> FORGLVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORPFOR</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> op: LIST; <strong><font color="#228B22">VAR</font></strong> args: LIST);
+<font color="#B22222">(* formula parse formula. phi is a formula; FORPFOR returns in op the top
+level operation symbol of phi and in args the arguments of the operation op.
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> SYMBOL(phi)
+	<font color="#4169E1">THEN</font>
+		op:=phi;
+		args:=SIL;
+	<font color="#4169E1">ELSE</font>
+		ADV(phi,op,args);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORPFOR;
+
+<strong><font color="#4169E1">PROCEDURE FORPARGS</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> first, red: LIST);
+<font color="#B22222">(* formula parse arguments. phi is an object that describes a list of
+arguments of an operation; FORPARGS returns in first the 1st argument of the
+list and in red the list of all following arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV(phi,first,red);
+<strong><font color="#4169E1">END</font></strong> FORPARGS;
+
+<strong><font color="#4169E1">PROCEDURE FORPUNOP</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> op, arg: LIST);
+<font color="#B22222">(* formula parse unary operation. phi is a unary operation. The operator
+symbol op and the argument arg are returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(phi,op,arg,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPUNOP;
+
+<strong><font color="#4169E1">PROCEDURE FORPBINOP</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> op, first, second: LIST);
+<font color="#B22222">(* formula parse binary operation. phi is a binary operation. The operator
+symbol op and the arguments first and second are returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV3(phi,op,first,second,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPBINOP;
+
+<strong><font color="#4169E1">PROCEDURE FORPUNOPA</font></strong>(arglist: LIST; <strong><font color="#228B22">VAR</font></strong> arg: LIST);
+<font color="#B22222">(* formula parse unary operation argument. arglist is a list containing the
+argument of a unary operator; FORPUNOPA returns in arg the arguments *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV(arglist,arg,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPUNOPA;
+
+<strong><font color="#4169E1">PROCEDURE FORPBINOPA</font></strong>(red: LIST; <strong><font color="#228B22">VAR</font></strong> first, second: LIST);
+<font color="#B22222">(* formula parse binary operation argument. red is a list of the arguments of
+a binary operator; FORPBINOPA returns in first the 1st and in second the 2nd
+argument.  *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(red,first,second,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPBINOPA;
+
+<strong><font color="#4169E1">PROCEDURE FORPQUANT</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> quant, vars, formula: LIST);
+<font color="#B22222">(* formula parse quantifier. phi is a quantified formula; FORPQUANT returns in
+quant the quantifier of the formula phi, in vars the list of the bound
+variables (as an lvar object) and in formula the formula phi without
+quantifier. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV3(phi,quant,vars,formula,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPQUANT;
+
+<strong><font color="#4169E1">PROCEDURE FORPQUANTA</font></strong>(red: LIST; <strong><font color="#228B22">VAR</font></strong> lvar, formula: LIST);
+<font color="#B22222">(* formula parse quantifier arguments. red is the reductum of a quantified
+formula (e.g returned from FORPFOR); FORPQUANTA returns in lvar a list of all
+quantified variables as an lvar object and in formula the formula without
+quantifier.  *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(red,lvar,formula,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPQUANTA;
+
+<strong><font color="#4169E1">PROCEDURE FORPLVAR</font></strong>(lvar: LIST; <strong><font color="#228B22">VAR</font></strong> varlist: LIST);
+<font color="#B22222">(* formula parse list of variables. lvar is an object that describes a list of
+variables; the list of all variables in lvar is returned in varlist. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV(lvar,dummy,varlist);
+<strong><font color="#4169E1">END</font></strong> FORPLVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORPVAR</font></strong>(<strong><font color="#228B22">var</font></strong>: LIST; <strong><font color="#228B22">VAR</font></strong> name, sort: LIST);
+<font color="#B22222">(* formula parse variable. phi is a variable; FORPVAR returns in name the name
+and in sort the sort of var. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy1, dummy2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV3(<strong><font color="#228B22">var</font></strong>,dummy1,name,sort,dummy2);
+<strong><font color="#4169E1">END</font></strong> FORPVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORPVARA</font></strong>(red: LIST; <strong><font color="#228B22">VAR</font></strong> name, sort:LIST);
+<font color="#B22222">(* formula parse variable arguments. red is the reductum of a variable (e.g.
+returned from FORPFOR); FORPVARA returns in name the name and in sort the sort
+of the variable. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	ADV2(red,name,sort,dummy);
+<strong><font color="#4169E1">END</font></strong> FORPVARA;
+
+<strong><font color="#4169E1">PROCEDURE FORMKFOR</font></strong>(op,args:LIST):LIST;
+<font color="#B22222">(* formula make formula. op is a operation symbol; args a list of arguments;
+the formula op(arg1,arg2,...) is returned, if args=(arg1,arg2,...).  You can
+generate constants with this function, too. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> (op=VERUM) <font color="#4169E1">OR</font> (op=FALSUM)
+	<font color="#4169E1">THEN</font>
+		RETURN op
+	<font color="#4169E1">ELSE</font>
+		RETURN COMP(op,args);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORMKFOR;
+
+<strong><font color="#4169E1">PROCEDURE FORMKCNST</font></strong>(cnst: LIST):LIST;
+<font color="#B22222">(* formula make constant, i.e. a function with 0 arguments. cnst is a
+constant; the formula 'cnst()' is returned *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN cnst;
+<strong><font color="#4169E1">END</font></strong> FORMKCNST;
+
+<strong><font color="#4169E1">PROCEDURE FORMKUNOP</font></strong>(op,arg:LIST):LIST;
+<font color="#B22222">(* formula make unary operation. op is a operation symbol, arg is a argument;
+the formula op(arg) is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST2(op,arg);
+<strong><font color="#4169E1">END</font></strong> FORMKUNOP;
+
+<strong><font color="#4169E1">PROCEDURE FORMKBINOP</font></strong>(op,arg1,arg2:LIST): LIST;
+<font color="#B22222">(* formula make binary operation. op is the operation symbol, arg1, arg2 are
+the arguments; the formula op(arg1,arg2) is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST3(op,arg1,arg2);
+<strong><font color="#4169E1">END</font></strong> FORMKBINOP;
+
+<strong><font color="#4169E1">PROCEDURE FORMKVAR</font></strong>(name,sort:LIST):LIST;
+<font color="#B22222">(* formula make variable. name is the name, sort the sort of the variable; an
+object that describes the variable is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST3(TVAR,name,sort);
+<strong><font color="#4169E1">END</font></strong> FORMKVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORMKLVAR</font></strong>(vars:LIST):LIST;
+<font color="#B22222">(* formula make list of variables. vars is a list of the form (var1,
+var2,...); an lvar object that represents the list of variables in vars is
+returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN COMP(LVAR,vars);
+<strong><font color="#4169E1">END</font></strong> FORMKLVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORMKQUANT</font></strong>(quant,vars,formula:LIST):LIST;
+<font color="#B22222">(* formula make quantifier. quant is the quantifier symbol, vars is a list of
+variables, and formula the bound formula; the formula 'quant vars: formula'
+is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN LIST3(quant,vars,formula);
+<strong><font color="#4169E1">END</font></strong> FORMKQUANT;
+
+<strong><font color="#4169E1">PROCEDURE FORTST</font></strong>(L: LIST; bbtst:PROCFB1):BOOLEAN;
+<font color="#B22222">(* formula test. L is a list, bbtst a bb-procedure to test whether a list
+represents a bb-formula or not; FORTST returns TRUE, if and only if L
+represents a formula. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> op, red, arg, arg1, arg2, lvar, qform, dummy: LIST;
+	<strong><font color="#228B22">VAR</font></strong> isformula: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> L = SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> SYMBOL(L)
+	<font color="#4169E1">THEN</font>
+		RETURN (L=VERUM) <font color="#4169E1">OR</font> (L=FALSUM)
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> ATOM(L)
+	<font color="#4169E1">THEN</font>
+		RETURN FALSE;
+	<strong><font color="#4169E1">END</font></strong>;
+	ADV(L,op,red);
+	<font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(op)
+		<font color="#4169E1">THEN</font> RETURN FALSE;	<font color="#B22222">(* Every correct object starts with a
+					*  symbol (keyword). *)</font>
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> (op=ET) <font color="#4169E1">OR</font> (op=VEL)		<font color="#B22222">(* All functions with one ore more
+					*  arguments. *)</font>
+	<font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> red = SIL		<font color="#B22222">(* No argument? *)</font>
+		<font color="#4169E1">THEN</font>
+			RETURN FALSE;
+		<strong><font color="#4169E1">END</font></strong>;
+		isformula:=TRUE;
+		<font color="#4169E1">WHILE</font> (red &lt;&gt; SIL) <font color="#4169E1">AND</font> isformula <font color="#4169E1">DO</font>	<font color="#B22222">(* All arguments
+							 * correct? *)</font>
+			ADV(red,arg,red);
+			isformula:=FORTST(arg,bbtst);
+		<strong><font color="#4169E1">END</font></strong>;
+		RETURN isformula;
+	ELSIF op=NON			<font color="#B22222">(* All functions with exactly one
+					*  argument. *)</font>
+	<font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> (red=SIL) <font color="#4169E1">OR</font> (RED(red)&lt;&gt;SIL)	<font color="#B22222">(* number of arguments *)</font>
+		<font color="#4169E1">THEN</font>
+			RETURN FALSE;
+		<font color="#4169E1">ELSE</font>
+			ADV(red,arg,dummy);
+			RETURN FORTST(arg,bbtst);
+		<strong><font color="#4169E1">END</font></strong>;
+	ELSIF (op=EXIST) <font color="#4169E1">OR</font> (op=FORALL)	<font color="#B22222">(* only quantifiers *)</font>
+	<font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> (red=SIL) <font color="#4169E1">OR</font> (RED(red)=SIL)
+		<font color="#4169E1">THEN</font>
+			RETURN FALSE;
+		<strong><font color="#4169E1">END</font></strong>;
+		ADV2(red,lvar,qform,dummy);
+		RETURN (dummy=SIL) <font color="#4169E1">AND</font>
+			FORISLVAR(lvar) <font color="#4169E1">AND</font> FORTST(qform,bbtst);
+	ELSIF (op=IMP) <font color="#4169E1">OR</font> (op=REP) <font color="#4169E1">OR</font> (op=EQUIV) <font color="#4169E1">OR</font> (op=XOR)	<font color="#B22222">(* binary
+								* operators *)</font>
+	<font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> (red=SIL) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+		ADV(red,arg1,red);
+		<font color="#4169E1">IF</font> red=SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+		ADV(red,arg2,red);
+		<font color="#4169E1">IF</font> (red&lt;&gt;SIL) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+		RETURN FORTST(arg1,bbtst) <font color="#4169E1">AND</font> FORTST(arg2,bbtst);
+	ELSIF op=TVAR
+	<font color="#4169E1">THEN</font>
+		RETURN FORISBOOLVAR(L);
+	<font color="#4169E1">ELSE</font>
+		RETURN bbtst(L);
+	<strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> FORTST;
+
+<strong><font color="#4169E1">PROCEDURE FORISVAR</font></strong>(L: LIST):BOOLEAN;
+<font color="#B22222">(* formula is variable. L is a list; FORISVAR returns TRUE if and only if L
+represents a variable. (The type of the variable is not checked.)  *)</font>
+	<strong><font color="#228B22">VAR</font></strong> key, name, sort, red: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> L = SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> ATOM(L) <font color="#4169E1">OR</font> SYMBOL(L) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+
+	ADV(L,key,red);
+	<font color="#4169E1">IF</font> (<font color="#4169E1">NOT</font> SYMBOL(key)) <font color="#4169E1">OR</font> (key&lt;&gt;TVAR)
+	<font color="#4169E1">THEN</font>
+		RETURN FALSE;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> red=SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	ADV(red,name,red);
+	<font color="#4169E1">IF</font> (red=SIL) <font color="#B22222">(* OR NOT SYMBOL(name) *)</font><font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	ADV(red,sort,red);
+	<font color="#4169E1">IF</font> (red&lt;&gt;SIL) <font color="#B22222">(* OR NOT SYMBOL(sort) *)</font> <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	RETURN TRUE;		<font color="#B22222">(* No typechecking at moment. *)</font>
+<strong><font color="#4169E1">END</font></strong> FORISVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORISBOOLVAR</font></strong>(L: LIST):BOOLEAN;
+<font color="#B22222">(* formula is boolean variable. L is a list; FORISBOOLVAR returns true if and
+only if L represents a boolean variable *)</font>
+	<strong><font color="#228B22">VAR</font></strong> key, name, sort, red: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> L=SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> ATOM(L) <font color="#4169E1">OR</font> SYMBOL(L) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+
+	ADV(L,key,red);
+	<font color="#4169E1">IF</font> (<font color="#4169E1">NOT</font> SYMBOL(key)) <font color="#4169E1">OR</font> (key&lt;&gt;TVAR)
+	<font color="#4169E1">THEN</font>
+		RETURN FALSE;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> red=SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	ADV(red,name,red);
+	<font color="#4169E1">IF</font> (red=SIL) <font color="#4169E1">OR</font> <font color="#4169E1">NOT</font> SYMBOL(name) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	ADV(red,sort,red);
+	<font color="#4169E1">IF</font> (red&lt;&gt;SIL) <font color="#4169E1">OR</font> <font color="#4169E1">NOT</font> SYMBOL(sort) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	RETURN sort=BOOL
+<strong><font color="#4169E1">END</font></strong> FORISBOOLVAR;
+
+<strong><font color="#4169E1">PROCEDURE FORISLVAR</font></strong>(L: LIST): BOOLEAN;
+<font color="#B22222">(* formula is variable list. L is a list; FORISLVAR returns TRUE if and only
+if L represents an lvar-object. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> elem, key, red: LIST;
+	<strong><font color="#228B22">VAR</font></strong> is: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> L=SIL <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> SYMBOL(L) <font color="#4169E1">OR</font> ATOM(L) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+
+	ADV(L,key,red);
+	<font color="#4169E1">IF</font> (red=SIL) <font color="#4169E1">OR</font> (key&lt;&gt;LVAR) <font color="#4169E1">THEN</font> RETURN FALSE; <strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		ADV(red,elem,red);
+		is:=FORISVAR(elem);
+	<font color="#4169E1">UNTIL</font> (red=SIL) <font color="#4169E1">OR</font> (<font color="#4169E1">NOT</font> is);
+	RETURN is;
+<strong><font color="#4169E1">END</font></strong> FORISLVAR;
+
+
+<font color="#B22222">(******************************************************************************
+*                      I S   A T O M I C   F O R M U L A                      *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORISATOM</font></strong>(phi: LIST): BOOLEAN;
+<font color="#B22222">(* formula is atomic formula. phi is a formula, FORISATOM returns true, if and
+only if phi is an atomic formula. An atomic formula is either VERUM or FALSUM
+or a bb-formula or a variable of type bool. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> op, res: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	FORPFOR(phi,op,res);
+	RETURN (op=TVAR) <font color="#4169E1">OR</font> (op=VERUM) <font color="#4169E1">OR</font> (op=FALSUM) <font color="#4169E1">OR</font>
+		((op&lt;&gt;EXIST) <font color="#4169E1">AND</font> (op&lt;&gt;FORALL) <font color="#4169E1">AND</font> (op&lt;&gt;VEL) <font color="#4169E1">AND</font> (op&lt;&gt;ET)
+		<font color="#4169E1">AND</font> (op&lt;&gt;IMP) <font color="#4169E1">AND</font> (op&lt;&gt;REP) <font color="#4169E1">AND</font> (op&lt;&gt;EQUIV) <font color="#4169E1">AND</font> (op&lt;&gt;XOR)
+		<font color="#4169E1">AND</font> (op&lt;&gt;NON))
+<strong><font color="#4169E1">END</font></strong> FORISATOM;
+
+<strong><font color="#4169E1">PROCEDURE FORISBBFOR</font></strong>(phi: LIST):BOOLEAN;
+<font color="#B22222">(* formula is black-box formula. phi is a formula. TRUE is returned iff
+phi is a black-box formula. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> op: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	op:=FORGOP(phi);
+	RETURN	(op&lt;&gt;EXIST) <font color="#4169E1">AND</font> (op&lt;&gt;FORALL) <font color="#4169E1">AND</font> 
+		(op&lt;&gt;VEL) <font color="#4169E1">AND</font> (op&lt;&gt;ET) <font color="#4169E1">AND</font> 
+		(op&lt;&gt;IMP) <font color="#4169E1">AND</font> (op&lt;&gt;REP) <font color="#4169E1">AND</font> (op&lt;&gt;EQUIV) <font color="#4169E1">AND</font> (op&lt;&gt;XOR) <font color="#4169E1">AND</font> 
+		(op&lt;&gt;NON) <font color="#4169E1">AND</font> 
+		(op&lt;&gt;TVAR) <font color="#4169E1">AND</font> (op&lt;&gt;VERUM) <font color="#4169E1">AND</font> (op&lt;&gt;FALSUM); 
+<strong><font color="#4169E1">END</font></strong> FORISBBFOR;
+
+<font color="#B22222">(******************************************************************************
+*                                 V A R T A B                                 *
+******************************************************************************)</font>
+
+<font color="#B22222">(* In the following section the procedures for handling the VARTAB are 
+implemented. VARTAB is a table of all identifiers which are necessary to 
+identify a variable and its sort unique. The structure of VARTAB is a 
+assoc-list of pairs (name:identifier). Identifiers are beta-integers.
+This structure of VARTAB is internal. There are external procedures to 
+acess the VARTAB from modules. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORVTSTORE</font></strong>():LIST;
+<font color="#B22222">(* formula variable table store. The actual VARTAB is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN VARTAB;
+<strong><font color="#4169E1">END</font></strong> FORVTSTORE;
+
+<strong><font color="#4169E1">PROCEDURE FORVTRESTORE</font></strong>(vt: LIST):LIST;
+<font color="#B22222">(* formula variable table restore. Vt is a variable table. 
+The actual VARTAB is set to the value of vt. The old value of VARTAB is 
+returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	VARTAB:=vt;
+	RETURN VARTAB;
+<strong><font color="#4169E1">END</font></strong> FORVTRESTORE;
+
+<strong><font color="#4169E1">PROCEDURE FORVTENTER</font></strong>(sym: LIST):LIST;
+<font color="#B22222">(* formula variable table enter. Sym is a CLIST. 
+The symbol with print name sym is entered in 
+the actual variable table, if no symbol with name sym exists. 
+The unique identifier is returned. 
+*)</font>
+	<strong><font color="#228B22">VAR</font></strong> id,lastid: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+	id:=ASSOCQ(sym,VARTAB);
+	<font color="#4169E1">IF</font> id=SIL <font color="#4169E1">THEN</font>
+		<font color="#4169E1">IF</font> VARTAB=SIL <font color="#4169E1">THEN</font>
+			lastid:=0;
+		<font color="#4169E1">ELSE</font>
+			lastid:=SECOND(VARTAB);
+		<strong><font color="#4169E1">END</font></strong>;
+		id:=lastid+1;
+		VARTAB:=COMP2(sym,id,VARTAB);
+	<font color="#4169E1">ELSE</font>
+		id:=FIRST(id);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN id;
+<strong><font color="#4169E1">END</font></strong> FORVTENTER;
+
+<strong><font color="#4169E1">PROCEDURE FORVTGET</font></strong>(id: LIST): LIST;
+<font color="#B22222">(* formula variable table get. The clist of the 
+name of the symbol with identifier id is 
+returned. If no symbol with identifier id exists, then 
+SIL is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> l,i,s,name: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> id &lt;= 0 <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>; 
+	l:=VARTAB;
+	i:=0;
+	<font color="#4169E1">WHILE</font> (l&lt;&gt;SIL) <font color="#4169E1">AND</font> (i&lt;&gt;id) <font color="#4169E1">DO</font> 
+		ADV2(l,s,i,l);
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">IF</font> id=i <font color="#4169E1">THEN</font> 
+		name:=s;
+	<font color="#4169E1">ELSE</font>
+		name:=SIL;
+	<strong><font color="#4169E1">END</font></strong>;
+ 	RETURN name;
+<strong><font color="#4169E1">END</font></strong> FORVTGET;
+
+<font color="#B22222">(******************************************************************************
+*			 I N I T I A L I Z A T I O N			      *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(* OF INITIALIZATION *)</font>
+	LISTVAR(VARTAB);
+	VARTAB:=SIL;
+	BOOL:=FORVTENTER(LISTS("BOOL"));
+	ANY:=FORVTENTER(LISTS("ANY"));
+	Declare(ET,    "FORAND");
+	Declare(VEL,   "FOROR");
+	Declare(NON,   "FORNOT");
+	Declare(VERUM, "TRUE");
+	Declare(FALSUM,"FALSE");
+	Declare(FORALL,"FORALL");
+	Declare(EXIST, "FOREX");
+	Declare(TVAR,  "FORVAR");
+	Declare(LVAR,  "LVAR");
+<font color="#B22222">(*	Declare(ANY,   "ANY");
+	Declare(BOOL,  "BOOL"); *)</font>
+	Declare(REP,   "FORREPL");
+	Declare(IMP,   "FORIMPL");
+	Declare(EQUIV, "FOREQUIV");
+	Declare(XOR,   "FORXOR");
+<strong><font color="#4169E1">END</font></strong> MLOGBASE.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

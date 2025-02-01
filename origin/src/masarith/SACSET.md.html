@@ -1,0 +1,106 @@
+
+<html>
+<head>
+<title>./masarith/SACSET.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T13:19:20+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACSET.md,v 1.2 1992/02/12 13:19:19 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACSET.md,v $
+ * Revision 1.2  1992/02/12  13:19:19  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:22  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACSET;
+
+<font color="#B22222">(* SAC Set Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACSET.md,v 1.2 1992/02/12 13:19:19 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE LBIBMS</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*List of beta-integers bubble-merge sort.  L is an arbitrary list of
+beta-integers, possibly with repetitions.  M is the result of sorting
+L into non-decreasing order.  A combination of bubble-sort and merge-
+sort is used.  The list L is modified to produce M.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LBIBS</font></strong>(L: LIST);
+<font color="#B22222">(*List of beta-integers bubble sort.  L is an arbitrary list of
+beta-integers, with possible repetitions.  L is sorted into
+non-decreasing order by the bubble-sort method.  The list L, though not
+its location, is modified.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LBIM</font></strong>(L1,L2: LIST): LIST;
+<font color="#B22222">(*List of beta-integers merge.  L1 and L2 are arbitrary lists of
+beta-integers in non-decreasing order.  L is the merge of L1 and L2.
+L1 and L2 are modified to produce L.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SCOMP</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Set composition. a is a beta-integer, L is a set of beta-integers.
+LP is the union of SET(a) and L. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SDIFF</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Set difference.  A and B are sets of beta-integers.  C=A-B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SINTER</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Set intersection.  A and B are sets of beta-integers.  C is the
+intersection of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SUNION</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Set union.  A and B are sets of beta-integers.  C is the union of
+A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE USCOMP</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Unordered set composition. a is an object, L is an unordered set.
+LP is the union of SET(a) and L. *)</font>
+ 
+
+<strong><font color="#4169E1">PROCEDURE USDIFF</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Unordered set difference.  A and B are unordered sets.  C is the
+difference A-B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE USINT</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Unordered set intersection.  A and B are unordered sets.  C is the
+intersection of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE USUN</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Unordered set union.  A and B are unordered sets.  C is the union
+of A and B.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACSET.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

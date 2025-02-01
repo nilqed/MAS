@@ -1,0 +1,372 @@
+
+<html>
+<head>
+<title>./masarith/MASQ.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-10-15T16:28:14+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASQ.mi,v 1.3 1992/10/15 16:28:14 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASQ.mi,v $
+ * Revision 1.3  1992/10/15  16:28:14  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/09/28  18:34:55  kredel
+ * Updated revision string.
+ *
+ * Revision 1.1  1992/09/28  17:29:13  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASQ;
+
+<font color="#B22222">(* MAS Quaternion Number Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASBIOS IMPORT SWRITE, CWRITE, CREADB, MASORD, BKSP, BLINES;
+
+FROM MASSTOR IMPORT LIST, ADV, COMP, FIRST, SIL; 
+
+FROM MASERR IMPORT severe, ERROR;
+
+FROM SACLIST IMPORT OWRITE, SECOND, THIRD, FOURTH, FIRST4, LIST4, COMP4,  
+                    AWRITE, EQUAL;
+
+FROM SACRN IMPORT RNSUM, RNPROD, RNCOMP, RNNEG, RNDIF, 
+                  RNQ, RNINT, RNREAD, RNWRIT, RNRAND;
+
+FROM MASRN IMPORT RNDWR, RNDRD, RNONE;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASQ.mi,v 1.3 1992/10/15 16:28:14 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<font color="#B22222">(* Representation of a + i b + j c + k d, with a, b, c, d rational numbers, 
+   is 
+
+                         0   if a=0 and b=0 and c=0 and d=0 
+                 (a,b,c,d)   else   *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE QABS</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number absolute value.  R is a quaternion number.  S is the
+absolute value of R, a rational number. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> S:=R; RETURN(S) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      S:=RNSUM(RNPROD(r,r),RNPROD(i,i));
+      S:=RNSUM(S,RNPROD(j,j)); S:=RNSUM(S,RNPROD(k,k));
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QABS;
+
+
+<strong><font color="#4169E1">PROCEDURE QCON</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number conjugate.  R is a quaternion number. S is the
+quaternion conjugate of R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      S:=COMP4(r,RNNEG(i),RNNEG(j),RNNEG(k),SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QCON;
+
+
+<strong><font color="#4169E1">PROCEDURE QCOMP</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Quaternion number comparison.  R and S are quaternion numbers.
+t=0 if R=S, t=1 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> t:=EQUAL(R,S); 
+      <font color="#4169E1">IF</font> t = 1 <font color="#4169E1">THEN</font> t:=0 <font color="#4169E1">ELSE</font> t:=1 <strong><font color="#4169E1">END</font></strong>;  
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE QDIF</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Quaternion number difference.  R and S are quaternion numbers.  T=R-S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, j1, k1, r2, i2, j2, k2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=QNEG(S); RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r1,i1,j1,k1); FIRST4(S,r2,i2,j2,k2); 
+      r1:=RNDIF(r1,r2); i1:=RNDIF(i1,i2); 
+      j1:=RNDIF(j1,j2); k1:=RNDIF(k1,k2); 
+      <font color="#4169E1">IF</font> (r1 = 0) <font color="#4169E1">AND</font> (i1 = 0) <font color="#4169E1">AND</font> (j1 = 0) <font color="#4169E1">AND</font> (k1 = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP4(r1,i1,j1,k1,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE QDREAD</font></strong>(): LIST; 
+<font color="#B22222">(*Quaternion number decimal read.  The quaternion number R is read
+from the input stream.  Any preceding blanks are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R, r, i, j, k, c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=RNDRD(); i:=0; 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("i") <font color="#4169E1">THEN</font> i:=RNDRD(); <font color="#4169E1">ELSE</font> BKSP <strong><font color="#4169E1">END</font></strong>;  
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("j") <font color="#4169E1">THEN</font> j:=RNDRD(); <font color="#4169E1">ELSE</font> BKSP <strong><font color="#4169E1">END</font></strong>;  
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("k") <font color="#4169E1">THEN</font> k:=RNDRD(); <font color="#4169E1">ELSE</font> BKSP <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">AND</font> (j = 0) <font color="#4169E1">AND</font> (k = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      R:=COMP4(r,i,j,k,SIL);
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QDREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE QDWRITE</font></strong>(R,NL: LIST); 
+<font color="#B22222">(*Quaternion number decimal write.  R is a quaternion number.  n is a
+non-negative integer.  R is approximated by a decimal fraction D with
+n decimal digits following the decimal point and D is written in the
+output stream.  The inaccuracy of the approximation is at most
+(1/2)*10**-n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      RNDWR(r,NL); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" i "); RNDWR(i,NL) <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> j &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" j "); RNDWR(j,NL) <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> k &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" k "); RNDWR(k,NL) <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QDWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE QEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Quaternion number exponentiation.  A is a quaternion number,
+n is a non-negative beta-integer.  B=A**n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, KL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*n less than or equal to 1.*)</font> 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=QINT(1); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> KL:=NL DIV 2; B:=QEXP(A,KL); B:=QPROD(B,B); 
+      <font color="#4169E1">IF</font> NL &gt; 2*KL <font color="#4169E1">THEN</font> B:=QPROD(B,A); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> QEXP; 
+
+
+<strong><font color="#4169E1">PROCEDURE QIMi</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number imaginary part i.  R is a quaternion number.  b is the
+imaginary part i of R, a rational number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(SECOND(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QIMi;
+
+
+<strong><font color="#4169E1">PROCEDURE QIMj</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number imaginary part j.  R is a quaternion number.  b is the
+imaginary part j of R, a rational number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(THIRD(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QIMj;
+
+
+<strong><font color="#4169E1">PROCEDURE QIMk</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number imaginary part k.  R is a quaternion number.  b is the
+imaginary part k of R, a rational number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(FOURTH(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QIMk;
+
+
+<strong><font color="#4169E1">PROCEDURE QINT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Quaternion number from integer.  A is an integer.  R is the quaternion
+number with real part A/1 and imaginary part 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> R:=A; RETURN(R) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP4(RNINT(A),0,0,0,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QINT;
+
+
+<strong><font color="#4169E1">PROCEDURE QRE</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number real part.  R is a quaternion number.  b is the
+real part of R, a rational number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(FIRST(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QRE;
+
+
+<strong><font color="#4169E1">PROCEDURE QRN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Quaternion number from rational number.  A is a rational number.  
+R is the quaternion number with real part A and imaginary part 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP4(A,0,0,0,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QRN;
+
+
+<strong><font color="#4169E1">PROCEDURE QRN4</font></strong>(A, B, C, D: LIST): LIST;
+<font color="#B22222">(*Quaternion number from 4-tuple of rational numbers.  A, B, C and D 
+are rational numbers.  R is the quaternion number with real part A 
+and imaginary part i B, imaginary part j C, imaginary part k D. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">AND</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP4(A,B,C,D,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QRN4;
+
+
+<strong><font color="#4169E1">PROCEDURE QINV</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number inverse.  R is a non-zero quaternion number.  S R=1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i, j, k, a: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> ERROR(severe,"QINV: division by zero."); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      a:=RNSUM(RNPROD(r,r),RNPROD(i,i));
+      a:=RNSUM(a,RNPROD(j,j));
+      a:=RNSUM(a,RNPROD(k,k));
+      r:=RNQ(r,a); i:=RNQ(RNNEG(i),a); 
+      j:=RNQ(RNNEG(j),a); k:=RNQ(RNNEG(k),a); 
+      S:=COMP4(r,i,j,k,SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QINV;
+
+
+<strong><font color="#4169E1">PROCEDURE QNEG</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Quaternion number negative.  R is a quaternion number.  S=-R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      S:=COMP4(RNNEG(r),RNNEG(i),RNNEG(j),RNNEG(k),SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QNEG;
+
+
+<strong><font color="#4169E1">PROCEDURE QONE</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Quaternion number one.  R is a quaternion number.  s=1 if R=1,
+s=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i, j, k, t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      <font color="#4169E1">IF</font> (i &lt;&gt; 0) <font color="#4169E1">OR</font> (j &lt;&gt; 0) <font color="#4169E1">OR</font> (k &lt;&gt; 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      t:=RNONE(r); 
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QONE;
+
+
+<strong><font color="#4169E1">PROCEDURE QPROD</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Quaternion number product.  R and S are quaternion numbers.  T=R*S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, j1, k1, r2, i2, j2, k2, r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (R = 0) <font color="#4169E1">OR</font> (S = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r1,i1,j1,k1); FIRST4(S,r2,i2,j2,k2); 
+      r:=RNDIF(RNPROD(r1,r2),RNPROD(i1,i2)); 
+      r:=RNDIF(r,RNPROD(j1,j2)); r:=RNDIF(r,RNPROD(k1,k2)); 
+      i:=RNSUM(RNPROD(r1,i2),RNPROD(i1,r2)); 
+      i:=RNSUM(i,RNPROD(j1,k2)); i:=RNDIF(i,RNPROD(k1,j2)); 
+      j:=RNDIF(RNPROD(r1,j2),RNPROD(i1,k2)); 
+      j:=RNSUM(j,RNPROD(j1,r2)); j:=RNSUM(j,RNPROD(k1,i2)); 
+      k:=RNSUM(RNPROD(r1,k2),RNPROD(i1,j2)); 
+      k:=RNDIF(k,RNPROD(j1,i2)); k:=RNSUM(k,RNPROD(k1,r2)); 
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">AND</font> (j = 0) <font color="#4169E1">AND</font> (k = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP4(r,i,j,k,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE QQ</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Quaternion number quotient.  R and S are quaternion numbers, S non-zero.
+T=R/S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> T:=QPROD(R,QINV(S)); 
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QQ;
+
+
+<strong><font color="#4169E1">PROCEDURE QRAND</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Quaternion number, random.  n is a positive beta-integer.  Random 
+rational numbers A and B are generated using RNRAND(n). Then 
+R is the quaternion number with real part A and imaginary part B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=RNRAND(NL); i:=RNRAND(NL); j:=RNRAND(NL); k:=RNRAND(NL); 
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">AND</font> (j = 0) <font color="#4169E1">AND</font> (k = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP4(r,i,j,k,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QRAND;
+
+
+<strong><font color="#4169E1">PROCEDURE QNREAD</font></strong>(): LIST;
+<font color="#B22222">(*Quaternion number read.  The quaternion number R is read from the input
+stream.  Any preceding blanks are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R, r, i, j, k, c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=RNREAD(); i:=0; j:=0; k:=0; 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("i") <font color="#4169E1">THEN</font> i:=RNREAD(); <font color="#4169E1">ELSE</font> BKSP <strong><font color="#4169E1">END</font></strong>;  
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("j") <font color="#4169E1">THEN</font> j:=RNREAD(); <font color="#4169E1">ELSE</font> BKSP <strong><font color="#4169E1">END</font></strong>;  
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("k") <font color="#4169E1">THEN</font> k:=RNREAD(); <font color="#4169E1">ELSE</font> BKSP <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">AND</font> (j = 0) <font color="#4169E1">AND</font> (k = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      R:=COMP4(r,i,j,k,SIL);
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QNREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE QSUM</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Quaternion number sum.  R and S are quaternion numbers.  T=R+S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, j1, k1, r2, i2, j2, k2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=S; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r1,i1,j1,k1); FIRST4(S,r2,i2,j2,k2); 
+      r1:=RNSUM(r1,r2); i1:=RNSUM(i1,i2); 
+      j1:=RNSUM(j1,j2); k1:=RNSUM(k1,k2); 
+      <font color="#4169E1">IF</font> (r1 = 0) <font color="#4169E1">AND</font> (i1 = 0) <font color="#4169E1">AND</font> (j1 = 0) <font color="#4169E1">AND</font> (k1 = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP4(r1,i1,j1,k1,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE QNWRITE</font></strong>(R: LIST);
+<font color="#B22222">(*Quaternion number write. R is a quaternion number.  R is converted 
+to decimal and written in the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i, j, k: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST4(R,r,i,j,k); 
+      RNWRIT(r); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" i "); RNWRIT(i) <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> j &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" j "); RNWRIT(j) <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> k &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" k "); RNWRIT(k) <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> QNWRITE;
+
+
+
+<strong><font color="#4169E1">END</font></strong> MASQ.
+
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

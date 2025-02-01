@@ -1,0 +1,74 @@
+
+<html>
+<head>
+<title>./masarith/MASCOMB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T20:39:34+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASCOMB.mi,v 1.1 1994/11/28 20:39:34 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MASCOMB.mi,v $
+ * Revision 1.1  1994/11/28  20:39:34  dolzmann
+ * New modules MASCOMB.md, MASCOMB.mi, MASSET.md, and MASSET.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASCOMB; 
+<font color="#B22222">(* MAS Combinatorial System Implementation Module. *)</font>
+
+FROM MASSTOR	IMPORT	ADV, COMP, INV, LENGTH, LIST, LIST1, RED, SIL;
+FROM SACLIST	IMPORT	SLELT;
+FROM LISTTOOLS	IMPORT	LSRCHQ; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASCOMB.mi,v 1.1 1994/11/28 20:39:34 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE INVPERM</font></strong>(perm: LIST):LIST;
+<font color="#B22222">(* inverse permutation. perm is a permutation. The inverse permutation
+is returned, i.e. LPERM(LPERM(x,p),INVPERM(p))=x. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> L, pos: LIST;
+	<strong><font color="#228B22">VAR</font></strong> i, n: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	n:=LENGTH(perm);	
+	L:=SIL;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* construct a list L=(1,...,n) *)</font>
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> n <font color="#4169E1">DO</font> L:=COMP(0,L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* construct the inverse permutation *)</font>
+	<font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> n <font color="#4169E1">DO</font>
+		ADV(perm,pos,perm);
+		SLELT(L,pos,i);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font>	RETURN L;
+<strong><font color="#4169E1">END</font></strong> INVPERM; 
+
+<strong><font color="#4169E1">PROCEDURE PVFLISTS</font></strong>(list1,list2:LIST):LIST;
+<font color="#B22222">(* permutation vector from lists.
+list1 and list2 are lists of the same length.
+A permutations vector P is returned, so that LPERM(list1,P)=list2 *)</font>
+	<strong><font color="#228B22">VAR</font></strong> a,P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	P:=SIL;
+	<font color="#4169E1">WHILE</font> list2&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(list2,  a,list2);
+		P:=COMP(LSRCHQ(a,list1),P);
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(P);
+<strong><font color="#4169E1">END</font></strong> PVFLISTS;
+
+<strong><font color="#4169E1">END</font></strong> MASCOMB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

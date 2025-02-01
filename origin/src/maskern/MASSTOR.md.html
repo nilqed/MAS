@@ -1,0 +1,139 @@
+
+<html>
+<head>
+<title>./maskern/MASSTOR.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T14:36:45+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASSTOR.md,v 1.3 1995/12/16 14:51:35 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASSTOR.md,v $
+ * Revision 1.3  1995/12/16 14:51:35  kredel
+ * Removed old Atari related comments.
+ *
+ * Revision 1.2  1992/02/12  17:31:56  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:14  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASSTOR;
+
+<font color="#B22222">(* MAS Storage Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT GAMMAINT;
+
+FROM SYSTEM IMPORT ADDRESS;
+
+
+<strong><font color="#228B22">TYPE</font></strong> LIST = GAMMAINT;
+
+
+<strong><font color="#228B22">VAR</font></strong> BETA, BETA1, SIL: LIST;
+
+    NU, GCC, GCCC, GCM, RHO,
+
+    TAU, TAU0: GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASSTOR.md,v 1.3 1995/12/16 14:51:35 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ADV</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> a, LP: LIST);
+<font color="#B22222">(*Advance.  L is a non-null list.  a=FIRST(L) and LP=RED(L). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CELLS</font></strong>(): GAMMAINT;
+<font color="#B22222">(*Cells. Returns the used cells since storage initialization. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CLOCK</font></strong>(): GAMMAINT;
+<font color="#B22222">(*Clock. Returns the current CPU clock reading in seconds. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE COMP</font></strong>(a,L: LIST): LIST;
+<font color="#B22222">(*Composition.  a is an object.  L is a list.  Returns the 
+composition of a and L. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DEQUE</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Dequeue.  L is a non empty queue representing list.  Returns a, the 
+first object from the queue. L is updated. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EMPTYQUE</font></strong>(M: LIST): BOOLEAN;
+<font color="#B22222">(*Empty Queue.  Tests if a queue is empty. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ENQUE</font></strong>(a,L: LIST);
+<font color="#B22222">(*Enqueue.  a is an object.  L is a queue representing list. Appends a
+to the quque L. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE FIRST</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*First.  L is a non-null list.  a is the first element of L. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NEWQUE</font></strong>(): LIST;
+<font color="#B22222">(*New Queue.  Returns a new empty queue. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE INV</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Inverse.  L is a list.  The inverse of L is returned.  The list L is
+modified. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LENGTH</font></strong>(L: LIST): GAMMAINT;
+<font color="#B22222">(*Length.  L is a list.  Returns length(L).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LIST1</font></strong>(a: LIST): LIST;
+<font color="#B22222">(*List, 1 element.  a is an object.  L is the list (a). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE LISTVAR</font></strong>(<strong><font color="#228B22">VAR</font></strong> L: LIST);
+<font color="#B22222">(*List variable.  L is a list.  The address of L is made accessible
+to the garbage collector. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RED</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Reductum.  L is a non-null list.  Returns the reductum of L. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SFIRST</font></strong>(L, a: LIST);
+<font color="#B22222">(*Set first.  L is a non-null list.  a is an object.  The first
+element of L is changed to a. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SRED</font></strong>(L, LP: LIST);
+<font color="#B22222">(*Set reductum.  L is a non-null list.  LP is a list.  The reductum
+of L is changed to LP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE TIME</font></strong>(): GAMMAINT;
+<font color="#B22222">(*Time. Returns the CLOCK minus the garbage collection time TAU.  *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASSTOR.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

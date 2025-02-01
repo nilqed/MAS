@@ -1,0 +1,85 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT2.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT2.mi,v 1.3 1992/10/15 16:28:55 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT2.mi,v $
+ * Revision 1.3  1992/10/15  16:28:55  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:47  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:54  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACEXT2;
+
+<font color="#B22222">(* SAC Extensions 2 Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font> 
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    COMP, SRED, ADV, FIRST, RED;
+
+FROM SACLIST IMPORT CONC, FIRST2, LAST;
+
+FROM SACI IMPORT IDP2, IMP2, IORD2;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACEXT2.mi,v 1.3 1992/10/15 16:28:55 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE RNBCR</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> M,N,KL: LIST); 
+<font color="#B22222">(*Rational number binary common representation.  A and B are binary
+rational numbers.  If both A eq 0 and B eq 0, then M eq N eq K eq 0.
+If A eq 0, B ne 0, then M eq 0 and N and K are the unique integers
+such that B eq N cdot 2 sup k with N odd.  If B eq 0, A ne 0, then
+N eq 0 and M and K are the unique integers such that A eq
+M cdot 2 sup K with M odd.  If A ne 0 and B ne 0, then M,N, and K
+are the unique integers such that A eq M cdot 2 sup K and
+B eq N cdot 2 sup K with at least one of M and N odd.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A2, B2, EL1, EL2, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*express both A and B as odd integer times power of 2.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> M:=0; <font color="#4169E1">ELSE</font> FIRST2(A, M,A2); 
+         <font color="#4169E1">IF</font> A2 = 1 <font color="#4169E1">THEN</font> EL1:=IORD2(M); M:=IDP2(M,EL1); <font color="#4169E1">ELSE</font>
+            J1Y:=IORD2(A2); EL1:=-J1Y; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> N:=0; EL2:=0; <font color="#4169E1">ELSE</font> FIRST2(B, N,B2); 
+         <font color="#4169E1">IF</font> B2 = 1 <font color="#4169E1">THEN</font> EL2:=IORD2(N); N:=IDP2(N,EL2); <font color="#4169E1">ELSE</font>
+            J1Y:=IORD2(B2); EL2:=-J1Y; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*obtain common power of 2.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> KL:=EL2; RETURN; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> KL:=EL1; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> EL1 &lt;= EL2 <font color="#4169E1">THEN</font> J1Y:=EL2-EL1; N:=IMP2(N,J1Y); KL:=EL1; 
+         <font color="#4169E1">ELSE</font> J1Y:=EL1-EL2; M:=IMP2(M,J1Y); KL:=EL2; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RNBCR; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT2.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

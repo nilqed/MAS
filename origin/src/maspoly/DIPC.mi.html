@@ -1,0 +1,1393 @@
+
+<html>
+<head>
+<title>./maspoly/DIPC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:34+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPC.mi,v 1.10 1995/11/05 09:16:35 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPC.mi,v $
+ * Revision 1.10  1995/11/05 09:16:35  kredel
+ * Improved exponent parsing.
+ *
+ * Revision 1.9  1995/11/04  22:14:56  pesch
+ * New procedures EVOWRITE and EvordWrite.
+ *
+ * Revision 1.8  1994/09/01  13:30:59  pfeil
+ * minor changes
+ *
+ * Revision 1.7  1994/06/09  15:13:30  pfeil
+ * Added AD2DIP, DIP2AD.
+ *
+ * Revision 1.6  1994/03/30  13:02:33  dolzmann
+ * New procedure DILPERM.
+ *
+ * Revision 1.5  1993/03/23  12:50:00  kredel
+ * Improved linear form processing
+ *
+ * Revision 1.4  1993/03/16  09:32:28  kredel
+ * Removed obsolete LPERM function.
+ *
+ * Revision 1.3  1992/10/15  16:28:33  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:46  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:13:58  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPC;
+
+<font color="#B22222">(* DIP Common Polynomial System Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM DIPI	IMPORT	DIILWR;
+
+FROM DIPIPOL	IMPORT	VIPIIP;
+
+FROM DIPTOOLS	IMPORT	EvordPop, EvordPush;
+
+FROM MASELEM	IMPORT	GAMMAINT, MASMAX;
+
+FROM MASSTOR	IMPORT	ADV, BETA, COMP, FIRST, INV, LENGTH, LIST, LIST1,
+			LISTVAR, RED, SFIRST, SIL, SRED;
+
+FROM MASERR	IMPORT	ERROR, harmless, severe; 
+
+FROM SACLIST	IMPORT	ADV2, AREAD, CINV, COMP2, EQUAL, LAST, LELT, LIST2,
+			OWRITE, RED2, SECOND;
+
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, DIBUFF, MASORD, SWRITE;
+
+FROM SACCOMB	IMPORT	LPERM;
+
+FROM SACD	IMPORT	DQR, DRANN;
+
+FROM SACI	IMPORT	ICOMP, IPROD;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPC.mi,v 1.10 1995/11/05 09:16:35 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1995 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE BACKUB</font></strong>();
+<font color="#B22222">(*Backspace until blank. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*decrement of ipos. *)</font>
+      <font color="#4169E1">REPEAT</font> BKSP; BKSP;
+             C:=CREAD();
+             <font color="#4169E1">UNTIL</font> C = MASORD(" ");
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> BACKUB;
+
+
+<strong><font color="#4169E1">PROCEDURE BEGIND</font></strong>();
+<font color="#B22222">(*Begin distributive. set global variables for distributive
+polynomial system. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*set valis. *)</font> LISTVAR(VALIS); VALIS:=SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*set evord. *)</font> EVORD:=INVLEX; LISTVAR(EVORD); 
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> BEGIND;
+
+
+<strong><font color="#4169E1">PROCEDURE CLIN</font></strong>(): LIST;
+<font color="#B22222">(*Character list in. If a character list is next in the input
+stream then it is read, else L is empty. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, IDUM, L, LL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*is character list next. *)</font> L:=BETA; C:=CREADB();
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("$") <font color="#4169E1">THEN</font> BKSP; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+      C:=CREAD();
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> BKSP; BKSP; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+      LL:=1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read character list. *)</font>
+      <font color="#4169E1">REPEAT</font> C:=CREAD(); L:=COMP(C,L);
+             <font color="#4169E1">IF</font> C = MASORD("(") <font color="#4169E1">THEN</font> LL:=LL+1; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> LL:=LL-1; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> LL = 0;
+      L:=RED(L); L:=INV(L);
+<font color="#B22222">(*5*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> CLIN;
+
+
+<strong><font color="#4169E1">PROCEDURE DILBSO</font></strong>(A: LIST);
+<font color="#B22222">(*Distributive polynomial list bubble sort. A is a list of
+lists of base coefficients and exponent vectors.
+Each element of A is sorted with respect to the termordering
+defined in EVORD by the bubble-sort method,
+two monomials with equal exponents will lead to an error.
+The lists in A but not there location, are modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*sort polynomials. *)</font> AP:=A;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AL,AP); DIPBSO(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DILBSO;
+
+
+<strong><font color="#4169E1">PROCEDURE DILFPL</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list from polynom list. A is a list
+of polynomials in r variables, r ge 0. Every polynomial in A
+is converted to distributive representation and returned in B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert polynomials. *)</font> AP:=A; B:=BETA;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AL,AP); BL:=DIPFP(RL,AL);
+            B:=COMP(BL,B); <strong><font color="#4169E1">END</font></strong>;
+      B:=INV(B);
+<font color="#B22222">(*4*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DILFPL;
+
+
+<strong><font color="#4169E1">PROCEDURE DILPERM</font></strong>(dil,perm: LIST):LIST;
+<font color="#B22222">(* distributive polynomial list permutation of variables.
+The variable dil is a list of distributive polynomials in r variables, 
+perm is a permutation. In each distributive polynomial of the list dil 
+the variables are permuted with respect to perm. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> dip,result: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font>	<font color="#B22222">(* initialization *)</font>
+	result:=SIL;
+<font color="#B22222">(*2*)</font>	<font color="#B22222">(* process each polynomial in the list dil. *)</font>
+	<font color="#4169E1">WHILE</font> dil&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(dil,dip,dil);
+		result:=COMP(DIPERM(dip,perm),result);
+	<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font>	<font color="#B22222">(* reorder the result and return it. *)</font>
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> DILPERM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIPADM</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> EL,FL,BL,B: LIST);
+<font color="#B22222">(*Distributive polynomial advance main variable. A is a
+distributive polynomial in one or more variables. e is the
+degree of A, b is the leading coefficient of A,
+B is the reductum of A, f is the degree of B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, DL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial case.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> EL:=0; FL:=0; BL:=A; B:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> B:=A; BL:=BETA; J1Y:=DIPEVL(B); EL:=FIRST(J1Y);
+      LOOP <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           CL:=DIPLBC(B); DL:=DIPEVL(B); ADV(DL, FL,DL);
+           <font color="#4169E1">IF</font> EL = FL <font color="#4169E1">THEN</font> B:=RED2(B); BL:=DIPMCP(DL,CL,BL); 
+              <font color="#4169E1">ELSE</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> BL:=INV(BL);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; FL:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPADM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPADS</font></strong>(A,IL,SL: LIST;    <strong><font color="#228B22">VAR</font></strong> EL,FL,BL,B: LIST);
+<font color="#B22222">(*Distributive polynomial advance and substitute. A is a
+distributive polynomial, i is the specified variable,
+1 le i le r=DIPNOV(A), s is the new exponent of b
+in the i-th variable. e is the exponent of the leading
+monomial of A in the i-th variable, let bs be part of the
+coefficient of xi**e then b = bs * xi**s,
+B = A - bs*xi**e, f is the exponent of the leading monomial
+of B in the i-th variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, DL, DUMMY, E1, GL, J1Y, JL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial case.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> EL:=0; FL:=0; BL:=A; B:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> RL:=DIPNOV(A); J1Y:=RL-IL; JL:=J1Y+1;
+      DIPMAD(A, CL,E1,B); EVSU(E1,JL,SL, GL,EL); BL:=DIPFMO(GL,CL);
+      LOOP <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           DIPMAD(B, CL,DL,DUMMY); EVSU(DL,JL,SL, GL,FL);
+           <font color="#4169E1">IF</font> EL = FL <font color="#4169E1">THEN</font> B:=RED2(B); BL:=DIPMCP(GL,CL,BL); 
+              <font color="#4169E1">ELSE</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> BL:=INV(BL);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; FL:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPADS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPADV</font></strong>(A,IL: LIST;    <strong><font color="#228B22">VAR</font></strong> EL,FL,BL,B: LIST);
+<font color="#B22222">(*Distributive polynomial advance. A is a distributive polynomial,
+i is the specified variable, 1 le i le r=DIPNOV(A). e is
+the exponent of the leading monomial of A in the i-th variable,
+b is part of the coefficient of xi**e of A,
+B = A - b*xi**e, f is the exponent of the leading monomial
+of B in the i-th variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, DL, DUMMY, E1, GL, J1Y, JL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial case.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> EL:=0; FL:=0; BL:=A; B:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+      RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> DIPADM(A, EL,FL,BL,B); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> J1Y:=RL-IL; JL:=J1Y+1; DIPMAD(A, CL,E1,B);
+      EVDEL(E1,JL, GL,EL); BL:=DIPFMO(GL,CL);
+      LOOP <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           DIPMAD(B, CL,DL,DUMMY); EVDEL(DL,JL, GL,FL);
+           <font color="#4169E1">IF</font> EL = FL <font color="#4169E1">THEN</font> B:=RED2(B); BL:=DIPMCP(GL,CL,BL); 
+              <font color="#4169E1">ELSE</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> BL:=INV(BL);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; FL:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPADV;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPBSO</font></strong>(A: LIST);
+<font color="#B22222">(*Distributive polynomial bubble sort. A is a list of
+base coefficients and exponent vectors, A is sorted
+with respect to the termordering defined in EVORD
+by the bubble-sort method, two monomials with equal
+exponents will lead to an error. The
+list A but not its location, is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, ALPP, AP, APP, B, BP, DUMMY, ELP, ELPP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial case.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> B:=BETA;
+      <font color="#4169E1">REPEAT</font> AP:=A; DIPMAD(AP, ALP,ELP,APP); BP:=BETA;
+             <font color="#4169E1">WHILE</font> APP &lt;&gt; B <font color="#4169E1">DO</font> DIPMAD(APP, ALPP,ELPP,DUMMY);
+                   TL:=EVCOMP(ELP,ELPP);
+                   <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> ERROR(harmless,"DIPBSO, equal exponents.");
+                      RETURN <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font> DIPMST(AP,ALPP,ELPP);
+                      DIPMST(APP,ALP,ELP); BP:=APP; <font color="#4169E1">ELSE</font> ALP:=ALPP;
+                      ELP:=ELPP; <strong><font color="#4169E1">END</font></strong>;
+                   AP:=APP; APP:=RED2(AP); <strong><font color="#4169E1">END</font></strong>;
+             B:=BP;
+             <font color="#4169E1">UNTIL</font> B = SIL;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPBSO;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPCMP</font></strong>(EL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial composition. A is a distributive
+polynomial in r variables. e is an exponent. Let t=r+1, then
+B(x1, ...,xr,xt)=A(x1, ...,xr)*xt**e.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AS, B, CL, DL, DLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, CL,DL,AS); DLP:=COMP(EL,DL);
+             B:=DIPMCP(DLP,CL,B);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPCMP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial degree. A is a distributive polynomial.
+n is the degree of A in its main variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  EL, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> NL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a=integer.*)</font> EL:=DIPEVL(A);
+      <font color="#4169E1">IF</font> EL = SIL <font color="#4169E1">THEN</font> RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+      NL:=FIRST(EL); RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPDEG;
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIPDPV</font></strong>(A,SL,QL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial division by power of variable. A is
+a distributive polynomial in r variables. s is the desired
+variable to be divided, s le r. q is a beta-integer.
+Q = A / ( xs**q). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, EL1, FL, J1Y, JL, Q, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or ql=0. *)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (QL = 0) <font color="#4169E1">THEN</font> Q:=A; RETURN(Q); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*divide terms.*)</font> RL:=DIPNOV(A); J1Y:=RL-SL; JL:=J1Y+1; AS:=A;
+      Q:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); EVCSUB(EL,JL,QL, FL,EL1);
+             Q:=DIPMCP(FL,AL,Q);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> Q:=INV(Q); RETURN(Q);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPDPV;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPERM</font></strong>(A,P: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial permutation of variables. A is a
+distributive polynomial, in r variables, r ge 0. P is a
+list (p sub 1, ...,p sub r) whose elements are the
+beta-digits 1 through r.  B(x sub (p sub 1), ...,x sub (p sub r))
+=A(x sub 1, ...,x sub r). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, DL, EL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0. *)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*permute variables. *)</font> AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); DL:=CINV(EL); DL:=LPERM(DL,P);
+             DL:=INV(DL); B:=DIPMCP(DL,AL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*sort. *)</font> B:=INV(B); DIPBSO(B);
+<font color="#B22222">(*6*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIPERM;
+
+<strong><font color="#4169E1">PROCEDURE DIPEVL</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial exponent vector leading monomial.
+A is a distributive polynomial. u is the exponent vector of
+the leading monomial of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> UL:=BETA;
+      <font color="#4169E1">IF</font> A &lt;&gt; 0 <font color="#4169E1">THEN</font> UL:=FIRST(A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(UL)
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPEVL;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEVP</font></strong>(A,EL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial exponent vector product. A is a
+distributive polynomial, e is an exponent vector  C=A*(x**e). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, FL, GL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or el=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (EVSIGN(EL) = 0) <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply.*)</font> C:=BETA; AP:=A;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,FL,AP); GL:=EVSUM(EL,FL); C:=DIPMCP(GL,AL,C);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPEVP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPEXC</font></strong>(A,ILP,JLP: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial exchange variables. A is a
+distributive polynomial, the variables ip and jp are exchanged,
+B=(x1, ...,xip, ...,xjp, ...,xr)=A(x1, ...,xjp, ...,xip, ...,xr), 
+0 le ip, jp le DIPNOV(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL, FL, IL, J1Y, JL, RL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or ilp=jlp.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (ILP = JLP) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*exchange.*)</font> B:=BETA; AP:=A; RL:=DIPNOV(A); J1Y:=RL+1;
+      JL:=J1Y-JLP; J1Y:=RL+1; IL:=J1Y-ILP;
+      <font color="#4169E1">IF</font> IL &gt; JL <font color="#4169E1">THEN</font> TL:=JL; JL:=IL; IL:=TL; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); FL:=EVEXC(EL,IL,JL);
+             B:=DIPMCP(FL,AL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*sort.*)</font> DIPBSO(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPEXC;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPFMO</font></strong>(AL,EL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial from monomial. A is a non zero
+distributive polynomial with a as its leading base coefficient
+and e as is its exponent vector of the leading monomial. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*list composition. *)</font> A:=COMP2(EL,AL,BETA);
+      RETURN(A)
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPFMO;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPFP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial from polynomial. A is a polynomial
+in r variables, r ge 0. B is the result of converting A from
+recursive to distributive representation. Modified version
+original version by G. E. Collins. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL1, AS, B, B1, BL1, E1, EL1, ELP, ELS, RLS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=DIPFMO(A,BETA); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font> B:=BETA; AS:=A; RLS:=RL-1;
+      <font color="#4169E1">IF</font> RLS = 0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">REPEAT</font> ADV2(AS, EL1,AL1,AS); E1:=LIST1(EL1); B:=DIPMCP(E1,AL1,B);
+                <font color="#4169E1">UNTIL</font> AS = SIL;
+         B:=INV(B); RETURN(B) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion.*)</font>
+      <font color="#4169E1">REPEAT</font> ADV2(AS, ELP,A1,AS); B1:=DIPFP(RLS,A1);
+             <font color="#4169E1">REPEAT</font> DIPMAD(B1, BL1,ELS,B1); E1:=COMP(ELP,ELS);
+                    B:=DIPMCP(E1,BL1,B);
+                    <font color="#4169E1">UNTIL</font> B1 = SIL;
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPFP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPINV</font></strong>(A,JL,KL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial introduction of new variables.
+A is a distributive polynomial in r variables. k ge 0,
+0 le j le r. B(x1, ...,xj,y1, ...,yk,xj+1, ...,xr)=A(x1, ...,xr).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AS, B, CL, DL, EL, ELS, FL, GL, I, IL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or kl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (KL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; B:=BETA; J1Y:=DIPNOV(A); IL:=J1Y-JL;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, CL,DL,AS); EL:=BETA;
+             <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> IL <font color="#4169E1">DO</font> ADV(DL, FL,DL); EL:=COMP(FL,EL); <strong><font color="#4169E1">END</font></strong>;
+             GL:=DL;
+             <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> KL <font color="#4169E1">DO</font> GL:=COMP(0,GL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> EL = SIL <font color="#4169E1">THEN</font> EL:=GL; <font color="#4169E1">ELSE</font> ELS:=INV(EL); SRED(EL,GL);
+                EL:=ELS; <strong><font color="#4169E1">END</font></strong>;
+             B:=DIPMCP(EL,CL,B);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+      B:=INV(B);
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIPINV;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLBC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial leading base coefficient. A is a
+distributive polynomial. a is the leading base coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> AL:=0;
+      <font color="#4169E1">IF</font> A &lt;&gt; 0 <font color="#4169E1">THEN</font> AL:=SECOND(A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL)
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPLBC;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLDC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial leading coefficient. A is a distributive
+polynomial in one or more variables. a is the leading
+coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, FL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call dipadm.*)</font> DIPADM(A, EL,FL,AL,AS); RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPLDC;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLM</font></strong>(L1,L2: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list merge.  L1 and L2 are lists
+of non zero distributive polynomials in non decreasing
+order.  L is the merge of L1 and L2. L1 and L2 are
+modified to produce L. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, EL1, EL2, L, LP, LP1, LP2, TL: LIST;
+     eoz: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*l1 or l2 null.*)</font>
+      <font color="#4169E1">IF</font> L1 = SIL <font color="#4169E1">THEN</font> L:=L2; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> L2 = SIL <font color="#4169E1">THEN</font> L:=L1; RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> LP1:=L1; LP2:=L2; AL1:=FIRST(L1); AL2:=FIRST(L2);
+      EL1:=DIPEVL(AL1); EL2:=DIPEVL(AL2); TL:=EVCOMP(EL1,EL2);
+      <font color="#4169E1">IF</font> TL &gt; 0 <font color="#4169E1">THEN</font> L:=L2; LP:=L2; LP2:=RED(L2); eoz:=FALSE 
+         <font color="#4169E1">ELSE</font> L:=L1; LP:=L1; LP1:=RED(L1); eoz:=TRUE <strong><font color="#4169E1">END</font></strong>;
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*last element from l1.*)</font>
+<font color="#4169E1">IF</font> eoz <font color="#4169E1">THEN</font> 
+      <font color="#4169E1">IF</font> LP1 = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      AL1:=FIRST(LP1); EL1:=DIPEVL(AL1); TL:=EVCOMP(EL1,EL2);
+      <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> LP:=LP1; LP1:=RED(LP1); eoz:=TRUE 
+         <font color="#4169E1">ELSE</font> SRED(LP,LP2); LP:=LP2; LP2:=RED(LP2); eoz:=FALSE <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">ELSE</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*last element from l2.*)</font>
+      <font color="#4169E1">IF</font> LP2 = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+      AL2:=FIRST(LP2); EL2:=DIPEVL(AL2); TL:=EVCOMP(EL1,EL2);
+      <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> SRED(LP,LP1); LP:=LP1; LP1:=RED(LP1); eoz:=TRUE 
+         <font color="#4169E1">ELSE</font> LP:=LP2; LP2:=RED(LP2); eoz:=FALSE <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*left over.*)</font>
+      <font color="#4169E1">IF</font> LP1 = SIL <font color="#4169E1">THEN</font> SRED(LP,LP2); <font color="#4169E1">ELSE</font> SRED(LP,LP1); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(L);
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> DIPLM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLPM</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial list pair-merge sort. A is
+a list of non zero distributive polynomials. B is the
+result of sorting A into non-decreasing order. Pairs of
+polynomials are merged. The list A is modified to produce B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, AP, APP, APPP, B, BP, BPP, C, CP, CPP, CS, EL1, EL2,
+     TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nothing to do. *)</font>
+      <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (RED(A) = SIL) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct pairs. *)</font> C:=LIST1(0); CS:=C; AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL1,APP);
+             <font color="#4169E1">IF</font> APP = SIL <font color="#4169E1">THEN</font> BP:=AP; <font color="#4169E1">ELSE</font> ADV(APP, AL2,APPP);
+                EL1:=DIPEVL(AL1); EL2:=DIPEVL(AL2); TL:=EVCOMP(EL1,EL2);
+                <font color="#4169E1">IF</font> TL &lt;= 0 <font color="#4169E1">THEN</font> BP:=AP; SRED(APP,SIL); <font color="#4169E1">ELSE</font> BP:=APP;
+                   SRED(APP,AP); SRED(AP,SIL); <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP(BP,C); AP:=APPP;
+             <font color="#4169E1">UNTIL</font> (APP = SIL) <font color="#4169E1">OR</font> (AP = SIL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*circle and merge. *)</font> ADV(C, BP,C); SFIRST(CS,BP); SRED(CS,C);
+      ADV(C, B,CP);
+      <font color="#4169E1">WHILE</font> C &lt;&gt; CP <font color="#4169E1">DO</font> ADV(CP, BP,CPP); BPP:=DIPLM(B,BP);
+            SFIRST(C,BPP); SRED(C,CPP); C:=CPP; ADV(C, B,CP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIPLPM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPLRS</font></strong>(A: LIST);
+<font color="#B22222">(*Distributive polynomial list re-sort. A is a list of
+distributive  polynomials in r variables, r ge 0.
+The polynomials in A are re-sorted. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a empty. *)</font>
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*sort polynomials. *)</font> AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); DIPBSO(AL);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DIPLRS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMAD</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> AL,EL,AP: LIST);
+<font color="#B22222">(*Distributive polynomial monomial advance. A is a non zero
+distributive polynomial. a is its leading base coefficient,
+e is the exponent vector of the leading monomial of A.
+AP is the distributive polynomial a without its leading
+monomial, or the empty list. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*list advance. *)</font> ADV(A, EL,AP); ADV(AP, AL,AP);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPMAD;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMCP</font></strong>(AL,EL,A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial monomial composition. A is an emty
+list or a non zero distributive polynomial. AP is a non zero
+distributive polynomial with a as its leading base coefficient,
+e as is its exponent vector of the leading monomial and A as
+its monomial reductum. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*list composition. *)</font> AP:=COMP2(EL,AL,A);
+      RETURN(AP)
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPMCP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMPM</font></strong>(A,PL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial multiplication by power of main variable.
+A is a distributive polynomial in r variables. p is a beta-
+integer.  B = A * ( xr**p ). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, EL, FL, GL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or pl=0. *)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (PL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply terms.*)</font> AS:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); ADV(EL, FL,GL); FL:=FL+PL;
+             GL:=COMP(FL,GL); B:=DIPMCP(GL,AL,B);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPMPM;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMPV</font></strong>(A,SL,PL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial multiplication by power of variable.
+A is a distributive polynomial in r variables. s is the specified
+variable to be multiplicated, 1 le s le r. p is a beta-integer.
+B = A * ( xs**p ). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, EL, EL1, FL, J1Y, JL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or pl=0. *)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (PL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply terms.*)</font> RL:=DIPNOV(A); J1Y:=RL-SL; JL:=J1Y+1; AS:=A;
+      B:=BETA;
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AS, AL,EL,AS); EVCADD(EL,JL,PL,
+            FL,EL1); B:=DIPMCP(FL,AL,B); <strong><font color="#4169E1">END</font></strong>;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPMPV;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMRD</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial monomial reductum. A is a distributive
+polynomial. B is the distributive polynomial a without the
+leading monomial of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=RED2(A);
+         <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B)
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPMRD;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPMST</font></strong>(A,AL,EL: LIST);
+<font color="#B22222">(*Distributive polynomial monomial set. A is a non zero
+distributive polynomial. Its leading base coefficient is set
+to a and its exponent vector of the leading monomial is
+set to e. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*list set. *)</font> SFIRST(A,EL); AP:=RED(A); SFIRST(AP,AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPMST;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNBC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial number of base coefficients. A is a
+distributive polynomial. l is the number of base coefficients.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> LL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(LL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a not 0.*)</font> LL:=LENGTH(A); LL:=LL DIV 2; RETURN(LL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPNBC;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNOV</font></strong>(A: LIST): GAMMAINT;
+<font color="#B22222">(*Distributive polynomial number of variables. A is a distributive
+polynomial. r is the number of variables, r ge 0. If A=0 then
+r is set to zero. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*length of the exponent vector.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RL:=0; <font color="#4169E1">ELSE</font> J1Y:=DIPEVL(A); RL:=LENGTH(J1Y); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(RL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPNOV;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPRED</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial reductum. A is a distributive polynomial,
+in one or more variables. B is the reductum of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, EL, FL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call dipadm.*)</font> DIPADM(A, EL,FL,AL,B); RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIPRED;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTBC</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial trailing base coefficient. A is a
+distributive polynomial. a is the trailing base coefficient.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, J1Y, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AL:=0; RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A;
+      <font color="#4169E1">REPEAT</font> AP:=AS; AS:=RED2(AS);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+      J1Y:=DIPEVL(AP); SL:=EVSIGN(J1Y);
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> AL:=DIPLBC(AP); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIPTBC;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTCF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial trailing coefficient. A is a
+distributive polynomial. a is the trailing coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL, AS, EL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AL:=0; RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; AL:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, A1,EL,AS);
+             <font color="#4169E1">IF</font> FIRST(EL) = 0 <font color="#4169E1">THEN</font> J1Y:=RED(EL);
+                AL:=DIPMCP(J1Y,A1,AL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> AL = SIL <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> AL:=INV(AL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPTCF;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTCS</font></strong>(A,IL: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial trailing coefficient specified variable.
+A is a distributive polynomial in r variables. a is the
+trailing coefficient of A with respect to the i-th variable,
+1 le i le r. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL, AS, EL, EL1, FL, J1Y, JL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AL:=0; RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font> RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL = IL <font color="#4169E1">THEN</font> AL:=DIPTCF(A); RETURN(AL); <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=RL-IL; JL:=J1Y+1;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; AL:=BETA;
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, A1,EL,AS); EVDEL(EL,JL, FL,EL1);
+             <font color="#4169E1">IF</font> EL1 = 0 <font color="#4169E1">THEN</font> AL:=DIPMCP(FL,A1,AL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> AL = SIL <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> AL:=INV(AL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> DIPTCS;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPTDG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial total degree. A is a distributive
+polynomial. n is the total degree of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, ML, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> NL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0 or rl=1.*)</font>
+      <font color="#4169E1">IF</font> DIPNOV(A) &lt;= 1 <font color="#4169E1">THEN</font> NL:=DIPDEG(A); RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find maximal total degree of exponent vectors.*)</font> AS:=A;
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AS, AL,EL,AS); ML:=EVTDEG(EL);
+            NL:=MASMAX(ML,NL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(NL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIPTDG;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPUNT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial univariate test. A is a distributive
+polynomial. If a is univariate then t=1, otherwise t=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, EL, RL, TL, V, V1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=1 or 0.*)</font> RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL &lt;= 1 <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*check exponent vectors.*)</font> TL:=0; DIPMAD(A, AL,EL,AP);
+      V:=EVDOV(EL);
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RED(V) &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AP, AL,EL,AP); V1:=EVDOV(EL);
+            <font color="#4169E1">IF</font> V1 &lt;&gt; SIL <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> EQUAL(V,V1) = 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      TL:=1;
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> DIPUNT;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPUV</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Distributive polynomial univariate variable output.
+A is a distributive polynomial. If A is univariate then t=i, 
+otherwise t=0. were i is the index of the variable in which A 
+is univariate. If A is constant then t= -1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, EL, J1Y, J2Y, RL, TL, V, V1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=1 or 0.*)</font> RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*check exponent vectors.*)</font> TL:=0; DIPMAD(A, AL,EL,AP);
+      V:=EVDOV(EL);
+      <font color="#4169E1">IF</font> V = SIL <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RED(V) &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AP, AL,EL,AP); V1:=EVDOV(EL);
+            <font color="#4169E1">IF</font> V1 &lt;&gt; SIL <font color="#4169E1">THEN</font>
+               <font color="#4169E1">IF</font> EQUAL(V,V1) = 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=RL+1; J2Y:=FIRST(V); TL:=J1Y-J2Y;
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> DIPUV;
+ 
+
+<strong><font color="#4169E1">PROCEDURE EPREAD</font></strong>(): LIST; 
+<font color="#B22222">(*Exponent read.  If ** is found in the input stream
+then e=AREAD, else e=1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, EL, IDUM: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read **. *)</font> EL:=1; C:=CREADB(); 
+      <font color="#4169E1">IF</font> C = MASORD("^") <font color="#4169E1">THEN</font> EL:=AREAD(); RETURN(EL); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("*") <font color="#4169E1">THEN</font> BKSP; <font color="#4169E1">ELSE</font> C:=CREAD(); 
+         <font color="#4169E1">IF</font> C &lt;&gt; MASORD("*") <font color="#4169E1">THEN</font> BKSP; BKSP; <font color="#4169E1">ELSE</font> EL:=AREAD(); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(EL); <strong><font color="#4169E1">END</font></strong> EPREAD; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVCADD</font></strong>(U,IL,EL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,FL: LIST);
+<font color="#B22222">(*Exponent vector component add. U=(u1, ...,ur) is an
+exponent vector of length r, e is added to the i-th component,
+1 le i le r, f=ui+e, V=(u1, ...,ui+e, ...,ur). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  GL, J, UP, UPS, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() or il=0.*)</font>
+      <font color="#4169E1">IF</font> (IL = 0) <font color="#4169E1">OR</font> (U = SIL) <font color="#4169E1">THEN</font> V:=U; FL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> UP:=U; VP:=BETA;
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> ADV(UP, GL,UP); VP:=COMP(GL,VP); <strong><font color="#4169E1">END</font></strong>;
+      ADV(UP, GL,UP); FL:=GL+EL; UPS:=COMP(FL,UP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> VP = SIL <font color="#4169E1">THEN</font> V:=UPS; <font color="#4169E1">ELSE</font> V:=INV(VP); SRED(VP,UPS); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVCADD;
+
+
+<strong><font color="#4169E1">PROCEDURE EVCOMP</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector compare. U=(u1, ...,ur), V=(v1, ...vr)
+are exponent vectors. r is the length of U and V.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to the ordering of the exponent vectors specified
+in the global variable EVORD. Lexicographical, inverse
+lexicographical, graded lexicograhpical, inverse graded
+lexicographical orderings are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compare with linear form. *)</font>
+      <font color="#4169E1">IF</font> EVORD &gt; SIL <font color="#4169E1">THEN</font> TL:=EVLFCP(EVORD,U,V); 
+         <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> 
+            <font color="#4169E1">IF</font> EQUAL(U,V) = 0 <font color="#4169E1">THEN</font>
+               SWRITE("LF ="); OWRITE(EVORD); BLINES(0);
+               SWRITE("U  ="); OWRITE(U); BLINES(0);
+               SWRITE("V  ="); OWRITE(V); BLINES(0);
+               ERROR(severe,"EVCOMP: Linear form <font color="#4169E1">not</font> linear independent.");
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>;
+         RETURN(TL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compare with evord.*)</font>
+      <font color="#4169E1">CASE</font> INTEGER(EVORD) <font color="#4169E1">OF</font>
+           LEX             : TL:=-EVILCP(U,V) |
+           INVLEX          : TL:= EVILCP(U,V) |
+           GRLEX           : TL:=-EVIGLC(U,V) |
+           IGRLEX          : TL:= EVIGLC(U,V) |
+           REVLEX          : TL:=-EVILCI(U,V) |
+           REVILEX         : TL:= EVILCI(U,V) |
+           REVTDEG         : TL:=-EVITDC(U,V) |
+           REVITDG         : TL:= EVITDC(U,V) 
+               <font color="#4169E1">ELSE</font> ERROR(severe,"EVCOMP, undefined term order.") <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> EVCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE EVCSUB</font></strong>(U,IL,EL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,FL: LIST);
+<font color="#B22222">(*Exponent vector component subtract. U=(u1, ...,ur) is an
+exponent vector of length r, e is subtracted from the i-th
+component, 1 le i le r, V=(u1, ...,ui-e, ...,ur), f=ui. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  GL, J, UP, UPS, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*il=0 or u=().*)</font>
+      <font color="#4169E1">IF</font> (IL = 0) <font color="#4169E1">OR</font> (U = SIL) <font color="#4169E1">THEN</font> V:=U; FL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> UP:=U; VP:=BETA;
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> ADV(UP, FL,UP); VP:=COMP(FL,VP); <strong><font color="#4169E1">END</font></strong>;
+      ADV(UP, FL,UP); GL:=FL-EL; UPS:=COMP(GL,UP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> VP = SIL <font color="#4169E1">THEN</font> V:=UPS; <font color="#4169E1">ELSE</font> V:=INV(VP); SRED(VP,UPS); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVCSUB;
+
+
+<strong><font color="#4169E1">PROCEDURE EVDEL</font></strong>(U,IL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,EL: LIST);
+<font color="#B22222">(*Exponent vector delete. U=(u1, ...,ur) is an exponent vector
+of length r. i is the component to be deleted, 1 le i le r.
+V=(u1, ...,ui-1,ui+1, ...,ur),  e=ui.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J, UP, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() or il=0.*)</font>
+      <font color="#4169E1">IF</font> (U = SIL) <font color="#4169E1">OR</font> (IL = 0) <font color="#4169E1">THEN</font> V:=U; EL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*gerneral case.*)</font> UP:=U; VP:=BETA;
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> ADV(UP, EL,UP); VP:=COMP(EL,VP); <strong><font color="#4169E1">END</font></strong>;
+      ADV(UP, EL,UP);
+      <font color="#4169E1">IF</font> VP = SIL <font color="#4169E1">THEN</font> V:=UP; <font color="#4169E1">ELSE</font> V:=INV(VP); SRED(VP,UP); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVDEL;
+
+
+<strong><font color="#4169E1">PROCEDURE EVDER</font></strong>(U,IL,EL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,FL: LIST);
+<font color="#B22222">(*Exponent vector derivation. U=(u1, ...,ur) is an exponent
+vector of length r, from the i-th component e-times one is
+subtracted and f is multiplied with the result.
+V=(u1, ...,ui-e, ...,ur). If f=0 then V is undefined. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, J, KL, UP, UPS, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=().*)</font> FL:=0;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*bulidt derivation.*)</font> UP:=U; VP:=BETA;
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> ADV(UP, DL,UP); VP:=COMP(DL,VP); <strong><font color="#4169E1">END</font></strong>;
+      ADV(UP, DL,UP);
+      <font color="#4169E1">IF</font> EL &gt; DL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+      FL:=DL;
+      <font color="#4169E1">FOR</font> KL:=DL-1 <font color="#4169E1">TO</font> DL-EL+1 BY -1 <font color="#4169E1">DO</font> FL:=IPROD(FL,KL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> UPS:=COMP(KL,UP);
+      <font color="#4169E1">IF</font> VP = SIL <font color="#4169E1">THEN</font> V:=UPS; <font color="#4169E1">ELSE</font> V:=INV(VP); SRED(VP,UPS); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVDER;
+
+
+<strong><font color="#4169E1">PROCEDURE EVDFSI</font></strong>(U,V: LIST;    <strong><font color="#228B22">VAR</font></strong> W,SL: LIST);
+<font color="#B22222">(*Exponent vector difference and sign. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+W=(w1, ...,wr) is the componentwise difference of U and V.
+s is the EVSIGN of W. If s=-1 then W is undefined.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, VL, VS, WL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() and v=().*)</font> W:=BETA; SL:=0;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*subtract.*)</font> US:=U; VS:=V;
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS); WL:=UL-VL;
+             <font color="#4169E1">IF</font> WL &lt; 0 <font color="#4169E1">THEN</font> SL:=-1; RETURN; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> WL &gt; 0 <font color="#4169E1">THEN</font> SL:=1; <strong><font color="#4169E1">END</font></strong>;
+             W:=COMP(WL,W);
+             <font color="#4169E1">UNTIL</font> US = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> W:=INV(W); RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVDFSI;
+
+
+<strong><font color="#4169E1">PROCEDURE EVDIF</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector difference. U=(u1, ...,ur), V=(v1, ...,vr)
+are exponent vectors of length r. W=(w1, ...,wr) is the
+componentwise difference of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, VL, VS, W, WL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() and v=().*)</font> W:=BETA;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>;
+      US:=U; VS:=V;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*subtract components.*)</font>
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS); WL:=UL-VL; W:=COMP(WL,W);
+             <font color="#4169E1">UNTIL</font> US = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> W:=INV(W); RETURN(W);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE EVDOV</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector dependency on variables. U is an exponent
+vector. V is the list (j1, ...,jn) where each
+j is the index of a variable with non zero exponent in U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  JL, UL, US, V: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise.*)</font> V:=BETA; US:=U; JL:=0;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test exponents.*)</font>
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> JL:=JL+1; ADV(US, UL,US);
+            <font color="#4169E1">IF</font> UL &lt;&gt; 0 <font color="#4169E1">THEN</font> V:=COMP(JL,V); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      V:=INV(V);
+<font color="#B22222">(*5*)</font> RETURN(V); <strong><font color="#4169E1">END</font></strong> EVDOV;
+
+
+<strong><font color="#4169E1">PROCEDURE EVEXC</font></strong>(U,IL,JL: LIST): LIST;
+<font color="#B22222">(*Exponent vector exchange. U=(u1, ...,ui, ...,uj, ...,ur)
+is an exponent vector of length r. The components ui and uj are 
+exchanged, 1 le i lt j le r. V=(u1, ...,uj, ...,ui, ...,ur).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J, V, V1, VL, VL1, VL2, VP, VPS, VS1, VS2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise.*)</font> VS1:=BETA; VS2:=BETA; VP:=U;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*step to il and jl.*)</font>
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> ADV(VP, VL,VP); VS1:=COMP(VL,VS1); <strong><font color="#4169E1">END</font></strong>;
+      ADV(VP, VL1,VP);
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> JL-IL-1 <font color="#4169E1">DO</font> ADV(VP, VL,VP); VS2:=COMP(VL,VS2); <strong><font color="#4169E1">END</font></strong>;
+      ADV(VP, VL2,VP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*exchange.*)</font> VPS:=COMP(VL1,VP);
+      <font color="#4169E1">IF</font> VS2 = SIL <font color="#4169E1">THEN</font> V1:=VPS; <font color="#4169E1">ELSE</font> V1:=INV(VS2); SRED(VS2,VPS);
+         <strong><font color="#4169E1">END</font></strong>;
+      V1:=COMP(VL2,V1);
+      <font color="#4169E1">IF</font> VS1 = SIL <font color="#4169E1">THEN</font> V:=V1; <font color="#4169E1">ELSE</font> V:=INV(VS1); SRED(VS1,V1); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(V);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVEXC;
+
+
+<strong><font color="#4169E1">PROCEDURE EVIGLC</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse graded lexicographical compare.
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to the inverse graded lexicographical ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, ULP, US, VL, VLP, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*lexicographical compare.*)</font> TL:=0; US:=U; VS:=V;
+      LOOP <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           ADV(US, UL,US); ADV(VS, VL,VS);
+           <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=1; EXIT; <font color="#4169E1">ELSE</font>
+              <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=-1; EXIT; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> RETURN(TL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*graduaded compare.*)</font>
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, ULP,US); ADV(VS, VLP,VS); UL:=UL+ULP;
+            VL:=VL+VLP; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=-1; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVIGLC;
+
+
+<strong><font color="#4169E1">PROCEDURE EVILCI</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse lexicographical compare inverse exponent vector. 
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt,
+lt with respect to the inverse lexicographical ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UP, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*reverse exponent vectors. *)</font> UP:=CINV(U); VP:=CINV(V);
+      TL:=EVILCP(UP,VP);
+<font color="#B22222">(*4*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> EVILCI;
+
+
+<strong><font color="#4169E1">PROCEDURE EVILCP</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse lexicographical compare.
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt,
+lt with respect to the inverse lexicographical ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, US, VL, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise and compare.*)</font> TL:=0; US:=U; VS:=V;
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, UL,US); ADV(VS, VL,VS);
+            <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVILCP;
+
+
+<strong><font color="#4169E1">PROCEDURE EVITDC</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector inverse total degree compare.
+U=(u1, ...,ur), V=(v1, ...vr) are exponent vectors.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to buchbergers total degree ordering
+of the exponent vectors. r is the length of U and V.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, ULP, US, VL, VLP, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*lexicographical compare.*)</font> TL:=0; US:=CINV(U); VS:=CINV(V);
+      LOOP <font color="#4169E1">IF</font> US =SIL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+            ADV(US, UL,US); ADV(VS, VL,VS);
+            <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=1; EXIT; <font color="#4169E1">ELSE</font>
+               <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=-1; EXIT; <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> RETURN(TL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*graduated compare.*)</font>
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, ULP,US); ADV(VS, VLP,VS); UL:=UL+ULP;
+            VL:=VL+VLP; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> TL:=1; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=-1; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVITDC;
+
+
+<strong><font color="#4169E1">PROCEDURE EVLFCP</font></strong>(L,U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector linear form compare. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+L is an univariate integral polynomial vector.
+t=0 if U eq V. t=1 if U gt V. t=-1 if U lt V. eq, gt, lt
+with respect to the ordering of the exponent vectors 
+determined by the linear form.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  SL, TL, EL, FL, UL, US, VL, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute inner products. *)</font>
+      US:=VIPIIP(1,L,U);  VS:=VIPIIP(1,L,V);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compare polynomials.*)</font> TL:=0; 
+      <font color="#4169E1">WHILE</font> (US &lt;&gt; 0) <font color="#4169E1">AND</font> (VS &lt;&gt; 0) <font color="#4169E1">DO</font> 
+            ADV(US, EL,US); ADV(VS, FL,VS);
+            <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            ADV(US, UL,US); ADV(VS, VL,VS);
+            <font color="#4169E1">IF</font> US = SIL <font color="#4169E1">THEN</font> US:=0 <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> VS = SIL <font color="#4169E1">THEN</font> VS:=0 <strong><font color="#4169E1">END</font></strong>;
+            SL:=ICOMP(UL,VL);
+            <font color="#4169E1">IF</font> SL &gt; 0 <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> US &lt;&gt; 0 <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> VS &lt;&gt; 0 <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVLFCP;
+
+
+<strong><font color="#4169E1">PROCEDURE EVLCM</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector least common multiple. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+W=(w1, ...,wr) is the least common multiple of U and V. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, VL, VS, W, WL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() and v=().*)</font> W:=BETA;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>;
+      US:=U; VS:=V;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*maximum of components.*)</font>
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS);
+             <font color="#4169E1">IF</font> UL &gt; VL <font color="#4169E1">THEN</font> WL:=UL; <font color="#4169E1">ELSE</font> WL:=VL; <strong><font color="#4169E1">END</font></strong>;
+             W:=COMP(WL,W);
+             <font color="#4169E1">UNTIL</font> US = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> W:=INV(W); RETURN(W);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVLCM;
+
+
+<strong><font color="#4169E1">PROCEDURE EVMT</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector multiple test. U=(u1, ...,ur),
+V=(v1, ...,vr) are exponent vectors of length r.
+t=1 if U is a multiple of V, t=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, US, VL, VS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() and v=().*)</font> TL:=1;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      US:=U; VS:=V;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*maximum of components.*)</font>
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS);
+             <font color="#4169E1">IF</font> UL &lt; VL <font color="#4169E1">THEN</font> TL:=0; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> US = SIL;
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> EVMT;
+
+
+<strong><font color="#4169E1">PROCEDURE EVNNZE</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector number of non zero exponents. U is an
+exponent vector. n is the number of non zero exponents of U. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  NL, UL, US: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise.*)</font> NL:=0; US:=U;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test exponents.*)</font>
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, UL,US);
+            <font color="#4169E1">IF</font> UL &lt;&gt; 0 <font color="#4169E1">THEN</font> NL:=NL+1; <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> RETURN(NL); <strong><font color="#4169E1">END</font></strong> EVNNZE;
+
+<strong><font color="#4169E1">PROCEDURE EVOWRITE</font></strong>(EVO: LIST);
+<font color="#B22222">(*Exponent vector order write.
+EVO is an exponent vector order. A description of EVO is written to the
+output stream.
+inverse refers to the order of variables (in VALIS).
+ascending means the inverted order (if x&lt;y then x&gt;y wrt. the inverted order).
+*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> O: LIST;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+     <font color="#4169E1">CASE</font> EVO <font color="#4169E1">OF</font>
+     	  LEX     : SWRITE("ascending inverse lexicographical order"); |
+     	  INVLEX  : SWRITE("inverse lexicographical term order"); |
+     	  GRLEX   : SWRITE("ascending graded (total degree) invers lexicographical order"); |
+     	  IGRLEX  : SWRITE("graded (total degree) invers lexicographical termorder"); |
+	  REVLEX  : SWRITE("ascending lexicographical order"); |
+	  REVILEX : SWRITE("lexicographical term order"); |
+	  REVTDEG : SWRITE("ascending total degree Buchberger lexicographical order"); |
+	  REVITDG : SWRITE("total degree Buchberger lexicographical term order"); |
+	  <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> EVO &lt;= SIL
+	         <font color="#4169E1">THEN</font> SWRITE("garbage passed <font color="#4169E1">to</font> EVOWRITE");
+     	       	 <font color="#4169E1">ELSE</font> 
+     	       	     EvordPush(INVLEX);
+	             DIILWR(INV(DILFPL(1,EVO)),LIST1(LIST1(MASORD("T")))); 
+     	       	     EvordPop();
+     	         <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> EVOWRITE;
+
+<strong><font color="#4169E1">PROCEDURE EvordWrite</font></strong>();
+<font color="#B22222">(* Evord Write.
+Writes a description of EVORD to the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     EVOWRITE(EVORD);
+<strong><font color="#4169E1">END</font></strong> EvordWrite;
+
+<strong><font color="#4169E1">PROCEDURE EVRAND</font></strong>(RL,KL: LIST): LIST;
+<font color="#B22222">(*Exponent vector random. r is the length of U. k is a
+positive beta-digit such that every component of U will be
+less than k and k lt beta. U is a random exponent vector.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, EL, FL, I, IDUM, U: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare for high order bits of drann.*)</font>
+      <font color="#4169E1">IF</font> KL &lt;= 0 <font color="#4169E1">THEN</font> FL:=BETA; <font color="#4169E1">ELSE</font> FL:=BETA DIV KL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*get random components.*)</font> U:=BETA;
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> DL:=DRANN(); EL:=DL DIV FL; U:=COMP(EL,U); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(U);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVRAND;
+
+
+<strong><font color="#4169E1">PROCEDURE EVRASP</font></strong>(RL,KL,QL: LIST): LIST;
+<font color="#B22222">(*Exponent vector random. r is the length of U. k is a
+positive beta-digit such that every component of U will be
+less than k and k lt beta. U is a random exponent vector.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  DL, EL, FL, GL, I, IDUM, U: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare for high order bits of drann.*)</font>
+      <font color="#4169E1">IF</font> KL &lt;= 0 <font color="#4169E1">THEN</font> FL:=BETA; <font color="#4169E1">ELSE</font> FL:=BETA DIV KL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*get random components.*)</font> U:=BETA;
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> GL:=DRANN();
+          <font color="#4169E1">IF</font> GL &lt; QL <font color="#4169E1">THEN</font> DL:=DRANN(); EL:=DL DIV FL; <font color="#4169E1">ELSE</font> EL:=0;
+          <strong><font color="#4169E1">END</font></strong>;
+          U:=COMP(EL,U); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(U);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVRASP;
+
+
+<strong><font color="#4169E1">PROCEDURE EVSIGN</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector signum. U=(u1, ...,ur) is an exponent vector
+of length r. t=0 if all components are eq 0, t=1 if all
+components are ge 0, else t=-1.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  TL, UL, US: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check components.*)</font> TL:=0; US:=U;
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, UL,US);
+            <font color="#4169E1">IF</font> UL &lt; 0 <font color="#4169E1">THEN</font> TL:=-1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> UL &gt; 0 <font color="#4169E1">THEN</font> TL:=1; <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EVSIGN;
+
+
+<strong><font color="#4169E1">PROCEDURE EVSU</font></strong>(U,IL,FL: LIST;    <strong><font color="#228B22">VAR</font></strong> V,EL: LIST);
+<font color="#B22222">(*Exponent vector substitution. U=(u1, ...,ui, ...,ur)
+is an exponent vector of length r. The i-th component is
+changed into f. 1 le i le r. e=ui. 
+V=(u1, ...,ui-1,f,ui+1, ...,ur). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  J, UP, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() or il=0.*)</font>
+      <font color="#4169E1">IF</font> (U = SIL) <font color="#4169E1">OR</font> (IL = 0) <font color="#4169E1">THEN</font> V:=U; EL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*gerneral case.*)</font> UP:=U; VP:=BETA;
+      <font color="#4169E1">FOR</font> J:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> ADV(UP, EL,UP); VP:=COMP(EL,VP); <strong><font color="#4169E1">END</font></strong>;
+      ADV(UP, EL,UP); VP:=COMP(FL,VP); V:=INV(VP); SRED(VP,UP); RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVSU;
+
+
+<strong><font color="#4169E1">PROCEDURE EVSUM</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(*Exponent vector sum. U=(u1, ...,ur), V=(v1, ...,vr) are
+exponent vectors of length r. W=(u1+v1, ...,ur+vr) is the
+componentwise sum of U and V. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  UL, US, VL, VS, W, WL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*u=() and v=().*)</font> W:=BETA;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*add components.*)</font> US:=U; VS:=V;
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS); WL:=UL+VL; W:=COMP(WL,W);
+             <font color="#4169E1">UNTIL</font> US = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> W:=INV(W); RETURN(W);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EVSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE EVTDEG</font></strong>(U: LIST): LIST;
+<font color="#B22222">(*Exponent vector total degree. U is an exponent vector.
+n is the sum of the components of U.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  NL, UL, US: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise.*)</font> NL:=0; US:=U;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*sum.*)</font>
+      <font color="#4169E1">WHILE</font> US &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(US, UL,US); NL:=NL+UL; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EVTDEG;
+
+
+<strong><font color="#4169E1">PROCEDURE PBCLI</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Polynomial base coefficients list. A is a polynomial in
+r variables. B is the list of the base coefficients of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALS, AP, AS, B, BL, BP, BS, EL, ELS, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or rl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (RL = 0) <font color="#4169E1">THEN</font> B:=LIST1(A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font>
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> AS:=A; B:=BETA;
+         <font color="#4169E1">REPEAT</font> ADV2(AS, ELS,ALS,AS); B:=COMP(ALS,B);
+                <font color="#4169E1">UNTIL</font> AS = SIL;
+         B:=INV(B); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case. *)</font> AP:=A; B:=LIST1(0); BP:=B; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); BL:=PBCLI(RLP,AL); BS:=LAST(BL);
+             SRED(BP,BL); BP:=BS;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=RED(B);
+<font color="#B22222">(*6*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> PBCLI;
+
+
+<strong><font color="#4169E1">PROCEDURE PFDIP</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> RL,B: LIST);
+<font color="#B22222">(*Polynomial from distributive polynomial. A is a distributive
+polynomial. B is the result of converting A to recursive
+representation, r is the number of variables of B, r ge 0.
+Modified version, original version by G. E. Collins. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL1, AS, B1, E1, EL, EL1, FL, RLS, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RL:=0; B:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+      RL:=DIPNOV(A);
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=DIPLBC(A); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font> B:=BETA; AS:=A; RLS:=RL-1;
+      <font color="#4169E1">IF</font> RLS = 0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL1,E1,AS); EL1:=FIRST(E1); B:=COMP2(AL1,EL1,B);
+                <font color="#4169E1">UNTIL</font> AS = SIL;
+         B:=INV(B); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion.*)</font>
+      <font color="#4169E1">REPEAT</font> DIPADM(AS, EL,FL,A1,AS); PFDIP(A1, SL,B1);
+             B:=COMP2(B1,EL,B);
+             <font color="#4169E1">UNTIL</font> AS = 0;
+      B:=INV(B); RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> PFDIP;
+
+
+<strong><font color="#4169E1">PROCEDURE PLFDIL</font></strong>(A: LIST;    <strong><font color="#228B22">VAR</font></strong> RL,B: LIST);
+<font color="#B22222">(*Polynomial list from distributive polynom list. A is a list
+of distributive polynomials in r variables, r ge 0. Every
+polynomial in A is converted to recursive representation and
+stored in B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert polynomials. *)</font> AP:=A; B:=BETA;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AL,AP); PFDIP(AL, RL,BL);
+            B:=COMP(BL,B); <strong><font color="#4169E1">END</font></strong>;
+      B:=INV(B);
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> PLFDIL;
+
+
+<strong><font color="#4169E1">PROCEDURE PMPV</font></strong>(RL,A,IL,NL: LIST): LIST;
+<font color="#B22222">(*Polynomial multiplication by power of variable.  A is
+a polynomial in r variables. 1 le i le r
+and n is a beta-integer. B=A*(x sub i)**n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or n=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (NL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> BL:=AL; FL:=EL+NL; <font color="#4169E1">ELSE</font>
+                BL:=PMPV(RLP,AL,IL,NL); FL:=EL; <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,FL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B);
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> PMPV;
+
+
+<strong><font color="#4169E1">PROCEDURE PPERMV</font></strong>(RL,A,P: LIST): LIST;
+<font color="#B22222">(*Polynomial permutation of variables.  A is a polynomial in
+r variables, r ge 0. P is a list (p sub 1, ...,p sub r)
+whose elements are the beta-digits 1 through r.
+B(x sub (p sub 1), ...,x sub (p sub r))=A(x sub 1, ...,
+x sub r).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B, BP, RLS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0. *)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*use distributive representation for permutation.*)</font>
+      AP:=DIPFP(RL,A); BP:=DIPERM(AP,P); PFDIP(BP, RLS,B);
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> PPERMV;
+
+
+<strong><font color="#4169E1">PROCEDURE STVL</font></strong>(RL: LIST): LIST; 
+<font color="#B22222">(*Standard variable list. r is the number of variables.
+V is the variable list for the variables x1, ...,xr. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  K, KL, R, V, VL, X: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*construct list.*)</font> V:=BETA; X:=MASORD("X"); 
+      <font color="#4169E1">FOR</font> K:=RL <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> KL:=K; VL:=BETA; 
+          <font color="#4169E1">WHILE</font> KL &gt; 9 <font color="#4169E1">DO</font> DQR(0,KL,10, KL,R); VL:=COMP(R,VL); <strong><font color="#4169E1">END</font></strong>; 
+          VL:=COMP2(X,KL,VL); V:=COMP(VL,V); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(V); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> STVL; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIP2AD</font></strong>(P,d,rest: LIST): LIST;
+<font color="#B22222">(* distributive polynomial to arbitrary domain.
+   P is a polynomial in distributive representation,
+   d is a domain number, rest is a domain descriptor,
+   returns P with added domain numbers and descriptors *)</font>
+<strong><font color="#228B22">VAR</font></strong> P1,exp,coe: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   P1:=SIL;
+   <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(P,exp,P);
+      P1:=COMP(exp,P1);
+      ADV(P,coe,P);
+      P1:=COMP(COMP(d,COMP(coe,rest)),P1);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while... *)</font>
+   P1:=INV(P1);
+   RETURN(P1);
+<strong><font color="#4169E1">END</font></strong> DIP2AD;
+
+
+<strong><font color="#4169E1">PROCEDURE AD2DIP</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* arbitrary domain to distributive polynomial.
+   P is a polynomial in distributive representation
+   with domain numbers and descriptors,
+   returns P without domain numbers and descriptors *)</font>
+<strong><font color="#228B22">VAR</font></strong> P1,exp,coe,val: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   P1:=SIL;
+   <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(P,exp,P);
+      P1:=COMP(exp,P1);
+      ADV(P,coe,P);
+      P1:=COMP(SECOND(coe),P1);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while... *)</font>
+   P1:=INV(P1);
+   RETURN(P1);
+<strong><font color="#4169E1">END</font></strong> AD2DIP;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+
+BEGIND;
+
+<strong><font color="#4169E1">END</font></strong> DIPC.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

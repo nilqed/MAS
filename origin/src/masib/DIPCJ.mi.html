@@ -1,0 +1,403 @@
+
+<html>
+<head>
+<title>./masib/DIPCJ.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:47+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPCJ.mi,v 1.1 1995/10/12 14:44:47 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPCJ.mi,v $
+ * Revision 1.1  1995/10/12 14:44:47  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPCJ;
+<font color="#B22222">(* DIP Common Polynomial System Implementation Module. Functions for 
+   Janet-Reduction. *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM DIPADOM 	IMPORT 	DIPMOC;
+
+FROM DIPC 	IMPORT 	DIPEVL, DIPEVP, DIPMAD, EVCOMP, EVSUM, EVTDEG;
+
+FROM DIPI 	IMPORT 	DIIPCP;
+
+FROM MASLISPU 	IMPORT 	PROCF1; 
+
+FROM MASSTOR 	IMPORT 	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, RED,
+			SFIRST, SIL;
+
+FROM SACLIST 	IMPORT 	CINV, CONC;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPCJ.mi,v 1.1 1995/10/12 14:44:47 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";      
+
+
+<strong><font color="#4169E1">PROCEDURE ADDTDG</font></strong>(deg, P: LIST): LIST;
+<font color="#B22222">(* Add total degree.
+   Input: polynomial degree deg &amp; polynomial P in distributive 
+          list representation.
+   Output: polynom P with first list entry now total degree of the
+           leading exponent vector. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     P:=COMP(deg,P);
+     RETURN(P);
+<strong><font color="#4169E1">END</font></strong> ADDTDG;
+
+
+<strong><font color="#4169E1">PROCEDURE ADVTDG</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> p, PP: LIST);
+<font color="#B22222">(* Advance total degree.
+   Input: polynom P in distributive list representation. The first entry of the
+          list is the total degree of the leading exponent vector.
+   Output: p - the first entry of the list; PP - the polynom without the
+           first entry *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     ADV(P,p,PP); 
+<strong><font color="#4169E1">END</font></strong> ADVTDG;
+
+
+<strong><font color="#4169E1">PROCEDURE DILEBBS</font></strong>(A: LIST);
+<font color="#B22222">(* Distributive List Extended Bubble Sort.
+   Sort a list of polynoms in decreasing order of the total degree of the
+   leading exponent. The total degree must be the first entry of each polynom. 
+   Input: A is a list of polynoms.
+   A is changed *)</font>
+<strong><font color="#228B22">VAR</font></strong> B,AP,ap,APP,BP,ev1,app,DUMMY,ev2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> (A=0) <font color="#4169E1">OR</font> (LENGTH(A)=1) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+    B:=SIL;
+    <font color="#4169E1">REPEAT</font> AP:=A; ADV(AP,ap,APP); BP:=SIL; ev1:=FIRST(ap); 
+           <font color="#4169E1">WHILE</font> APP&lt;&gt;B <font color="#4169E1">DO</font> ADV(APP,app,DUMMY); ev2:=FIRST(app); 
+                 <font color="#4169E1">IF</font> (ev2&gt;0) <font color="#4169E1">AND</font> ((ev1&gt;ev2) <font color="#4169E1">OR</font> (ev1=0)) 
+                    <font color="#4169E1">THEN</font> SFIRST(AP,app); SFIRST(APP,ap); BP:=APP; 
+                    <font color="#4169E1">ELSE</font> ap:=app; ev1:=ev2;
+                 <strong><font color="#4169E1">END</font></strong>;
+                 AP:=APP; APP:=RED(AP);
+           <strong><font color="#4169E1">END</font></strong>;
+           B:=BP;
+    <font color="#4169E1">UNTIL</font> B=SIL;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> DILEBBS;
+
+
+<strong><font color="#4169E1">PROCEDURE DILBBS</font></strong>(A: LIST);
+<font color="#B22222">(* Distributive List Bubble Sort.
+   Sort a list of polynoms in decreasing order of the total degree of the
+   leading exponent.
+   Input: A is a list of polynoms.
+   A is changed *)</font>
+<strong><font color="#228B22">VAR</font></strong> B,AP,ap,APP,BP,ev1,app,DUMMY,ev2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    <font color="#4169E1">IF</font> (A=0) <font color="#4169E1">OR</font> (LENGTH(A)=1) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+    B:=SIL;
+    <font color="#4169E1">REPEAT</font> AP:=A; ADV(AP,ap,APP); BP:=SIL; ev1:=EVTDEG(FIRST(ap)); 
+           <font color="#4169E1">WHILE</font> APP&lt;&gt;B <font color="#4169E1">DO</font> ADV(APP,app,DUMMY); ev2:=EVTDEG(FIRST(app)); 
+                 <font color="#4169E1">IF</font> ev1&gt;ev2 <font color="#4169E1">THEN</font> SFIRST(AP,app); SFIRST(APP,ap); BP:=APP; 
+                            <font color="#4169E1">ELSE</font> ap:=app; ev1:=ev2;
+                 <strong><font color="#4169E1">END</font></strong>;
+                 AP:=APP; APP:=RED(AP);
+           <strong><font color="#4169E1">END</font></strong>;
+           B:=BP;
+    <font color="#4169E1">UNTIL</font> B=SIL;
+    RETURN;
+<strong><font color="#4169E1">END</font></strong> DILEBBS;
+
+
+<strong><font color="#4169E1">PROCEDURE DILEP2P</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive polynom list extended polynom to polynom.
+   Input: P - a list of extended polynoms.
+   Output: a list of polynoms whithout the first entry. *)</font>
+<strong><font color="#228B22">VAR</font></strong> PS, p, tdg: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  PS:=SIL;
+  <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(P,p,P); 
+                  ADVTDG(p,tdg,p); 
+                  PS:=COMP(p,PS); 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PS);
+<strong><font color="#4169E1">END</font></strong> DILEP2P; 
+
+
+<strong><font color="#4169E1">PROCEDURE DILATDG</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive polynom list add total degree. 
+   P is a list of distributive polynomials. 
+   The result is a list of distributive polynoms with total
+   degree of the leading term as first entry of each polynomial. *)</font>
+<strong><font color="#228B22">VAR</font></strong> PP,PL,PS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  PP:=P; PS:=SIL;
+  <font color="#4169E1">WHILE</font> PP&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(PP,PL,PP); PL:=ADDTDG(EVTDEG(FIRST(PL)),PL); 
+                  PS:=COMP(PL,PS);  
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PS);
+<strong><font color="#4169E1">END</font></strong> DILATDG;
+
+
+<strong><font color="#4169E1">PROCEDURE DILTDG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial list total degree
+   Input: A is a list of distributive polynomials, 
+   Output tdg: the total degree of A *)</font>
+<strong><font color="#228B22">VAR</font></strong> tdg, TDG, PA, AL, EL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  tdg:=0;
+  <font color="#4169E1">WHILE</font> A &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(A,PA,A); 
+                    DIPMAD(PA, AL, EL, PA); TDG:=EVTDEG(EL);
+                    <font color="#4169E1">IF</font> tdg &lt; TDG <font color="#4169E1">THEN</font> tdg:=TDG <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(tdg); 
+<strong><font color="#4169E1">END</font></strong> DILTDG;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPCLP</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributiv Polynomial Class of Polynomial.
+   Input: P is a polynomial, 
+   Output: t is the index of the lowest variable of the leading
+           term of P, t=0 if P is Empty *)</font>
+<strong><font color="#228B22">VAR</font></strong> i, TA, TE, PP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  i:=0;
+  <font color="#4169E1">IF</font> P=SIL <font color="#4169E1">THEN</font> RETURN(i); <strong><font color="#4169E1">END</font></strong>;
+  DIPMAD(P, TA, TE, PP);
+  i:=DIPCLT(TE); RETURN(i);
+<strong><font color="#4169E1">END</font></strong> DIPCLP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPCLT</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributiv Polynomial Class of Term.
+   Input: P is a term, 
+   Output: t is the index of the lowest variable in P,
+           t=0 if P is empty *)</font>
+<strong><font color="#228B22">VAR</font></strong> i, PL, Q: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  i:=0; PL:=CINV(P);
+  <font color="#4169E1">IF</font> PL=SIL <font color="#4169E1">THEN</font> RETURN(i); <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">REPEAT</font> ADV(PL,Q,PL); INC(i); <font color="#4169E1">UNTIL</font> (Q&lt;&gt;0) <font color="#4169E1">OR</font> (PL=SIL);
+  RETURN(i);
+<strong><font color="#4169E1">END</font></strong> DIPCLT;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPFIRST</font></strong>(P: LIST; extended: BOOLEAN; <strong><font color="#228B22">VAR</font></strong> pp, PP: LIST);
+<font color="#B22222">(* Distributive polynomial first polynomial,
+   P is a list of polynomials,
+   pp is the first polynomial and PP is the reductum of P.
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  ADV(P,pp,PP);
+<strong><font color="#4169E1">END</font></strong> DIPFIRST;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPSSM</font></strong>(P: LIST; extended: BOOLEAN; <strong><font color="#228B22">VAR</font></strong> pp, PP: LIST);
+<font color="#B22222">(* Distributive polynomial sort and select minimal.
+   Input: P - a list of polynoms,
+          extended is TRUE iff the first entry of each polynomial in P is the
+          total degree of the leading exponent vector.
+   Output: pp - the minimal polynom w.r.t. the admissible term order.
+           PP - sorted list of P without pp.
+   P is changed *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> extended <font color="#4169E1">THEN</font> DILEBBS(P); <font color="#4169E1">ELSE</font> DILBBS(P); <strong><font color="#4169E1">END</font></strong>;
+  ADV(P,pp,PP);
+<strong><font color="#4169E1">END</font></strong> DIPSSM;
+
+
+<strong><font color="#4169E1">PROCEDURE DILCAN</font></strong>(P: LIST; F: PROCF1): LIST;
+<font color="#B22222">(* Distributive Polynomial Cancel. 
+   P is a list of distributive polynomials. F is the cancel-function.
+   Output is a list of distributive polynomials or an empty list if all 
+   polynomials in A equal 0. The coefficients of each polynomial are canceld
+   down by F. *)</font>
+<strong><font color="#228B22">VAR</font></strong> PP, PL, PS: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  PP:=P; PS:=SIL;
+  <font color="#4169E1">WHILE</font> PP&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(PP,PL,PP); PL:=F(PL);
+                   <font color="#4169E1">IF</font> PL&lt;&gt;0 <font color="#4169E1">THEN</font> PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PS);
+<strong><font color="#4169E1">END</font></strong> DIPLMO;
+
+
+<strong><font color="#4169E1">PROCEDURE DIILPP</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynomial list primitive part. 
+   P is a list of distributive integral polynoms. The result is the positive
+   primitive part of each polynomial in P. The list-order is reversed. *)</font>
+<strong><font color="#228B22">VAR</font></strong> PP,PL,PS,PC: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  PP:=P; PS:=SIL;  
+  <font color="#4169E1">WHILE</font> PP&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(PP,PL,PP); DIIPCP(PL,PC,PL);
+                   <font color="#4169E1">IF</font> PL&lt;&gt;0 <font color="#4169E1">THEN</font> PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PS);
+<strong><font color="#4169E1">END</font></strong> DIILPP;
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPMV</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Distributiv Polynomial multiplication with a variable.
+   Input: A is the polynomial, B is an exponent vector.
+   Output:  A*B  *)</font>
+<strong><font color="#228B22">VAR</font></strong> S, A1, AA, AE, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> (A=0) <font color="#4169E1">OR</font> (B=0) <font color="#4169E1">THEN</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+  S:=SIL; A1:=CINV(A);
+  <font color="#4169E1">REPEAT</font> DIPMAD(A1,AE,AA,A1);
+         R:=EVSUM(AE,B); S:=COMP(R, COMP(AA,S));
+  <font color="#4169E1">UNTIL</font> A1=SIL;
+  RETURN(S);
+<strong><font color="#4169E1">END</font></strong> DIRPMV; 
+
+
+<strong><font color="#4169E1">PROCEDURE EVDIF2</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(* Exponent vector difference. 
+   Input: U=(u1, ...,ur), V=(v1, ...,vr)
+          are exponent vectors of length r. 
+   Output: W=(w1, ...,wr) is the componentwise difference of U and V.
+   Unlike procedure EVDIV this procedure returns 0 and not (0...0) if U=V *)</font>
+<strong><font color="#228B22">VAR</font></strong> W, WL, US, VS, c, UL, VL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      W:=SIL;
+      <font color="#4169E1">IF</font> U = SIL <font color="#4169E1">THEN</font> RETURN(W); <strong><font color="#4169E1">END</font></strong>;
+      US:=U; VS:=V; c:=0;
+      <font color="#4169E1">REPEAT</font> ADV(US, UL,US); ADV(VS, VL,VS); 
+             WL:=UL-VL; W:=COMP(WL,W); c:=c+WL;
+      <font color="#4169E1">UNTIL</font> US = SIL;
+      <font color="#4169E1">IF</font> c&gt;0 <font color="#4169E1">THEN</font> W:=INV(W); <font color="#4169E1">ELSE</font> W:=0 <strong><font color="#4169E1">END</font></strong>; RETURN(W);
+<strong><font color="#4169E1">END</font></strong> EVDIF2;
+
+
+<strong><font color="#4169E1">PROCEDURE EVMTJ</font></strong>(U,V: LIST): LIST;
+<font color="#B22222">(* Exponent vector multiple test in the sense of Janet. 
+   Input: U=(u1, ...,ur), V=(v1, ...,vr) are exponent vectors of length r.
+   Output: t=1 if U is a multiple in the sense of Janet of V, t=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong> US,VS,UL,VL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> U=SIL <font color="#4169E1">THEN</font> RETURN(1) <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> V=SIL <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+   US:=U; VS:=V;
+   <font color="#4169E1">REPEAT</font> ADV(US, UL, US); ADV(VS, VL, VS) <font color="#4169E1">UNTIL</font> (UL&lt;&gt;VL) <font color="#4169E1">OR</font> (US=SIL);
+   <font color="#4169E1">IF</font> VL&gt;UL <font color="#4169E1">THEN</font> RETURN(0); <font color="#4169E1">ELSE</font>
+                 <font color="#4169E1">IF</font> US=SIL <font color="#4169E1">THEN</font> RETURN(1); <strong><font color="#4169E1">END</font></strong>;
+   <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">REPEAT</font> ADV(VS,VL,VS) <font color="#4169E1">UNTIL</font> (VL&gt;0) <font color="#4169E1">OR</font> (VS=SIL);
+   <font color="#4169E1">IF</font> VL&gt;0 <font color="#4169E1">THEN</font> RETURN(0); <font color="#4169E1">ELSE</font> RETURN(1) <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> EVMTJ;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPNML</font></strong>(G: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial nonmultiple variable list.
+   Compute for a polynom G the List of nonmultiplicative variables.
+   Input: G is a polynomial.
+   Output: a list of non-multiplicative variables for the leading term of G. *)</font>
+<strong><font color="#228B22">VAR</font></strong> F, E, e, le, A, f, B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> G=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  e:=CINV(DIPEVL(G)); 
+  le :=LENGTH(e); A:=SIL; F:=SIL;
+  <font color="#4169E1">REPEAT</font>
+      ADV(e,f,e); A:=COMP(0,A);    
+  <font color="#4169E1">UNTIL</font> (f&lt;&gt;0) <font color="#4169E1">OR</font> (e = SIL); 
+  <font color="#4169E1">WHILE</font> LENGTH(A) &lt; le <font color="#4169E1">DO</font>
+        B:=COMP(1,A); A:=COMP(0,A);
+        <font color="#4169E1">WHILE</font> LENGTH(B) &lt; le <font color="#4169E1">DO</font> B:=COMP(0,B) <strong><font color="#4169E1">END</font></strong>;
+        F:=COMP(LIST(B), F);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(F);
+<strong><font color="#4169E1">END</font></strong> DIPNML;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPPGL2</font></strong>(F, V, LL: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial prolongation list.
+   Input: F - polynomial which first entry is the total degree of the leading
+              term; V - list of variables; LL - number of different variables 
+	      in F.
+   Output: PP - List of prolongations of F with non-multiplicative variables 
+                for F from V. *)</font> 
+<strong><font color="#228B22">VAR</font></strong> PP,VV,clp,vv,P,gf: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> (F=SIL) <font color="#4169E1">OR</font> (V=SIL) <font color="#4169E1">OR</font> (LL=0) <font color="#4169E1">THEN</font> RETURN(F) <strong><font color="#4169E1">END</font></strong>;
+  ADV(F,gf,F); gf:=gf+1;
+  PP:=SIL; VV:=V; clp:=LL-DIPCLP(F); 
+  <font color="#4169E1">IF</font> clp = 0 <font color="#4169E1">THEN</font> RETURN(PP) <strong><font color="#4169E1">END</font></strong>; 
+  <font color="#4169E1">WHILE</font> clp &gt; 0 <font color="#4169E1">DO</font>
+        ADV(VV,vv,VV); P:=DIPEVP(F,vv); 
+        PP:=COMP(LIST(COMP(gf,P)),PP); clp:=clp-1;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PP);
+<strong><font color="#4169E1">END</font></strong> DIPPGL2;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPPGL3</font></strong>(F, V, LL: LIST): LIST;
+<font color="#B22222">(* Distributive polynom prolongation list.
+   Input: F - polynomial; V - list of variables; LL - number of variables in F.
+   Output: PP - List of prolongations of F with non-multiplicative variables 
+                for F from V. *)</font> 
+<strong><font color="#228B22">VAR</font></strong> PP,VV,clp,vv,P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> (F=SIL) <font color="#4169E1">OR</font> (V=SIL) <font color="#4169E1">OR</font> (LL=0) <font color="#4169E1">THEN</font> RETURN(F) <strong><font color="#4169E1">END</font></strong>; 
+  PP:=SIL; VV:=V; clp:=LL-DIPCLP(F); 
+  <font color="#4169E1">IF</font> clp = 0 <font color="#4169E1">THEN</font> RETURN(PP) <strong><font color="#4169E1">END</font></strong>; 
+  <font color="#4169E1">WHILE</font> clp &gt; 0 <font color="#4169E1">DO</font>
+        ADV(VV,vv,VV); P:=DIPEVP(F,vv); 
+        PP:=COMP(LIST(P),PP); clp:=clp-1;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(PP);
+<strong><font color="#4169E1">END</font></strong> DIPPGL3;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPPGL</font></strong>(V: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial prolongation list. 
+   Input: V - arbitrary domain polynomial.
+   Output: List of prolongations of V with nonmultiplicative variables for V.*)</font>
+<strong><font color="#228B22">VAR</font></strong> F, e, LL, LLA, LLB, A, f, B, P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> V=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  e:=CINV(DIPEVL(V));
+  LL:=LENGTH(e); LLA:=0; A:=SIL; F:=SIL;
+  <font color="#4169E1">REPEAT</font>
+      ADV(e,f,e); A:=COMP(0,A); LLA:=LLA+1;   
+  <font color="#4169E1">UNTIL</font> (f&lt;&gt;0) <font color="#4169E1">OR</font> (e = NIL); 
+  <font color="#4169E1">WHILE</font> LLA &lt; LL <font color="#4169E1">DO</font>
+        B:=COMP(1,A); A:=COMP(0,A); LLA:=LLA+1; LLB:=LLA;
+        <font color="#4169E1">WHILE</font> LLB &lt; LL <font color="#4169E1">DO</font> B:=COMP(0,B); LLB:=LLB+1 <strong><font color="#4169E1">END</font></strong>;
+        P:=DIPEVP(V,B); F:=COMP(LIST(P), F);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(F);
+<strong><font color="#4169E1">END</font></strong> DIPPGL;
+
+
+<strong><font color="#4169E1">PROCEDURE DIPVL</font></strong>(V: LIST): LIST;
+<font color="#B22222">(* Distributive Polynomial List of Variables.
+   Input: a polynomial V.
+   Output: list of variables with class &gt; 1. *)</font>
+<strong><font color="#228B22">VAR</font></strong> A, F, LL, B, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> (V=SIL) <font color="#4169E1">OR</font> (LENGTH(V)=0) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  A:=LIST1(0); F:=SIL; LL:=LENGTH(DIPEVL(V))-1;
+  <font color="#4169E1">WHILE</font> LL &gt; 0 <font color="#4169E1">DO</font>
+        LL:=LL-1;
+        B:=COMP(1,A); <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> LL <font color="#4169E1">DO</font> B:=COMP(0,B); <strong><font color="#4169E1">END</font></strong>;
+        F:=COMP(LIST(B),F);
+        A:=COMP(0,A);
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(F);
+<strong><font color="#4169E1">END</font></strong> DIPVL;
+
+
+<strong><font color="#4169E1">END</font></strong> DIPCJ.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

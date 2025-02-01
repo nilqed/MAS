@@ -1,0 +1,812 @@
+
+<html>
+<head>
+<title>./masmodul/GSYMFURN.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T15:57:30+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: GSYMFURN.mi,v 1.1 1995/11/05 15:57:30 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: GSYMFURN.mi,v $
+ * Revision 1.1  1995/11/05 15:57:30  pesch
+ * Diplomarbeit Manfred Goebel, Reduktion G-symmetrischer Polynome fuer
+ * beliebige Permutationsgruppen G, slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE GSYMFURN;
+<font color="#B22222">(* G-Symmetric Rational Polynomial System Implementation Module. *)</font>
+
+FROM MASELEM	IMPORT	GAMMAINT;
+
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, RED, SIL;
+
+FROM MASBIOS	IMPORT	BLINES, SWRITE;
+
+FROM SACLIST	IMPORT	CINV, EQUAL, LEINST, LELT, LREAD, MEMBER, OWRITE,
+			SLELT;
+
+FROM SACSET	IMPORT	LBIBS;
+
+FROM SACRN	IMPORT	RNINT, RNSIGN, RNSUM;
+
+FROM LINALGRN	IMPORT	MTRANS, RNMGELUD, RNMSDS;
+
+FROM DIPC	IMPORT	DIPFMO, DIPMAD, EVCOMP, EVDEL, EVDIF, EVILCI, EVSIGN;
+
+FROM DIPRN	IMPORT	DIRPDF, DIRPEX, DIRPPR, DIRPRP, DIRPSM;
+
+FROM DIPRNGB	IMPORT	DIRGBA, DIRPNF;
+
+FROM GSYMFUIN	IMPORT	GSYADD, GSYMLT, GSYSPG, GSYTWG;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: GSYMFURN.mi,v 1.1 1995/11/05 15:57:30 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE GRNORP</font></strong>(PG, MO: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> HK, HT, HTL, TERM, RES, NRES, NPG, XX, DUMMY: LIST;
+    I, N, L, NL: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := 0;
+L := 0;
+<font color="#4169E1">IF</font> PG = SIL <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(FIRST(PG));
+<font color="#4169E1">IF</font> MO = 0 <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> LENGTH(MO) # 2 <font color="#4169E1">THEN</font> RETURN(-1); <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> LENGTH(FIRST(MO)) # N <font color="#4169E1">THEN</font> RETURN(-1); <strong><font color="#4169E1">END</font></strong>;
+DIPMAD(MO, HK, HT, DUMMY);
+HTL := SIL;
+HTL := COMP(HT, HTL);
+<font color="#4169E1">WHILE</font> HTL # SIL <font color="#4169E1">DO</font>
+    ADV(HTL, HT, HTL);
+    NPG := PG;
+    <font color="#4169E1">WHILE</font> NPG # SIL <font color="#4169E1">DO</font>
+         ADV(NPG, XX, NPG);
+         TERM := INV(CINV(HT));
+         <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+              SLELT(TERM, N+1-LELT(XX, I), LELT(HT, N+1-I));
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+         NRES := DIRPSM(RES, DIPFMO(HK, TERM));
+         <font color="#4169E1">IF</font> NRES # 0 <font color="#4169E1">THEN</font> NL := LENGTH(NRES); <font color="#4169E1">ELSE</font> NL := 0; <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> NL &gt; L <font color="#4169E1">THEN</font>
+              RES := NRES;
+              L := NL;
+              HTL := COMP(TERM, HTL);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(RES);
+<strong><font color="#4169E1">END</font></strong> GRNORP;
+
+<strong><font color="#4169E1">PROCEDURE GRNOPL</font></strong>(PG, ML: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> HM, RES: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := SIL;
+<font color="#4169E1">WHILE</font> ML # SIL <font color="#4169E1">DO</font>
+    ADV(ML, HM, ML);
+    RES := COMP(GRNORP(PG, HM), RES);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(INV(RES));
+<strong><font color="#4169E1">END</font></strong> GRNOPL;
+
+<strong><font color="#4169E1">PROCEDURE GRNCUT</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> POL1, POL2: LIST);
+<strong><font color="#228B22">VAR</font></strong> ORBIT, HM, HT, HK, DUMMY: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+POL1 := 0;
+POL2 := 0;
+<font color="#4169E1">WHILE</font> POL # 0 <font color="#4169E1">DO</font>
+    DIPMAD(POL, HK, HT, DUMMY);
+    HM := DIPFMO(HK, HT);
+    ORBIT := GRNORP(PG, HM);
+    <font color="#4169E1">IF</font> EQUAL(HT, FIRST(ORBIT)) = 1 <font color="#4169E1">THEN</font>
+         POL1 := DIRPSM(POL1, ORBIT);
+         POL := DIRPDF(POL, ORBIT);
+    <font color="#4169E1">ELSE</font> POL2 := DIRPSM(POL2, HM);
+         POL := DIRPDF(POL, HM);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<strong><font color="#4169E1">END</font></strong> GRNCUT;
+
+<strong><font color="#4169E1">PROCEDURE GRNCHK</font></strong>(PG, BASE, POL: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> RES, HK, HT, BASE_ORBIT, PROD: LIST;
+    I, N: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+RES := 0;
+<font color="#4169E1">IF</font> POL = 0 <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(BASE);
+<font color="#4169E1">IF</font> N = 0 <font color="#4169E1">THEN</font> RETURN(RES); <strong><font color="#4169E1">END</font></strong>;
+BASE_ORBIT := GRNOPL(PG, BASE);
+<font color="#4169E1">WHILE</font> POL # 0 <font color="#4169E1">DO</font>
+    DIPMAD(POL, HK, HT, POL);
+    <font color="#4169E1">IF</font> POL = SIL <font color="#4169E1">THEN</font> POL := 0; <strong><font color="#4169E1">END</font></strong>;
+    PROD := DIRPEX(LELT(BASE_ORBIT, 1), 0);
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+         PROD := DIRPPR(PROD, DIRPEX(LELT(BASE_ORBIT, I), LELT(HT, I)));
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    RES := DIRPSM(RES, DIRPRP(PROD, HK));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+RETURN(RES);
+<strong><font color="#4169E1">END</font></strong> GRNCHK;
+
+<strong><font color="#4169E1">PROCEDURE GRNCHKBAS</font></strong>(<strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<strong><font color="#228B22">VAR</font></strong> NBASE, NPOL, HT, HK, POS, DUMMY: LIST;
+    I, J, N1, N2: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#4169E1">IF</font> POL = 0 <font color="#4169E1">THEN</font> BASE := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> BASE = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+N1 := LENGTH(BASE);
+NBASE := BASE;
+BASE := SIL;
+<font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N1 <font color="#4169E1">DO</font>
+    NPOL := POL;
+    LOOP <font color="#4169E1">IF</font> NPOL = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+         DIPMAD(NPOL, HK, HT, NPOL);
+         <font color="#4169E1">IF</font> LELT(HT, I) # 0 <font color="#4169E1">THEN</font>
+              BASE := COMP(LELT(NBASE, I), BASE);
+              EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+BASE := INV(BASE);
+N2 := LENGTH(BASE);
+<font color="#4169E1">IF</font> N1 = N2 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* nothing has changed *)</font>
+
+NPOL := POL;
+POL := 0;
+J := 1;
+POS := SIL;
+<font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N1 <font color="#4169E1">DO</font>
+    <font color="#4169E1">IF</font> (J&lt;=N2) <font color="#4169E1">AND</font> (EQUAL(LELT(NBASE, I), LELT(BASE, J)) = 1) <font color="#4169E1">THEN</font> J := J + 1;
+    <font color="#4169E1">ELSE</font> POS := COMP(I, POS); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+<font color="#4169E1">WHILE</font> NPOL # SIL <font color="#4169E1">DO</font>
+    DIPMAD(NPOL, HK, HT, NPOL);
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(POS) <font color="#4169E1">DO</font>
+         EVDEL(HT, LELT(POS, I), HT, DUMMY);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    POL := DIRPSM(POL, DIPFMO(HK, HT));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<strong><font color="#4169E1">END</font></strong> GRNCHKBAS;
+
+<strong><font color="#4169E1">PROCEDURE EXTRACT</font></strong>(PG, POL_1, POL_2, POL_3: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<strong><font color="#228B22">VAR</font></strong> NPOL, TERM, TERM1, HT, HK, HM, ORBIT, DUMMY: LIST;
+    POS, I, N, SIGN: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BASE := SIL;
+POL := SIL;
+<font color="#4169E1">IF</font> (POL_1 # 0) <font color="#4169E1">AND</font> (POL_2 # 0) <font color="#4169E1">THEN</font>
+    TERM := FIRST(POL_1);
+    TERM1 := FIRST(POL_2);
+    SIGN := GSYTWG(TERM, TERM1);
+    <font color="#4169E1">IF</font> SIGN = 0 <font color="#4169E1">THEN</font>
+         POL := DIPFMO(RNINT(1), LIST1(2));
+         BASE := LIST1(DIPFMO(RNINT(1), TERM));
+    <font color="#4169E1">ELSE</font>
+         SIGN := SIGN + 1;
+         <font color="#4169E1">IF</font> SIGN = 2 <font color="#4169E1">THEN</font> SIGN := 1; <strong><font color="#4169E1">END</font></strong>;
+         POL := DIPFMO(RNINT(1), COMP(1, LIST1(1)));
+         BASE := LEINST(LIST1(DIPFMO(RNINT(1), TERM)),
+                 SIGN, DIPFMO(RNINT(1), TERM1));
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+<font color="#4169E1">WHILE</font> POL_3 # 0 <font color="#4169E1">DO</font>
+    DIPMAD(POL_3, HK, HT, DUMMY);
+    HM := DIPFMO(HK, HT);
+    ORBIT := GRNORP(PG, HM);
+    POL_3 := DIRPDF(POL_3, ORBIT);
+    <font color="#4169E1">IF</font> BASE = SIL <font color="#4169E1">THEN</font>
+         POL := DIPFMO(HK, LIST1(1));
+         BASE := LIST1(DIPFMO(RNINT(1), HT));
+    <font color="#4169E1">ELSE</font>
+         N := LENGTH(BASE);
+         POS := 0;
+         LOOP POS := POS + 1;
+              <font color="#4169E1">IF</font> POS &gt; N <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+              HM := LELT(BASE, POS);
+              <font color="#4169E1">IF</font> GSYTWG(FIRST(HM), HT) &lt;= 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+         POS := POS - 1;
+         BASE := LEINST(BASE, POS, DIPFMO(RNINT(1), HT));
+         NPOL := POL;
+         HT := SIL;
+         <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font> HT := COMP(0, HT); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+         HT := LEINST(HT, POS, 1);
+         POL := DIPFMO(HK, HT);
+         <font color="#4169E1">WHILE</font> NPOL # SIL <font color="#4169E1">DO</font>
+              DIPMAD(NPOL, HK, HT, NPOL);
+              HT := LEINST(HT, POS, 0);
+              POL := DIRPSM(DIPFMO(HK, HT), POL);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<strong><font color="#4169E1">END</font></strong> EXTRACT;
+
+<strong><font color="#4169E1">PROCEDURE MERGE</font></strong>(K: GAMMAINT; BASE_1, POL_1: LIST; <strong><font color="#228B22">VAR</font></strong> BASE_2, POL_2: LIST);
+<strong><font color="#228B22">VAR</font></strong> XBASE, NPOL1, NPOL2, HK1, HT1, HM1, HK2, HT2, HM2, POS1, POS2, DUMMY: LIST;
+    I, J, L1, L2, N, EL, SIGN: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+L1 := LENGTH(BASE_1);
+L2 := LENGTH(BASE_2);
+XBASE := SIL;
+POS1 := SIL;
+POS2 := SIL;
+I := 0;
+J := 0;
+<font color="#4169E1">WHILE</font> BASE_2 # SIL <font color="#4169E1">DO</font>
+    ADV(BASE_2, HM2, BASE_2);
+    HT2 := FIRST(HM2);
+    LOOP <font color="#4169E1">IF</font> BASE_1 # SIL <font color="#4169E1">THEN</font>
+              ADV(BASE_1, HM1, DUMMY);
+              HT1 := FIRST(HM1);
+              SIGN := GSYTWG(HT2, HT1);
+         <font color="#4169E1">ELSE</font> SIGN := 1; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <font color="#4169E1">IF</font> SIGN = 1 <font color="#4169E1">THEN</font>
+              <font color="#4169E1">IF</font> J &lt; L2 <font color="#4169E1">THEN</font> J := J + 1; <strong><font color="#4169E1">END</font></strong>;
+              POS1 := COMP(I, POS1);
+              <font color="#4169E1">IF</font> J # K <font color="#4169E1">THEN</font> XBASE := COMP(HM2, XBASE); <strong><font color="#4169E1">END</font></strong>;
+              EXIT;
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <font color="#4169E1">IF</font> SIGN = 0 <font color="#4169E1">THEN</font>
+              <font color="#4169E1">IF</font> I &lt; L1 <font color="#4169E1">THEN</font> I := I + 1; <strong><font color="#4169E1">END</font></strong>;
+              <font color="#4169E1">IF</font> J &lt; L2 <font color="#4169E1">THEN</font> J := J + 1; <strong><font color="#4169E1">END</font></strong>;
+              XBASE := COMP(HM2, XBASE);
+              BASE_1 := RED(BASE_1);
+              EXIT;
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <font color="#4169E1">IF</font> SIGN = -1 <font color="#4169E1">THEN</font>
+              <font color="#4169E1">IF</font> I &lt; L1 <font color="#4169E1">THEN</font> I := I + 1; <strong><font color="#4169E1">END</font></strong>;
+              POS2 := COMP(J, POS2);
+              XBASE := COMP(HM1, XBASE);
+              BASE_1 := RED(BASE_1);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+<font color="#4169E1">WHILE</font> BASE_1 # SIL <font color="#4169E1">DO</font>
+    ADV(BASE_1, HM1, BASE_1);
+    XBASE := COMP(HM1, XBASE);
+    POS2 := COMP(J, POS2);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+BASE_2 := INV(XBASE);
+N := LENGTH(BASE_2);
+
+NPOL1 := 0;
+<font color="#4169E1">IF</font> POL_1 = 0 <font color="#4169E1">THEN</font> POL_1 := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">WHILE</font> POL_1 # SIL <font color="#4169E1">DO</font>
+    DIPMAD(POL_1, HK1, HT1, POL_1);
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(POS1) <font color="#4169E1">DO</font>
+         HT1 := LEINST(HT1, LELT(POS1, I), 0);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    NPOL1 := DIRPSM(DIPFMO(HK1, HT1), NPOL1);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+NPOL2 := 0;
+<font color="#4169E1">IF</font> POL_2 = 0 <font color="#4169E1">THEN</font> POL_2 := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">WHILE</font> POL_2 # SIL <font color="#4169E1">DO</font>
+    DIPMAD(POL_2, HK2, HT2, POL_2);
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(POS2) <font color="#4169E1">DO</font>
+         HT2 := LEINST(HT2, LELT(POS2, I), 0);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    NPOL2 := DIRPSM(DIPFMO(HK2, HT2), NPOL2);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+<font color="#4169E1">IF</font> K = 0 <font color="#4169E1">THEN</font> POL_2 := DIRPSM(NPOL1, NPOL2); RETURN; <strong><font color="#4169E1">END</font></strong>;
+POL_1 := 0;
+<font color="#4169E1">IF</font> NPOL1 = 0 <font color="#4169E1">THEN</font> NPOL1 := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">WHILE</font> NPOL1 # SIL <font color="#4169E1">DO</font>
+    DIPMAD(NPOL1, HK1, HT1, NPOL1);
+    EVDEL(HT1, K, HT1, DUMMY);
+    POL_1 := DIRPSM(POL_1, DIPFMO(HK1, HT1));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+POL_2 := 0;
+<font color="#4169E1">IF</font> NPOL2 = 0 <font color="#4169E1">THEN</font> NPOL2 := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">WHILE</font> NPOL2 # SIL <font color="#4169E1">DO</font>
+    DIPMAD(NPOL2, HK2, HT2, NPOL2);
+    EVDEL(HT2, K, HT2, EL);
+    POL_2 := DIRPSM(POL_2, DIRPPR(DIRPEX(POL_1, EL), DIPFMO(HK2, HT2)));
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+<strong><font color="#4169E1">END</font></strong> MERGE;
+
+<strong><font color="#4169E1">PROCEDURE REDUCE</font></strong>(PG, ORBIT: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, POL: LIST);
+<strong><font color="#228B22">VAR</font></strong> HK, HT, HM, RED_HT, BHM, BHT, PHM, PHK, PHT, TERM, XX, XHT, XHK, SIGMA,
+    SIGMA_TL, BTL, NBTL, ORBIT_S, ORBIT_RED, OMEGA, PBASE, PPOL, SPG, PAIRS,
+    MAT, NMAT, RS, ROW, NROW, SIGN, XLS, KOEFF, POS,
+    LOWER, UPPER, SUM, DUMMY: LIST;
+    ACT, LOW, MINI, MAXI, I, J, L, N: GAMMAINT;
+    FLAG: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BASE := SIL;
+POL := 0;
+<font color="#4169E1">IF</font> ORBIT = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+DIPMAD(ORBIT, HK, HT, DUMMY);
+N := LENGTH(HT);
+HM := DIPFMO(HK, HT);
+
+SIGMA := SIL;
+RED_HT := SIL;
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#B22222">(* ORBIT is a constant polynomial                                          *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#4169E1">IF</font> EVSIGN(HT) = 0 <font color="#4169E1">THEN</font> EXTRACT(PG, 0, 0, ORBIT, BASE, POL); RETURN; <strong><font color="#4169E1">END</font></strong>;
+
+MAXI := 0;
+MINI := 999999;
+<font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font>
+    ACT := LELT(HT, I);
+    <font color="#4169E1">IF</font> ACT &gt; MAXI <font color="#4169E1">THEN</font> MAXI := ACT; <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> ACT &lt; MINI <font color="#4169E1">THEN</font> MINI := ACT; <strong><font color="#4169E1">END</font></strong>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+
+LOW := MAXI;
+I := MAXI - 1;
+<font color="#4169E1">WHILE</font> I &gt;= MINI <font color="#4169E1">DO</font>
+    J := 1;
+    <font color="#4169E1">WHILE</font> (J &lt;= N) <font color="#4169E1">AND</font> (LELT(HT, J) # I) <font color="#4169E1">DO</font> J:=J+1; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+    <font color="#4169E1">IF</font> J = (N+1) <font color="#4169E1">THEN</font> I := -1;
+    <font color="#4169E1">ELSE</font> LOW := I; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    I := I - 1;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#B22222">(* ORBIT is not max. n-linked or max. n-linked with no zero exponents      *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#4169E1">IF</font> (LOW # MINI) <font color="#4169E1">OR</font> ((LOW # 0) <font color="#4169E1">AND</font> (MAXI &gt; 1)) <font color="#4169E1">THEN</font>
+    <font color="#4169E1">FOR</font> I := N <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font>
+         ACT := LELT(HT, I);
+         <font color="#4169E1">IF</font> ACT &gt;= LOW <font color="#4169E1">THEN</font> RED_HT := COMP(ACT-1, RED_HT);
+         <font color="#4169E1">ELSE</font> RED_HT := COMP(ACT, RED_HT); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    SIGMA := EVDIF(HT, RED_HT);
+    ORBIT_S := GRNORP(PG, DIPFMO(RNINT(1), SIGMA));
+    ORBIT_RED := GRNORP(PG, DIPFMO(RNINT(1), RED_HT));
+    OMEGA := DIRPDF(ORBIT, DIRPPR(ORBIT_RED, ORBIT_S));
+    EXTRACT(PG, ORBIT_RED, ORBIT_S, OMEGA, BASE, POL);
+    RETURN; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#B22222">(* ORBIT is max. n-linked and not multilinear --&gt; try simple reduction     *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#4169E1">IF</font> MAXI &gt; 1 <font color="#4169E1">THEN</font>
+    <font color="#4169E1">FOR</font> LOW := 1 <font color="#4169E1">TO</font> MAXI <font color="#4169E1">DO</font>
+         RED_HT := SIL;
+         <font color="#4169E1">FOR</font> I := N <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font>
+              ACT := LELT(HT, I);
+              <font color="#4169E1">IF</font> ACT &gt;= LOW <font color="#4169E1">THEN</font> RED_HT := COMP(ACT-1, RED_HT);
+              <font color="#4169E1">ELSE</font> RED_HT := COMP(ACT, RED_HT); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+         SIGMA := EVDIF(HT, RED_HT);
+         ORBIT_S := GRNORP(PG, DIPFMO(RNINT(1), SIGMA));
+         ORBIT_RED := GRNORP(PG, DIPFMO(RNINT(1), RED_HT));
+         OMEGA := DIRPDF(ORBIT, DIRPPR(ORBIT_RED, ORBIT_S));
+         EXTRACT(PG, ORBIT_RED, ORBIT_S, OMEGA, BASE, POL);
+         <font color="#4169E1">IF</font> GSYTWG(HT, FIRST(FIRST(BASE))) = 1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#B22222">(* ORBIT is max. n-linked and not multilinear --&gt; try extended reduction 1 *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+BLINES(0); SWRITE("HT = "); OWRITE(HT);
+BASE := SIL;
+POL := SIL;
+SPG := GSYSPG(N);
+BTL := SIL;
+PAIRS := SIL;
+MAT := SIL;
+RS := SIL;
+SIGMA_TL := GSYMLT(N);
+
+<font color="#4169E1">WHILE</font> SIGMA_TL # SIL <font color="#4169E1">DO</font>
+    ADV(SIGMA_TL, SIGMA, SIGMA_TL);
+    RED_HT := EVDIF(HT, SIGMA);
+    <font color="#4169E1">IF</font> EVSIGN(RED_HT) &gt; 0 <font color="#4169E1">THEN</font>
+         ORBIT_RED := GRNORP(PG, DIPFMO(RNINT(1), RED_HT));
+         XX := GRNORP(SPG, DIPFMO(RNINT(1), SIGMA));
+    <font color="#4169E1">ELSE</font> XX := 0; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+    <font color="#4169E1">WHILE</font> XX # 0 <font color="#4169E1">DO</font>
+         DIPMAD(XX, XHK, XHT, DUMMY);
+         XX := DIRPDF(XX, GRNORP(PG, DIPFMO(RNINT(1), XHT)));
+         ORBIT_S := GRNORP(PG, DIPFMO(RNINT(1), XHT));
+         EXTRACT(PG, ORBIT_RED, ORBIT_S, 0, PBASE, DUMMY);
+         FLAG := FALSE;
+         <font color="#4169E1">IF</font> MEMBER(PBASE, PAIRS) # 1 <font color="#4169E1">THEN</font>
+              PAIRS := COMP(PBASE, PAIRS);
+              PPOL := DIRPPR(ORBIT_RED, ORBIT_S);
+              FLAG := TRUE;
+         <font color="#4169E1">ELSE</font> PPOL := 0; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+         KOEFF := SIL;
+         PBASE := SIL;
+         <font color="#4169E1">WHILE</font> PPOL # 0 <font color="#4169E1">DO</font>
+              DIPMAD(PPOL, PHK, PHT, DUMMY);
+              PPOL := DIRPDF(PPOL, GRNORP(PG, DIPFMO(PHK, PHT)));
+              L := LENGTH(PBASE);
+              I := 0;
+              LOOP I := I + 1;
+                   <font color="#4169E1">IF</font> I &gt; L <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                   PHM := LELT(PBASE, I);
+                   <font color="#4169E1">IF</font> GSYTWG(FIRST(PHM), PHT) &lt;= 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+              I := I - 1;
+              PBASE := LEINST(PBASE, I, DIPFMO(RNINT(1), PHT));
+              KOEFF := LEINST(KOEFF, I, PHK);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+         ROW := SIL;
+         POS := SIL;
+         L := LENGTH(BTL);
+         NBTL := INV(BTL);
+         BTL := SIL;
+         LOOP <font color="#4169E1">IF</font> PBASE = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+              ADV(PBASE, BHM, PBASE);
+              BHT := FIRST(BHM);
+              ADV(KOEFF, PHK, KOEFF);
+              <font color="#4169E1">IF</font> GSYTWG(BHT, HT) &lt; 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+              LOOP <font color="#4169E1">IF</font> NBTL # SIL <font color="#4169E1">THEN</font>
+                        ADV(NBTL, TERM, DUMMY);
+                        SIGN := GSYTWG(TERM, BHT);
+                   <font color="#4169E1">ELSE</font> SIGN := -1; <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> SIGN = 1 <font color="#4169E1">THEN</font>
+                        L := L - 1;
+                        BTL := COMP(TERM, BTL);
+                        ROW := COMP(RNINT(0), ROW);
+                        NBTL := RED(NBTL);
+                        <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+                   <font color="#4169E1">IF</font> SIGN = 0 <font color="#4169E1">THEN</font>
+                        L := L - 1;
+                        BTL := COMP(TERM, BTL);
+                        ROW := COMP(PHK, ROW);
+                        NBTL := RED(NBTL);
+                        EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+                   <font color="#4169E1">IF</font> SIGN = -1 <font color="#4169E1">THEN</font>
+                        POS := COMP(L, POS);
+                        BTL := COMP(BHT, BTL);
+                        ROW := COMP(PHK, ROW);
+                        EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+
+         <font color="#4169E1">WHILE</font> NBTL # SIL <font color="#4169E1">DO</font>
+              ADV(NBTL, TERM, NBTL);
+              BTL := COMP(TERM, BTL);
+              ROW := COMP(RNINT(0), ROW);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+         POS := INV(POS);
+         NMAT := INV(MAT);
+         MAT := SIL;
+         <font color="#4169E1">WHILE</font> NMAT # SIL <font color="#4169E1">DO</font>
+              ADV(NMAT, NROW, NMAT);
+              <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(POS) <font color="#4169E1">DO</font>
+                   NROW := LEINST(NROW, LELT(POS,I), 0);
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+              MAT := COMP(NROW, MAT);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+         SUM := RNINT(0);
+         <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(ROW) <font color="#4169E1">DO</font>
+             SUM := RNSUM(SUM, LELT(ROW,I));
+             <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+         <font color="#4169E1">IF</font> RNSIGN(SUM) # 0 <font color="#4169E1">THEN</font> MAT := COMP(ROW, MAT);
+         <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> FLAG <font color="#4169E1">THEN</font> PAIRS := RED(PAIRS); <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+XLS := SIL;
+<font color="#4169E1">IF</font> MAT # SIL <font color="#4169E1">THEN</font>
+BLINES(0); SWRITE("C/R = "); OWRITE(LENGTH(MAT));
+           SWRITE("/"); OWRITE(LENGTH(FIRST(MAT)));
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(FIRST(MAT))-1 <font color="#4169E1">DO</font> RS := COMP(RNINT(0), RS); <strong><font color="#4169E1">END</font></strong>;
+    RS := COMP(RNINT(1), RS);
+    MAT := MTRANS(MAT);
+    RNMGELUD(MAT, LOWER, UPPER);
+    XLS := RNMSDS(LOWER, UPPER, RS);
+    SWRITE(" XLS = "); OWRITE(XLS);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+<font color="#4169E1">IF</font> XLS # SIL <font color="#4169E1">THEN</font> 
+    OMEGA := ORBIT;  
+    <font color="#4169E1">WHILE</font> XLS # SIL <font color="#4169E1">DO</font>
+         ADV(XLS, XHK, XLS);
+         ADV(PAIRS, PBASE, PAIRS);
+         <font color="#4169E1">IF</font> XHK # 0 <font color="#4169E1">THEN</font>
+              <font color="#4169E1">IF</font> LENGTH(PBASE) = 1 <font color="#4169E1">THEN</font> PPOL := DIPFMO(RNINT(1), LIST1(2));
+              <font color="#4169E1">ELSE</font> PPOL := DIPFMO(RNINT(1), COMP(1, LIST1(1))); <strong><font color="#4169E1">END</font></strong>;
+              PPOL := DIRPRP(PPOL, XHK);
+              OMEGA := DIRPDF(OMEGA, GRNCHK(PG, PBASE, PPOL));
+              MERGE(0, PBASE, PPOL, BASE, POL);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font> 
+    EXTRACT(PG, 0, 0, OMEGA, PBASE, PPOL);
+    MERGE(0, PBASE, PPOL, BASE, POL);
+    GRNCHKBAS(BASE, POL);
+    RETURN; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#B22222">(* ORBIT is max. n-linked and not multilinear --&gt; try extended reduction 2 *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+BASE := SIL;
+POL := SIL;
+SPG := GSYSPG(N);
+BTL := SIL;
+PAIRS := SIL;
+MAT := SIL;
+RS := SIL;
+SIGMA_TL := GSYMLT(N);
+
+<font color="#4169E1">WHILE</font> SIGMA_TL # SIL <font color="#4169E1">DO</font>
+    ADV(SIGMA_TL, SIGMA, SIGMA_TL);
+    RED_HT := EVDIF(HT, SIGMA);
+    <font color="#4169E1">IF</font> EVSIGN(RED_HT) &gt; 0 <font color="#4169E1">THEN</font>
+         ORBIT_S := GRNORP(PG, DIPFMO(RNINT(1), SIGMA)); 
+         XX := GRNORP(SPG, DIPFMO(RNINT(1), RED_HT)); 
+    <font color="#4169E1">ELSE</font> XX := 0; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+    <font color="#4169E1">WHILE</font> XX # 0 <font color="#4169E1">DO</font>
+         DIPMAD(XX, XHK, XHT, DUMMY);
+         XX := DIRPDF(XX, GRNORP(PG, DIPFMO(RNINT(1), XHT)));
+         ORBIT_RED := GRNORP(PG, DIPFMO(RNINT(1), XHT));
+         EXTRACT(PG, ORBIT_RED, ORBIT_S, 0, PBASE, DUMMY);
+         FLAG := FALSE;
+         <font color="#4169E1">IF</font> MEMBER(PBASE, PAIRS) # 1 <font color="#4169E1">THEN</font>
+              PAIRS := COMP(PBASE, PAIRS);
+              PPOL := DIRPPR(ORBIT_RED, ORBIT_S);
+              FLAG := TRUE;
+         <font color="#4169E1">ELSE</font> PPOL := 0; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+
+         KOEFF := SIL;
+         PBASE := SIL;
+         <font color="#4169E1">WHILE</font> PPOL # 0 <font color="#4169E1">DO</font>
+              DIPMAD(PPOL, PHK, PHT, DUMMY);
+              PPOL := DIRPDF(PPOL, GRNORP(PG, DIPFMO(PHK, PHT)));
+              L := LENGTH(PBASE);
+              I := 0;
+              LOOP I := I + 1;
+                   <font color="#4169E1">IF</font> I &gt; L <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                   PHM := LELT(PBASE, I);
+                   <font color="#4169E1">IF</font> GSYTWG(FIRST(PHM), PHT) &lt;= 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+              I := I - 1;
+              PBASE := LEINST(PBASE, I, DIPFMO(RNINT(1), PHT));
+              KOEFF := LEINST(KOEFF, I, PHK);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+         ROW := SIL;
+         POS := SIL;
+         L := LENGTH(BTL);
+         NBTL := INV(BTL);
+         BTL := SIL;
+         LOOP <font color="#4169E1">IF</font> PBASE = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+              ADV(PBASE, BHM, PBASE);
+              BHT := FIRST(BHM);
+              ADV(KOEFF, PHK, KOEFF);
+              <font color="#4169E1">IF</font> GSYTWG(BHT, HT) &lt; 0 <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+              LOOP <font color="#4169E1">IF</font> NBTL # SIL <font color="#4169E1">THEN</font>
+                        ADV(NBTL, TERM, DUMMY);
+                        SIGN := GSYTWG(TERM, BHT);
+                   <font color="#4169E1">ELSE</font> SIGN := -1; <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> SIGN = 1 <font color="#4169E1">THEN</font>
+                        L := L - 1;
+                        BTL := COMP(TERM, BTL);
+                        ROW := COMP(RNINT(0), ROW);
+                        NBTL := RED(NBTL);
+                        <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+                   <font color="#4169E1">IF</font> SIGN = 0 <font color="#4169E1">THEN</font>
+                        L := L - 1;
+                        BTL := COMP(TERM, BTL);
+                        ROW := COMP(PHK, ROW);
+                        NBTL := RED(NBTL);
+                        EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+                   <font color="#4169E1">IF</font> SIGN = -1 <font color="#4169E1">THEN</font>
+                        POS := COMP(L, POS);
+                        BTL := COMP(BHT, BTL);
+                        ROW := COMP(PHK, ROW);
+                        EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+
+         <font color="#4169E1">WHILE</font> NBTL # SIL <font color="#4169E1">DO</font>
+              ADV(NBTL, TERM, NBTL);
+              BTL := COMP(TERM, BTL);
+              ROW := COMP(RNINT(0), ROW);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+         POS := INV(POS);
+         NMAT := INV(MAT);
+         MAT := SIL;
+         <font color="#4169E1">WHILE</font> NMAT # SIL <font color="#4169E1">DO</font>
+              ADV(NMAT, NROW, NMAT);
+              <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(POS) <font color="#4169E1">DO</font>
+                   NROW := LEINST(NROW, LELT(POS,I), 0);
+                   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+              MAT := COMP(NROW, MAT);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+         SUM := RNINT(0);
+         <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(ROW) <font color="#4169E1">DO</font>
+             SUM := RNSUM(SUM, LELT(ROW,I));
+             <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of for *)</font>
+         <font color="#4169E1">IF</font> RNSIGN(SUM) # 0 <font color="#4169E1">THEN</font> MAT := COMP(ROW, MAT);
+         <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> FLAG <font color="#4169E1">THEN</font> PAIRS := RED(PAIRS); <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+XLS := SIL;
+<font color="#4169E1">IF</font> MAT # SIL <font color="#4169E1">THEN</font>
+BLINES(0); SWRITE("C/R = "); OWRITE(LENGTH(MAT));
+           SWRITE("/"); OWRITE(LENGTH(FIRST(MAT)));
+    <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> LENGTH(FIRST(MAT))-1 <font color="#4169E1">DO</font> RS := COMP(RNINT(0), RS); <strong><font color="#4169E1">END</font></strong>;
+    RS := COMP(RNINT(1), RS);
+    MAT := MTRANS(MAT);
+    RNMGELUD(MAT, LOWER, UPPER);
+    XLS := RNMSDS(LOWER, UPPER, RS);
+    SWRITE(" XLS = "); OWRITE(XLS);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#B22222">(* return ORBIT without reduction                                          *)</font>
+<font color="#B22222">(*-------------------------------------------------------------------------*)</font>
+<font color="#4169E1">IF</font> XLS = SIL <font color="#4169E1">THEN</font> EXTRACT(PG, 0, 0, ORBIT, BASE, POL); RETURN; <strong><font color="#4169E1">END</font></strong>;
+
+OMEGA := ORBIT;
+<font color="#4169E1">WHILE</font> XLS # SIL <font color="#4169E1">DO</font>
+    ADV(XLS, XHK, XLS);
+    ADV(PAIRS, PBASE, PAIRS);
+    <font color="#4169E1">IF</font> XHK # 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> LENGTH(PBASE) = 1 <font color="#4169E1">THEN</font> PPOL := DIPFMO(RNINT(1), LIST1(2));
+         <font color="#4169E1">ELSE</font> PPOL := DIPFMO(RNINT(1), COMP(1, LIST1(1))); <strong><font color="#4169E1">END</font></strong>;
+         PPOL := DIRPRP(PPOL, XHK);
+         OMEGA := DIRPDF(OMEGA, GRNCHK(PG, PBASE, PPOL));
+         MERGE(0, PBASE, PPOL, BASE, POL);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+EXTRACT(PG, 0, 0, OMEGA, PBASE, PPOL);
+MERGE(0, PBASE, PPOL, BASE, POL);
+GRNCHKBAS(BASE, POL);
+<strong><font color="#4169E1">END</font></strong> REDUCE;
+
+<strong><font color="#4169E1">PROCEDURE GRNRED</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, BASE_POL, REM_POL: LIST);
+<strong><font color="#228B22">VAR</font></strong> HK, HT, HM, ORBIT, BASE_1, BASE_POL_1, DUMMY: LIST;
+    I: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+BASE := SIL;
+BASE_POL := SIL;
+REM_POL := 0;
+<font color="#4169E1">IF</font> POL = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">WHILE</font> POL # 0 <font color="#4169E1">DO</font>
+    DIPMAD(POL, HK, HT, DUMMY);
+    HM := DIPFMO(HK, HT);
+    ORBIT := GRNORP(PG, HM);
+    <font color="#4169E1">IF</font> EQUAL(HT, FIRST(ORBIT)) = 1 <font color="#4169E1">THEN</font>
+         POL := DIRPDF(POL, ORBIT);
+         EXTRACT(PG, 0, 0, ORBIT, BASE_1, BASE_POL_1);
+         MERGE(0, BASE_1, BASE_POL_1, BASE, BASE_POL);
+    <font color="#4169E1">ELSE</font> POL := DIRPDF(POL, HM);
+         REM_POL := DIRPSM(REM_POL, HM);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+I := 1;
+<font color="#4169E1">WHILE</font> I &lt;= LENGTH(BASE) <font color="#4169E1">DO</font>
+    BLINES(0); SWRITE("GRNRED working... (BASE) "); OWRITE(BASE);
+    HM := LELT(BASE,I);
+    ORBIT := GRNORP(PG, HM);
+    REDUCE(PG, ORBIT, BASE_1, BASE_POL_1);
+    HT := FIRST(HM);
+    <font color="#4169E1">IF</font> EQUAL(HT, FIRST(FIRST(BASE_1))) = 1 <font color="#4169E1">THEN</font> I := I + 1;
+    <font color="#4169E1">ELSE</font> MERGE(I, BASE_1, BASE_POL_1, BASE, BASE_POL); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+
+GRNCHKBAS(BASE, BASE_POL);
+BLINES(1); SWRITE("GRNRED exit (BASE): "); OWRITE(BASE);
+BLINES(0); SWRITE("GRNRED exit (BASE_POL): "); OWRITE(BASE_POL);
+BLINES(0); SWRITE("GRNRED exit (REM_POL): "); OWRITE(REM_POL);
+<strong><font color="#4169E1">END</font></strong> GRNRED;
+
+<strong><font color="#4169E1">PROCEDURE GRNBAS</font></strong>(PG: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> BASE, XBASE, SPG, ORBIT_SPG, ORBIT_PG, POL, TERM, HK, HT: LIST;
+    I, N, MAX, NR1, NR2: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+NR1 := 0;
+NR2 := 0;
+XBASE := 0;
+BASE := SIL;
+<font color="#4169E1">IF</font> PG = SIL <font color="#4169E1">THEN</font> RETURN(BASE); <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(FIRST(PG));
+SPG := GSYSPG(N);
+<font color="#4169E1">IF</font> N &lt;= 2 <font color="#4169E1">THEN</font> MAX := 1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> N &gt; 2 <font color="#4169E1">THEN</font>  MAX := N - 1; <strong><font color="#4169E1">END</font></strong>;
+TERM := SIL;
+<font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font> TERM := COMP(0, TERM); <strong><font color="#4169E1">END</font></strong>;
+
+LOOP TERM := GSYADD(TERM);
+    <font color="#4169E1">IF</font> FIRST(TERM) &gt; MAX <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    ORBIT_SPG := GRNORP(SPG, DIPFMO(RNINT(1), TERM));
+    <font color="#4169E1">WHILE</font> ORBIT_SPG # 0 <font color="#4169E1">DO</font>
+         NR1 := NR1 + 1;
+         HT := FIRST(ORBIT_SPG);
+         ORBIT_PG := GRNORP(PG, DIPFMO(RNINT(1), HT));
+         ORBIT_SPG := DIRPDF(ORBIT_SPG, ORBIT_PG);
+         REDUCE(PG, ORBIT_PG, BASE, POL);
+         <font color="#4169E1">IF</font> EQUAL(HT, FIRST(FIRST(BASE))) = 1 <font color="#4169E1">THEN</font>
+              NR2 := NR2 + 1;
+              BLINES(0); SWRITE("GRNBAS working... (Term ");
+              OWRITE(NR1); SWRITE("/"); OWRITE(NR2); SWRITE("): "); OWRITE(HT);
+              XBASE := DIRPSM(XBASE, DIPFMO(RNINT(1), HT));
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+
+BASE := SIL;
+<font color="#4169E1">IF</font> XBASE = 0 <font color="#4169E1">THEN</font> XBASE := SIL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">WHILE</font> XBASE # SIL <font color="#4169E1">DO</font>
+    DIPMAD(XBASE, HK, HT, XBASE);
+    BASE := COMP(DIPFMO(RNINT(1), HT), BASE);
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+BLINES(1); SWRITE("GRNBAS exit (BASE): "); OWRITE(BASE);
+BLINES(0); SWRITE("Number <font color="#4169E1">of</font> special polynomials: ");OWRITE(NR1);
+BLINES(0); SWRITE("Number <font color="#4169E1">of</font> base polynomials:    ");OWRITE(NR2);
+RETURN(BASE);
+<strong><font color="#4169E1">END</font></strong> GRNBAS;
+
+<strong><font color="#4169E1">PROCEDURE GRNGGB</font></strong>(PG: LIST): LIST;
+<strong><font color="#228B22">VAR</font></strong> BASE, GB, SPG, ORBIT_SPG, ORBIT_PG, TERM, POL, HT, XX: LIST;
+    I, N, MAX, NR1, NR2: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+NR1 := 0;
+NR2 := 0;
+GB := SIL;
+BASE := SIL;
+<font color="#4169E1">IF</font> PG = SIL <font color="#4169E1">THEN</font> RETURN(BASE); <strong><font color="#4169E1">END</font></strong>;
+N := LENGTH(FIRST(PG));
+SPG := GSYSPG(N);
+<font color="#4169E1">IF</font> N &lt;= 2 <font color="#4169E1">THEN</font> MAX := 1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#4169E1">IF</font> N &gt; 2 <font color="#4169E1">THEN</font>  MAX := N - 1; <strong><font color="#4169E1">END</font></strong>;
+TERM := SIL;
+<font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font> TERM := COMP(0, TERM); <strong><font color="#4169E1">END</font></strong>;
+
+LOOP TERM := GSYADD(TERM);
+    <font color="#4169E1">IF</font> FIRST(TERM) &gt; MAX <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+    ORBIT_SPG := GRNORP(SPG, DIPFMO(RNINT(1), TERM));
+    XX := SIL;
+    <font color="#4169E1">WHILE</font> ORBIT_SPG # 0 <font color="#4169E1">DO</font>
+         ORBIT_PG := GRNORP(PG, DIPFMO(RNINT(1), FIRST(ORBIT_SPG)));
+         ORBIT_SPG := DIRPDF(ORBIT_SPG, ORBIT_PG);
+         XX := COMP(ORBIT_PG, XX);
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>
+    <font color="#4169E1">WHILE</font> XX # SIL <font color="#4169E1">DO</font>
+         NR1 := NR1 + 1;
+         ADV(XX, ORBIT_PG, XX);
+         HT := FIRST(ORBIT_PG);
+         POL := DIRPNF(GB, ORBIT_PG);
+         <font color="#4169E1">IF</font> POL # 0 <font color="#4169E1">THEN</font>
+              NR2 := NR2 + 1;
+              BLINES(0); SWRITE("GRNGGB working... (Term ");
+              OWRITE(NR1); SWRITE("/"); OWRITE(NR2); SWRITE("): "); OWRITE(HT);
+              BASE := COMP(DIPFMO(RNINT(1), HT), BASE);
+              GB := DIRGBA(POL, GB, 0);
+              <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of if *)</font>
+         <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of while *)</font>;
+    <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* of loop *)</font>
+BASE := INV(BASE);
+BLINES(1); SWRITE("GRNGGB exit (BASE): "); OWRITE(BASE);
+BLINES(0); SWRITE("Number <font color="#4169E1">of</font> special polynomials: ");OWRITE(NR1);
+BLINES(0); SWRITE("Number <font color="#4169E1">of</font> base polynomials:    ");OWRITE(NR2);
+RETURN(BASE);
+<strong><font color="#4169E1">END</font></strong> GRNGGB;
+
+<strong><font color="#4169E1">END</font></strong> GSYMFURN.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,408 @@
+
+<html>
+<head>
+<title>./maskern/MASERR.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:08+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASERR.mi,v 1.9 1995/11/05 08:50:56 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASERR.mi,v $
+ * Revision 1.9  1995/11/05 08:50:56  kredel
+ * Added return value for runtime.
+ *
+ * Revision 1.8  1995/11/04  20:40:00  pesch
+ * Renamed massignal.m? to massig.m? because of conflict with MASSIGNAL.m?
+ * on certain OS.
+ *
+ * Revision 1.7  1995/09/12  17:22:49  pesch
+ * Signal handling function are now declared in massignal.
+ * Action has been changed according to ANSI C.
+ * signal.* and massignal.* have been removed, the former because of
+ * name clash with signal.h.
+ *
+ * Revision 1.6  1995/03/23  17:43:57  pesch
+ * Added new options -E (exit on error) and -c (command).
+ *
+ * Revision 1.5  1993/03/22  10:22:33  kredel
+ * Make CONTROL-C, SIGINT work
+ *
+ * Revision 1.4  1992/10/16  13:47:54  kredel
+ * Errors found by Mocka
+ *
+ * Revision 1.3  1992/10/15  16:24:58  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:31:55  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:38  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASERR;
+
+<font color="#B22222">(* MAS Error Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM SYSTEM	IMPORT	ADDRESS, ADR, BYTE;
+
+FROM MASmtc	IMPORT	getstck, gettoc;
+
+FROM setjmp	IMPORT	jmp_buf, jmp_buf, longjmp, setjmp;
+
+FROM massig	IMPORT	Action, SIGBUS, SIGFPE, SIGILL, SIGINT, SIGSEGV,
+			SIGTERM, SIG_ACK, SIG_ACK, SIG_ACK, SIG_ACK, SIG_DFL,
+			SIG_DFL, SIG_DFL, SIG_DFL, SIG_ERR, SIG_ERR, SIG_ERR,
+			SIG_ERR, SIG_IGN, SIG_IGN, SIG_IGN, SIG_IGN, raise,
+			signal;  
+
+FROM StdIO	IMPORT	ReadC, ReadI, WriteC, WriteFlush, WriteI, WriteN,
+			WriteNl, WriteS;
+
+FROM MASELEM	IMPORT	GAMMAINT, MASEXP, MASMAX, MASODD;
+
+FROM MASCONF	IMPORT	ExitOnError;
+
+<font color="#B22222">(*
+(* error indicators *)</font>
+<strong><font color="#228B22">CONST</font></strong> spotless  = 0;
+      harmless  = 1;
+      severe    = 2;
+      fatal     = 3;
+      confusion = 9;
+<strong><font color="#228B22">TYPE</font></strong> P0 = PROCEDURE;
+<strong><font color="#228B22">VAR</font></strong> DebugProcessor: P0; <font color="#B22222">(* procedure called by ERROR if debug requested *)</font>
+    history: GAMMAINT; <font color="#B22222">(* highest error level encountered so far. *)</font>
+*)
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASERR.mi,v 1.9 1995/11/05 08:50:56 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+<strong><font color="#228B22">CONST</font></strong> maxerr   = 20;        <font color="#B22222">(* maximal number of errors allowed *)</font>
+
+<strong><font color="#228B22">TYPE</font></strong>
+     P1 = PROCEDURE(GAMMAINT);
+     PS = PROCEDURE(ARRAY <font color="#4169E1">OF</font> CHAR);
+
+<strong><font color="#228B22">VAR</font></strong> elevel:  GAMMAINT;
+    fehler:  GAMMAINT;
+    schluss, errhup: BOOLEAN;
+
+    errenv: jmp_buf;
+
+    eh: GAMMAINT; 
+
+    STACK, STACKEND: ADDRESS;
+
+    lasterr: INTEGER;
+
+
+<strong><font color="#4169E1">PROCEDURE InitERR</font></strong>;
+<font color="#B22222">(*Initialize error handler. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Set variables. *)</font>
+      elevel:=0; lasterr:=0; 
+      STACKEND:=ADDRESS(0);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*procedures. *)</font>
+      schluss:=FALSE; errhup:=FALSE;
+      DebugProcessor:=P0(NIL);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> InitERR;
+
+
+<strong><font color="#4169E1">PROCEDURE DumpStack</font></strong>;
+<font color="#B22222">(*Dump Stack.  Dump objects on current stack. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   I, E, a: GAMMAINT;
+      c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize. *)</font> 
+      I:=GAMMAINT(getstck()); E:=I+1000;
+      WL; WS("Stack Dump: "); WL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*dump objects. *)</font> 
+      <font color="#4169E1">WHILE</font> I &lt;= E <font color="#4169E1">DO</font> a:=GETLONGINT(I);
+	    WI(I); WS(" = "); WH(a); 
+            WL; WS("(e)nd, &lt;ENTER&gt; ? ");
+            c:=InChar();
+            <font color="#4169E1">IF</font> (c = <font color="#666666">'e'</font>) <font color="#4169E1">OR</font> (c = <font color="#666666">'E'</font>) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#B22222">(* Must step by 1 because of CHARs and BYTes. *)</font>
+            I:=I+1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DumpStack;
+
+
+<strong><font color="#4169E1">PROCEDURE GETLONGINT</font></strong>(A: LONGINT): LONGINT;
+<font color="#B22222">(*GET A LONG INTEGER FROM SPECIFIED ADDRESS. REGARDELESS
+IF ADDRESS IS ON A WORD BOUNDARY. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   AL: LONGINT;
+      XP, YP: POINTER <font color="#4169E1">TO</font> BYTE;
+      EINZ: ADDRESS;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*INITIALIZE*)</font>  
+      XP:=ADR(AL); YP:=ADDRESS(A); EINZ:=ADDRESS(1); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*COPY BYTES*)</font>
+      <font color="#B22222">(*OVERLAY WITH VARIABLE ALLIGNED ON CORRECT BOUNDARY*)</font> 
+      XP^:=YP^; <font color="#B22222">(*1. BYTE*)</font> 
+      XP:=ADDRESS(XP)+EINZ; YP:=ADDRESS(YP)+EINZ;
+      XP^:=YP^; <font color="#B22222">(*2. BYTE*)</font>
+      XP:=ADDRESS(XP)+EINZ; YP:=ADDRESS(YP)+EINZ;
+      XP^:=YP^; <font color="#B22222">(*3. BYTE*)</font>
+      XP:=ADDRESS(XP)+EINZ; YP:=ADDRESS(YP)+EINZ;
+      XP^:=YP^; <font color="#B22222">(*4. BYTE*)</font>
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*FINISH.*)</font> RETURN(AL);
+<strong><font color="#4169E1">END</font></strong> GETLONGINT;
+
+
+<strong><font color="#4169E1">PROCEDURE ERROR</font></strong>(a: GAMMAINT; s: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Error. An error of severity a and indication s is reported. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i: INTEGER;
+      c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize *)</font> 
+      <font color="#4169E1">IF</font> a &gt; history <font color="#4169E1">THEN</font> history:=a <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(*stack check
+      IF getstck() &lt; Tstack THEN a:=fatal;
+	 WL; WS("** Stack underflow."); END; *)</font>
+      <font color="#4169E1">IF</font> (a = spotless) <font color="#4169E1">AND</font> (HIGH(s) &lt; 5) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      elevel:=elevel+1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*report *)</font> WL; WS("** "); 
+      i:=INTEGER(a);
+      <font color="#4169E1">CASE</font>         i <font color="#4169E1">OF</font> 
+           spotless: |
+           harmless: WS("error: ") |
+           severe  : WS("severe error: ") |
+           fatal   : WS("fatal error: ") 
+                <font color="#4169E1">ELSE</font> WS("("); WI(a); WS(") ") <strong><font color="#4169E1">END</font></strong>; 
+      WS(s); WS(" ");
+      <font color="#4169E1">IF</font> lasterr = SIGTERM <font color="#4169E1">THEN</font> history:=confusion; longjmp(errenv,1) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*interact *)</font> 
+      <font color="#4169E1">IF</font> i &gt; harmless <font color="#4169E1">THEN</font>
+     	 <font color="#4169E1">IF</font> ExitOnError <font color="#4169E1">THEN</font> a:=confusion;
+	 <font color="#4169E1">ELSE</font>
+	     LOOP WL; WS("(a)bort, (b)reak, (c)ontinue, (d)ebug, &lt;ENTER&gt; ? ");
+                  c:=InChar(); 
+                     <font color="#4169E1">IF</font> (c = <font color="#666666">'s'</font>) <font color="#4169E1">OR</font> (c = <font color="#666666">'S'</font>) <font color="#4169E1">THEN</font> DumpStack
+                  ELSIF (c = <font color="#666666">'i'</font>) <font color="#4169E1">OR</font> (c = <font color="#666666">'I'</font>) <font color="#4169E1">THEN</font> SysInfo
+                  ELSIF (c = <font color="#666666">'d'</font>) <font color="#4169E1">OR</font> (c = <font color="#666666">'D'</font>) <font color="#4169E1">THEN</font> Debug
+                   <font color="#4169E1">ELSE</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">CASE</font>        c <font color="#4169E1">OF</font> 
+                  <font color="#666666">'a'</font>,<font color="#666666">'A'</font>: WS("abort"); a:=confusion |
+                  <font color="#666666">'b'</font>,<font color="#666666">'B'</font>: WS("break"); a:=fatal |
+                  <font color="#666666">'c'</font>,<font color="#666666">'C'</font>: WS("continue"); a:=severe |
+                      <font color="#4169E1">ELSE</font> WS("system") <font color="#B22222">(*use system decision*)</font> <strong><font color="#4169E1">END</font></strong>; 
+             WS(". "); 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> a &gt; history <font color="#4169E1">THEN</font> history:=a <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*history and error count *)</font> 
+      elevel:=elevel-1;
+      <font color="#B22222">(*avoid recursive errors*)</font>
+      <font color="#4169E1">IF</font> elevel &gt; 0 <font color="#4169E1">THEN</font> history:=history+1 <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> history &gt; spotless <font color="#4169E1">THEN</font> fehler:=fehler+1 <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*avoid to much errors*)</font>
+      <font color="#4169E1">IF</font> fehler &gt; maxerr <font color="#4169E1">THEN</font> history:=history+1 <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*continue ? *)</font> 
+      <font color="#4169E1">IF</font> (spotless &lt;= history) <font color="#4169E1">AND</font> (history &lt; fatal) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (spotless &lt;= a) <font color="#4169E1">AND</font> (a &lt; fatal) <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> errhup <font color="#4169E1">THEN</font> HALT <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> history &gt; confusion <font color="#4169E1">THEN</font> HALT <strong><font color="#4169E1">END</font></strong>;
+      longjmp(errenv,2);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ERROR;
+
+
+<strong><font color="#4169E1">PROCEDURE Debug</font></strong>;
+<font color="#B22222">(*call DebugProcessor if available. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> ADDRESS(DebugProcessor) = NIL <font color="#4169E1">THEN</font> 
+         WL; WS("No Debug Processor available."); WL;
+         RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> WL; WS("Entering Debug Processor ..."); WL;
+      DebugProcessor;  
+      WL; WS("... Debug Processor exited."); WL;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> Debug;
+
+
+<strong><font color="#4169E1">PROCEDURE ErrorHandler</font></strong>(a: P0): GAMMAINT;
+<font color="#B22222">(*Error handler. Any error reported by the ERROR procedure is catched. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   f, t: INTEGER;
+      oldsig: Action;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> f:=0; 
+      oldsig:=signal(SIGINT, runtime); 
+      <font color="#4169E1">IF</font> oldsig = SIG_ERR <font color="#4169E1">THEN</font> 
+         WL; WS("Cannot install runtime signal handler."); WL; 
+         <strong><font color="#4169E1">END</font></strong>;
+   <font color="#B22222">(* oldsig:=signal(SIGILL, runtime); 
+      oldsig:=signal(SIGFPE, runtime); 
+      oldsig:=signal(SIGBUS, runtime); 
+      oldsig:=signal(SIGSEGV, runtime); 
+      oldsig:=signal(SIGTERM, runtime); *)</font>
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font> f:=f+1;
+             fehler:=0; history:=spotless;
+	     t:=setjmp(errenv); errhup:=TRUE;
+	     <font color="#4169E1">IF</font> t = 0 <font color="#4169E1">THEN</font> a(); schluss:=TRUE;
+		      <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> history &gt;= confusion <font color="#4169E1">THEN</font> schluss:=TRUE <strong><font color="#4169E1">END</font></strong> 
+                           <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> schluss <font color="#4169E1">AND</font> (history &gt; harmless) <font color="#4169E1">THEN</font> 
+                WL; WS("Trying <font color="#4169E1">to</font> restart <strong><font color="#4169E1">program</font></strong> ... "); WL;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> schluss <font color="#4169E1">OR</font> (f &gt; maxerr);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*WL; WS("... done."); WL;*)</font>
+      oldsig:=signal(SIGINT, SIG_DFL); 
+      errhup:=FALSE; 
+      RETURN(history);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ErrorHandler;
+
+
+<strong><font color="#4169E1">PROCEDURE runtime</font></strong>(e: INTEGER): INTEGER;
+<font color="#B22222">(*Run time error handler for Unix. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s: ARRAY [0..100] <font color="#4169E1">OF</font> CHAR;
+      abort: BOOLEAN;
+      err: GAMMAINT; 
+      oldsig: Action; x:INTEGER;  
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> abort:=TRUE; WL; lasterr:=e; err:=fatal;
+      <font color="#4169E1">CASE</font> e <font color="#4169E1">OF</font> 
+      SIGINT : s:=" Interrupt. "; abort:=FALSE; err:=severe |
+<font color="#B22222">(*unused*)</font>
+      SIGILL : s:=" Illegal Instruction. "; abort:=FALSE; err:=fatal |
+      SIGFPE : s:=" Floating Point Error. "; abort:=FALSE; err:=fatal |
+      SIGBUS : s:=" Bus Error. "; abort:=FALSE; err:=fatal |
+     SIGSEGV : s:=" Segmentation Error. "; abort:=FALSE; err:=fatal |
+     SIGTERM : s:=" Terminate. "; abort:=FALSE; err:=harmless |
+          <font color="#4169E1">ELSE</font> s:=" Unknown Error. "; abort:=TRUE; err:=fatal   
+               <strong><font color="#4169E1">END</font></strong>;
+      WI(GAMMAINT(e)); WS(s); 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> abort <font color="#4169E1">THEN</font> x:=raise(e); <font color="#B22222">(*should not return*)</font> HALT; <strong><font color="#4169E1">END</font></strong>;
+      oldsig:=signal(e, runtime); <font color="#B22222">(*rs6000*)</font>
+      ERROR(err,"Signal received.");
+      RETURN(0); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> runtime;
+
+
+<strong><font color="#4169E1">PROCEDURE WI</font></strong>(a: GAMMAINT);
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteI(a,1); <font color="#B22222">(*Dependes on MASELEM. *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> WI;
+
+
+<strong><font color="#4169E1">PROCEDURE WH</font></strong>(a: GAMMAINT);
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteI(a,1); WriteS("  "); WriteN(a,1,16); <font color="#B22222">(*Dependes on MASELEM. *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> WH;
+
+
+<strong><font color="#4169E1">PROCEDURE WS</font></strong>(s: ARRAY <font color="#4169E1">OF</font> CHAR);
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteS(s); WriteFlush;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> WS;
+
+
+<strong><font color="#4169E1">PROCEDURE WL</font></strong>();
+<font color="#B22222">(*Utility. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> WriteNl; WriteFlush;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> WL;
+
+
+<strong><font color="#4169E1">PROCEDURE InChar</font></strong>(): CHAR;
+<strong><font color="#228B22">VAR</font></strong>   c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c:=ReadC();
+      <font color="#4169E1">IF</font> ORD(c) &lt;= 10 <font color="#4169E1">THEN</font> c:=ReadC() <strong><font color="#4169E1">END</font></strong>;
+      RETURN(c); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> InChar;
+
+
+<strong><font color="#4169E1">PROCEDURE Escape</font></strong>;
+<strong><font color="#228B22">VAR</font></strong>   c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> c:=ReadC();
+      <font color="#4169E1">IF</font> ORD(c) &lt;= 10 <font color="#4169E1">THEN</font> c:=ReadC(); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> ORD(c) = 27 <font color="#4169E1">THEN</font> ERROR(severe,"ESC key pressed.") <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> Escape;
+
+
+<font color="#B22222">(* Test procedures *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SysInfo</font></strong>;
+<font color="#B22222">(*System Information. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a, b, bp, i, c: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*stack info. *)</font>
+      STACK:=getstck();
+      WS("STACK <strong><font color="#4169E1">END</font></strong>    = "); WH(GAMMAINT(STACKEND)); WL; 
+      WS("STACK A1     = "); WH(GAMMAINT(STACK)); WL;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*register info. *)</font>
+      a:=GAMMAINT(gettoc());
+      WS("      A2     = "); WH(a); WL;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> SysInfo;
+
+
+<font color="#B22222">(*TEST  
+PROCEDURE Hold;
+VAR   c: CHAR;
+BEGIN
+(*1*)</font> c:=ReadC();
+      <font color="#4169E1">IF</font> ORD(c) &gt; 13 <font color="#4169E1">THEN</font> Pause <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> Hold;
+
+
+<strong><font color="#4169E1">PROCEDURE Pause</font></strong>;
+<strong><font color="#228B22">VAR</font></strong>   c: CHAR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">REPEAT</font> c:=ReadC();
+       <font color="#4169E1">UNTIL</font> ORD(c) &gt; 0; 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> Pause;
+
+
+<strong><font color="#4169E1">PROCEDURE TestERR</font></strong>;
+<font color="#B22222">(*Test error. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   a,b: GAMMAINT;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">REPEAT</font> WS("Eingabe 1: ");
+	     b:=ReadI(); WL;
+             <font color="#4169E1">IF</font> b &gt;= 0 <font color="#4169E1">THEN</font> ERROR(b,"Fehler in testerr.") <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> b &lt; 0;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font> WS("Eingabe 2: ");
+	     b:=ReadI(); WL;
+             <font color="#4169E1">IF</font> b &gt;= 0 <font color="#4169E1">THEN</font> a:=1 DIV b <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> b &lt; 0;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> TestERR;
+  TEST*)
+
+
+
+<font color="#B22222">(* MASSTOR module initialization.  *)</font>
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> STACKEND:=getstck(); <font color="#B22222">(*remember stack address*)</font>
+<font color="#B22222">(*2*)</font> InitERR;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*TEST  
+      eh:=ErrorHandler(TestERR);
+      WS("nach error handler 1"); WL; 
+      SysInfo;
+      eh:=ErrorHandler(TestERR);
+      WS("nach error handler 2"); WL; 
+      SysInfo;
+        TEST*)</font>
+<strong><font color="#4169E1">END</font></strong> MASERR.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

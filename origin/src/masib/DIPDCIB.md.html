@@ -1,0 +1,106 @@
+
+<html>
+<head>
+<title>./masib/DIPDCIB.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:48+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPDCIB.md,v 1.1 1995/10/12 14:44:48 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPDCIB.md,v $
+ * Revision 1.1  1995/10/12 14:44:48  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPDCIB;
+
+<font color="#B22222">(* DIP Decompositional Involutive Bases Definition Module. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPDCIB.md,v 1.1 1995/10/12 14:44:48 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBopt</font></strong>(options: LIST);
+<font color="#B22222">(* Set decompositional involutive base options.
+   Input: a list of max. 4 options in the order: TraceLevel, DecomProc,
+   VarOrd, Depth of tree. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBTraceLevel</font></strong>(TL: INTEGER);
+<font color="#B22222">(* Set Decompositional involutive base Trace Level.
+   Input: an integer 0&lt;= TL &lt;= 3, 
+   0: default, no output, 
+  &gt;0: output of time,
+  &gt;1: output of messages about tree of computation,
+  &gt;2: detailed messages about tree of computation. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBDecomp</font></strong>(DCP: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base decomposition.
+   Set the procedure which is used for polynomial decomposition.
+   1: complete factorisation
+   2: squarefree decomposition  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBVarOrdOpt</font></strong>(VOO: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base variable order option.
+  VOO is an integer with meaning:
+  0: do not optimize,
+  1: optimize at factorization *)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetDCIBdepth</font></strong>(d: INTEGER);
+<font color="#B22222">(* Set decompositional involutive base depth of tree.
+   Input: an integer with
+   &lt;0: unrestricted growth of tree
+    0: no computation possible,
+   &gt;0: depth of tree is restricted through d *)</font>
+
+<strong><font color="#4169E1">PROCEDURE InvolutiveBases</font></strong>(G, V: LIST): LIST; 
+<font color="#B22222">(* Involutive Bases.
+   G is a list of polynomials in distributive representation
+   over an arbitrary domain,
+   returns a list (IB1,...,IBk) of involutive bases,
+   where Z(G) = Z(IB1) v ... v Z(IBk). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DILNFJ</font></strong>(H,G: LIST): INTEGER;
+<font color="#B22222">(* Distributive Polynomial List normalform in the sense of Janet.
+   H,G are distributive polynomial lists,
+   returns 0 if each polynomial in H is Janet-reducible to 0 modulo G,
+   1 else. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IBLWR</font></strong>(PP,V: LIST);
+<font color="#B22222">(* Involutive bases list write.
+   PP is a list of involutive bases in distributive representation.
+   V is a variable list *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DecCounter</font></strong>(<strong><font color="#228B22">VAR</font></strong> counter: LIST; <strong><font color="#228B22">VAR</font></strong> length_of_counter: INTEGER);
+<font color="#B22222">(* Decrement counter.
+   counter is a list of integers, the first element of counter is removed *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IncCounter</font></strong>(<strong><font color="#228B22">VAR</font></strong> counter: LIST; <strong><font color="#228B22">VAR</font></strong> loc: INTEGER; add: INTEGER);
+<font color="#B22222">(* Increment counter.
+   Increment the first entry of the counter list or append a new element.
+   Input: counter: a list of integers, 
+          add = 0: append a new element and increment counterlength loc, or
+          add&gt;0: increment the first element by add *)</font>
+
+<strong><font color="#4169E1">PROCEDURE CounterWR</font></strong>(counter: LIST);
+<font color="#B22222">(* Counter Write. 
+   write the given list counter as the number of a reached node *)</font>
+
+<strong><font color="#4169E1">END</font></strong> DIPDCIB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

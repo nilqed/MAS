@@ -1,0 +1,1000 @@
+
+<html>
+<head>
+<title>./masdom/CGBDSTR.mip</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T16:47:07+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: CGBDSTR.mip,v 1.11 1996/06/08 16:47:07 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1992-1996 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: CGBDSTR.mip,v $
+ * Revision 1.11  1996/06/08 16:47:07  pesch
+ * Reformatted, removed obsolete procedures.
+ *
+ * Revision 1.10  1995/09/12  17:11:11  pesch
+ * Fixed typos.
+ *
+ * Revision 1.9  1995/03/23  16:05:42  pesch
+ * Added new data structure Colp for coloured polynomials.
+ *
+ * Revision 1.8  1995/03/06  15:49:31  pesch
+ * Added new procedure GSYSF, Groebner system with factorization. This uses
+ * the new procedures GBSYSF and CONSGBF (also added).
+ *
+ * Added new procedures DIP2AD, AD2DIP and DIPPFACTAV.
+ *
+ * Fixed error in CHECK.
+ *
+ * New option for factorization of conditions: factorize with optimization
+ * of variable ordering.
+ *
+ * Revision 1.7  1994/11/28  20:54:44  dolzmann
+ * Procedure import from PQBASE instead of import from PQSMPL.
+ *
+ * Revision 1.6  1994/04/14  16:46:07  dolzmann
+ * Syntactical errors (found by Mocka) corrected.
+ *
+ * Revision 1.5  1994/04/12  14:00:08  pesch
+ * Added blank to argument of CLTIS.
+ *
+ * Revision 1.4  1994/04/11  14:55:52  pesch
+ * Fixed bug in CondPread. Initial case distinction should work again now.
+ *
+ * Revision 1.3  1994/04/09  18:05:54  pesch
+ * Reformatted parts of the CGB sources. Updated comments in CGB*.md.
+ *
+ * Revision 1.2  1994/03/14  16:42:53  pesch
+ * Minor changes requested by A. Dolzmann
+ *
+ * Revision 1.1  1994/03/11  15:58:09  pesch
+ * Major changes to CGB.
+ * C-Preprocessor now used for .mip files. The corresponding .mi files have
+ * been removed.
+ * Many new CGB-Functions and fixes of old ones.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+#include "debug.h"
+
+IMPLEMENTATION MODULE CGBDSTR;
+
+<font color="#B22222">(* Comprehensive-Groebner-Bases Data-Structures Implementation Module. *)</font>
+
+FROM CGBMAIN	IMPORT	WRGBS;
+FROM CGBMISC	IMPORT	COLOUR, DIFPF, EvordReset, EvordSet, PAR, PFWRITE,
+			ValisReset, ValisSet;
+FROM DIPADOM	IMPORT	DILRD, DILWR, DIREAD;
+FROM DIPC	IMPORT	DILBSO, DIPLPM, DIPMAD, EVCOMP, EVSIGN;
+FROM MASADOM	IMPORT	ADDDREAD, ADDDWRIT;
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREADB, DIGIT, LISTS, MASORD, SWRITE;
+FROM MASBIOSU	IMPORT	CLTIS;
+FROM MASERR	IMPORT	ERROR, fatal, harmless, severe, spotless;
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LIST, LIST1, SIL;
+FROM MASSYM	IMPORT	UWRITE;
+FROM MLOGBASE	IMPORT	ET, FALSUM, FORMKBINOP, FORMKFOR, FORMKUNOP, IMP,
+			NON, VEL, VERUM;
+FROM PQBASE	IMPORT	EQU, NEQ, PQPPRT, PQPRING, PQPRINGWR, pqmkaf;
+FROM SACLIST	IMPORT	AREAD, CONC, FIRST2, FIRST3, FIRST4, FOURTH, LIST2,
+			LIST3, LIST4, OWRITE, SECOND, THIRD;
+FROM SACPOL	IMPORT	VLREAD, VLWRIT;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: CGBDSTR.mip,v 1.11 1996/06/08 16:47:07 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1992-1996 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Conditions (Cond)
+=================================
+
+A condition contains information (=0, &lt;&gt;0, unknown) on coefficients. 
+A conditions is implemented as a list containing two lists of coefficients:
+((P_1, ..., P_i), (Q_1, ..., Q_j)) where P_l=0 and Q_k&lt;&gt;0.
+The empty condition is ((), ()).
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CondZero</font></strong>(Cond: LIST): LIST;
+<font color="#B22222">(* Condition zero part.
+Cond is a condition.
+Returns the list of coefficients =0 in Cond.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondZero);
+     RETURN(FIRST(Cond));
+<strong><font color="#4169E1">END</font></strong> CondZero;
+
+<strong><font color="#4169E1">PROCEDURE CondNzero</font></strong>(Cond: LIST): LIST;
+<font color="#B22222">(* Condition non-zero part.
+Cond is a condition.
+Returns the list of coefficients &lt;&gt;0 in Cond.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondNzero);
+     RETURN(SECOND(Cond));
+<strong><font color="#4169E1">END</font></strong> CondNzero;
+
+<strong><font color="#4169E1">PROCEDURE CondParts</font></strong>(Cond: LIST; <strong><font color="#228B22">VAR</font></strong> C0, C1:LIST);
+<font color="#B22222">(* Condition parts.
+Cond is a condition.
+C0,C1 need not be initialized.
+Returns the list of coefficients =0 from Cond in C0 and 
+the list of coefficients &lt;&gt;0 from Cond in C1 *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondParts);
+     FIRST2(Cond,C0,C1);
+<strong><font color="#4169E1">END</font></strong> CondParts;
+
+<strong><font color="#4169E1">PROCEDURE CondCons</font></strong>(C0, C1:LIST):LIST;
+<font color="#B22222">(* Condition construct.
+C0, C1 are lists of coefficients.
+Returns a condition where the coefficients from C0 are =0 and
+the coefficients from C1 are &lt;&gt;0. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondCons);
+     RETURN(LIST2(C0,C1));
+<strong><font color="#4169E1">END</font></strong> CondCons;
+
+<strong><font color="#4169E1">PROCEDURE CondIsEmpty</font></strong>(Cond: LIST): BOOLEAN;
+<font color="#B22222">(* Condition is empty.
+Cond is a condition.
+Returns true iff Cond is the empty condition. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondIsempty);
+     RETURN (CondZero(Cond)=SIL) <font color="#4169E1">AND</font> (CondNzero(Cond)=SIL);
+<strong><font color="#4169E1">END</font></strong> CondIsEmpty;
+
+<strong><font color="#4169E1">PROCEDURE CondEmpty</font></strong>():LIST;
+<font color="#B22222">(* Condition empty.
+Returns the empty condition. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondEmpty);
+     RETURN(LIST2(SIL, SIL));
+<strong><font color="#4169E1">END</font></strong> CondEmpty;
+
+<strong><font color="#4169E1">PROCEDURE CondRead</font></strong>(VD: LIST): LIST;
+<font color="#B22222">(* Condition read.
+VD is a list containing a variable list and a domain descriptor.
+Returns a condition read from the input stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong> CD0, CD1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondRead);
+     CD0:=CondPRead(VD,0);
+     CD1:=CondPRead(VD,1);
+     RETURN(CondCons(CD0,CD1));
+<strong><font color="#4169E1">END</font></strong> CondRead;
+
+<strong><font color="#4169E1">PROCEDURE CondPRead</font></strong>(VD, B: LIST): LIST;
+<font color="#B22222">(* Condition part read.
+VD is a list containing a variable list and a domain descriptor.
+Returns a condition part read from the input stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong> C, C1, CP, V, D, A, AL, AE: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondPRead);
+     VdParts(VD, V,D);
+     <font color="#B22222">(* Read input up to list of coefficients. *)</font>
+     C:=CREADB(); 
+     <font color="#4169E1">IF</font> DIGIT(C) <font color="#4169E1">THEN</font> BKSP(); C:=AREAD(); <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#4169E1">IF</font> (C &lt;&gt; MASORD("(")) <font color="#4169E1">AND</font> (C &lt;&gt; B) <font color="#4169E1">THEN</font>
+       ERROR(harmless,"Error1 found by CondPRead."); RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+     C1:=CREADB(); 
+     <font color="#4169E1">IF</font> (C = MASORD("(")) <font color="#4169E1">AND</font> (C1 &lt;&gt; MASORD(")")) <font color="#4169E1">THEN</font>
+       ERROR(harmless,"Error2 found by CondPRead."); RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#4169E1">IF</font> (C = B) <font color="#4169E1">AND</font> (C1 &lt;&gt; MASORD("(")) <font color="#4169E1">THEN</font>
+       ERROR(harmless,"Error3 found by CondPRead."); RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#4169E1">IF</font> (C = MASORD("(")) <font color="#4169E1">AND</font> (C1 = MASORD(")")) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#B22222">(*Read list of polynomials. Update DNEU. *)</font> 
+     CP:=SIL;
+     <font color="#4169E1">IF</font> ((C = MASORD("0")) <font color="#4169E1">OR</font> (C = MASORD("1"))) <font color="#4169E1">AND</font> (C1 = MASORD("(")) <font color="#4169E1">THEN</font>
+       <font color="#4169E1">REPEAT</font>
+             C:=CREADB(); 
+             <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> C:=CREADB(); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> C &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font>
+               BKSP();
+               A:=DIREAD(V,D); 
+               DIPMAD(A, AL,AE,A); 
+    	       CP:=CONC(CP, LIST1(AL));
+     	     <strong><font color="#4169E1">END</font></strong>; 
+       <font color="#4169E1">UNTIL</font> C = MASORD(")"); 
+     <strong><font color="#4169E1">END</font></strong>; 
+     RETURN(CP);
+<strong><font color="#4169E1">END</font></strong> CondPRead;
+
+<strong><font color="#4169E1">PROCEDURE CondWrite</font></strong>(Cond: LIST); 
+<font color="#B22222">(* Condition write.
+Cond is a condition, which is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, Cond0, Cond1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CondWrite);
+     SWRITE("Condition: ");
+     <font color="#B22222">(*Case Cond is empty. *)</font> 
+     <font color="#4169E1">IF</font> CondIsEmpty(Cond) <font color="#4169E1">THEN</font> SWRITE("Empty."); BLINES(0); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+     EvordSet(PAR.TermOrderCoef);
+     BLINES(0);
+     <font color="#B22222">(*Case Cond not empty. *)</font>
+     CondParts(Cond, Cond0,Cond1); 
+     <font color="#B22222">(*Write equations. *)</font> 
+     <font color="#4169E1">WHILE</font> Cond0 &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(Cond0, A,Cond0);
+     	  PFWRITE(A); SWRITE("= 0"); BLINES(0);
+     <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#B22222">(*Write inequations. *)</font> 
+     <font color="#4169E1">WHILE</font> Cond1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(Cond1, A,Cond1);
+     	  PFWRITE(A); SWRITE("&lt;&gt; 0"); BLINES(0);
+     <strong><font color="#4169E1">END</font></strong>; 
+     BLINES(1); 
+     EvordReset();
+<strong><font color="#4169E1">END</font></strong> CondWrite; 
+
+<strong><font color="#4169E1">PROCEDURE FormFCond</font></strong>(Cond: LIST; <strong><font color="#228B22">VAR</font></strong> VD: LIST): LIST;
+<font color="#B22222">(* Formula from Condition.
+Cond is a condition.
+DOM and VARL need not be initialized.
+Returns a formula "equivalent" to Cond and its variable list and
+domain descriptor in VD. *)</font>
+<strong><font color="#228B22">VAR</font></strong> C0, C1, P, F, D, DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FormFCond);
+     CLTIS(LISTS("RN -1 "));
+     D:=ADDDREAD();
+     VD:=VdCons(SIL,D);
+     <font color="#4169E1">IF</font> CondIsEmpty(Cond) <font color="#4169E1">THEN</font> RETURN(VERUM); <strong><font color="#4169E1">END</font></strong>;
+     EvordSet(PAR.TermOrderCoef);
+     CondParts(Cond, C0,C1);
+     F:=SIL;
+     VARL:=SIL;
+     <font color="#4169E1">WHILE</font> C0&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	  ADV(C0, P,C0);
+     	  F:=COMP(pqmkaf(EQU,DIFPF(P,D, DOM,VARL)),F);
+     <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">WHILE</font> C1&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	  ADV(C1, P,C1);
+     	  F:=COMP(pqmkaf(NEQ,DIFPF(P,D, DOM,VARL)),F);
+     <strong><font color="#4169E1">END</font></strong>;
+     EvordReset();
+     VD:=VdCons(VARL,D);
+     RETURN(FORMKFOR(ET,F));
+<strong><font color="#4169E1">END</font></strong> FormFCond;
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Colouring (Col).
+================================
+
+A colouring contains information (=0 (green), &lt;&gt;0 (red), unknown (white))
+about monomials of a polynomial and the unknown factors of an unknown
+coefficient.
+A colouring is implemented as a list containing two lists: (CRED, CWHITE).
+CRED is a sorted (according to the term order, greatest term first)
+list of red terms.
+CWHITE=((T_1, (F_1_1, ..., F_1_n)), ..., (T_m, (F_m_1, ..., F_m_n))) is
+a list sorted by T_i, where T_i are white terms, and F_i_j are white
+factors of the coefficient of T_i.
+The empty colouring is ((), ()).
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColRed</font></strong>(Col: LIST): LIST;
+<font color="#B22222">(* Colouring red.
+Col is a Colouring.
+Returns a list of red terms in Col. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(ColRed);
+     RETURN(FIRST(Col));
+<strong><font color="#4169E1">END</font></strong> ColRed;
+
+<strong><font color="#4169E1">PROCEDURE ColWhite</font></strong>(Col: LIST): LIST;
+<font color="#B22222">(* Colouring white.
+Col is a Colouring.
+Returns a list of white terms with white factors in Col. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(ColWhite);
+     RETURN(SECOND(Col));
+<strong><font color="#4169E1">END</font></strong> ColWhite;
+
+<strong><font color="#4169E1">PROCEDURE ColParts</font></strong>(Col: LIST; <strong><font color="#228B22">VAR</font></strong> R, W:LIST);
+<font color="#B22222">(* Colouring parts.
+Col is a Colouring.
+R, W need not be initialized.
+Returns a list of red terms from Col in R and
+a list of white terms with white factors in W. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(ColParts);
+     FIRST2(Col, R,W);
+<strong><font color="#4169E1">END</font></strong> ColParts;
+
+<strong><font color="#4169E1">PROCEDURE ColCons</font></strong>(R, W: LIST): LIST;
+<font color="#B22222">(* Colouring construct.
+R is a (possibly empty) list of red terms.
+W is a (possibly empty) list of white terms.
+Returns a colouring constructed from R an W. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(LIST2(R,W));
+<strong><font color="#4169E1">END</font></strong> ColCons;
+
+<strong><font color="#4169E1">PROCEDURE ColConsCond</font></strong>(POL,COND: LIST): LIST;
+<font color="#B22222">(* Colouring construct from condition.
+POL is a polynomial.
+COND is a condition.
+Returns a colouring of POL according to COND. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   F, PC, PCF, PE, R, W, WF: LIST;
+      C: COLOUR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     <font color="#4169E1">IF</font> POL=SIL <font color="#4169E1">THEN</font> RETURN(ColEmpty()); <strong><font color="#4169E1">END</font></strong>; 
+     R:=SIL; W:=SIL; 
+     <font color="#4169E1">REPEAT</font> 
+           DIPMAD(POL, PC,PE,POL);
+            <font color="#4169E1">IF</font> PAR.IsCnst(PC) <font color="#4169E1">THEN</font> R:=COMP(PE,R);
+            <font color="#4169E1">ELSE</font> 
+     	        PCF:=PAR.Factorize(PC);
+                C:=nzero;
+     	        WF:=SIL; 
+                <font color="#4169E1">REPEAT</font> 
+                      ADV(PCF, F,PCF); 
+                      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> PAR.IsCnst(F) <font color="#4169E1">THEN</font>
+     	       	    	  C:=PAR.CondEval(COND,F);
+     	       	    	  <font color="#4169E1">IF</font> C=unknown <font color="#4169E1">THEN</font> WF:=COMP(F,WF); <strong><font color="#4169E1">END</font></strong>;
+                      <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">UNTIL</font> (C=zero) <font color="#4169E1">OR</font> (PCF=SIL); 
+                <font color="#4169E1">IF</font> C&lt;&gt;zero <font color="#4169E1">THEN</font>
+                  <font color="#4169E1">IF</font> WF = SIL <font color="#4169E1">THEN</font> R:=COMP(PE,R);
+                              <font color="#4169E1">ELSE</font> W:=COMP(LIST2(PE,WF),W); <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> POL = SIL; 
+      <font color="#4169E1">IF</font> R&lt;&gt;SIL <font color="#4169E1">THEN</font> R:=INV(R); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> W&lt;&gt;SIL <font color="#4169E1">THEN</font> W:=INV(W); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(ColCons(R,W));
+<strong><font color="#4169E1">END</font></strong> ColConsCond;
+
+<strong><font color="#4169E1">PROCEDURE ColIsEmpty</font></strong>(Col: LIST): BOOLEAN;
+<font color="#B22222">(* Colouring is empty.
+Col is a Colouring.
+Returns true iff Col is the empty Colouring. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(ColIsEmpty);
+     RETURN (ColRed(Col)=SIL) <font color="#4169E1">AND</font> (ColWhite(Col)=SIL);
+<strong><font color="#4169E1">END</font></strong> ColIsEmpty;
+
+<strong><font color="#4169E1">PROCEDURE ColEmpty</font></strong>(): LIST;
+<font color="#B22222">(* Colouring empty.
+Returns the empty Colouring. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(ColEmpty);
+     RETURN(LIST2(SIL, SIL));
+<strong><font color="#4169E1">END</font></strong> ColEmpty;
+
+<strong><font color="#4169E1">PROCEDURE ColHT</font></strong> (COL: LIST): LIST;
+<font color="#B22222">(* Colouring head term.
+COL is a colouring.
+If the highest non-zero (red) term is greater then the highest unknown (white)
+term returns the highest non-zero term else returns SIL. *)</font>
+<strong><font color="#228B22">VAR</font></strong> R, W: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     <font color="#4169E1">IF</font> ColIsEmpty(COL) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+     ColParts(COL, R,W);
+     <font color="#4169E1">IF</font> R=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> W=SIL <font color="#4169E1">THEN</font> RETURN(FIRST(R)); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> EVCOMP(FIRST(R),FIRST(FIRST(W)))&lt;=0 <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#B22222">(* --- to do --- FIRST(FIRST(W)) safe ? *)</font>
+     RETURN(FIRST(R));
+
+<strong><font color="#4169E1">END</font></strong> ColHT;
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Coloured polynomial (Colp)
+==========================================
+
+A coloured polynomial contains a a polynomial and information about the
+colouring (=0,&lt;&gt;0,unknown) of its monomials.
+A coloured polynomial is implemented as a list (POL,COL) containing
+a distributive polynomial over the domain IP and a colouring (Col).
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE ColpCons</font></strong>(POL,COL: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial construct.
+POL is a polynomial.
+COL is a colouring.
+Returns a Colp built from POL and COL.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(LIST2(POL,COL));
+<strong><font color="#4169E1">END</font></strong> ColpCons;
+
+<strong><font color="#4169E1">PROCEDURE ColpConsCond</font></strong>(POL,COND: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial construct from condition.
+POL is a polynomial.
+COND is a condition.
+Returns a Colp by colouring POL according to COND. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(ColpCons(POL,ColConsCond(POL,COND)));     
+<strong><font color="#4169E1">END</font></strong> ColpConsCond;
+
+<strong><font color="#4169E1">PROCEDURE ColpPol</font></strong>(COLP: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial polynomial part.
+COLP is a coloured polynomial.
+Returns the polynomial in Colp. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(FIRST(COLP));
+<strong><font color="#4169E1">END</font></strong> ColpPol;
+
+<strong><font color="#4169E1">PROCEDURE ColpCol</font></strong>(COLP: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial colouring part.
+COLP is a coloured polynomial.
+Returns the colouring of COLP. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(SECOND(COLP));
+<strong><font color="#4169E1">END</font></strong> ColpCol;
+
+<strong><font color="#4169E1">PROCEDURE ColpParts</font></strong>(COLP: LIST; <strong><font color="#228B22">VAR</font></strong> POL,COL: LIST);
+<font color="#B22222">(* Coloured polynomial parts.
+COLP is a coloured polynomial.
+POL, COL need not be initialized.
+Returns the polynomial from COLP in POL and the colouring from COLP in COL.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     FIRST2(COLP, POL,COL);
+<strong><font color="#4169E1">END</font></strong> ColpParts;
+
+<strong><font color="#4169E1">PROCEDURE ColpIsCnst</font></strong>(COLP: LIST): BOOLEAN;
+<font color="#B22222">(* Coloured polynomial is (non zero) constant.
+COLP is a coloured polynomial.
+Returns TRUE iff COLP is constant (i.e. its degree is 0) and non zero wrt.
+to its colouring *)</font>
+<strong><font color="#228B22">VAR</font></strong> COL, R, W: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     COL:=ColpCol(COLP);
+     <font color="#4169E1">IF</font> ColIsEmpty(COL) <font color="#4169E1">THEN</font> RETURN(FALSE); <strong><font color="#4169E1">END</font></strong>;
+     ColParts(COL, R,W);
+     <font color="#4169E1">IF</font> (R=SIL) <font color="#4169E1">OR</font> (W&lt;&gt;SIL) <font color="#4169E1">THEN</font> RETURN(FALSE); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> EVSIGN(FIRST(R))=0 <font color="#4169E1">THEN</font> RETURN(TRUE); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(FALSE);
+<strong><font color="#4169E1">END</font></strong> ColpIsCnst;
+
+<strong><font color="#4169E1">PROCEDURE ColpHT</font></strong> (COLP: LIST): LIST;
+<font color="#B22222">(* Coloured polynomial head term.
+COLP is a coloured polynomial.
+If the head term of COLP is determined by its colouring and non-zero (i.e. the
+highest non-zero (red) term is greater then the highest unknown (white)
+term) returns the head term else returns SIL. *)</font>
+<strong><font color="#228B22">VAR</font></strong> COL, R, W: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN(ColHT(ColpCol(COLP)));
+<strong><font color="#4169E1">END</font></strong> ColpHT;
+
+<strong><font color="#4169E1">PROCEDURE ColpIsZero</font></strong> (COLP: LIST): BOOLEAN;
+<font color="#B22222">(* Coloured polynomial is zero.
+COLP is a coloured polynomial.
+Returns TRUE iff all terms of COLP are zero (green) wrt. its colouring. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     <font color="#4169E1">IF</font> COLP=SIL <font color="#4169E1">THEN</font> RETURN(TRUE); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(ColIsEmpty(ColpCol(COLP)));
+<strong><font color="#4169E1">END</font></strong> ColpIsZero;
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Case distinction (Cd)
+=====================================
+
+A case distinction is implemented as a list containing conditions.
+-to do-: complete
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdRead</font></strong>(VD: LIST): LIST;
+<font color="#B22222">(* Case distinction read.
+VD is a variable list and a domain descriptor.
+Returns a case distinction read from the input stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong> CD: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CdRead);
+     CD:=SIL;
+     <font color="#4169E1">REPEAT</font>
+     	   CD:=CONC(CD,LIST1(CondRead(VD)));
+     <font color="#4169E1">UNTIL</font> CREADB()=MASORD(".");
+     RETURN(CD);
+<strong><font color="#4169E1">END</font></strong> CdRead;
+
+<strong><font color="#4169E1">PROCEDURE CdWrite</font></strong>(CD: LIST); 
+<font color="#B22222">(*Case distinction write.
+CD is a case distinction which is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   COND: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CdWrite);
+     <font color="#B22222">(*Case DE empty. *)</font> 
+     <font color="#4169E1">IF</font> (CD = SIL) <font color="#4169E1">OR</font> (CD = 0) <font color="#4169E1">THEN</font> SWRITE("Empty."); BLINES(0); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#B22222">(*Case CD not empty. *)</font>
+     BLINES(0);
+     <font color="#4169E1">REPEAT</font> ADV(CD, COND,CD); CondWrite(COND); BLINES(0); <font color="#4169E1">UNTIL</font> CD=SIL;
+<strong><font color="#4169E1">END</font></strong> CdWrite; 
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Case distinction and polynomial set (Cdp)
+=========================================================
+
+A case distinction and polynomial set is implemented as a list containing
+three elements: (CD,PL,VD) where CD is a case distinction, PL is a
+list of polynomials and VD is a variable list and domain descriptor for PL.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CdpCons</font></strong>(CD,PL,VD: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set construct.
+CD is a case distinction.
+PL is a list of Polynomials.
+VD is a varable list and domain descriptor for PL.
+Returns a CDP built from CD,PL,VD.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CdpCons);
+     RETURN(LIST3(CD,PL,VD));
+<strong><font color="#4169E1">END</font></strong> CdpCons;
+
+<strong><font color="#4169E1">PROCEDURE CdpParts</font></strong>(CDP: LIST; <strong><font color="#228B22">VAR</font></strong> CD,PL,VD: LIST);
+<font color="#B22222">(* Case distinction and polynomial set parts.
+CDP is a case distinction and polynomial set.
+Returns the case distinction from CDP in CD, the polynomial set from CDP
+in PL and the variable list and domain descriptor from CDP in VD. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CdpParts);
+     FIRST3(CDP, CD,PL,VD);
+<strong><font color="#4169E1">END</font></strong> CdpParts;
+
+<strong><font color="#4169E1">PROCEDURE CdpCd</font></strong>(CDP: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set case distinction part.
+CDP is a case distinction and polynomial set.
+Returns the case distinction from CDP. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CdpCd);
+     RETURN FIRST(CDP);
+<strong><font color="#4169E1">END</font></strong> CdpCd;
+
+<strong><font color="#4169E1">PROCEDURE CdpPs</font></strong>(CDP: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set polynomial set part.
+CDP is a case distinction and polynomial set.
+Returns the polynomial set from CDP. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CdpPs);
+     RETURN SECOND(CDP);
+<strong><font color="#4169E1">END</font></strong> CdpPs;
+
+<strong><font color="#4169E1">PROCEDURE CdpVd</font></strong>(CDP: LIST): LIST;
+<font color="#B22222">(* Case distinction and polynomial set variable list and domain descriptor 
+part.
+CDP is a case distinction and polynomial set.
+Returns the variable list and domain descriptor from CDP. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CdpVd);
+     RETURN THIRD(CDP);
+<strong><font color="#4169E1">END</font></strong> CdpVd;
+
+<strong><font color="#4169E1">PROCEDURE CdpRead</font></strong>():LIST; 
+<font color="#B22222">(*Case distinction and polynomial set read.
+Returns a case distinction and polynomial set read from the input stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CD, NRLIST, VD, SYS, S, RET: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CdpRead);
+     C:=CREADB(); BKSP(); 
+     VD:=VdRead(); 
+     EvordSet(PAR.TermOrderPol); 
+     ValisSet(VdV(VD));
+     CD:=CdRead(VD); 
+     SYS:=RDSYS(VD);
+     C:=CREADB(); BKSP();
+     RET:=CdpCons(CD,LIST2(INV(DIPLPM(FIRST(SYS))),SECOND(SYS)),VD);
+     EvordReset();
+     ValisReset();
+     RETURN (RET);
+<strong><font color="#4169E1">END</font></strong> CdpRead; 
+
+<strong><font color="#4169E1">PROCEDURE CdpWrite</font></strong>(CDP: LIST);
+<font color="#B22222">(*Case distinction and polynomial set write.
+CDP is a case distinction and polynomial set.
+Writes CDP to the output-stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CONDS, NRLIST, VD, SYS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CdpWrite);
+     EvordSet(PAR.TermOrderPol);
+     ValisSet(FIRST(THIRD(CDP)));
+     BLINES(1);
+     SWRITE("<font color="#4169E1">Case</font> distinction: ");
+     CdWrite(FIRST(CDP));
+     BLINES(1);
+     SWRITE("Polynomial set:"); BLINES(0);
+     SWRITE("Ring: ");
+     ADDDWRIT(SECOND(THIRD(CDP)));
+     VLWRIT(FIRST(THIRD(CDP)));
+     BLINES(0);
+     DILBSO(FIRST(SECOND(CDP))); <font color="#B22222">(* -to do- ???? *)</font>
+     DILWR(FIRST(SECOND(CDP)),FIRST(THIRD(CDP)));
+     BLINES(1);
+     EvordReset();
+     ValisReset();
+<strong><font color="#4169E1">END</font></strong> CdpWrite; 
+
+<strong><font color="#4169E1">PROCEDURE RDSYS</font></strong>(VD: LIST): LIST; 
+<font color="#B22222">(*Read polynomial systems.
+VD is a variable list and domain descriptor.
+PPS is a list of two polynomial systems read from the input stream. *)</font>
+<font color="#B22222">(* -to do-: get rid of this procedure! -- mp *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, C, D, NF, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(RDSYS);
+     VdParts(VD, V,D); 
+     A:=DILRD(V,D); 
+     C:=CREADB(); BKSP(); 
+     <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> RETURN(LIST2(A,SIL)); <strong><font color="#4169E1">END</font></strong>; 
+     NF:=DILRD(V,D);
+     RETURN(LIST2(A,NF));
+<strong><font color="#4169E1">END</font></strong> RDSYS; 
+
+<font color="#B22222">(*****************************************************************************
+Data-Structure: Groebner system (Gs)
+====================================
+
+A Groebner System  is implemented as a list containing three lists:
+(S,VD,CD) where S is a list containing the Groebner system, VD is
+a variable list and domain descriptor for S and CD is the initial
+case distinction.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE GsCons</font></strong>(S,VD,CD: LIST): LIST;
+<font color="#B22222">(* Groebner system construct.
+S is a Groebner system,
+VD its variables list and domain descriptor and
+CD the initial case distinction
+Returns the Groebner system constructed from S, VD and CD *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(GsCons);
+     RETURN(LIST3(S,VD,CD));
+<strong><font color="#4169E1">END</font></strong> GsCons;
+
+<strong><font color="#4169E1">PROCEDURE GsS</font></strong>(GS: LIST): LIST;
+<font color="#B22222">(* Groebner system system part.
+GS is a Groebner system.
+Returns the system part of GS *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(GsS);
+     RETURN(FIRST(GS));
+<strong><font color="#4169E1">END</font></strong> GsS;
+
+<strong><font color="#4169E1">PROCEDURE GsVd</font></strong>(GS: LIST): LIST;
+<font color="#B22222">(* Groebner system variable list and domain descriptor.
+GS is a Groebner system.
+Returns the variable list and domain descriptor for GS. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(GsVd);
+     RETURN(SECOND(GS));
+<strong><font color="#4169E1">END</font></strong> GsVd;
+
+<strong><font color="#4169E1">PROCEDURE GsCd</font></strong>(GS: LIST): LIST;
+<font color="#B22222">(* Groebner system initial case distinction.
+GS is a Groebner system.
+Returns the initial case distinction for GS. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(GsCd);
+     RETURN(THIRD(GS));
+<strong><font color="#4169E1">END</font></strong> GsCd;
+
+<strong><font color="#4169E1">PROCEDURE GsParts</font></strong>(GS: LIST; <strong><font color="#228B22">VAR</font></strong> S,VD,CD: LIST);
+<font color="#B22222">(* Groebner system parts.
+S and VD need not be initialized.
+Returns the system part of GS in S, the variable list and domain
+descriptor for GS in VD and the initial case distinction in CD. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(GsParts);
+     FIRST3(GS, S,VD,CD);
+<strong><font color="#4169E1">END</font></strong> GsParts;
+
+<strong><font color="#4169E1">PROCEDURE GsWrite</font></strong>(GS: LIST);
+<font color="#B22222">(* Groebner system write.
+GS is a Groebner system which is written to the output stream. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(GsWrite);
+     EvordSet(PAR.TermOrderPol);
+     ValisSet(VdV(GsVd(GS)));
+     BLINES(1);
+     SWRITE("Groebner system:"); BLINES(0);
+     WRGBS(GsS(GS));
+     BLINES(0);
+     EvordReset();
+     ValisReset();
+<strong><font color="#4169E1">END</font></strong> GsWrite;
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Comprehensive Groebner basis (Cgb)
+==================================================
+
+A Comprehensive Groebner basis is implemented as a list containing four
+elements: (CGB,I,VD,CD) where CD is the CGB (a list of polynomials),
+I is the number of conditions, VD is the variable list and domain descriptor
+and CD is the initial case distinction.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CgbCons</font></strong>(CGB,I,VD,CD: LIST): LIST;
+<font color="#B22222">(* Groebner system construct.
+CGB is a list of polynomials,
+I is an Integer, the number of conditions,
+VD its variables list and domain descriptor and
+CD the initial case distinction
+Returns the comprehensive Groebner basis constructed from CGB, I, VD and CD *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CgbCons);
+     RETURN(LIST4(CGB,I,VD,CD));
+<strong><font color="#4169E1">END</font></strong> CgbCons;
+
+<strong><font color="#4169E1">PROCEDURE CgbP</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Comprehensive Groebner basis polynomial list part.
+CGB is a comprehensive Groebner basis
+Returns the polynomial list part of CGB *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CgbP);
+     RETURN(FIRST(CGB));
+<strong><font color="#4169E1">END</font></strong> CgbP;
+
+<strong><font color="#4169E1">PROCEDURE CgbI</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Comprehensive Groebner basis number of conditions part.
+CGB is a comprehensive Groebner basis
+Returns the number of conditions part of CGB *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CgbI);
+     RETURN(SECOND(CGB));
+<strong><font color="#4169E1">END</font></strong> CgbI;
+
+<strong><font color="#4169E1">PROCEDURE CgbVd</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Comprehensive Groebner basis variable list and domain descriptor.
+CGB is a Comprehensive Groebner basis.
+Returns the variable list and domain descriptor for CGB. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CgbVd);
+     RETURN(THIRD(CGB));
+<strong><font color="#4169E1">END</font></strong> CgbVd;
+
+<strong><font color="#4169E1">PROCEDURE CgbCd</font></strong>(CGB: LIST): LIST;
+<font color="#B22222">(* Groebner system initial case distinction.
+CGB is a Comprehensive Groebner basis.
+Returns the initial case distinction for CGB. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CgbCd);
+     RETURN(FOURTH(CGB));
+<strong><font color="#4169E1">END</font></strong> CgbCd;
+
+<strong><font color="#4169E1">PROCEDURE CgbParts</font></strong>(CGB: LIST; <strong><font color="#228B22">VAR</font></strong> P,I,VD,CD: LIST);
+<font color="#B22222">(* Comprehensive Groebner basis parts.
+P, I, VD and CD need not be initialized.
+Returns the polynomial list part of CGB in P, the number of conditions
+in I,  the variable list and domain
+descriptor for CGB in VD and the initial case distinction in CD. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CgbParts);
+     FIRST4(CGB, P,I,VD,CD);
+<strong><font color="#4169E1">END</font></strong> CgbParts;
+
+<strong><font color="#4169E1">PROCEDURE CgbWrite</font></strong>(CGB: LIST);
+<font color="#B22222">(* Comprehensive Groebner basis write.
+CGB is a comprehensive Groebner basis which is written to the output stream
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CgbWrite);
+     BLINES(1);
+     EvordSet(PAR.TermOrderPol);
+     ValisSet(VdV(CgbVd(CGB)));
+     BLINES(0); SWRITE("Comprehensive-Groebner-Basis: "); BLINES(0); 
+     <font color="#4169E1">IF</font> FIRST(CGB) = SIL <font color="#4169E1">THEN</font> SWRITE("Empty."); BLINES(0); 
+    	       	         <font color="#4169E1">ELSE</font> DILWR(CgbP(CGB),VdV(CgbVd(CGB))); <strong><font color="#4169E1">END</font></strong>;
+     OWRITE(CgbI(CGB));
+     <font color="#4169E1">IF</font> CgbI(CGB)=1 <font color="#4169E1">THEN</font> SWRITE(" Condition.");
+     	      	    <font color="#4169E1">ELSE</font> SWRITE(" Conditions."); <strong><font color="#4169E1">END</font></strong>;
+     BLINES(1);
+     EvordReset();
+     ValisReset();
+     BLINES(1);
+<strong><font color="#4169E1">END</font></strong> CgbWrite;
+
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Formula and dimension (Fd)
+==========================================
+
+A formula and dimension implemented as a list (D, F, V) containing
+three elements: a formula F an integer D and a variable list V.
+(D is first (instead of F) because of problems with the interpreter.)
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FdCons</font></strong>(F,D,V: LIST): LIST;
+<font color="#B22222">(* Formula and dimension construct.
+F is a formula.
+D is an integer.
+Returns the Fd constructed from F and D. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FdCons);
+     RETURN(LIST3(D,F,V));
+<strong><font color="#4169E1">END</font></strong> FdCons;
+
+<strong><font color="#4169E1">PROCEDURE FdParts</font></strong>(FD: LIST; <strong><font color="#228B22">VAR</font></strong> F,D,V: LIST);
+<font color="#B22222">(* Formula and dimension parts.
+FD is a formula and dimension.
+F, D and V need not be initialized.
+Returns the formula from FD in F, the dimension in D and the variable
+list in V. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FdParts);
+     FIRST3(FD, D,F,V);
+<strong><font color="#4169E1">END</font></strong> FdParts;
+
+<strong><font color="#4169E1">PROCEDURE FdF</font></strong>(FD: LIST): LIST;
+<font color="#B22222">(* Formula and dimension formula part.
+FD is a formula and dimension.
+Returns the formula part from FD*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FdF);
+     RETURN(SECOND(FD));
+<strong><font color="#4169E1">END</font></strong> FdF;
+
+<strong><font color="#4169E1">PROCEDURE FdD</font></strong>(FD: LIST): LIST;
+<font color="#B22222">(* Formula and dimension formula part.
+FD is a formula and dimension.
+Returns the dimension part from FD*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FdD);
+     RETURN(FIRST(FD));
+<strong><font color="#4169E1">END</font></strong> FdD;
+
+<strong><font color="#4169E1">PROCEDURE FdV</font></strong>(FD: LIST): LIST;
+<font color="#B22222">(* Formula and dimension variable list part.
+FD is a formula and dimension.
+Returns the variable list part from FD*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FdV);
+     RETURN(THIRD(FD));
+<strong><font color="#4169E1">END</font></strong> FdV;
+
+<strong><font color="#4169E1">PROCEDURE FdWrite</font></strong>(FD: LIST);
+<font color="#B22222">(* Formula and dimension write.
+FD is a formula and dimension, which is written to the output stream.
+PQPRING must be called prior to calling FdWrite to set domain descriptor
+and variable list. (* --- to do ---: this must change!!! *)</font>
+ *)
+<strong><font color="#228B22">VAR</font></strong> D: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(FdWrite);
+     PQPPRT(FdF(FD));
+     SWRITE(": ");
+     OWRITE(FdD(FD));
+     <font color="#4169E1">IF</font> FdD(FD)&lt;&gt;-1 <font color="#4169E1">THEN</font>
+       SWRITE(": ");
+       VLWRIT(FdV(FD));
+     <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+<strong><font color="#4169E1">END</font></strong> FdWrite;
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Parametric dimension (Pd)
+=========================================
+
+A parametric dimension implemented as a list containing
+two elements: a list of formulas and dimensions and the appropriate
+variable list and domain descriptor.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PdCons</font></strong>(F,VD: LIST): LIST;
+<font color="#B22222">(* Parametric dimension construct.
+F is a formula.
+VD is the variable list and domain descriptor for F.
+Returns the Pd constructed from F and V. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PdCons);
+     RETURN(LIST2(F,VD));
+<strong><font color="#4169E1">END</font></strong> PdCons;
+
+<strong><font color="#4169E1">PROCEDURE PdParts</font></strong>(PD: LIST; <strong><font color="#228B22">VAR</font></strong> F,VD: LIST);
+<font color="#B22222">(* Parametric dimension parts.
+Pd is a parametric dimension.
+F and V need not be initialized.
+Returns the formula from PD in F and the variable list and domain descriptor
+in V. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PdParts);
+     FIRST2(PD, F,VD);
+<strong><font color="#4169E1">END</font></strong> PdParts;
+
+<strong><font color="#4169E1">PROCEDURE PdF</font></strong>(PD: LIST): LIST;
+<font color="#B22222">(* Parametric dimension formula and dimension list part.
+PD is a parametric dimension.
+Returns the formula and dimension list from PD. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PdF);
+     RETURN(FIRST(PD));
+<strong><font color="#4169E1">END</font></strong> PdF;
+
+<strong><font color="#4169E1">PROCEDURE PdVd</font></strong>(PD: LIST): LIST;
+<font color="#B22222">(* Parametric dimension variable list and domain descriptor part.
+PD is a Parametric dimension.
+Returns the dimension from PD. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PdVd);
+     RETURN(SECOND(PD));
+<strong><font color="#4169E1">END</font></strong> PdVd;
+
+<strong><font color="#4169E1">PROCEDURE PdWrite</font></strong>(PD: LIST);
+<font color="#B22222">(* Parametric dimension write.
+PD is a Parametric dimension, which is written to the output stream.
+ *)</font>
+<strong><font color="#228B22">VAR</font></strong> FD,F,D,L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PdWrite);
+     EvordSet(PAR.TermOrderCoef);
+     ValisSet(VdV(PdVd(PD)));
+     L:=PQPRING(LIST1(VdD(PdVd(PD)))); <font color="#B22222">(*---to do---: this must vanish!!! *)</font>
+     BLINES(0);
+     SWRITE("Parametric dimension <font color="#4169E1">and</font> maximal independent sets:"); BLINES(0);
+     F:=PdF(PD);
+     <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font> 
+     	  ADV(F, FD,F);
+     	  FdWrite(FD);
+     <strong><font color="#4169E1">END</font></strong>;
+     L:=PQPRING(L); <font color="#B22222">(*---to do---: this must vanish!!! *)</font>
+     ValisReset();
+     EvordReset();
+<strong><font color="#4169E1">END</font></strong> PdWrite;
+     
+
+<font color="#B22222">(******************************************************************************
+Data-Structure: Variable list and domain descriptor (Vd)
+========================================================
+
+A Variable list and domain descriptor is implemented as a list containing
+two elements: the variable list and the domain descriptor.
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE VdCons</font></strong>(V,D: LIST): LIST;
+<font color="#B22222">(* Variable list and domain descriptor construct.
+V is a variable list.
+D is a domain descriptor.
+Returns the VD constructed from V and D. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(VdCons);
+     RETURN(LIST2(V,D));
+<strong><font color="#4169E1">END</font></strong> VdCons;
+
+<strong><font color="#4169E1">PROCEDURE VdV</font></strong>(Vd: LIST): LIST;
+<font color="#B22222">(* Variable list and domain descriptor variable list part.
+Vd is a variable list and domain descriptor.
+Returns the variable list from Vd. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(VdV);
+     RETURN(FIRST(Vd));
+<strong><font color="#4169E1">END</font></strong> VdV;
+
+<strong><font color="#4169E1">PROCEDURE VdD</font></strong>(Vd: LIST): LIST;
+<font color="#B22222">(* Variable list and domain descriptor domain descriptor part.
+Vd is a variable list and domain descriptor.
+Returns the domain descriptor from Vd. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(VdD);
+     RETURN(SECOND(Vd));
+<strong><font color="#4169E1">END</font></strong> VdD;
+
+<strong><font color="#4169E1">PROCEDURE VdParts</font></strong>(Vd: LIST; <strong><font color="#228B22">VAR</font></strong> V,D: LIST);
+<font color="#B22222">(* Variable list and domain descriptor parts.
+Vd is a variable list and domain descriptor.
+Returns the variable list from Vd in V and the domain descriptor in D. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(VdParts);
+     FIRST2(Vd, V,D);
+<strong><font color="#4169E1">END</font></strong> VdParts;
+
+<strong><font color="#4169E1">PROCEDURE VdRead</font></strong>(): LIST; 
+<font color="#B22222">(*Variable list and domain descriptor read.
+Returns a variable list and domain descriptor read from the input stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(VdRead);
+      D:=ADDDREAD(); <font color="#B22222">(*Domain descriptor. *)</font>
+      V:=VLREAD();   <font color="#B22222">(*Variable list. *)</font> 
+      RETURN(VdCons(V,D));
+<strong><font color="#4169E1">END</font></strong> VdRead;
+
+<strong><font color="#4169E1">END</font></strong> CGBDSTR.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

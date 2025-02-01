@@ -1,0 +1,669 @@
+
+<html>
+<head>
+<title>./maslisp/MASLISP.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASLISP.mi,v 1.4 1995/11/05 08:55:36 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASLISP.mi,v $
+ * Revision 1.4  1995/11/05 08:55:36  kredel
+ * Support for small exit and corrections in terms of sorts.
+ *
+ * Revision 1.3  1992/10/15  16:27:47  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:22  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:17  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASLISP;
+
+<font color="#B22222">(* MAS Lisp Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT BETA, SIL, LIST, LENGTH, LISTVAR,
+                    LIST1, ADV, FIRST, RED, COMP, INV, SFIRST, SRED;
+
+FROM MASERR IMPORT ERROR, severe, harmless, spotless;
+
+FROM MASBIOS IMPORT GWRITE, LISTS, BLINES, SWRITE, CWRITE;
+
+FROM MASBIOSU IMPORT CLTIS;
+
+FROM SACLIST IMPORT EQUAL, RED2, CINV, CONC, CCONC,
+                    FIRST3, LIST3, LIST4, FIRST4, SECOND, THIRD, RED3,
+                    FIRST2, ADV2, LIST2, COMP2, COMP3;
+
+FROM MASSYM2 IMPORT SYMBOL, ASSOC, ASSOCQ, GET, PUT, SUBLIS; 
+
+FROM MASSYM IMPORT ATOM, ELEMP, UREAD, UWRITE, UWRIT1, 
+                   NOSHOW, UNIFY, GENARRAY, ARRAYDEC;
+
+FROM MASLISPU IMPORT EXTYP, ARITY, SUBR, EXPR, PROCP,
+                     Declare, CallCompiled, Signature,
+                     Compiledp0, Compiledf2;
+
+<strong><font color="#228B22">VAR</font></strong>  unwind: BOOLEAN;
+     goto: LIST;
+
+<strong><font color="#228B22">VAR</font></strong>  PVAL, PDESC, PTYP: LIST; <font color="#B22222">(*patterns *)</font>
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASLISP.mi,v 1.4 1995/11/05 08:55:36 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<font color="#B22222">(* Procedure declarations. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE InitNames</font></strong>;
+<font color="#B22222">(*Initialize reserved names. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*indicators. *)</font>
+      Declare(ARROW,"ARROW");
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*variables. *)</font>
+      Declare(ATM,"ATOM");        
+      Declare(ANY,"ANY");         
+      Declare(NULL,"NIL"); 
+      Declare(WT,"T"); 
+      Declare(PVAL,"VAL"); 
+      Declare(PDESC,"DESC"); 
+      Declare(PTYP,"<strong><font color="#228B22">TYPE</font></strong>"); 
+      Declare(TDEF,"TYPEDEF"); 
+      Declare(DEFAULT,"DEFAULT"); 
+      Declare(LAMBDA,"LAMBDA");
+      Declare(FLAMBDA,"FLAMBDA");
+      Declare(MLAMBDA,"MLAMBDA");
+      Declare(GLAMBDA,"GLAMBDA");
+      Declare(RTN,"RETURN");
+      Declare(FERx,"ForEachX");
+      Declare(FELx,"ForEachY");
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*internal fexpr functions. *)</font>
+      Declare(SCHLUSS,"EXIT");    PUT(SCHLUSS,EXTYP,FEXPR);
+      Declare(schluss,"exit");    PUT(schluss,EXTYP,FEXPR);
+      Declare(QUOTE,"QUOTE");     PUT(QUOTE,EXTYP,FEXPR);
+      Declare(SETQ,"SETQ");       PUT(SETQ,EXTYP,FEXPR);
+      Declare(SETAV,"SETAV");     PUT(SETAV,EXTYP,FEXPR);
+      Declare(ASSIGN,"ASSIGN");   PUT(ASSIGN,EXTYP,FEXPR);
+      Declare(COND,"COND");       PUT(COND,EXTYP,FEXPR);
+      Declare(PROGN,"PROGN");     PUT(PROGN,EXTYP,FEXPR);
+      Declare(PROGA,"PROGA");     PUT(PROGA,EXTYP,FEXPR);
+      Declare(LBEL,"LABEL");      PUT(LBEL,EXTYP,FEXPR);
+      Declare(LISTX,"LIST");      PUT(LISTX,EXTYP,FEXPR);
+      Declare(DE,"DE");           PUT(DE,EXTYP,FEXPR);
+      Declare(DF,"DF");           PUT(DF,EXTYP,FEXPR);
+      Declare(DM,"DM");           PUT(DM,EXTYP,FEXPR);
+      Declare(DG,"DG");           PUT(DG,EXTYP,FEXPR);
+      Declare(IFS,"<font color="#4169E1">IF</font>");          PUT(IFS,EXTYP,FEXPR);
+      Declare(WHL,"<font color="#4169E1">WHILE</font>");       PUT(WHL,EXTYP,FEXPR);
+      Declare(RPT,"<font color="#4169E1">REPEAT</font>");      PUT(RPT,EXTYP,FEXPR);
+      Declare(STRNG,"STRING");    PUT(STRNG,EXTYP,FEXPR);
+      Declare(VARS,"<strong><font color="#228B22">VAR</font></strong>");        PUT(VARS,EXTYP,FEXPR);
+      Declare(TINFO,"TYPEINFO");  PUT(TINFO,EXTYP,FEXPR);
+      Declare(ARY,"ARRAY");       PUT(ARY,EXTYP,FEXPR);
+      Declare(SPEC,"SPEC");       PUT(SPEC,EXTYP,FEXPR);
+      Declare(SORT,"SORT");       PUT(SORT,EXTYP,FEXPR);
+      Declare(SIG,"SIG");         PUT(SIG,EXTYP,FEXPR);
+      Declare(IMPRT,"IMPORT");    PUT(IMPRT,EXTYP,FEXPR);
+      Declare(EXPOS,"EXPOSE");    PUT(EXPOS,EXTYP,FEXPR);
+      Declare(UNIT,"UNIT");       PUT(UNIT,EXTYP,FEXPR);
+      Declare(IMPL,"IMPLEMENTATION"); PUT(IMPL,EXTYP,FEXPR);
+      Declare(MODEL,"MODEL");     PUT(MODEL,EXTYP,FEXPR);
+      Declare(MAP,"MAP");         PUT(MAP,EXTYP,FEXPR);
+      Declare(AXIOM,"AXIOMS");    PUT(AXIOM,EXTYP,FEXPR);
+      Declare(RULE,"RULE");       PUT(RULE,EXTYP,FEXPR);
+      Declare(WHEN,"WHEN");       PUT(WHEN,EXTYP,FEXPR);
+      Declare(REP,"REP");         PUT(REP,EXTYP,FEXPR);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*internal expr functions. *)</font>
+      Declare(EQS,"EQ");          PUT(EQS,EXTYP,EXPR);
+      Declare(NEQS,"NE");         PUT(NEQS,EXTYP,EXPR);
+      Declare(GTS,"GT");          PUT(GTS,EXTYP,EXPR);
+      Declare(LTS,"LT");          PUT(LTS,EXTYP,EXPR);
+      Declare(LEQ,"LEQ");         PUT(LEQ,EXTYP,EXPR);
+      Declare(GEQ,"GEQ");         PUT(GEQ,EXTYP,EXPR);
+      Declare(UND,"<font color="#4169E1">AND</font>");         PUT(UND,EXTYP,EXPR);
+      Declare(ODER,"<font color="#4169E1">OR</font>");         PUT(ODER,EXTYP,EXPR);
+      Declare(NOTS,"<font color="#4169E1">NOT</font>");        PUT(NOTS,EXTYP,EXPR);
+      Declare(ADD,"ADD");         PUT(ADD,EXTYP,EXPR);
+      Declare(SUB,"SUB");         PUT(SUB,EXTYP,EXPR);
+      Declare(MUL,"MUL");         PUT(MUL,EXTYP,EXPR);
+      Declare(QUOT,"QUOT");       PUT(QUOT,EXTYP,EXPR);
+      Declare(REM,"REM");         PUT(REM,EXTYP,EXPR);
+      Declare(RTN,"RETURN");      PUT(RTN,EXTYP,EXPR);
+      Declare(GTO,"GOTO");        PUT(GTO,EXTYP,EXPR);
+      Declare(FER,"ForEachinRep"); PUT(FER,EXTYP,EXPR);
+      Declare(FEL,"ForEachinList"); PUT(FEL,EXTYP,EXPR);
+      Declare(CONVVAL,"CONVVAL"); PUT(CONVVAL,EXTYP,EXPR);
+      Declare(CONVDES,"CONVDES"); PUT(CONVDES,EXTYP,EXPR);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*internal gexpr functions. *)</font>
+      Declare(READ,"READ");         
+      Declare(WRITE,"WRITE");       
+      Declare(DECREAD,"DECREAD");   
+      Declare(DECWRITE,"DECWRITE"); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitNames;
+
+
+<strong><font color="#4169E1">PROCEDURE InitLISP</font></strong>;
+<font color="#B22222">(*Initialize compiled procedures. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> InitNames;
+<font color="#B22222">(*2*)</font> InitENV; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*internal compiled procedures *)</font>
+      Compiledp0(InitENV,"NEW");
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*external Compiled procedures *)</font>
+      Declare(POW,"POW");
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitLISP;
+
+
+<strong><font color="#4169E1">PROCEDURE InitENV</font></strong>;
+<font color="#B22222">(*Initialize environement. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*alist *)</font> ENV:=SIL; LISTVAR(ENV); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*special values *)</font>
+      ENV:=COMP2(NULL,SIL,ENV); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*global variables *)</font>
+      unwind:=FALSE; 
+      stricttyping:=FALSE;
+      trace:=FALSE;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitENV;
+
+
+<strong><font color="#4169E1">PROCEDURE ECENV</font></strong>(ENV: LIST): LIST;
+<font color="#B22222">(*Encode environment. The encoded environment E is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> RETURN(LIST2(NOSHOW,ENV)) 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ECENV;
+
+
+<strong><font color="#4169E1">PROCEDURE DCENV</font></strong>(E: LIST): LIST;
+<font color="#B22222">(*Decode environment. The encoded environment E is decoded. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> RETURN(SECOND(E)) 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DCENV;
+
+
+<strong><font color="#4169E1">PROCEDURE SETV</font></strong>(V, A: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST);
+<font color="#B22222">(*Set variable. V is a symbol and A is an S-expression. 
+A is associated to V in the environment ENV. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EP, Z, t, n: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*See if defined*)</font> 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(V) <font color="#4169E1">THEN</font> 
+         UWRIT1(V); SWRITE(":="); UWRITE(A); 
+         ERROR(severe,"SETV: invalid as variable."); 
+         RETURN <font color="#B22222">(*setv makes no sense in this case*)</font> <strong><font color="#4169E1">END</font></strong>;
+      EP:=ASSOC(V,ENV);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*dont check for bound variable here*)</font> 
+      <font color="#4169E1">IF</font> EP &lt;&gt; SIL <font color="#4169E1">THEN</font> SFIRST(EP,A)
+                   <font color="#4169E1">ELSE</font> ENV:=COMP2(V,A,ENV) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> SETV;
+
+
+<strong><font color="#4169E1">PROCEDURE EXTENDENV</font></strong>(A, X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): BOOLEAN;
+<font color="#B22222">(*Extend environement. A is a list of symbols. X is a list 
+of values. The environment ENV is extented by the bindings
+of the symbols in A to the values in X. If the binding
+is possible, then TRUE is returned else FALSE. *)</font>
+<strong><font color="#228B22">VAR</font></strong> XP, AP, Y, Z, B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> Z:=ENV; XP:=X; AP:=A;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on lists. *)</font>
+      <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (XP &lt;&gt; SIL) <font color="#4169E1">DO</font> 
+            ADV(AP,B,AP); ADV(XP,Y,XP); 
+            Z:=COMP2(B,Y,Z) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*argument number mismatch. *)</font>
+      <font color="#4169E1">IF</font> (AP &lt;&gt; SIL) <font color="#4169E1">OR</font> (XP &lt;&gt; SIL) <font color="#4169E1">THEN</font> UWRITE(AP); UWRITE(XP); 
+         ERROR(severe,"EXTENDENV: argument number mismatch.");
+         RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>;  
+      ENV:=Z; RETURN(TRUE);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> EXTENDENV;
+
+
+<strong><font color="#4169E1">PROCEDURE COPYTOENV</font></strong>(V, EP: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST);
+<font color="#B22222">(*Copy to environement. V is a list of symbols. EP is an
+environment. The environment ENV is extented by the bindings
+of the symbols in V to the values in EP. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> SWRITE("IMP/EXP:   "); UWRITE(V); 
+                    SWRITE("COPYTOENV: ");<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#4169E1">WHILE</font> V &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(V,v,V); 
+            D:=ASSOC(v,EP);
+            <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=FIRST(D); 
+               <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> UWRIT1(v); SWRITE(" "); <strong><font color="#4169E1">END</font></strong>;
+               SETV(v,D,ENV) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*copy *)</font>
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> trace <font color="#4169E1">THEN</font> BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> COPYTOENV;
+
+
+<strong><font color="#4169E1">PROCEDURE SPECIALFORM</font></strong>(S: LIST): BOOLEAN;
+<font color="#B22222">(*Test if expression S is a special form. *)</font>
+<strong><font color="#228B22">VAR</font></strong> t: BOOLEAN;
+    F, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> t:=FALSE;
+      <font color="#4169E1">IF</font> ELEMP(S) <font color="#4169E1">THEN</font> RETURN(t) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test property of symbol. *)</font>  
+      <font color="#4169E1">IF</font> SYMBOL(S) <font color="#4169E1">THEN</font> Y:=GET(S,EXTYP);
+         <font color="#4169E1">IF</font> (Y = FEXPR) <font color="#4169E1">OR</font> (Y = MACRO) <font color="#4169E1">THEN</font> t:=TRUE <strong><font color="#4169E1">END</font></strong>;
+         RETURN(t) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*test property of function. *)</font> F:=FIRST(S);   
+      <font color="#4169E1">IF</font> F = FLAMBDA <font color="#4169E1">THEN</font> RETURN(TRUE) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> F = MLAMBDA <font color="#4169E1">THEN</font> RETURN(TRUE) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(t); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SPECIALFORM;
+
+
+<strong><font color="#4169E1">PROCEDURE LAMBDAP</font></strong>(S: LIST): BOOLEAN;
+<font color="#B22222">(*Test if expression S is a lambda form. *)</font>
+<strong><font color="#228B22">VAR</font></strong> t: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize*)</font> t:=FALSE;
+      <font color="#4169E1">IF</font> ELEMP(S) <font color="#4169E1">THEN</font> RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test property of symbol. *)</font>  
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(S) <font color="#4169E1">THEN</font> RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*test if name = .lambda. *)</font> t:=TRUE;  
+      <font color="#4169E1">IF</font> S = LAMBDA <font color="#4169E1">THEN</font> RETURN(t) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> S = FLAMBDA <font color="#4169E1">THEN</font> RETURN(t) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> S = MLAMBDA <font color="#4169E1">THEN</font> RETURN(t) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> S = GLAMBDA <font color="#4169E1">THEN</font> RETURN(t) <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(FALSE);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LAMBDAP;
+
+
+<strong><font color="#4169E1">PROCEDURE SEXPRP</font></strong>(X: LIST): BOOLEAN;
+<font color="#B22222">(*Test if X is a S-expression function. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*elemp. *)</font> <font color="#4169E1">IF</font> ELEMP(X) <font color="#4169E1">THEN</font> RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*symbol. *)</font> Y:=FIRST(X); 
+      <font color="#4169E1">IF</font> SYMBOL(Y) <font color="#4169E1">THEN</font> T:=GET(Y,EXTYP);
+         <font color="#4169E1">IF</font> T &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(TRUE) <strong><font color="#4169E1">END</font></strong>;
+         RETURN(FALSE) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*lambda expression. *)</font> 
+      <font color="#4169E1">IF</font> LAMBDAP(FIRST(Y)) <font color="#4169E1">THEN</font> RETURN(TRUE) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(FALSE);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SEXPRP;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFE</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define expr function. X is a DE expression. A LAMBDA expression 
+generated from X is associated to name(X) in the environment ENV. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> Z:=X;
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*define name. *)</font> ADV(X,Y,XP); 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DEFE: invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      PUT(Y,EXTYP,EXPR); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate lambda expression. *)</font>
+      Z:=COMP(LAMBDA,XP); SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFE;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFF</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define fexpr function. X is a DF expression. A FLAMBDA expression 
+generated from X is associated to name(X) in the environment ENV.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*define name. *)</font> ADV(X,Y,XP); 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DEFF: invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      PUT(Y,EXTYP,EXPR); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate flambda expression. *)</font>
+      Z:=COMP(FLAMBDA,XP); SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFF;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFM</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define macro function. X is a DM expression. A MLAMBDA expression 
+generated from X is associated to name(X) in the environment ENV.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*define name. *)</font> ADV(X,Y,XP); 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DEFM: invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      PUT(Y,EXTYP,MACRO); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate mlambda expression. *)</font>
+      Z:=COMP(MLAMBDA,XP); SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFM;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFMAP</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define generic map function. X is a MAP expression. A 
+GLAMBDA expression generated from X is associated to name(X) 
+in the environment ENV. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   MP, XP, Y, Z, L, R, M, I, IP, E, N: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get name. *)</font> ADV(X,L,XP); <font color="#B22222">(* (name, (sig)), mod func, cond. *)</font>
+      ADV(L,Y,L); L:=FIRST(L); 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DEFMAP: invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      IP:=SIL; 
+      Z:=ASSOC(Y,ENV); <font color="#B22222">(*get generic function list*)</font>
+      <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font> Z:=FIRST(Z);
+         <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font>  
+            <font color="#4169E1">IF</font> FIRST(Z) = GLAMBDA <font color="#4169E1">THEN</font> Z:=RED(Z) 
+         ELSIF LAMBDAP(FIRST(Z)) <font color="#4169E1">THEN</font> IP:=LIST2(Z,ECENV(ENV)); Z:=SIL;  
+          <font color="#4169E1">ELSE</font> Z:=SIL; UWRITE(Y);
+               ERROR(severe,"DEFMAP: variable defined generic."); 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*decompose *)</font>
+      <font color="#4169E1">IF</font> Z = SIL <font color="#4169E1">THEN</font> N:=Y; M:=SIL; I:=IP; E:=SIL; PUT(Y,EXTYP,GENERIC); 
+                 <font color="#4169E1">ELSE</font> FIRST4(Z,N,M,I,E) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate map match list. *)</font> 
+      MP:=ASSOCQ(L,M); <font color="#B22222">(* avoid multiple entries *)</font> 
+      <font color="#4169E1">IF</font> MP &lt;&gt; SIL <font color="#4169E1">THEN</font> SFIRST(MP,XP)
+                   <font color="#4169E1">ELSE</font> XP:=LIST2(L,XP); <font color="#B22222">(*sig, mod func *)</font>
+                        M:=CCONC(M,XP) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate glambda expression. *)</font> Z:=LIST4(N,M,I,E);
+      Z:=COMP(GLAMBDA,Z); SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFMAP;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFPROC</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define generic proc function. X is a DE expression. 
+A GLAMBDA expression generated from X is associated to 
+name(X) in the environment ENV.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z, M, I, IP, E, N: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get name. *)</font> ADV(X,Y,XP); <font color="#B22222">(*name, parm, body. *)</font>
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DEFPROC: invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      IP:=SIL;
+      Z:=ASSOC(Y,ENV); <font color="#B22222">(*get generic function list*)</font>
+      <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font> Z:=FIRST(Z);
+         <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font>  
+            <font color="#4169E1">IF</font> FIRST(Z) = GLAMBDA <font color="#4169E1">THEN</font> Z:=RED(Z) 
+         ELSIF LAMBDAP(FIRST(Z)) <font color="#4169E1">THEN</font> IP:=LIST2(Z,ECENV(ENV)); Z:=SIL;  
+          <font color="#4169E1">ELSE</font> Z:=SIL; UWRITE(Y);
+               ERROR(severe,"DEFPROC: variable defined generic."); 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*decompose *)</font>
+      <font color="#4169E1">IF</font> Z = SIL <font color="#4169E1">THEN</font> N:=Y; M:=SIL; I:=IP; E:=SIL; PUT(Y,EXTYP,GENERIC); 
+                 <font color="#4169E1">ELSE</font> FIRST4(Z,N,M,I,E) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate proc closure. *)</font> 
+      XP:=COMP(LAMBDA,XP);
+      I:=LIST2(XP,ECENV(ENV)); <font color="#B22222">(*closure: lambda, env *)</font>
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate glambda expression. *)</font> Z:=LIST4(N,M,I,E);
+      Z:=COMP(GLAMBDA,Z); SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFPROC;
+
+
+<strong><font color="#4169E1">PROCEDURE DEFRULE</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define generic rule function. X is a RULE expression. 
+A GLAMBDA expression generated from X is associated to 
+name(X) in the environment ENV.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z, M, I, IP, E, N, L, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get name. *)</font> ADV(X,L,XP); <font color="#B22222">(*lhs, rhs *)</font>
+      Y:=FIRST(L);
+      <font color="#4169E1">IF</font> ATOM(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DEFRULE: atom invalid as <strong><font color="#4169E1">function name</font></strong>."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      IP:=SIL;
+      Z:=ASSOC(Y,ENV); <font color="#B22222">(*get generic function list*)</font>
+      <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font> Z:=FIRST(Z);
+         <font color="#4169E1">IF</font> Z &lt;&gt; SIL <font color="#4169E1">THEN</font>  
+            <font color="#4169E1">IF</font> FIRST(Z) = GLAMBDA <font color="#4169E1">THEN</font> Z:=RED(Z) 
+         ELSIF LAMBDAP(FIRST(Z)) <font color="#4169E1">THEN</font> IP:=LIST2(Z,ECENV(ENV)); Z:=SIL;  
+          <font color="#4169E1">ELSE</font> Z:=SIL; UWRITE(Y);
+               ERROR(severe,"DEFRULE: variable defined generic."); 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*decompose *)</font>
+      <font color="#4169E1">IF</font> Z = SIL <font color="#4169E1">THEN</font> N:=Y; M:=SIL; I:=IP; E:=SIL; PUT(Y,EXTYP,GENERIC); 
+                 <font color="#4169E1">ELSE</font> FIRST4(Z,N,M,I,E) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate match list. *)</font> 
+      E:=CCONC(E,LIST1(X)); <font color="#B22222">(*add lhs = rhs *)</font>
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate glambda expression. *)</font> Z:=LIST4(N,M,I,E);
+      Z:=COMP(GLAMBDA,Z); SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEFRULE;
+
+
+<strong><font color="#4169E1">PROCEDURE DSPEC</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define specification. X is a SPEC expression. An UNIT expression 
+generated from X is associated to name(X) in the environment ENV.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   XP, Y, Z: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*define name. *)</font> ADV(X,Y,XP);   
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DSPEC: invalid as unit name."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      PUT(Y,EXTYP,FEXPR); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate spec expression and set/reset unit. *)</font>
+      Z:=COMP2(SPEC,Y,XP); 
+      Z:=LIST4(UNIT,Y,FIRST(XP),Z); <font color="#B22222">(*unit name parms spec other *)</font>
+      SETV(Y,Z,ENV); 
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DSPEC;
+
+
+<strong><font color="#4169E1">PROCEDURE DMIA</font></strong>(X: LIST; <strong><font color="#228B22">VAR</font></strong> ENV: LIST): LIST;
+<font color="#B22222">(*Define model, implementation or axioms. X is a MODEL, 
+IMPLEMENTATION or AXIOMS expression. An UNIT expression 
+associated to name(X) is modified by a generated expression 
+of X. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   XPP, XP, Y, Z, W, T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> <font color="#B22222">(*syntax check. *)</font> 
+      <font color="#4169E1">IF</font> X = SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*define name. *)</font> ADV2(X,T,Y,XP);  
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DMIA: invalid as unit name."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      W:=ASSOC(Y,ENV);
+      <font color="#4169E1">IF</font> W = SIL <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DMIA: no specification defined."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      W:=FIRST(W);
+      <font color="#4169E1">IF</font> FIRST(W) &lt;&gt; UNIT <font color="#4169E1">THEN</font> UWRITE(Y);
+         ERROR(severe,"DMIA: no unit defined."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*generate m/i/a expression and add to unit. *)</font>
+      Z:=LIST1(X); Z:=CONC(W,Z);
+      RETURN(Y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DMIA;
+
+
+<strong><font color="#4169E1">PROCEDURE TYPEOF</font></strong>(X: LIST): LIST;
+<font color="#B22222">(*Type of S-expression. X is an S-expression. A list of types, 
+values and descriptors of X is returend. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, DS, XP, x, y, xs, d, XS, Y, YS, W, A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*elementary. *)</font> Y:=SIL; D:=SIL; 
+      <font color="#4169E1">IF</font> ATOM(X) <font color="#4169E1">THEN</font> XS:=LIST1(X); Y:=ATM;
+         RETURN(LIST3(XS,Y,D)) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*symbol. *)</font> 
+      <font color="#4169E1">IF</font> SYMBOL(X) <font color="#4169E1">THEN</font> Y:=SIL; D:=SIL;         
+         Y:=GET(X,SORT); 
+         <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(LIST3(SIL,X,D)) <strong><font color="#4169E1">END</font></strong>; 
+         Y:=GET(X,TDEF); 
+         <font color="#4169E1">IF</font> (Y &gt; SIL) <font color="#4169E1">AND</font> <font color="#4169E1">NOT</font> SYMBOL(Y) <font color="#4169E1">THEN</font> FIRST2(Y,Y,D) <strong><font color="#4169E1">END</font></strong>;  
+         X:=LIST1(X); 
+         <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> Y:=LIST1(Y) <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=LIST1(D) <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(LIST3(X,Y,D)) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*with type info. *)</font> 
+      <font color="#4169E1">IF</font> FIRST(X) = TINFO <font color="#4169E1">THEN</font> XS:=VALOFTAG(X); 
+         Y:=TYPOFTAG(X); D:=DECOFTAG(X);  
+         XS:=LIST1(XS); 
+         <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> Y:=LIST1(Y) <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=LIST1(D) <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(LIST3(XS,Y,D)) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*term of sorts. *)</font> <font color="#B22222">(*problem*)</font>
+      <font color="#4169E1">IF</font> GET(FIRST(X),SORT) &lt;&gt; SIL <font color="#4169E1">THEN</font> FIRST2(X, X,D); 
+         <font color="#4169E1">IF</font> X &lt;&gt; SIL <font color="#4169E1">THEN</font> X:=LIST1(X) <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=LIST1(D) <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(LIST3(SIL,X,D)) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*un-evaluated function term. *)</font> 
+      A:=GET(FIRST(X),ARROW);
+      <font color="#4169E1">IF</font> A &lt;&gt; SIL <font color="#4169E1">THEN</font>  XS:=X; D:=SIL; 
+         FIRST3(A,x,y,Y); <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> Y:=FIRST(Y) <strong><font color="#4169E1">END</font></strong>; 
+         XS:=LIST1(XS); 
+         <font color="#4169E1">IF</font> Y &lt;&gt; SIL <font color="#4169E1">THEN</font> Y:=LIST1(Y) <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> D &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=LIST1(D) <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(LIST3(XS,Y,D)) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*list. *)</font> XP:=X; XS:=SIL; 
+      <font color="#4169E1">WHILE</font> XP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(XP,x,XP); W:=TYPEOF(x);
+            FIRST3(W,xs,y,d);
+            XS:=CCONC(XS,xs); Y:=CCONC(Y,y); D:=CCONC(D,d) <strong><font color="#4169E1">END</font></strong>;
+      RETURN(LIST3(XS,Y,D)) 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> TYPEOF;
+
+
+<strong><font color="#4169E1">PROCEDURE TAG</font></strong>(V,T: LIST): LIST;
+<font color="#B22222">(*Tag object. V is an S-expression, T is a type expression.
+A tagged TYPEINFO S-expression is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   O: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check type indicator *)</font>
+      <font color="#4169E1">IF</font> ELEMP(T) <font color="#4169E1">THEN</font> UWRITE(T); 
+         ERROR(severe,"TAG: invalid as <strong><font color="#228B22">type</font></strong> indicator."); 
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct list *)</font>
+      O:=LIST3(TINFO,V,T);
+      RETURN(O); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> TAG;
+
+
+<strong><font color="#4169E1">PROCEDURE VALOFTAG</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Value of tagged object. L is a tagged S-expression. 
+The value component of L is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check tag *)</font>
+      <font color="#4169E1">IF</font> ATOM(L) <font color="#4169E1">THEN</font> RETURN(L) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> FIRST(L) &lt;&gt; TINFO <font color="#4169E1">THEN</font> RETURN(L) <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(SECOND(L)); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> VALOFTAG;
+
+
+<strong><font color="#4169E1">PROCEDURE TYPOFTAG</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Type of tagged object. L is a tagged S-expression. 
+The type component of L is returned.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check tag *)</font>
+      <font color="#4169E1">IF</font> ATOM(L) <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> FIRST(L) &lt;&gt; TINFO <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      T:=THIRD(L); <font color="#B22222">(*tinfo val type*)</font>
+      T:=FIRST(T);
+      RETURN(T); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> TYPOFTAG;
+
+
+<strong><font color="#4169E1">PROCEDURE DECOFTAG</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Descriptor of tagged object. L is a tagged S-expression. 
+The descriptor component of L is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   D, T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check tag *)</font> 
+      <font color="#4169E1">IF</font> ATOM(L) <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> FIRST(L) &lt;&gt; TINFO <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>; 
+      T:=THIRD(L); <font color="#B22222">(*tinfo val type*)</font>
+      T:=RED(T);
+      <font color="#4169E1">IF</font> T &lt;&gt; SIL <font color="#4169E1">THEN</font> D:=FIRST(T) <font color="#4169E1">ELSE</font> D:=SIL <strong><font color="#4169E1">END</font></strong>;
+      RETURN(D); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> DECOFTAG;
+
+
+<strong><font color="#4169E1">PROCEDURE GENPL</font></strong>(P,V,T,D: LIST): LIST;
+<font color="#B22222">(*Generate parameter list. P is a list of patterns. 
+V is a list of values. T is a list of types and D is a 
+list of descriptors. A parameter list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   L, p, x: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check patterns. *)</font> L:=SIL;
+      <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(P,p,P); 
+            <font color="#4169E1">IF</font> p = PVAL  <font color="#4169E1">THEN</font> ADV(V,x,V); L:=COMP(x,L);
+         ELSIF p = PDESC <font color="#4169E1">THEN</font> ADV(D,x,D); L:=COMP(x,L);
+         ELSIF p = PTYP  <font color="#4169E1">THEN</font> ADV(T,x,T); L:=COMP(x,L);
+          <font color="#4169E1">ELSE</font> UWRITE(p);
+               ERROR(severe,"GENPL: invalid pattern skipped."); 
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      L:=INV(L); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> GENPL;
+
+
+<strong><font color="#4169E1">PROCEDURE GENTE</font></strong>(Z,N,D: LIST): LIST;
+<font color="#B22222">(*Generate typed expression. Z is an S-expression,
+N is a function name, D is a descriptor. A typed S-expression 
+for evaluation is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get arrow *)</font>
+      A:=GET(N,ARROW); 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> UWRITE(N);
+         ERROR(severe,"GENTE: no signature defined."); 
+         RETURN(Z) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*get target *)</font>
+      A:=THIRD(A); 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(Z) <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> RED(A) = SIL <font color="#4169E1">THEN</font> A:=FIRST(A) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*single value*)</font>  
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> RETURN(Z) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*combine *)</font>
+      A:=LIST2(A,D);
+      Z:=TAG(Z,A); Z:=COMP(LISTX,Z);          
+      RETURN(Z);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> GENTE;
+
+
+<font color="#B22222">(* Execution part. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+
+InitLISP;
+
+<strong><font color="#4169E1">END</font></strong> MASLISP.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

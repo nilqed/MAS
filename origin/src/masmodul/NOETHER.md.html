@@ -1,0 +1,96 @@
+
+<html>
+<head>
+<title>./masmodul/NOETHER.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T15:57:31+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: NOETHER.md,v 1.1 1995/11/05 15:57:31 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: NOETHER.md,v $
+ * Revision 1.1  1995/11/05 15:57:31  pesch
+ * Diplomarbeit Manfred Goebel, Reduktion G-symmetrischer Polynome fuer
+ * beliebige Permutationsgruppen G, slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE NOETHER;
+<font color="#B22222">(* Noether Polynomial System Definition Module. *)</font>
+
+FROM MASSTOR	IMPORT	LIST;
+
+FROM MASELEM	IMPORT	GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: NOETHER.md,v 1.1 1995/11/05 15:57:31 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE NOEINF</font></strong>();
+<font color="#B22222">(*Noether Polynomial System Information.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOENSP</font></strong>(PG: LIST);
+<font color="#B22222">(*Noether Number of Noetherian Base Polynomials.
+The number of noetherian base polynomials is computed.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOEL32</font></strong>(M, K: GAMMAINT): LIST;
+<font color="#B22222">(*Noether SK Polynomial Computation.
+The result of the procedure is a respresentation of the polynomial S_K
+w.r.t the polyomials S_M, ..., S_2, S_1 over the rational numbers.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE MERGE</font></strong>(FLAG: BOOLEAN; BASE1, POL1: LIST; <strong><font color="#228B22">VAR</font></strong> BASE2, POL2: LIST);
+<font color="#B22222">(*Noether Merge of Base Polynomials.
+The procedure merges BASE1 and BASE2 into BASE2, makes an update of 
+POL1 and POL2 with respect to the new base and return the sum 
+(FLAG = TRUE) or the product (FLAG = FALSE) of POL1 and POL2.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOESRT</font></strong>(POL: LIST): LIST;
+<font color="#B22222">(*Noether Polynomial Sort.
+The polynomial POL in noetherian representation is sorted with
+respect to the lexicographical term order and the given term order.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOEPOW</font></strong>(PG: LIST; K: GAMMAINT): LIST;
+<font color="#B22222">(*Noether SK Power Sum Computation.
+The result of the procedure is the list of orbit polynomials and
+(z_1, z_2, ..., z_n)-terms of the polynomial S_K w.r.t. the
+permutation group PG.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOEPSM</font></strong>(POL1, POL2: LIST): LIST;
+<font color="#B22222">(*Noether Polynomial Sum.
+The sum of the polynomials POL1 and POL2 in noetherian representation
+is computed.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOEPPR</font></strong>(POL1, POL2, TERM: LIST): LIST;
+<font color="#B22222">(*Noether Polynomial Product.
+The product of the polynomials POL1 and POL2 in noetherian representation
+is computed und every non necessary z-term is removed.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOEPIP</font></strong>(POL, FACT: LIST): LIST;
+<font color="#B22222">(*Noether Polynomial Factor Multiplication.
+The product of the polynomial POL in noetherian representation
+and the rational number FACT is computed.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOEPRM</font></strong>(POL, TERM: LIST): LIST;
+<font color="#B22222">(*Noether Remove.
+All non necessary z-terms are removed from the polynomial POL.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE NOERED</font></strong>(PG, POL: LIST; <strong><font color="#228B22">VAR</font></strong> BASE, BASEPOL, REMPOL: LIST);
+<font color="#B22222">(*Noether G-Symmetric Polynomial Computation.
+The PG-symmetric polynomial BASEPOL, which is the PG-symmetric
+polynomial reconstruction w.r.t. the base polynomials BASE, and the
+remainder polynomial REMPOL are computed from the polynomial POL w.r.t.
+the permutation group over the rational numbers after the method of
+E. Noether.*)</font>
+
+<strong><font color="#4169E1">END</font></strong> NOETHER.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

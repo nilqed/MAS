@@ -1,0 +1,738 @@
+
+<html>
+<head>
+<title>./maspoly/DIPRN.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:13:36+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPRN.mi,v 1.4 1995/11/05 09:18:39 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPRN.mi,v $
+ * Revision 1.4  1995/11/05 09:18:39  kredel
+ * Improved polynomial parsing and corrections.
+ *
+ * Revision 1.3  1992/10/15  16:28:36  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:52  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:05  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPRN;
+
+<font color="#B22222">(* DIP Rational Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, FIRST, ADV, RED, COMP,
+                    LENGTH, LIST1, SRED, SFIRST, INV;
+
+FROM MASERR IMPORT harmless, ERROR;
+
+FROM MASBIOS IMPORT BLINES, SWRITE, CWRITE, CREAD, CREADB,
+                    SOLINE, BKSP, MASORD, LETTER, DIGIT;
+
+FROM SACLIST IMPORT FIRST2, CINV, CLOUT, AWRITE;
+
+FROM SACD IMPORT DQR; 
+
+FROM SACI IMPORT IRAND;
+
+FROM SACRN IMPORT RNWRIT, RNABS, RNINV, RNDIF, RNNEG, RNINT, RNRED, 
+                  RNCOMP, RNSIGN, RNRAND, RNQ, RNPROD, RNSUM;
+
+FROM SACPOL IMPORT VREAD, VLSRCH, VLWRIT;
+
+FROM MASRN IMPORT RNDWR, RNDRD, RNONE, RNEXP, RNMAX;
+ 
+FROM DIPC    IMPORT DIPNBC, DIPADS, DIPADV, DIPEVL, DIPMAD, 
+                    DIPMPM, DIPFMO, 
+                    DIPMCP, DIPMRD, DIPCMP, DIPTCF, DIPTCS, 
+                    DIPMPV, DIPLBC, DIPINV, DIPADM, DIPNOV,
+                    STVL,
+                    EVRASP, EVRAND, EVDFSI, EVSUM, 
+                    EPREAD, EVSIGN, EVDER, EVCOMP;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPRN.mi,v 1.4 1995/11/05 09:18:39 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIRFIP</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial from integral polynomial.
+A is a distributive integral polynomial, B is the monic associate
+rational polynomial of A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AL1, AP, B, BL, EL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0. *)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*divide base coefficients. *)</font> DIPMAD(A, AL1,EL,AP); 
+      BL:=RNINT(1); B:=DIPFMO(EL,BL); 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> DIPMAD(AP, AL,EL,AP); BL:=RNRED(AL,AL1); 
+            B:=DIPMCP(EL,BL,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=INV(B); 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIRFIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLRD</font></strong>(V: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial list read. V is a
+variable list. A list of distributive rational polynomials
+in r variables, where r=length(V), r ge 0, is read from
+the input stream. Any blanks preceding A are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, C: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*no list. *)</font> A:=BETA; C:=CREADB(); 
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> ERROR(harmless,"DIRLRD, ( expected."); 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read polynomials. *)</font> 
+      <font color="#4169E1">REPEAT</font> C:=CREADB(); 
+             <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> C:=CREADB(); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> C &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font> BKSP; AL:=DIRPRD(V); A:=COMP(AL,A); 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> C = MASORD(")"); 
+      A:=INV(A); 
+<font color="#B22222">(*5*)</font> RETURN(A); <strong><font color="#4169E1">END</font></strong> DIRLRD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRLWR</font></strong>(A,V,S: LIST); 
+<font color="#B22222">(*Distributive rational polynomial list write. V is a
+variable list. A list of distributive rational polynomials
+in r variables, where r=length(V), r ge 0, is written to
+the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, OS, LS, RS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*format. *)</font> BLINES(0); OS:=-1; LS:=10; RS:=60;  
+      SOLINE(OS,LS,RS);  
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write polynomials. *)</font> AP:=A; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, AL,AP); DIRPWR(AL,V,S); BLINES(1); 
+            <strong><font color="#4169E1">END</font></strong>; 
+      SOLINE(OS,LS,RS); BLINES(0);
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DIRLWR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPAB</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial absolute value. A is a
+distributive rational polynomial. B is the absolute value of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* b=a*(sign of a). *)</font> SL:=DIRPSG(A); 
+      <font color="#4169E1">IF</font> SL &gt;= 0 <font color="#4169E1">THEN</font> B:=A; <font color="#4169E1">ELSE</font> B:=DIRPNG(A); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIRPAB; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPDF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial difference. A and B are
+distributive rational polynomials. C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, APP, BL, BP, C, CL, CP, CPP, EL, FL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=DIRPNG(B); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=BETA; 
+      <font color="#4169E1">REPEAT</font> EL:=DIPEVL(AP); FL:=DIPEVL(BP); SL:=EVCOMP(EL,FL); 
+             <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> DIPMAD(AP, AL,EL,AP); 
+                CP:=DIPMCP(EL,AL,CP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> SL = -1 <font color="#4169E1">THEN</font> DIPMAD(BP, BL,FL,BP); 
+                   CL:=RNNEG(BL); CP:=DIPMCP(FL,CL,CP); 
+                   <font color="#4169E1">ELSE</font> DIPMAD(AP,AL,EL,AP); DIPMAD(BP, BL,FL,BP); 
+                   CL:=RNDIF(AL,BL); 
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=DIPMCP(EL,CL,CP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> APP:=AP; 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> BP &lt;&gt; SIL <font color="#4169E1">THEN</font> APP:=DIRPNG(BP); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=APP; <font color="#4169E1">ELSE</font> CPP:=CP; C:=INV(CP); 
+         SRED(CPP,APP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(C); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPDF; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPDM</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial derivation main variable.
+A is a distributive polynomial. B is the derivation of A
+with respect to its main variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, AS, B, EL, EL1, EL2, ELR, ELS, FL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0 or rational.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> DIPEVL(A) = SIL <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); ADV(EL, EL1,ELS); 
+             <font color="#4169E1">IF</font> EL1 &gt; 0 <font color="#4169E1">THEN</font> ELR:=RNINT(EL1); ALP:=RNPROD(AL,ELR); 
+                EL2:=EL1-1; FL:=COMP(EL2,ELS); B:=DIPMCP(FL,ALP,B); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AS = SIL) <font color="#4169E1">OR</font> (EL1 = 0); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPDM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPDR</font></strong>(A,IL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial derivation. A is a distributive
+polynomial. B is the derivation of A with respect to its i-th
+variable, 0 le i le DIPNOV(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, AS, B, EL, ELP, FL, FLR, J1Y, JL, KL, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or il=rl.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+      RL:=DIPNOV(A); KL:=1; J1Y:=RL-IL; JL:=J1Y+1; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); EVDER(EL,JL,KL, ELP,FL); 
+             <font color="#4169E1">IF</font> FL &lt;&gt; 0 <font color="#4169E1">THEN</font> FLR:=RNINT(FL); ALP:=RNPROD(AL,FLR); 
+                B:=DIPMCP(ELP,ALP,B); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPDR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPEM</font></strong>(A,AL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial evaluation of main variable.
+A is a distributive rational polynomial. a is a rational number.
+B(x1, ...,x(r-1))=A(x1, ...,x(r-1),a). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, AP, B, C, EL1, EL2, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horner s method.*)</font> DIPADM(A, EL1,EL2,B,AP); 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; 0 <font color="#4169E1">DO</font> J1Y:=EL1-EL2; ALP:=RNEXP(AL,J1Y); 
+            B:=DIRPRP(B,ALP); DIPADM(AP, EL1,EL2,C,AP); B:=DIRPSM(B,C); 
+            <strong><font color="#4169E1">END</font></strong>; 
+      ALP:=RNEXP(AL,EL1); B:=DIRPRP(B,ALP); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPEM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPEV</font></strong>(A,IL,AL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial evaluation of the i-th variable.
+A is a distributive rational polynomial, 1 le i le DIPNOV(A),
+a is a rational number. B(x1, ...,x(i-1),x(i+1), ...,xr)=
+A(x1, ...,x(i-1),a,x(i+1), ...,xr). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, AP, B, BS, C, D, EL1, EL2, J1Y, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horner s method.*)</font> B:=LIST1(0); BS:=B; AP:=A; 
+      <font color="#4169E1">REPEAT</font> DIPADV(AP,IL, EL1,EL2,D,AP); 
+             <font color="#4169E1">WHILE</font> (AP &lt;&gt; 0) <font color="#4169E1">AND</font> (EL1 &gt; EL2) <font color="#4169E1">DO</font> J1Y:=EL1-EL2; 
+                   ALP:=RNEXP(AL,J1Y); D:=DIRPRP(D,ALP); DIPADV(AP,IL,
+                   EL1,EL2,C,AP); D:=DIRPSM(D,C); <strong><font color="#4169E1">END</font></strong>; 
+             ALP:=RNEXP(AL,EL1); D:=DIRPRP(D,ALP); B:=COMP(D,B); 
+             <font color="#4169E1">UNTIL</font> AP = 0; 
+      ADV(B, D,B); SFIRST(BS,D); SRED(BS,B); B:=DIRPLS(B); 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIRPEV; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPEX</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial exponentiation. A is a
+distributive rational polynomial, n is a non-negative beta-
+integer. B=A**n. 0**0 is by definition a polynomial in
+zero variables. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BL, BLP, I, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=0.*)</font> 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> RL:=DIPNOV(A); BLP:=RNINT(1); 
+         BL:=DIPFMO(BLP,BETA); B:=DIPINV(BL,0,RL); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> B:=A; 
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> B:=DIRPPR(B,A); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPEX; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPHD</font></strong>(A,IL,NL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial higher derivation. A is a
+distributive rational polynomial. B is the n-th derivation
+of A with respect to its i-th variable, 0 le i le DIPNOV(A). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, AS, B, EL, ELP, FL, FLR, J1Y, JL, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+      RL:=DIPNOV(A); J1Y:=RL-IL; JL:=J1Y+1; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); EVDER(EL,JL,NL, ELP,FL); 
+             <font color="#4169E1">IF</font> FL &lt;&gt; 0 <font color="#4169E1">THEN</font> FLR:=RNINT(FL); ALP:=RNPROD(AL,FLR); 
+                B:=DIPMCP(ELP,ALP,B); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPHD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPLS</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial list sum. A is a circular
+list of distributive rational polynomials. B is the sum of all
+polynomials in A. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BP, BPP, C, CP, CPP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nothing to do. *)</font> 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*merge. *)</font> C:=A; ADV(C, B,CP); 
+      <font color="#4169E1">WHILE</font> C &lt;&gt; CP <font color="#4169E1">DO</font> ADV(CP, BP,CPP); BPP:=DIRPSM(B,BP); 
+            SFIRST(C,BPP); SRED(C,CPP); C:=CPP; ADV(C, B,CP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIRPLS; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPMC</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial monic. A and C are
+distributive rational polynomials, C=A/LBC(A) if A ne 0
+C=0 if A eq 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, C, CL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> C:=A; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply.*)</font> BL:=DIPLBC(A); SL:=RNONE(BL); 
+      <font color="#4169E1">IF</font> SL &lt;&gt; 1 <font color="#4169E1">THEN</font> CL:=RNINV(BL); C:=DIRPRP(A,CL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DIRPMC; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPMN</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial maximum norm. A is a
+distributive rational polynomial. b is the maximum norm of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, BL, CL, EL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> BL:=0; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*find maximum.*)</font> AS:=A; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); CL:=RNABS(AL); BL:=RNMAX(CL,BL); 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      RETURN(BL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPMN; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPNG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial negative. B= -A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, BL, EL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); BL:=RNNEG(AL); B:=DIPMCP(EL,BL,B); 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPNG; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPON</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial one. A is a distributive
+rational polynomial. If A=1 then t=1, otherwise t=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, EL, FL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> TL:=0; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a=rational number.*)</font> DIPMAD(A, AL,EL,AS); 
+      <font color="#4169E1">IF</font> AS &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+      FL:=EVSIGN(EL); 
+      <font color="#4169E1">IF</font> FL &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>; 
+      TL:=RNONE(AL); 
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> DIRPON; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPPR</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial product. A and B are
+distributive rational polynomials. C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BS, C, C1, CL, CS, EL, FL, GL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=B; C:=LIST1(0); CS:=C; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(BS, BL,FL,BS); AP:=AS; C1:=BETA; 
+             <font color="#4169E1">REPEAT</font> DIPMAD(AP, EL,AL,AP); CL:=RNPROD(AL,BL); 
+                    GL:=EVSUM(EL,FL); C1:=DIPMCP(CL,GL,C1); 
+                    <font color="#4169E1">UNTIL</font> AP = SIL; 
+             C:=COMP(C1,C); 
+             <font color="#4169E1">UNTIL</font> BS = SIL; 
+      ADV(C, C1,C); SFIRST(CS,C1); SRED(CS,C); C:=DIRPLS(C); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DIRPPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPQ</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial quotient. A and B are
+distributive rational polynomials. B is a non zero divisor
+of A. C=B/A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, R: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call dirpqr.*)</font> DIRPQR(A,B, C,R); RETURN(C); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIRPQ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPQR</font></strong>(A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> Q,R: LIST); 
+<font color="#B22222">(*Distributive rational polynomial quotient and remainder.
+A and B are distributive rational polynomials with B ne 0.
+Q and R are unique distributive rational polynomials such
+that either B divides A, so Q=A/B and R=0  or B does not
+divide A, so A=B*Q+R with deg(R) lt deg(B). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, BP, DL, ML, NL, Q1, QL, QP, RP, SL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialise.*)</font> DIPMAD(B, BL,NL,BP); 
+      <font color="#4169E1">IF</font> BP = SIL <font color="#4169E1">THEN</font> BP:=0; <strong><font color="#4169E1">END</font></strong>; 
+      Q:=BETA; R:=A; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute quotient terms.*)</font> 
+      LOOP <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           ML:=DIPEVL(R); EVDFSI(ML,NL, DL,TL); 
+           <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           AL:=DIPLBC(R); QL:=RNQ(AL,BL); Q:=DIPMCP(DL,QL,Q); 
+           Q1:=DIPFMO(QL,DL); RP:=DIPMRD(R); QP:=DIRPPR(BP,Q1); 
+           R:=DIRPDF(RP,QP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPQR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPRA</font></strong>(RL,KL,LL,EL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial random.
+k, l and e are positive beta-digits. e is the
+maximal permitted exponent of A in any variable. A is a
+random distributive rational polynomial in r variables
+max norm of A lt 2**k and maximal l base coefficients. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, AP, FL, IL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font> A:=0; 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> AL:=RNRAND(KL); A:=DIPFMO(AL,BETA); RETURN(A); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*call evrand.*)</font> 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> LL <font color="#4169E1">DO</font> AL:=RNRAND(KL); 
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> FL:=EVRAND(RL,EL); AP:=DIPFMO(AL,FL); 
+             A:=DIRPSM(A,AP); <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(A); <strong><font color="#4169E1">END</font></strong> DIRPRA; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPRD</font></strong>(V: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial read. V is a variable list.
+A distributive rational polynomial A in r variables, where
+r=length(V), r ge 0, is read from the input stream. Any
+blanks preceding A are skipped. modified version, orginal
+version by G. E. Collins. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, A1, AL, AP, C, EL, ES, FL, IDUM, IL, J1Y, JL, RL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font> A:=0; C:=CREADB(); 
+      <font color="#4169E1">IF</font> C = 0 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      BKSP; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialise.*)</font> C:=CREADB(); BKSP; 
+      <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> ERROR(harmless,"DIRPRD, no , expected.");  
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      FL:=0; 
+      <font color="#4169E1">IF</font> C = MASORD("(") <font color="#4169E1">THEN</font> C:=CREADB(); FL:=1; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> FL = 1 <font color="#4169E1">THEN</font> RETURN(A); 
+            <font color="#4169E1">ELSE</font> ERROR(harmless,"DIRPRD, no ) expected."); RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RL:=LENGTH(V); ES:=BETA; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font> ES:=COMP(0,ES); <strong><font color="#4169E1">END</font></strong>; 
+      J1Y:=RNINT(1); A1:=DIPFMO(J1Y,ES); AP:=A1;
+LOOP 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*next input. determine next action. *)</font> C:=CREADB(); 
+      <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> FL = 0 <font color="#4169E1">THEN</font> BKSP; <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD(",") <font color="#4169E1">THEN</font> BKSP; RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD("-") <font color="#4169E1">THEN</font> AP:=DIRPNG(AP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (C = MASORD("+")) <font color="#4169E1">OR</font> (C = MASORD("-")) <font color="#4169E1">THEN</font> C:=CREADB(); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = MASORD("*") <font color="#4169E1">THEN</font> C:=CREADB(); <strong><font color="#4169E1">END</font></strong>; 
+      BKSP; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*read coefficient.*)</font> 
+      <font color="#4169E1">IF</font> DIGIT(C) <font color="#4169E1">THEN</font> AL:=RNDRD(); EL:=EPREAD(); 
+         AL:=RNEXP(AL,EL); AP:=DIRPRP(AP,AL);  
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*read polynomial.*)</font> 
+      ELSIF C = MASORD("(") <font color="#4169E1">THEN</font> AL:=DIRPRD(V); EL:=EPREAD(); 
+         AL:=DIRPEX(AL,EL); AP:=DIRPPR(AP,AL);  
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*read monic monomial.*)</font> 
+      ELSIF LETTER(C) <font color="#4169E1">THEN</font> VL:=VREAD(); JL:=VLSRCH(VL,V); 
+         <font color="#4169E1">IF</font> JL = 0 <font color="#4169E1">THEN</font> ERROR(harmless,"DIRPRD, unknown variable.");  
+            RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+         EL:=EPREAD(); AP:=DIPMPV(AP,JL,EL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*complete polynomial.*)</font> C:=CREADB(); BKSP; 
+      <font color="#4169E1">IF</font> (C = MASORD("+")) <font color="#4169E1">OR</font> (C = MASORD("-")) <font color="#4169E1">OR</font> (C = MASORD(")"))
+      <font color="#4169E1">OR</font> (C = MASORD(",")) <font color="#4169E1">THEN</font> A:=DIRPSM(A,AP); AP:=A1; <strong><font color="#4169E1">END</font></strong>; 
+<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*11*)</font> <strong><font color="#4169E1">END</font></strong> DIRPRD; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPRP</font></strong>(A,BL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial rational number product.
+Is a distributive rational polynomial, b is a rational number.
+C=A*b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, EL, PL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or bl=0.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (BL = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply.*)</font> C:=BETA; AP:=A; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); PL:=RNPROD(AL,BL); 
+             C:=DIPMCP(EL,PL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPRP; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPRQ</font></strong>(A,BL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial rational number quotient. A
+is a distributive rational polynomial, b is a nonzero rational
+number. C=A/b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, CL, EL, QL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*divide.*)</font> C:=BETA; AP:=A; CL:=RNINV(BL); 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); QL:=RNPROD(AL,CL); 
+             C:=DIPMCP(EL,QL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> DIRPRQ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial sign. A is a distributive
+rational polynomial. s is the sign of the leading base
+coefficient of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> SL:=0; <font color="#4169E1">ELSE</font> J1Y:=DIPLBC(A); SL:=RNSIGN(J1Y); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(SL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DIRPSG; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial sum. A and B are
+distributive rational polynomials. C=A+B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, APP, BL, BP, C, CL, CP, CPP, EL, FL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=BETA; 
+      <font color="#4169E1">REPEAT</font> EL:=DIPEVL(AP); FL:=DIPEVL(BP); SL:=EVCOMP(EL,FL); 
+             <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> DIPMAD(AP, AL,EL,AP); 
+                CP:=DIPMCP(EL,AL,CP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> SL = -1 <font color="#4169E1">THEN</font> DIPMAD(BP, BL,FL,BP); 
+                   CP:=DIPMCP(FL,BL,CP); <font color="#4169E1">ELSE</font> DIPMAD(AP, AL,EL,AP); 
+                   DIPMAD(BP, BL,FL,BP); CL:=RNSUM(AL,BL); 
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=DIPMCP(EL,CL,CP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> APP:=BP; <font color="#4169E1">ELSE</font> APP:=AP; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=APP; <font color="#4169E1">ELSE</font> CPP:=CP; C:=INV(CP); 
+         SRED(CPP,APP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(C); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DIRPSM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSN</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial sum norm. A is a distributive
+rational polynomial. b is the sum norm of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, BL, CL, EL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> BL:=0; 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*sum.*)</font> AS:=A; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,EL,AS); CL:=RNABS(AL); BL:=RNSUM(CL,BL); 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      RETURN(BL); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPSN; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSO</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial sort. A is a
+list of rational coefficients and exponent vectors,
+A is sorted into inverse lexicographical order,
+two terms with equal exponent vectors are added. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BP, BS, EL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*trivial case.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*construct monomials.*)</font> B:=LIST1(0); BS:=B; AP:=A; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AP, AL,EL,AP); BP:=DIPFMO(AL,EL); B:=COMP(BP,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*add monomials.*)</font> ADV(B, BP,B); SFIRST(BS,BP); SRED(BS,B); 
+      B:=DIRPLS(B); 
+<font color="#B22222">(*6*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIRPSO; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSU</font></strong>(A,IL,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial substitution. A and B are
+distributive rational polynomials, 1 le i le r=DIPNOV(A).
+E(x1, ...,x(i-1),x(i+1), ...,xr)=A(x1, ...,x(i-1),
+B(x1, ...,x(i-1),x(i+1), ...,xr),x(i+1), ...,xr). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BP, BS, C, D, E, EL1, EL2, ES, J1Y, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> E:=0; RETURN(E); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> E:=DIPTCS(A,IL); RETURN(E); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horner s method.*)</font> BS:=B; E:=LIST1(0); ES:=E; AP:=A; 
+      <font color="#4169E1">REPEAT</font> DIPADV(AP,IL, EL1,EL2,D,AP); 
+             <font color="#4169E1">WHILE</font> (AP &lt;&gt; 0) <font color="#4169E1">AND</font> (EL1 &gt; EL2) <font color="#4169E1">DO</font> J1Y:=EL1-EL2; 
+                   BP:=DIRPEX(BS,J1Y); D:=DIRPPR(D,BP); DIPADV(AP,IL,
+                   EL1,EL2,C,AP); D:=DIRPSM(D,C); <strong><font color="#4169E1">END</font></strong>; 
+             BP:=DIRPEX(BS,EL1); D:=DIRPPR(D,BP); E:=COMP(D,E); 
+             <font color="#4169E1">UNTIL</font> AP = 0; 
+      ADV(E, D,E); SFIRST(ES,D); SRED(ES,E); E:=DIRPLS(E); 
+<font color="#B22222">(*5*)</font> RETURN(E); <strong><font color="#4169E1">END</font></strong> DIRPSU; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPSV</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial substitution for main variable.
+A and B are distributive rational polynomials. t=DIPNOV(A)-1.
+C(x1, ...,xt)=A(x1, ...,xt,B(x1, ...,xt)). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BP, C, D, EL1, EL2, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=DIPTCF(A); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horner s method.*)</font> DIPADM(A, EL1,EL2,C,AP); 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; 0 <font color="#4169E1">DO</font> J1Y:=EL1-EL2; BP:=DIRPEX(B,J1Y); 
+            C:=DIRPPR(C,BP); DIPADM(AP, EL1,EL2,D,AP); C:=DIRPSM(C,D); 
+            <strong><font color="#4169E1">END</font></strong>; 
+      BP:=DIRPEX(B,EL1); C:=DIRPPR(C,BP); RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPSV; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPTM</font></strong>(A,HL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial translation main variable.
+A is a distributive rational polynomial, h is a rational number.
+B(x1, ...xr)=A(x1, ...,x(r-1),x(r)+h). r=DIPNOV(A). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALQ, AS, B, B1, B2, EL, ELS, IL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or hl=0.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (HL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> DIPADM(A, EL,ELS,AL,AS); B:=DIPCMP(0,AL); 
+      LOOP <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL-ELS <font color="#4169E1">DO</font> B1:=DIPMPM(B,1); B2:=DIRPRP(B,HL); 
+                B:=DIRPSM(B1,B2); <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> AS = 0 <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+           DIPADM(AS, EL,ELS,AL,AS); ALQ:=DIPCMP(0,AL); 
+           B:=DIRPSM(B,ALQ); 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIRPTM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPTR</font></strong>(A,HL,IL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial translation. A is a
+distributive rational polynomial, h is a rational number,
+the i-th variable is translated. 1 le i le r=DIPNOV(A).
+B(x1, ...,xr)=A(x1, ...,x(i)+h, ...,xr).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, BS, C, C1, C2, EL1, EL2, KL, RL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or hl=0.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (HL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horner s method.*)</font> AS:=A; B:=LIST1(0); BS:=B; 
+      <font color="#4169E1">REPEAT</font> DIPADS(AS,IL,0, EL1,EL2,C,AS); 
+             <font color="#4169E1">WHILE</font> (AS &lt;&gt; 0) <font color="#4169E1">AND</font> (EL1 &gt; EL2) <font color="#4169E1">DO</font>
+                   <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> EL1-EL2 <font color="#4169E1">DO</font> C1:=DIPMPV(C,IL,1); 
+                       C2:=DIRPRP(C,HL); C:=DIRPSM(C1,C2); <strong><font color="#4169E1">END</font></strong>; 
+                   DIPADS(AS,IL,0, EL1,EL2,AL,AS); C:=DIRPSM(C,AL); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> EL1 <font color="#4169E1">DO</font> C1:=DIPMPV(C,IL,1); C2:=DIRPRP(C,HL); 
+                 C:=DIRPSM(C1,C2); <strong><font color="#4169E1">END</font></strong>; 
+             B:=COMP(C,B); 
+             <font color="#4169E1">UNTIL</font> AS = 0; 
+      ADV(B, C,B); SFIRST(BS,C); SRED(BS,B); B:=DIRPLS(B); 
+<font color="#B22222">(*5*)</font> RETURN(B); <strong><font color="#4169E1">END</font></strong> DIRPTR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPWR</font></strong>(A,V,S: LIST); 
+<font color="#B22222">(*Distributive rational polynomial write. A is a distributive
+rational poynomial in r variables, r ge 0. V is a variable list
+for A. If S ge 0 then the coefficients are written by RNDWR
+else by RNWRIT. A is written in the output stream.
+Modified version, original version by G. E. Collins. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, E, EL, ES, FL, J1Y, LL, R1, RL, SL, TL, VL, VS:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> S &lt; 0 <font color="#4169E1">THEN</font> RNWRIT(A); <font color="#4169E1">ELSE</font> RNDWR(A,S); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      RL:=DIPNOV(A); 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> AL:=DIPLBC(A); 
+         <font color="#4169E1">IF</font> S &lt; 0 <font color="#4169E1">THEN</font> RNWRIT(AL); <font color="#4169E1">ELSE</font> RNDWR(AL,S); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=A; FL:=0; J1Y:=-1; R1:=RNINT(J1Y); 
+      LL:=DIPNBC(A); 
+      <font color="#4169E1">IF</font> LL &gt; 1 <font color="#4169E1">THEN</font> SWRITE("("); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, AL,E,AS); SWRITE(" "); SL:=RNSIGN(AL); 
+             <font color="#4169E1">IF</font> (SL &gt; 0) <font color="#4169E1">AND</font> (FL &lt;&gt; 0) <font color="#4169E1">THEN</font> SWRITE("+"); <strong><font color="#4169E1">END</font></strong>; 
+             FL:=1; TL:=EVSIGN(E); 
+             <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> S &gt;= 0 <font color="#4169E1">THEN</font> RNDWR(AL,S); <font color="#4169E1">ELSE</font> RNWRIT(AL); <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> TL:=RNONE(AL); 
+                <font color="#4169E1">IF</font> RNCOMP(R1,AL) = 0 <font color="#4169E1">THEN</font> SWRITE("-"); TL:=1; <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">IF</font> TL &lt;&gt; 1 <font color="#4169E1">THEN</font>
+                   <font color="#4169E1">IF</font> S &gt;= 0 <font color="#4169E1">THEN</font> RNDWR(AL,S); <font color="#4169E1">ELSE</font> RNWRIT(AL); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                ES:=CINV(E); VS:=V; 
+                <font color="#4169E1">REPEAT</font> ADV(ES, EL,ES); ADV(VS, VL,VS); 
+                       <font color="#4169E1">IF</font> EL &gt; 0 <font color="#4169E1">THEN</font> SWRITE(" "); CLOUT(VL); 
+                          <font color="#4169E1">IF</font> EL &gt; 1 <font color="#4169E1">THEN</font> SWRITE("**"); 
+                             AWRITE(EL); <strong><font color="#4169E1">END</font></strong>; 
+                          <strong><font color="#4169E1">END</font></strong>; 
+                       <font color="#4169E1">UNTIL</font> ES = SIL; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> AS = SIL; 
+      SWRITE(" "); 
+      <font color="#4169E1">IF</font> LL &gt; 1 <font color="#4169E1">THEN</font> SWRITE(")"); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DIRPWR; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRPWV</font></strong>(A: LIST); 
+<font color="#B22222">(*Distributive rational polynomial write with standard variable
+list. A is a distributive rational poynomial. The standard
+variable list is used. A is written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  RL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*create variable list.*)</font> RL:=DIPNOV(A); VL:=STVL(RL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write polynomial.*)</font> DIRPWR(A,VL,-1); RETURN; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DIRPWV; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIRRAS</font></strong>(RL,KL,LL,EL,QL: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial, random sparse exponent vector.
+k, l and e are positive beta-digits. e is the
+maximal permitted exponent of A in any variable. A is a
+random distributive rational polynomial in r variables
+max norm of A lt 2**k and maximal l base coefficients. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, AP, FL, IL, QL1, QL2, QLP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font> A:=0; 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> AL:=IRAND(KL); A:=DIPFMO(AL,BETA); RETURN(A); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*call evrand.*)</font> FIRST2(QL, QL1,QL2); DQR(QL1,0,QL2, QLP,TL); 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> LL <font color="#4169E1">DO</font> AL:=RNRAND(KL); 
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> FL:=EVRASP(RL,EL,QLP); AP:=DIPFMO(AL,FL); 
+             A:=DIRPSM(A,AP); <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(A); <strong><font color="#4169E1">END</font></strong> DIRRAS; 
+
+
+<strong><font color="#4169E1">END</font></strong> DIPRN.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

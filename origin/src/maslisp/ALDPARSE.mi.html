@@ -1,0 +1,1275 @@
+
+<html>
+<head>
+<title>./maslisp/ALDPARSE.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: ALDPARSE.mi,v 1.4 1992/10/15 16:27:45 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: ALDPARSE.mi,v $
+ * Revision 1.4  1992/10/15  16:27:45  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.3  1992/02/16  17:54:24  pesch
+ * CONST-deviniton moved again.
+ *
+ * Revision 1.2  1992/02/12  17:32:19  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:11:15  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE ALDPARSE;
+
+<font color="#B22222">(* Aldes Parser Implementation Module. *)</font>
+
+
+<font color="#B22222">(*************************************************************************)</font>
+<font color="#B22222">(*                                                                       *)</font>  
+<font color="#B22222">(* PROGRAMMIERPRAKTIKUM                                                  *)</font>
+<font color="#B22222">(*                                                                       *)</font>
+<font color="#B22222">(* Sommersemester 1990, Universitaet Passau.                             *)</font>
+<font color="#B22222">(*                                                                       *)</font>
+<font color="#B22222">(* von: Klaus Rieger                                                     *)</font>
+<font color="#B22222">(*                                                                       *)</font>
+<font color="#B22222">(*************************************************************************)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT BETA, SIL, LIST,
+                    LENGTH, LISTVAR,
+                    SRED, LIST1, ADV, FIRST, RED, COMP, INV;
+
+FROM MASBIOS IMPORT DIBUFF, CREAD, CREADB, BKSP, LISTS, 
+                    CWRITE, MASCHR, MASORD, BLINES, SWRITE;
+
+FROM SACLIST IMPORT AWRITE, AREAD, LIST2, ADV2, FIRST2, 
+                    CONC, LIST3, FIRST3, LIST4, LIST5, CLOUT;
+
+FROM MASSYM2 IMPORT SYWRIT, SYMBOL, ENTER, SREAD, GET, PUT, GENSYM;
+
+FROM MASSYM IMPORT ELEMP, MEMQ, UREAD, UWRITE, UWRIT1;
+
+FROM MASLISPU IMPORT EXTYP, Compiledp0, Compiledp1, Declare;
+                    
+FROM MASLISP IMPORT EQS, NEQS, GTS, LTS, GEQ, LEQ, NOTS, UND, ODER,   
+                    ADD, SUB, MUL, QUOT, REM, POW,
+                    QUOTE, SETQ, STRNG, COND,  
+                    PROGN, VARS, IFS, WHL, RPT, DE, DF, DM, DG,
+                    PROGA, GTO, LBEL, ARY,
+                    LAMBDA, MLAMBDA, FLAMBDA, GLAMBDA, SIG,
+                    TDEF, DEFAULT, SETAV, TINFO, WRITE, WT,  
+                    LISTX, ENV;
+
+FROM MASSPEC IMPORT EVALUATE;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: ALDPARSE.mi,v 1.4 1992/10/15 16:27:45 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+<strong><font color="#228B22">TYPE</font></strong> Token =  ( null, <font color="#4169E1">not</font>, <font color="#4169E1">and</font>, <font color="#4169E1">or</font>, times, div, mod, plus, minus, power, 
+                eql, neq, lss, leq, gtr, geq, sil,  
+                comma, rparen, colon, lbrack, rbrack, rbrace, 
+                becomes, <font color="#4169E1">then</font>, <font color="#4169E1">else</font>, <font color="#4169E1">to</font>, <font color="#4169E1">To</font>, <font color="#4169E1">of</font>, <font color="#4169E1">do</font>,
+       <font color="#B22222">(*expr*)</font> lparen, dollar, quote, string, number, 
+       <font color="#B22222">(*stms*)</font> ident, lbrace, label, procedure, return, 
+                print, goto, go, <font color="#4169E1">if</font>, <font color="#4169E1">case</font>, semicolon,
+                <font color="#4169E1">while</font>, <font color="#4169E1">repeat</font>, <font color="#4169E1">until</font>, <font color="#4169E1">for</font>, begald, <strong><font color="#4169E1">begin</font></strong>,
+       <font color="#B22222">(*dcl*)</font>  <strong><font color="#228B22">var</font></strong>, pragma, <strong><font color="#228B22">const</font></strong>, global, safe, array, intrinsic, 
+       <font color="#B22222">(*stp*)</font>  period, <strong><font color="#4169E1">end</font></strong>, eof);
+
+
+<strong><font color="#228B22">VAR</font></strong> tok: Token;              <font color="#B22222">(* last token type read *)</font>
+    tokval, zwischen: LIST;  <font color="#B22222">(* last token read, intermediate token *)</font>
+    c, ch:   CHAR;           <font color="#B22222">(* last character read *)</font>
+    ach:    LIST;            <font color="#B22222">(* Aldes code of last character read*)</font>
+    KW:     LIST;            <font color="#B22222">(* key word inicator *)</font>
+    noerr,isfunc:  BOOLEAN;  <font color="#B22222">(* error during parsing, function found *)</font>
+    prnt, ret, any, prag: LIST; <font color="#B22222">(* special ALDES symbols. *)</font>
+    blv: LIST;               <font color="#B22222">(*block local variables. *)</font>
+
+
+
+<strong><font color="#4169E1">PROCEDURE FIRST5</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL1,AL2,AL3,AL4,AL5: LIST);
+<font color="#B22222">(* First 5.  L is a list of length 5 or more.  a1=FIRST(L),
+   a2=SECOND(L), a3=THIRD(L) and a4=FOURTH(L) a5=FIFTH(L). *)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV(L,AL1,LP); ADV(LP,AL2,LP); ADV(LP,AL3,LP);
+      ADV(LP,AL4,LP); AL5:=FIRST(LP); RETURN;
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> FIRST5;
+
+
+<font color="#B22222">(**************************************************************************)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(*                        Error handling                                  *)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(**************************************************************************)</font>     
+
+
+<strong><font color="#4169E1">PROCEDURE SyntaxWarning</font></strong>(n: LIST);
+<font color="#B22222">(* Report warning on syntax error with number n *)</font>
+<strong><font color="#228B22">VAR</font></strong> m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  SWRITE("["); AWRITE(n); SWRITE("] ");
+  m:=INTEGER(n); SWRITE("Syntax warning: ");
+  <font color="#4169E1">CASE</font> m <font color="#4169E1">OF</font>
+       2: SWRITE("intrinsic declaration") |
+       3: SWRITE("pragma declaration") |
+       6: SWRITE(". in header")|
+       7: SWRITE("array as function") |
+       8: SWRITE("global declaration in algorithm") |
+       9: SWRITE("<strong><font color="#228B22">const</font></strong> declaration");
+   <font color="#4169E1">ELSE</font> SWRITE("???") <strong><font color="#4169E1">END</font></strong>;
+  SWRITE(" unsupported.");
+  DIBUFF;
+<strong><font color="#4169E1">END</font></strong> SyntaxWarning;
+
+
+<strong><font color="#4169E1">PROCEDURE SyntaxError</font></strong>(n: LIST);
+<font color="#B22222">(* Report on syntax error with number n *)</font>
+<strong><font color="#228B22">VAR</font></strong> m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  SWRITE("["); AWRITE(n); SWRITE("] ");
+  m:=INTEGER(n); noerr:=FALSE;
+  <font color="#4169E1">CASE</font> m <font color="#4169E1">OF</font>
+         1: SWRITE("identifier") |
+         2: SWRITE(")") |
+         3: SWRITE("factor") |
+         4: SWRITE("operator") <font color="#B22222">(*unused*)</font> |
+         5: SWRITE(", <font color="#4169E1">or</font> )") <font color="#B22222">(*unused*)</font> |
+         6: SWRITE("variable") <font color="#B22222">(*unused*)</font> |
+         7: SWRITE(", <font color="#4169E1">or</font> ;") <font color="#B22222">(*unused*)</font> |
+         8: SWRITE("declaration") |
+         9: SWRITE("=") |
+        10: SWRITE(", <font color="#4169E1">or</font> .") |
+        11: SWRITE("[") |
+        12: SWRITE("]") |
+        13: SWRITE("string") |
+        14: SWRITE("number") |
+        15: SWRITE("<font color="#4169E1">to</font>") |
+        16: SWRITE("<font color="#4169E1">then</font>") |
+        17: SWRITE("<font color="#4169E1">of</font>") |
+        18: SWRITE("<font color="#B22222">{") |
+        19: SWRITE("; or }</font>") |
+        20: SWRITE("<font color="#4169E1">do</font>") |
+        21: SWRITE(":=") <font color="#B22222">(*unused*)</font> |
+        22: SWRITE(",...,") |
+        23: SWRITE(", <font color="#4169E1">or</font> ,...,") |
+        24: SWRITE("(") |
+        25: SWRITE("||") |
+        26: SWRITE("statement") |
+        27: SWRITE("}") |
+        28: SWRITE("} <font color="#4169E1">or</font> ;") <font color="#B22222">(*unused*)</font> |
+        29: SWRITE("; <font color="#4169E1">or</font> <font color="#4169E1">until</font>") |
+        30: SWRITE("<font color="#4169E1">and</font> <font color="#4169E1">or</font> <font color="#4169E1">or</font> un-") |
+        31: SWRITE("/ un-") |
+        32: SWRITE("| un-") |
+        33: SWRITE("= <font color="#4169E1">or</font> :=") |
+        34: SWRITE("expression") |
+        35: SWRITE(", <font color="#4169E1">or</font> identifier") |
+        36: SWRITE("declaration <font color="#4169E1">or</font> algorithm") |
+        37: SWRITE(".") |
+  <font color="#4169E1">ELSE</font> SWRITE("don<font color="#666666">'t know what is")
+       END;
+  SWRITE(" expected ");
+  DIBUFF;
+END SyntaxError;
+
+
+PROCEDURE SyntaxTest(s: Token; n: LIST);
+(*Test if curent token is expected. *)
+VAR m: INTEGER;
+BEGIN
+(*1*) IF tok &lt; s THEN SyntaxError(n);
+         REPEAT GetTok UNTIL tok &gt;= s;
+         END;
+(*9*) END SyntaxTest;
+
+
+(**************************************************************************)
+(*                                                                        *)
+(*                             Scanner                                    *)
+(*                                                                        *)
+(**************************************************************************)
+
+
+PROCEDURE KeyWord(s: Token; VAR S: ARRAY OF CHAR);
+(* Declare key word *)
+VAR   X, P: LIST;
+BEGIN
+  X:=ENTER(LISTS(S));
+  P:=LIST(ORD(s));
+  PUT(X,KW,P);
+END KeyWord;   
+
+
+PROCEDURE GetCh;
+(* Get next character *)
+BEGIN
+  ach:=CREAD();
+  ch:=MASCHR(ach);
+END GetCh;
+
+
+PROCEDURE GetString(): LIST;
+(* Get String *)
+VAR s: LIST;
+BEGIN
+  s:=SIL;
+  LOOP GetCh;
+       IF ch = '</font>"<font color="#666666">' THEN GetCh;
+          IF ch &lt;&gt; '</font>"<font color="#666666">' THEN EXIT END;
+          END;
+       s:=COMP(ach,s);
+       END;
+  s:=INV(s);
+  RETURN(s);
+END GetString;
+
+
+PROCEDURE GetIdent(): LIST;
+(*Get Identifier. *)
+VAR s, p: LIST;
+BEGIN
+(*1*) BKSP; s:=SREAD();
+(*2*) p:=GET(s,KW);
+      IF p &lt;&gt; SIL 
+         THEN tok:=VAL(Token,CARDINAL(p)) 
+         ELSE p:=GET(s,EXTYP); 
+              IF p = SIL THEN 
+                 IF NOT MEMQ(s,blv) THEN blv:=COMP(s,blv) END;
+                 END; 
+              END;
+      RETURN(s);
+(*3*) END GetIdent;
+
+          
+PROCEDURE Comment(): LIST;
+(* Skip comment. Recursively nested comments are accepted *)
+VAR   lev, L: LIST;
+BEGIN L:=SIL;
+  lev:=1; 
+  REPEAT GetCh;  
+         IF ch = '</font>]<font color="#666666">' THEN GetCh; 
+                          lev:=lev-1 END;
+         IF ch = '</font>[<font color="#666666">' THEN GetCh; 
+                          lev:=lev+1 END;
+         (* L:=COMP(ach,L); future extension *) 
+  UNTIL lev = 0;
+  (* L:=RED(L); L:=INV(L); future extension *)
+  RETURN(L); 
+END Comment;
+
+
+PROCEDURE GetTok;
+(* Get next token *)
+BEGIN  
+  WHILE ch = " " DO GetCh END;
+  tokval:=SIL;
+  CASE ch OF
+         '</font>"<font color="#666666">'  : tok:= string;
+                tokval:= GetString() |
+         "("  : GetCh; 
+                IF ch = ")" THEN GetCh; tok:= sil
+                            ELSE tok:= lparen
+                                 END |
+         ")"  : tok:= rparen; GetCh |
+         "["  : IF tok # ident THEN tokval:=Comment(); GetTok; 
+                   ELSE tok:= lbrack; GetCh END | 
+         "]"  : tok:= rbrack; GetCh |
+         "{"  : tok:= lbrace; GetCh |
+         "}"  : tok:= rbrace; GetCh |
+         "~"  : tok:= not; GetCh |
+         "*"  : tok:= times; GetCh |
+         "^"  : tok:= power; GetCh |
+         "/"  : GetCh;
+                IF ch = "\" THEN tok:= and; GetCh
+                            ELSE tok:= div END |
+         "\"  : GetCh;
+                IF ch = "/" THEN tok:= or; GetCh; 
+                            ELSE SyntaxError(31) END |
+         "+"  : tok:= plus; GetCh |
+         "-"  : tok:= minus; GetCh |
+         "="  : tok:= eql; GetCh |
+         "#"  : tok:= neq; GetCh |
+         "&lt;"  : GetCh;
+                IF ch = "=" THEN GetCh; tok:= leq
+                            ELSE tok:= lss END |
+         "&gt;"  : GetCh;
+                IF ch = "=" THEN GetCh; tok:= geq
+                            ELSE tok:= gtr END |
+         ";"  : tok:= semicolon; GetCh |
+         ","  : GetCh;
+                IF ch = "." THEN GetCh;
+                   IF ch = "." THEN GetCh;
+                      IF ch = "." THEN GetCh;
+                         IF ch = "," THEN GetCh; tok:= To END;
+                         END; END
+                   ELSE tok:= comma END |
+         "'</font>"  : tok:= quote; GetCh |
+         "."  : tok:= period; GetCh |
+         "$"  : tok:= dollar; GetCh |
+         ":"  : GetCh;
+                <font color="#4169E1">IF</font> ch = "=" <font color="#4169E1">THEN</font> GetCh; tok:= becomes
+                            <font color="#4169E1">ELSE</font> tok:=colon <strong><font color="#4169E1">END</font></strong> |
+      "0".."9": tok:= number; BKSP;
+                tokval:= AREAD(); GetCh |
+      "a".."z": tok:= ident;
+                tokval:= GetIdent();
+                GetCh |
+      "A".."Z": tok:= ident;
+                tokval:= GetIdent(); GetCh |
+         "|"  : GetCh;
+                <font color="#4169E1">IF</font> ch = "|" <font color="#4169E1">THEN</font> GetCh; tok:= <strong><font color="#4169E1">end</font></strong>    
+                            <font color="#4169E1">ELSE</font> SyntaxError(32) <strong><font color="#4169E1">END</font></strong> |
+  <font color="#4169E1">ELSE</font> tok:= null; GetCh
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> GetTok; 
+
+
+<font color="#B22222">(**************************************************************************)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(*                             Parser                                     *)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(**************************************************************************)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Aparse</font></strong>(): LIST;
+<font color="#B22222">(* Parse a set of ALDES-2 declarations and algorithms. *)</font> 
+<strong><font color="#228B22">VAR</font></strong> s: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  noerr:=TRUE; ch:=" ";
+  GetTok;
+  s:=<strong><font color="#4169E1">Program</font></strong>();
+  <font color="#4169E1">IF</font> tok # <strong><font color="#4169E1">end</font></strong> <font color="#4169E1">THEN</font> SyntaxError(25) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> noerr <font color="#4169E1">THEN</font> s:= Generate(null,s) <strong><font color="#4169E1">END</font></strong>;
+  RETURN(s);
+<strong><font color="#4169E1">END</font></strong> Aparse; 
+
+
+<strong><font color="#4169E1">PROCEDURE Program</font></strong>(): LIST;
+<font color="#B22222">(* Parse "program" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s:= SIL; t:= SIL;
+  LOOP
+         <font color="#4169E1">IF</font> tok = <strong><font color="#4169E1">end</font></strong> <font color="#4169E1">THEN</font> EXIT 
+      ELSIF (<strong><font color="#228B22">var</font></strong> &lt;= tok) <font color="#4169E1">AND</font> (tok &lt;= intrinsic) <font color="#4169E1">THEN</font> s:= Declaration(); 
+                             t:= COMP(s,t); 
+      ELSIF tok = ident <font color="#4169E1">THEN</font> s:= Algorithm(); t:= COMP(s,t); 
+       <font color="#4169E1">ELSE</font> SyntaxTest(<strong><font color="#4169E1">end</font></strong>,36) <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+  t:=INV(t);
+  t:= Generate(<strong><font color="#4169E1">begin</font></strong>,t);
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> <strong><font color="#4169E1">Program</font></strong>;
+
+
+<strong><font color="#4169E1">PROCEDURE Algorithm</font></strong>(): LIST;
+<font color="#B22222">(* Parse Algorithm and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> d, d1, s, s1, s2, t, t1, u, a, B, B1, B2, b: LIST;
+    func:BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialization. *)</font>
+      d:= SIL; t:= SIL; u:= SIL; s1:= SIL;
+      isfunc:= FALSE;
+      zwischen:= SIL;
+      B:=blv;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* Header produces the two first arguments, which are needed
+      by  Generate(procedure,t) *)</font>
+      t:= Header(func);
+      <font color="#4169E1">IF</font> func <font color="#4169E1">THEN</font> FIRST2(t,zwischen,t1); 
+                   isfunc:= TRUE; 
+              <font color="#4169E1">ELSE</font> t1:=t <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*declarations. *)</font>   
+      <font color="#4169E1">WHILE</font> (<strong><font color="#228B22">var</font></strong> &lt;= tok) <font color="#4169E1">AND</font> (tok &lt;= intrinsic) <font color="#4169E1">DO</font> 
+            <font color="#4169E1">IF</font> tok &lt;= global <font color="#4169E1">THEN</font> SyntaxWarning(8) <strong><font color="#4169E1">END</font></strong>;
+            d1:= Declaration(); 
+            d:=COMP(d1,d);
+            <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* WHILE *)</font>
+      <font color="#B22222">(* d= (VARn (...) any) ... (VAR1 (...) any) *)</font>
+      B1:=blv;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*labled statement sequences. *)</font>
+      a:=SIL;
+      <font color="#4169E1">REPEAT</font> s:=SIL; u:=SIL; <font color="#B22222">(*get label*)</font>
+             <font color="#4169E1">IF</font> tok = lparen <font color="#4169E1">THEN</font> GetTok
+                             <font color="#4169E1">ELSE</font> SyntaxError(24) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> tok = number <font color="#4169E1">THEN</font> u:= tokval; 
+                                  GetTok
+                             <font color="#4169E1">ELSE</font> SyntaxError(14) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> GetTok;
+                                  u:= Generate(label,u); 
+                             <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> u # SIL <font color="#4169E1">THEN</font> a:= COMP(u,a) <strong><font color="#4169E1">END</font></strong>; 
+             LOOP <font color="#B22222">(*get statements. *)</font>
+                  s1:= Statement();
+                  s:= COMP(s1,s);  
+                  <font color="#4169E1">IF</font> tok = semicolon <font color="#4169E1">THEN</font> GetTok;
+                  ELSIF tok = period <font color="#4169E1">THEN</font> GetTok; EXIT;
+                  ELSIF tok = <strong><font color="#4169E1">end</font></strong> <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>; 
+             s:= INV(s);
+             s:=Generate(<strong><font color="#4169E1">begin</font></strong>,s); <font color="#B22222">(* (PROGN ....)) *)</font>
+             <font color="#4169E1">IF</font> s &lt;&gt; SIL <font color="#4169E1">THEN</font> a:= COMP(s,a) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> tok = <strong><font color="#4169E1">end</font></strong>;
+      a:= INV(a); <font color="#B22222">(* a= ( (label u) (PROGN ....) ...) *)</font>
+      a:=Generate(begald,a); <font color="#B22222">(* (PROGA ....)) *)</font>
+      d:=COMP(a,d);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*generate return. *)</font>
+      <font color="#4169E1">IF</font> func <font color="#4169E1">THEN</font> s1:= Generate(return,LIST1(zwischen));
+                   d:= COMP(s1,d) <strong><font color="#4169E1">END</font></strong>;
+      d:= INV(d);
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*analyse declarations. *)</font> 
+      B2:=blv;   
+      <font color="#4169E1">IF</font> B2 &lt;&gt; B1 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">WHILE</font> RED(B2) &lt;&gt; B1 <font color="#4169E1">DO</font> B2:=RED(B2) <strong><font color="#4169E1">END</font></strong>;
+         SRED(B2,SIL); b:=LIST2(blv,LISTX); <font color="#B22222">(*trick*)</font>
+         b:=Generate(<strong><font color="#228B22">var</font></strong>,b); d:=COMP(b,d);
+         SWRITE("Variable(s) declared: "); UWRITE(blv);
+         <strong><font color="#4169E1">END</font></strong>;
+      blv:=B; 
+      <font color="#4169E1">IF</font> func <font color="#4169E1">THEN</font> <font color="#B22222">(*remove local variable from blv*)</font>
+         <font color="#4169E1">IF</font> FIRST(blv) = zwischen <font color="#4169E1">THEN</font> blv:=RED(blv) <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*finalize. *)</font>
+      GetTok; <font color="#B22222">(* || *)</font> <font color="#B22222">(*avoid reading next algorithm header until now*)</font>
+      d:= Generate(<strong><font color="#4169E1">begin</font></strong>,d); 
+      t:= COMP(d,t1); t:= INV(t);                
+      b:=FIRST(t); <font color="#B22222">(*add proc name to blv, since global*)</font>
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> MEMQ(b,blv) <font color="#4169E1">THEN</font> blv:=COMP(b,blv) <strong><font color="#4169E1">END</font></strong>;
+      t:= Generate(procedure,t);
+      RETURN(t);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Algorithm; 
+
+
+<strong><font color="#4169E1">PROCEDURE Declaration</font></strong>(): LIST;
+<font color="#B22222">(* Parse declarations and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL; 
+  <font color="#4169E1">IF</font> (tok = global) <font color="#4169E1">OR</font> (tok = safe) <font color="#4169E1">THEN</font> t:= GlobDec();
+  ELSIF tok = intrinsic <font color="#4169E1">THEN</font> t:= IntrinsicDec(); 
+  ELSIF tok = <strong><font color="#228B22">const</font></strong>     <font color="#4169E1">THEN</font> SyntaxWarning(9); 
+                             t:= PrCoDec();
+  ELSIF tok = pragma    <font color="#4169E1">THEN</font> SyntaxWarning(3); 
+                             t:= PrCoDec();
+  ELSIF tok = array     <font color="#4169E1">THEN</font> t:= ArrayDec();
+                        <font color="#4169E1">ELSE</font> SyntaxError(8) <strong><font color="#4169E1">END</font></strong>; 
+  <font color="#4169E1">IF</font> tok = period <font color="#4169E1">THEN</font> GetTok; 
+                  <font color="#4169E1">ELSE</font> SyntaxError(37) <strong><font color="#4169E1">END</font></strong>; 
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> Declaration;
+
+
+<strong><font color="#4169E1">PROCEDURE Header</font></strong>(<strong><font color="#228B22">VAR</font></strong> func: BOOLEAN): LIST;
+<font color="#B22222">(* parse "algorithm - header" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,u,up,v,a: LIST;
+    zwischen: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s:= SIL; u:= SIL; up:= SIL; v:= SIL; a:= SIL;
+  func:= FALSE;
+  <font color="#4169E1">IF</font> tok = ident 
+     <font color="#4169E1">THEN</font> a:= tokval; GetTok;
+     <font color="#4169E1">IF</font> tok = period <font color="#4169E1">THEN</font> SyntaxWarning(6); 
+                          GetTok; 
+                          func:= FALSE;
+                          s:= COMP(a,s)
+  ELSIF tok = lparen <font color="#4169E1">THEN</font> s:= COMP(a,s); 
+                          GetTok;
+                          u:= IdentifierList(); 
+                          <font color="#4169E1">IF</font> tok = semicolon <font color="#4169E1">THEN</font> GetTok;  
+                             up:= IdentifierList(); <strong><font color="#4169E1">END</font></strong>;
+                          <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> GetTok
+                                          <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>;
+                          u:=LIST2(u,up);
+                          s:= COMP(u,s);
+                          func:= FALSE;
+  ELSIF tok = sil <font color="#4169E1">THEN</font> s:= COMP(a,s);
+                       u:= LIST2(SIL,SIL); 
+                       s:= COMP(u,s);
+                       func:= FALSE;
+                       GetTok      
+  ELSIF tok = becomes <font color="#4169E1">THEN</font> zwischen:=a;  
+                           GetTok;
+                           <font color="#4169E1">IF</font> tok = ident <font color="#4169E1">THEN</font> a:= tokval;
+                                               s:= COMP(a,s);
+                                               GetTok
+                               <font color="#4169E1">ELSE</font> SyntaxError(1) <strong><font color="#4169E1">END</font></strong>;
+                           <font color="#4169E1">IF</font> tok = lparen <font color="#4169E1">THEN</font> GetTok;
+                                                u:= IdentifierList();
+                                                u:=LIST2(u,up);
+                                                s:= COMP(u,s)
+                        ELSIF tok = sil <font color="#4169E1">THEN</font> u:=LIST2(SIL,SIL);
+                                             s:=COMP(u,s)
+                              <font color="#4169E1">ELSE</font>  SyntaxError(24) <strong><font color="#4169E1">END</font></strong>;
+                           <font color="#4169E1">IF</font> (tok = rparen) <font color="#4169E1">OR</font> (tok = sil)
+                              <font color="#4169E1">THEN</font> GetTok;
+                                   func:= TRUE;
+                              <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>; 
+                           s:= LIST2(zwischen,s); 
+                           <strong><font color="#4169E1">END</font></strong>      
+   <font color="#4169E1">ELSE</font> SyntaxError(1); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF *)</font>
+  RETURN(s);
+<strong><font color="#4169E1">END</font></strong> Header;
+
+
+<strong><font color="#4169E1">PROCEDURE Sequence</font></strong>(): LIST;
+<font color="#B22222">(* parse statement sequences and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s:= SIL; t:= SIL;
+  <font color="#4169E1">IF</font> tok # lbrace <font color="#4169E1">THEN</font> t:= Statement() <font color="#B22222">(* only one statement !! *)</font>
+     <font color="#4169E1">ELSE</font> GetTok;
+          LOOP s:= Statement(); 
+               t:= COMP(s,t);
+                  <font color="#4169E1">IF</font> tok = semicolon <font color="#4169E1">THEN</font> GetTok
+               ELSIF tok = rbrace <font color="#4169E1">THEN</font> GetTok; EXIT 
+                <font color="#4169E1">ELSE</font> SyntaxError(19); <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> t # SIL <font color="#4169E1">THEN</font> t:= INV(t); t:= Generate(<strong><font color="#4169E1">begin</font></strong>,t) <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> Sequence;
+
+
+<strong><font color="#4169E1">PROCEDURE Statement</font></strong>(): LIST;
+<font color="#B22222">(* Parse Statement and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:=SIL;
+  SyntaxTest(ident,26);
+  <font color="#4169E1">CASE</font> tok <font color="#4169E1">OF</font>
+       print: t:=PrintStat(); |
+       goto : t:=GotoStat(); |
+       go   : t:=GoStat(); |
+       <font color="#4169E1">if</font>   : t:=IfStat(); |
+       <font color="#4169E1">case</font> : t:=CaseStat(); |                           
+       <font color="#4169E1">while</font>: t:=WhileStat(); |
+      <font color="#4169E1">repeat</font>: t:=RepeatStat(); |
+         <font color="#4169E1">for</font>: t:=ForStat(); |
+      return: GetTok;
+              <font color="#4169E1">IF</font> isfunc <font color="#4169E1">THEN</font> t:= Generate(return,LIST1(zwischen))
+                        <font color="#4169E1">ELSE</font> t:= Generate(return,SIL) <strong><font color="#4169E1">END</font></strong>; |
+      ident : t:=IdentStat(); 
+         <font color="#4169E1">ELSE</font> SyntaxTest(period,26) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* Case *)</font>
+  RETURN(t)      
+<strong><font color="#4169E1">END</font></strong> Statement;
+
+
+<strong><font color="#4169E1">PROCEDURE PrintStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "print - staement" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL;
+  GetTok;
+  <font color="#4169E1">IF</font> tok = string <font color="#4169E1">THEN</font> t:= tokval;
+                       GetTok;
+                       t:=Generate(print,t) 
+                  <font color="#4169E1">ELSE</font> SyntaxError(13) <strong><font color="#4169E1">END</font></strong>;
+  RETURN(t)
+<strong><font color="#4169E1">END</font></strong> PrintStat;
+
+
+<strong><font color="#4169E1">PROCEDURE GotoStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "goto - statement" and generate code *)</font> 
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL; GetTok;
+  <font color="#4169E1">IF</font> tok = lparen <font color="#4169E1">THEN</font> GetTok;
+     <font color="#4169E1">IF</font> tok = number <font color="#4169E1">THEN</font> s:= tokval; GetTok;
+        <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> t:= Generate(goto,s); GetTok
+                        <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>
+        <font color="#4169E1">ELSE</font> SyntaxError(14) <strong><font color="#4169E1">END</font></strong>
+  ELSIF tok = number <font color="#4169E1">THEN</font> s:= tokval;
+                          t:= Generate(goto,s);
+                          GetTok
+        <font color="#4169E1">ELSE</font> SyntaxError(14) <strong><font color="#4169E1">END</font></strong>;
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> GotoStat;
+
+
+<strong><font color="#4169E1">PROCEDURE GoStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "go to - statement" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL; GetTok;
+  <font color="#4169E1">IF</font> tok # <font color="#4169E1">to</font> <font color="#4169E1">THEN</font> SyntaxError(15)
+     <font color="#4169E1">ELSE</font> GetTok;
+     <font color="#4169E1">IF</font> tok = lparen <font color="#4169E1">THEN</font> GetTok;
+        <font color="#4169E1">IF</font> tok = number <font color="#4169E1">THEN</font> s:= tokval; GetTok;
+           <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> t:= Generate(goto,s); GetTok
+                           <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>
+           <font color="#4169E1">ELSE</font> SyntaxError(14) <strong><font color="#4169E1">END</font></strong>
+     ELSIF tok = number <font color="#4169E1">THEN</font> s:= tokval;
+                             t:= Generate(goto,s);
+                             GetTok
+                        <font color="#4169E1">ELSE</font> SyntaxError(14); <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> GoStat;
+
+
+<strong><font color="#4169E1">PROCEDURE IfStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "if - statement" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL;
+  GetTok;
+  s:= CondSeq();
+  t:= COMP(s,t);                
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">then</font> <font color="#4169E1">THEN</font> GetTok
+                <font color="#4169E1">ELSE</font> SyntaxError(16) <strong><font color="#4169E1">END</font></strong>;
+  s:= Sequence(); 
+  t:= COMP(s,t);                 
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">else</font> <font color="#4169E1">THEN</font> GetTok;
+                     s:= Sequence();
+                     t:= COMP(s,t)   
+  <strong><font color="#4169E1">END</font></strong>;
+  t:= INV(t);
+  t:= Generate(<font color="#4169E1">if</font>,t);
+  RETURN(t)    
+<strong><font color="#4169E1">END</font></strong> IfStat;
+
+
+<strong><font color="#4169E1">PROCEDURE CaseStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "case - statement and generate code *)</font> 
+<strong><font color="#228B22">VAR</font></strong> a,c,s,t,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  v:=SIL; t:=SIL; 
+  GetTok;
+  a:= Expression();
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">of</font> <font color="#4169E1">THEN</font> GetTok
+              <font color="#4169E1">ELSE</font> SyntaxError(17) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> tok = lbrace <font color="#4169E1">THEN</font> GetTok
+                   <font color="#4169E1">ELSE</font> SyntaxError(18) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">REPEAT</font>
+     c:= TermList();    <font color="#B22222">(*  (c1 c2 ... cn)  *)</font>
+     <font color="#4169E1">IF</font> tok = <font color="#4169E1">do</font> <font color="#4169E1">THEN</font> GetTok
+                 <font color="#4169E1">ELSE</font> SyntaxError(20) <strong><font color="#4169E1">END</font></strong>;
+     s:= Sequence();
+     <font color="#4169E1">IF</font> tok = semicolon <font color="#4169E1">THEN</font> GetTok 
+     ELSIF tok # rbrace <font color="#4169E1">THEN</font> SyntaxError(27) <strong><font color="#4169E1">END</font></strong>;
+          
+     <font color="#B22222">(* list preparation and call of procedure CaseLabel *)</font>
+
+     v:= SIL;
+     v:= LIST3(a,c,s);
+     v:= CaseLabel(v);
+     t:= COMP(v,t)                
+  <font color="#4169E1">UNTIL</font> tok = rbrace;
+  GetTok;       
+  t:= INV(t);          
+  t:= Generate(<font color="#4169E1">case</font>,t);
+  RETURN(t)  
+<strong><font color="#4169E1">END</font></strong> CaseStat;
+
+
+<strong><font color="#4169E1">PROCEDURE WhileStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "while - statement" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> t,s: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:=SIL;
+  GetTok;  
+  s:= CondSeq();
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">do</font> <font color="#4169E1">THEN</font> GetTok
+              <font color="#4169E1">ELSE</font> SyntaxError(20) <strong><font color="#4169E1">END</font></strong>;
+  t:= Sequence(); 
+  t:=LIST1(t);      
+  t:= COMP(s,t);  
+  t:= Generate(<font color="#4169E1">while</font>,t);
+  RETURN(t)
+<strong><font color="#4169E1">END</font></strong> WhileStat;
+
+
+<strong><font color="#4169E1">PROCEDURE RepeatStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "repeat - statement" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> t,s: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>  
+  t:=SIL;s:=SIL;
+  GetTok;
+  <font color="#4169E1">IF</font> tok = lbrace <font color="#4169E1">THEN</font> t:= Sequence(); <font color="#B22222">(* PROGN (s1..sn) *)</font> 
+     <font color="#4169E1">IF</font> tok = <font color="#4169E1">until</font> <font color="#4169E1">THEN</font> GetTok;
+                         s:= CondSeq();
+                         s:= LIST1(s); 
+                         s:= COMP(t,s); <font color="#B22222">(* PROG(s,..sn) Cond *)</font>
+                         t:= Generate(<font color="#4169E1">repeat</font>,s);
+                    <font color="#4169E1">ELSE</font> 
+         <font color="#B22222">(* repeat - statement without until ----&gt; Condition() = TRUE *)</font>  
+                         s:= WT; 
+                         s:= LIST1(s);  
+                         t:=COMP(t,s);
+                         t:= Generate(<font color="#4169E1">repeat</font>,t);
+                         <strong><font color="#4169E1">END</font></strong> <font color="#B22222">(* IF *)</font>
+     <font color="#4169E1">ELSE</font> <font color="#B22222">(* tok # "{" *)</font>
+          LOOP s:= Statement(); 
+               t:= COMP(s,t);
+               <font color="#4169E1">IF</font> tok = semicolon <font color="#4169E1">THEN</font> GetTok 
+               ELSIF tok = <font color="#4169E1">until</font> <font color="#4169E1">THEN</font> GetTok; EXIT 
+                <font color="#4169E1">ELSE</font> SyntaxError(29) <strong><font color="#4169E1">END</font></strong>;  
+               <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> t # SIL <font color="#4169E1">THEN</font> t:= INV(t) <strong><font color="#4169E1">END</font></strong>;
+          t:= Generate(<strong><font color="#4169E1">begin</font></strong>,t);
+          s:= CondSeq();
+          s:= LIST1(s);   
+          s:= COMP(t,s);
+          t:= Generate(<font color="#4169E1">repeat</font>,s);
+          <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF *)</font>
+ RETURN(t); 
+<strong><font color="#4169E1">END</font></strong> RepeatStat;
+
+
+<strong><font color="#4169E1">PROCEDURE ForStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "for - statement" and generate code *)</font> 
+<strong><font color="#228B22">VAR</font></strong> i,s,t,t1,t2,t3,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL; s:= SIL;
+  GetTok;
+  <font color="#4169E1">IF</font> tok = ident <font color="#4169E1">THEN</font> i:= tokval; GetTok
+                 <font color="#4169E1">ELSE</font> SyntaxError(1) <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> tok = eql <font color="#4169E1">THEN</font> GetTok
+  ELSIF tok = becomes <font color="#4169E1">THEN</font> GetTok
+   <font color="#4169E1">ELSE</font> SyntaxError(33) <strong><font color="#4169E1">END</font></strong>;
+  t1:= Expression(); 
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">To</font> <font color="#4169E1">THEN</font> GetTok; 
+                   t2:= SIL; 
+                   t3:= Expression()
+  ELSIF tok = comma <font color="#4169E1">THEN</font> GetTok;
+                         t2:= Expression();
+                         <font color="#4169E1">IF</font> tok = <font color="#4169E1">To</font> <font color="#4169E1">THEN</font> GetTok; 
+                                          t3:= Expression()
+                                     <font color="#4169E1">ELSE</font> SyntaxError(22) <strong><font color="#4169E1">END</font></strong>
+        <font color="#4169E1">ELSE</font> SyntaxError(23) <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF *)</font>
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">do</font> <font color="#4169E1">THEN</font> GetTok; s:=Sequence();
+     <font color="#4169E1">ELSE</font> SyntaxError(20) <strong><font color="#4169E1">END</font></strong>;
+  t:= LIST5(i,t1,t2,t3,s);
+  t:= Generate(<font color="#4169E1">for</font>,t);
+  RETURN(t)
+<strong><font color="#4169E1">END</font></strong> ForStat;
+
+
+<strong><font color="#4169E1">PROCEDURE IdentStat</font></strong>(): LIST;
+<font color="#B22222">(* parse "identifier - statement" and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t,u,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> t:= SIL; u:=SIL; v:=SIL;
+      s:= Variable();
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> tok = becomes <font color="#4169E1">THEN</font> GetTok; u:= Expression();
+                       t:= LIST2(s,u); t:= Generate(becomes,t);
+   ELSIF tok = sil <font color="#4169E1">THEN</font> u:= SIL; 
+         <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(s) <font color="#4169E1">THEN</font> SyntaxWarning(7) <strong><font color="#4169E1">END</font></strong>;
+         t:= COMP(s,u); GetTok;
+   ELSIF tok = lparen <font color="#4169E1">THEN</font> GetTok; u:= TermList(); 
+                           <font color="#4169E1">IF</font> tok = semicolon <font color="#4169E1">THEN</font> GetTok;
+                              v:=TermList();
+                              <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> GetTok;
+                                              <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>;
+                              <font color="#4169E1">ELSE</font>
+                              <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> GetTok;
+                                              <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>;
+                              <strong><font color="#4169E1">END</font></strong>; 
+                           <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> SYMBOL(s) <font color="#4169E1">THEN</font> SyntaxWarning(7) <strong><font color="#4169E1">END</font></strong>;
+                           t:= CONC(u,v); t:=COMP(s,t); <font color="#B22222">(*call*)</font>
+    <font color="#4169E1">ELSE</font> t:= LIST1(s); <font color="#B22222">(*call*)</font> <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(t); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> IdentStat;
+
+
+<strong><font color="#4169E1">PROCEDURE GlobDec</font></strong>(): LIST;
+<font color="#B22222">(* parse global or safe declarations and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s, t, u, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> s:= SIL; t:= SIL; 
+      GetTok;
+<font color="#B22222">(*2*)</font> LOOP s:=Variable();
+           t:=COMP(s,t); 
+              <font color="#4169E1">IF</font> tok = comma <font color="#4169E1">THEN</font> GetTok
+           ELSIF tok = period <font color="#4169E1">THEN</font> EXIT
+            <font color="#4169E1">ELSE</font> SyntaxError(8); EXIT <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF *)</font>
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> t:=INV(t); t:=LIST2(t,any); t:=Generate(<strong><font color="#228B22">var</font></strong>,t);
+      RETURN(t);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> GlobDec;
+
+
+<strong><font color="#4169E1">PROCEDURE IntrinsicDec</font></strong>(): LIST;
+<font color="#B22222">(* parse intrinsic declarations and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> s:= SIL; t:= SIL; 
+      SyntaxWarning(2);
+      GetTok;
+<font color="#B22222">(*2*)</font> s:=IdentifierList();
+      <font color="#4169E1">IF</font> tok # period <font color="#4169E1">THEN</font> SyntaxError(8) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> t:=LIST2(s,any);
+      t:= Generate(<strong><font color="#228B22">var</font></strong>,t);
+      RETURN(t);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IntrinsicDec;  
+
+
+<strong><font color="#4169E1">PROCEDURE PrCoDec</font></strong>(): LIST;
+<font color="#B22222">(* parse pragma or const declarations and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s, t, u, x, y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> GetTok; x:= SIL; y:= SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font> u:= SIL; 
+             s:=Variable(); x:=COMP(s,x);
+             <font color="#4169E1">IF</font> tok = eql <font color="#4169E1">THEN</font> GetTok; u:= Expression()
+                          <font color="#4169E1">ELSE</font> SyntaxError(9) <strong><font color="#4169E1">END</font></strong>;
+             u:=LIST2(s,u); u:=Generate(becomes,u);
+             y:=COMP(u,y);
+             <font color="#4169E1">IF</font> tok = comma <font color="#4169E1">THEN</font> GetTok
+             ELSIF tok # period <font color="#4169E1">THEN</font> SyntaxError(10) <strong><font color="#4169E1">END</font></strong>
+             <font color="#4169E1">UNTIL</font> tok = period;
+<font color="#B22222">(*3*)</font> x:=INV(x); y:=INV(y);
+      x:=LIST2(x,any); x:=Generate(<strong><font color="#228B22">var</font></strong>,x);
+      y:=COMP(x,y);
+      y:= Generate(<strong><font color="#4169E1">begin</font></strong>,y);
+      RETURN(y);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PrCoDec;
+
+
+<strong><font color="#4169E1">PROCEDURE ArrayDec</font></strong>(): LIST;
+<font color="#B22222">(* parse array declarations and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s, t, u: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> s:= SIL; u:= SIL;
+      GetTok;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font>
+             <font color="#4169E1">IF</font> tok = ident <font color="#4169E1">THEN</font> s:= tokval; 
+                                 GetTok; 
+                            <font color="#4169E1">ELSE</font> SyntaxError(1) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> tok = lbrack <font color="#4169E1">THEN</font> GetTok
+                             <font color="#4169E1">ELSE</font> SyntaxError(11) <strong><font color="#4169E1">END</font></strong>;
+             t:=TermList(); 
+             t:=LIST2(s,t); t:=Generate(array,t);
+             u:=COMP(t,u);
+             <font color="#4169E1">IF</font> tok = rbrack <font color="#4169E1">THEN</font> GetTok;
+                             <font color="#4169E1">ELSE</font> SyntaxError(12) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> tok = comma <font color="#4169E1">THEN</font> GetTok
+                ELSIF tok # period <font color="#4169E1">THEN</font> SyntaxError(10) <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> tok = period; 
+<font color="#B22222">(*3*)</font> u:= INV(u); u:=LIST2(u,any);
+      t:= Generate(<strong><font color="#228B22">var</font></strong>,u);
+      RETURN(t);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ArrayDec;
+
+
+<strong><font color="#4169E1">PROCEDURE CondSeq</font></strong>(): LIST;
+<font color="#B22222">(* parse codition sequences and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> c,cl,t: LIST;
+   oper: Token;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL;
+  cl:= SIL;
+  c:= Condition();
+  cl:= COMP(c,cl);
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">and</font> <font color="#4169E1">THEN</font> oper:= tok;
+                    GetTok;
+                    <font color="#4169E1">REPEAT</font>
+                      c:= Condition();
+                      cl:= COMP(c,cl);
+                      <font color="#4169E1">IF</font> tok = <font color="#4169E1">and</font> <font color="#4169E1">THEN</font> GetTok <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">IF</font> tok = <font color="#4169E1">or</font> <font color="#4169E1">THEN</font> SyntaxError(30) <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">UNTIL</font> (tok = <font color="#4169E1">then</font>) <font color="#4169E1">OR</font> (tok = <font color="#4169E1">until</font>) <font color="#4169E1">OR</font> (tok = <font color="#4169E1">do</font>) 
+                           <font color="#4169E1">OR</font> (tok = period) <font color="#4169E1">OR</font> (tok = <strong><font color="#4169E1">end</font></strong>) <font color="#4169E1">OR</font> (tok = rparen)
+                           <font color="#4169E1">OR</font> (tok = semicolon) <font color="#4169E1">OR</font> (tok = rbrace) 
+                           <font color="#4169E1">OR</font> (tok = <font color="#4169E1">or</font>);
+                    <font color="#4169E1">IF</font> cl # SIL <font color="#4169E1">THEN</font> cl:= INV(cl) <strong><font color="#4169E1">END</font></strong>;
+                    t:= Generate(oper,cl);    
+  ELSIF tok = <font color="#4169E1">or</font> <font color="#4169E1">THEN</font> oper:= tok;
+                      GetTok;
+                      <font color="#4169E1">REPEAT</font>
+                        c:= Condition();
+                        cl:= COMP(c,cl);
+                        <font color="#4169E1">IF</font> tok = <font color="#4169E1">or</font> <font color="#4169E1">THEN</font> GetTok <strong><font color="#4169E1">END</font></strong>;
+                        <font color="#4169E1">IF</font> tok = <font color="#4169E1">and</font> <font color="#4169E1">THEN</font> SyntaxError(30) <strong><font color="#4169E1">END</font></strong>;
+                      <font color="#4169E1">UNTIL</font> (tok = <font color="#4169E1">then</font>) <font color="#4169E1">OR</font> (tok = <font color="#4169E1">until</font>) <font color="#4169E1">OR</font> (tok = <font color="#4169E1">do</font>) 
+                            <font color="#4169E1">OR</font> (tok = period) <font color="#4169E1">OR</font> (tok = <strong><font color="#4169E1">end</font></strong>) <font color="#4169E1">OR</font> (tok = rparen)
+                            <font color="#4169E1">OR</font> (tok = semicolon) <font color="#4169E1">OR</font> (tok = rbrace) 
+                            <font color="#4169E1">OR</font> (tok = <font color="#4169E1">and</font>);
+                      <font color="#4169E1">IF</font> cl # SIL <font color="#4169E1">THEN</font> cl:= INV(cl) <strong><font color="#4169E1">END</font></strong>;
+                      t:= Generate(oper,cl);
+  <font color="#4169E1">ELSE</font> t:=c
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> CondSeq;
+
+
+<strong><font color="#4169E1">PROCEDURE Condition</font></strong>():LIST;
+<font color="#B22222">(* parse condition and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t,u: LIST;
+    oper: Token;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  t:= SIL;
+  <font color="#4169E1">IF</font> tok = <font color="#4169E1">not</font> <font color="#4169E1">THEN</font> GetTok;
+                    t:= Condition();
+                    t:= Generate(<font color="#4169E1">not</font>,LIST1(t))
+  ELSIF tok = lparen <font color="#4169E1">THEN</font> GetTok;
+                          t:= CondSeq();
+                          <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> GetTok
+                                          <font color="#4169E1">ELSE</font> SyntaxError(2)
+                          <strong><font color="#4169E1">END</font></strong>
+  <font color="#4169E1">ELSE</font> u:= Expression(); 
+       <font color="#4169E1">IF</font> (eql &lt;= tok) <font color="#4169E1">AND</font> (tok &lt;= geq) <font color="#4169E1">THEN</font> oper:= tok; GetTok;
+                                             s:= Expression();
+                                             t:= LIST2(u,s);
+                                             t:= Generate(oper,t);
+                                         <font color="#4169E1">ELSE</font> SyntaxError(11) 
+       <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>; 
+  RETURN(t);                 
+<strong><font color="#4169E1">END</font></strong> Condition;             
+    
+
+<strong><font color="#4169E1">PROCEDURE IdentifierList</font></strong>(): LIST;
+<font color="#B22222">(* parse identifierlist; result is a inverted list *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s:=SIL;
+  LOOP <font color="#4169E1">IF</font> tok = ident <font color="#4169E1">THEN</font> s:=COMP(tokval,s); GetTok
+                      <font color="#4169E1">ELSE</font> SyntaxError(1) <strong><font color="#4169E1">END</font></strong>;
+       <font color="#4169E1">IF</font> tok = comma <font color="#4169E1">THEN</font> GetTok  
+       ELSIF tok = semicolon <font color="#4169E1">THEN</font> EXIT;
+       ELSIF tok = rparen <font color="#4169E1">THEN</font> EXIT
+       ELSIF tok = period <font color="#4169E1">THEN</font> EXIT
+       <font color="#4169E1">ELSE</font> SyntaxError(35); EXIT 
+            <strong><font color="#4169E1">END</font></strong>;
+       <strong><font color="#4169E1">END</font></strong>;
+  s:=INV(s);
+  RETURN(s);
+<strong><font color="#4169E1">END</font></strong> IdentifierList;  
+
+
+<strong><font color="#4169E1">PROCEDURE TermList</font></strong>(): LIST;
+<font color="#B22222">(* parse termlist *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s:= SIL; t:= SIL;
+  <font color="#4169E1">REPEAT</font>
+    s:= Expression(); 
+    t:= COMP(s,t); 
+    <font color="#4169E1">IF</font> tok = comma <font color="#4169E1">THEN</font> GetTok <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">UNTIL</font> (tok = <font color="#4169E1">do</font>) <font color="#4169E1">OR</font> (tok = semicolon) <font color="#4169E1">OR</font> (tok = rparen) <font color="#4169E1">OR</font> (tok = rbrack);
+  t:= INV(t);
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> TermList;
+
+
+<strong><font color="#4169E1">PROCEDURE Expression</font></strong>(): LIST;
+<font color="#B22222">(* parse expressions and generate code *)</font>
+<strong><font color="#228B22">VAR</font></strong> s,t,u: LIST;
+    oper: Token;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  s:= SIL; t:= SIL; u:= SIL;
+  <font color="#4169E1">IF</font> (plus &lt;= tok) <font color="#4169E1">AND</font> (tok &lt;= minus) <font color="#4169E1">THEN</font> oper:= tok;
+     GetTok; s:= Term();
+     <font color="#4169E1">IF</font> oper = minus <font color="#4169E1">THEN</font> s:= Generate(oper,LIST1(s)) <strong><font color="#4169E1">END</font></strong>
+  <font color="#4169E1">ELSE</font> s:= Term() <strong><font color="#4169E1">END</font></strong>; 
+  <font color="#4169E1">WHILE</font> (plus &lt;= tok) <font color="#4169E1">AND</font> (tok &lt;= minus) <font color="#4169E1">DO</font>
+    oper:= tok; GetTok;
+    u:= Term(); t:= LIST2(s,u);
+    s:= Generate(oper,t);
+  <strong><font color="#4169E1">END</font></strong>; 
+  RETURN(s);
+<strong><font color="#4169E1">END</font></strong> Expression;
+
+
+<strong><font color="#4169E1">PROCEDURE Term</font></strong>(): LIST;
+<font color="#B22222">(*Parse term and generate code. *)</font>
+<strong><font color="#228B22">VAR</font></strong> s, t, u: LIST;
+    oper: Token;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  s:=Factor();
+  <font color="#4169E1">WHILE</font> (times &lt;= tok) <font color="#4169E1">AND</font> (tok &lt;= mod) <font color="#4169E1">DO</font>
+    oper:=tok; 
+    GetTok; 
+    u:=Factor(); 
+    t:=LIST2(s,u); 
+    s:=Generate(oper,t); 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(s);
+<strong><font color="#4169E1">END</font></strong> Term;
+
+
+<strong><font color="#4169E1">PROCEDURE Factor</font></strong>(): LIST;
+<font color="#B22222">(*Parse factor and generate code. *)</font>
+<strong><font color="#228B22">VAR</font></strong> s, t, u: LIST;
+    oper: Token;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  s:=Potency();
+  <font color="#4169E1">WHILE</font> tok = power <font color="#4169E1">DO</font>
+    oper:=tok; 
+    GetTok; 
+    u:=Potency(); 
+    t:=LIST2(s,u); 
+    s:=Generate(oper,t); 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(s);
+<strong><font color="#4169E1">END</font></strong> Factor;
+
+
+<strong><font color="#4169E1">PROCEDURE Potency</font></strong>(): LIST;
+<font color="#B22222">(*Parse potency and generate code. *)</font>
+<strong><font color="#228B22">VAR</font></strong> s, t, u: LIST;
+    oper: Token;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  t:=SIL; s:= SIL; u:= SIL;
+  SyntaxTest(lparen,34);
+  <font color="#4169E1">IF</font> tok = ident <font color="#4169E1">THEN</font> t:=tokval; GetTok;
+                      <font color="#4169E1">IF</font> tok = lparen <font color="#4169E1">THEN</font> GetTok;
+                                       u:= TermList();
+                                       GetTok; 
+                                       t:=COMP(t,u); 
+                                       <font color="#B22222">(* generate function call *)</font>
+                       ELSIF tok = sil <font color="#4169E1">THEN</font> u:= SIL;
+                                            GetTok;
+                                            t:= COMP(t,LIST1(u))
+                       ELSIF tok = lbrack <font color="#4169E1">THEN</font> GetTok;
+                                            s:= TermList();
+                                            t:= LIST2(t,s);
+                                            t:= Generate(array,t);
+                                            <font color="#4169E1">IF</font> tok = rbrack <font color="#4169E1">THEN</font> GetTok
+                                               <font color="#4169E1">ELSE</font> SyntaxError(12);
+                                            <strong><font color="#4169E1">END</font></strong>
+                        <strong><font color="#4169E1">END</font></strong>;
+  ELSIF tok = number <font color="#4169E1">THEN</font> t:= tokval; 
+                          GetTok
+  ELSIF tok = string <font color="#4169E1">THEN</font> t:=tokval; 
+                          t:=Generate(string,t); 
+                          GetTok; 
+  ELSIF tok = lparen <font color="#4169E1">THEN</font> GetTok; 
+                          t:=Expression(); <font color="#B22222">(*already code*)</font>
+                          <font color="#4169E1">IF</font> tok = rparen <font color="#4169E1">THEN</font> GetTok <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>
+  ELSIF tok = sil <font color="#4169E1">THEN</font> t:= SIL; 
+                       GetTok
+  <font color="#4169E1">ELSE</font> SyntaxError(3); GetTok <strong><font color="#4169E1">END</font></strong>;
+  RETURN(t);
+<strong><font color="#4169E1">END</font></strong> Potency;
+
+
+<strong><font color="#4169E1">PROCEDURE Variable</font></strong>(): LIST;
+<font color="#B22222">(* parse variable. identifier or array *)</font>
+<strong><font color="#228B22">VAR</font></strong>   s, t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> t:= SIL; s:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> tok = ident <font color="#4169E1">THEN</font> s:= tokval; GetTok; 
+                     <font color="#4169E1">ELSE</font> SyntaxError(1) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> tok = lbrack <font color="#4169E1">THEN</font> GetTok; t:= TermList();
+         s:=LIST2(s,t); s:=Generate(array,s); 
+         <font color="#4169E1">IF</font> tok = rbrack <font color="#4169E1">THEN</font> GetTok; 
+                         <font color="#4169E1">ELSE</font> SyntaxError(2) <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(s) 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Variable;
+
+
+<font color="#B22222">(**************************************************************************)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(*                       Code generation                                  *)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(**************************************************************************)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE Generate</font></strong>(s: Token; t: LIST): LIST;
+<font color="#B22222">(* Generate code for token s *)</font>
+<strong><font color="#228B22">VAR</font></strong> code: LIST;
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+  <font color="#4169E1">CASE</font> s <font color="#4169E1">OF</font> 
+       power  : code:=COMP(POW,t) |
+       times  : code:=COMP(MUL,t) |
+       plus   : code:=COMP(ADD,t) |
+       minus  : code:=COMP(SUB,t) |
+       div    : code:=COMP(QUOT,t) |
+       mod    : code:=COMP(REM,t) | 
+       neq    : code:=COMP(NEQS,t) |
+       eql    : code:=COMP(EQS,t) |
+       lss    : code:=COMP(LTS,t) |
+       leq    : code:=COMP(LEQ,t) |
+       gtr    : code:=COMP(GTS,t) |
+       geq    : code:=COMP(GEQ,t) |
+       <font color="#4169E1">and</font>    : code:=COMP(UND,t) |
+       <font color="#4169E1">or</font>     : code:=COMP(ODER,t) |
+     becomes  : code:=COMP(SETAV,t) |
+       <font color="#4169E1">if</font>     : code:=COMP(IFS,t) |
+       <font color="#4169E1">case</font>   : code:=COMP(COND,t) |
+       <font color="#4169E1">not</font>    : code:=COMP(NOTS,t) |
+       <strong><font color="#228B22">var</font></strong>    : code:=COMP(VARS,t) |
+       array  : code:=COMP(ARY,LIST1(t)) |
+       pragma : code:=COMP(prag,t) |
+       <strong><font color="#4169E1">begin</font></strong>  : <font color="#4169E1">IF</font> t = SIL <font color="#4169E1">THEN</font> code:=t
+                   ELSIF RED(t) = SIL <font color="#4169E1">THEN</font> code:=FIRST(t)
+                   <font color="#4169E1">ELSE</font> code:=COMP(PROGN,t) <strong><font color="#4169E1">END</font></strong> |
+       <font color="#4169E1">while</font>  : code:=COMP(WHL,t) |
+       begald : code:=COMP(PROGA,t) |
+       <font color="#4169E1">repeat</font> : code:=COMP(RPT,t) |
+          <font color="#4169E1">for</font> : code:=Genfor(t) |
+        print : code:=COMP(prnt,LIST1(t)) |
+         goto : code:=COMP(GTO,LIST1(t)) | 
+        label : code:=COMP(LBEL,LIST1(t))  |
+        ident : <font color="#4169E1">IF</font> RED(t) = SIL <font color="#4169E1">THEN</font> code:=FIRST(t)
+                                <font color="#4169E1">ELSE</font> code:= COMP(DE,t)
+                <strong><font color="#4169E1">END</font></strong>  |
+          sil : code:=t |
+    procedure : code:=COMP(DE,t) | 
+       return : code:=COMP(ret,t) |
+       string : code:=COMP(STRNG,t) 
+         <font color="#4169E1">ELSE</font>   code:=LIST2(QUOTE,t); 
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(code);
+<strong><font color="#4169E1">END</font></strong> Generate;
+
+
+<strong><font color="#4169E1">PROCEDURE Genfor</font></strong>(t: LIST): LIST;
+<font color="#B22222">(* generate code for "for - statement" *)</font>
+<strong><font color="#228B22">VAR</font></strong> h1,h2,h3,h4,i,t1,t2,t3,s,w,v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*0*)</font> FIRST5(t,i,t1,t2,t3,s);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*start and step size *)</font>
+      h1:= LIST2(i,t1);
+      h1:= Generate(becomes,h1);        <font color="#B22222">(* (Assign i t1) *)</font>
+      h1:= LIST1(h1);
+      <font color="#4169E1">IF</font> t2 # SIL <font color="#4169E1">THEN</font> w:= GENSYM();
+         h2:= LIST2(t2,t1);
+         h2:= Generate(minus,h2);  <font color="#B22222">(* (sub t2 t1) *)</font>
+         h2:= LIST2(w,h2);
+         h2:= Generate(becomes,h2); <font color="#B22222">(* (Assign w (sub t2 t1)) *)</font>
+         h1:= COMP(h2,h1);   <font color="#B22222">(* (Assign ...)  (Assign i t1) *)</font>
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*step direction *)</font> 
+      <font color="#4169E1">IF</font> t2 # SIL <font color="#4169E1">THEN</font> 
+         v:=  GENSYM();  
+         h2:= LIST2(v,-1);
+         h2:= Generate(becomes,h2);   <font color="#B22222">(* (Assign v -1) *)</font>
+         h2:= LIST1(h2); 
+         h3:= LIST2(v,1);
+         h3:= Generate(becomes,h3);   <font color="#B22222">(* (Assign v +1) *)</font>
+         h2:= COMP(h3,h2);            <font color="#B22222">(* (Assign v +1) (Assign v -1) *)</font>
+         h3:= LIST2(0,w);
+         h3:= Generate(leq,h3);   <font color="#B22222">(* (LE 0 w) *)</font>
+         h2:= COMP(h3,h2);        <font color="#B22222">(* (LE 0 w) (Assign v +1) (Assign v -1) *)</font>
+         h2:= Generate(<font color="#4169E1">if</font>,h2); <font color="#B22222">(* (IFS (LE 0 w) ... (Assign v -1) *)</font>
+         h1:= COMP(h2,h1);   <font color="#B22222">(* (IFS ... ) (Gensym()) ... (Assign i t1) *)</font>
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*loop condition *)</font>
+      <font color="#4169E1">IF</font> t2 = SIL <font color="#4169E1">THEN</font> h2:=LIST2(i,t3)  <font color="#B22222">(* (LE i t3) *)</font>
+         <font color="#4169E1">ELSE</font> h2:= LIST2(t3,i);
+         h2:= Generate(minus,h2);      <font color="#B22222">(* (sub t3 i) *)</font>
+         h2:= LIST2(v,h2);
+         h2:= Generate(times,h2);      <font color="#B22222">(* (mul v (sub t3 i)) *)</font>
+         h2:= LIST2(0,h2);
+         <strong><font color="#4169E1">END</font></strong>;
+      h2:= Generate(leq,h2);        <font color="#B22222">(* (LE 0 (mul v (sub t3 i))) *)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*loop body with increment *)</font>
+      <font color="#4169E1">IF</font> t2 = SIL <font color="#4169E1">THEN</font> h3:= LIST2(i,1)
+                  <font color="#4169E1">ELSE</font> h3:= LIST2(i,w) <strong><font color="#4169E1">END</font></strong>;
+
+      h3:= Generate(plus,h3);   <font color="#B22222">(* (Add i w) *)</font>
+      h3:= LIST2(i,h3);
+      h3:= Generate(becomes,h3);    <font color="#B22222">(* (Assign i (Add i w)) *)</font>
+      h3:= LIST2(s,h3);             <font color="#B22222">(* (s (Assign i (Add i w))) *)</font>
+      h3:= Generate(<strong><font color="#4169E1">begin</font></strong>,h3);      <font color="#B22222">(* (PROGN s (Assign i...)))) *)</font>   
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*initialization and while *)</font>
+      h3:= LIST1(h3);    
+      h2:= COMP(h2,h3);             <font color="#B22222">(* (LE 0 ... ))) (PROGN ...    )))) *)</font>
+      h2:= Generate(<font color="#4169E1">while</font>,h2);      <font color="#B22222">(* (WHL (LE ...))) (PROGN ... ))))) *)</font>
+      h1:= COMP(h2,h1);             <font color="#B22222">(* (WHL ... ) ....  (Assign i t1) *)</font>
+      h1:= INV(h1);
+      h1:= Generate(<strong><font color="#4169E1">begin</font></strong>,h1);      <font color="#B22222">(* (PROGN (WHL ... )... (Assign i t1)) *)</font>
+      RETURN(h1);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> Genfor;
+          
+
+<strong><font color="#4169E1">PROCEDURE CaseLabel</font></strong>(v: LIST): LIST;
+<font color="#B22222">(* generate code for "case - statement" *)</font>
+<strong><font color="#228B22">VAR</font></strong>   h1,a,c,C,s,L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> FIRST3(v,a,C,s);
+      L:= SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> C # SIL <font color="#4169E1">DO</font> ADV(C,c,C);
+            h1:= LIST2(a,c);
+            h1:= Generate(eql,h1);            <font color="#B22222">(* (EQ a ci) *)</font>
+            <font color="#4169E1">IF</font> L = SIL <font color="#4169E1">THEN</font> L:=h1             <font color="#B22222">(* (EQ a c1) *)</font>
+                       <font color="#4169E1">ELSE</font> L:=LIST2(L,h1);   <font color="#B22222">(* (OR L (EQ a ci)) *)</font>
+                            L:=Generate(<font color="#4169E1">or</font>,L) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;  <font color="#B22222">(* WHILE *)</font>
+<font color="#B22222">(*3*)</font> L:= LIST2(L,s);  <font color="#B22222">(* (cond,s) *)</font>
+      RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CaseLabel;
+
+
+<font color="#B22222">(**************************************************************************)</font>
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(*       Initialization of Scanner and Parser                             *)</font>  
+<font color="#B22222">(*                                                                        *)</font>
+<font color="#B22222">(**************************************************************************)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE InitAscanner</font></strong>;
+<font color="#B22222">(*Initialize scanner procedures. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  Declare(KW,"AldesKeyWord");
+  <font color="#B22222">(* Enter key words *)</font>
+  KeyWord(<font color="#4169E1">do</font>,"<font color="#4169E1">do</font>");
+  KeyWord(<font color="#4169E1">if</font>,"<font color="#4169E1">if</font>");
+  KeyWord(<font color="#4169E1">case</font>,"<font color="#4169E1">case</font>");
+  KeyWord(<font color="#4169E1">of</font>,"<font color="#4169E1">of</font>");
+  KeyWord(<font color="#4169E1">then</font>,"<font color="#4169E1">then</font>");
+  KeyWord(<font color="#4169E1">else</font>,"<font color="#4169E1">else</font>");
+  KeyWord(<font color="#4169E1">while</font>,"<font color="#4169E1">while</font>");
+  KeyWord(<font color="#4169E1">for</font>,"<font color="#4169E1">for</font>");
+  KeyWord(<font color="#4169E1">until</font>,"<font color="#4169E1">until</font>");
+  KeyWord(<font color="#4169E1">repeat</font>,"<font color="#4169E1">repeat</font>");
+  KeyWord(safe,"safe");
+  KeyWord(global,"global");
+  KeyWord(intrinsic,"intrinsic");
+  KeyWord(pragma,"pragma");
+  KeyWord(<strong><font color="#228B22">const</font></strong>,"<strong><font color="#228B22">const</font></strong>");
+  KeyWord(array,"array");
+  KeyWord(<font color="#4169E1">To</font>,",...,");
+  KeyWord(goto,"goto");
+  KeyWord(go,"go");
+  KeyWord(<font color="#4169E1">to</font>,"<font color="#4169E1">to</font>");
+  KeyWord(print,"print");
+  KeyWord(return,"return")
+<strong><font color="#4169E1">END</font></strong> InitAscanner;
+
+
+<strong><font color="#4169E1">PROCEDURE InitAparser</font></strong>;
+<font color="#B22222">(*Initialize parser and scanner procedures. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   X, s, v: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  InitAscanner; 
+  Compiledp1(CLOUT,"PRINT"); 
+  Declare(prnt,"PRINT"); 
+  Declare(any,"ANY");
+  Declare(ret,"RETURN");
+  Declare(prag,"PRAGMA");
+<font color="#B22222">(*3*)</font> blv:=SIL; LISTVAR(blv); 
+      X:=ENV; 
+      <font color="#4169E1">WHILE</font> X &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(X,s,v,X);
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> MEMQ(s,blv) <font color="#4169E1">THEN</font> blv:=COMP(s,blv) <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> InitAparser;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+      InitAparser;
+<strong><font color="#4169E1">END</font></strong> ALDPARSE.            
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

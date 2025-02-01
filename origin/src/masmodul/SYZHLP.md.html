@@ -1,0 +1,228 @@
+
+<html>
+<head>
+<title>./masmodul/SYZHLP.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:33:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SYZHLP.md,v 1.2 1992/02/12 17:33:18 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SYZHLP.md,v $
+ * Revision 1.2  1992/02/12  17:33:18  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:12:44  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SYZHLP;
+
+<font color="#B22222">(* Syzygy Utility Programs Definition Module. *)</font>
+
+
+<font color="#B22222">(* Author: J. Philipp, Uni Passau, 1991. *)</font>
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SYZHLP.md,v 1.2 1992/02/12 17:33:18 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ALFA</font></strong>(L : LIST);
+<font color="#B22222">(* Automatic Linear Form Adaption. Fuehrt bei einer gegebenen Linearform
+von EVORD L neue Variablen mit Graden groesser als der hoechste Grad
+der EVORD-Polynome ein. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ALFRA</font></strong>(L : LIST);
+<font color="#B22222">(* Automatic Linear Form Readaption. Gegenstueck zu ALFA. Reduziert bei
+gegebener Linearform von EVORD die fuehrenden L Polynome. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ADDPPOS</font></strong>(PL, P, POS : LIST): LIST;
+<font color="#B22222">(* Add Polynomial P at Position. Gegeben ist eine Polynomliste PL. Dann 
+wird P an der POS-ten Position dieser Liste zu dem dort vorhandenen Polynom
+addiert. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PLWR</font></strong>(PL, VL : LIST);
+<font color="#B22222">(* Polynomial List Write. Am Bildschirm wird die Polynomliste PL bzgl.
+der Variablenliste VL ausgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PMWR</font></strong>(PM, VL : LIST);
+<font color="#B22222">(* Polynomial Matrix Write. Am Bildschirm wird die Polynommatrix PM 
+(Liste ueber Listen) bzgl. der Variablenliste VL ausgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APP0</font></strong>(PM : LIST): LIST;
+<font color="#B22222">(* Append 0. Haengt an jede Polynomliste von PM das Nullpolynom an. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ADDLAST</font></strong>(P, PL : LIST): LIST;
+<font color="#B22222">(* Add last Polynomial. Addiert das Polynom P zum letzten Polynom der
+Polynomliste PL. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE POS</font></strong>(P, PL : LIST): LIST;
+<font color="#B22222">(* Position of Polynomial. Bestimmt die Position des Polynoms P in der
+Polynomliste PL. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE POL</font></strong>(PL, POS : LIST): LIST;
+<font color="#B22222">(* Polynomial at Position. Bestimmt das Polynom an der POS-ten Stelle in 
+der Polynomliste PL. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GENPOSV</font></strong>(GB, GBR : LIST): LIST;
+<font color="#B22222">(* Generate Postion Vector. Gegeben ist eine Groebner Basis GB und die dazu-
+gehoerige diskret reduzierte Groebner Basis GBR. Bestimmt wird nun ein
+Vektor mit Nullen und Einsen, bei dem die Einsen an der Position stehen,
+an der ein Polynom aus GB nicht ganz zu Null reduziert werden konnte.
+Zusaetzlich bleiben immer mindestens zwei Polynome aus GB uebrig.
+Bsp.: GB = (P1, P2, P3), GBR = (P2, P3), dann ist POSV = (0, 1, 1). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE INSPOSV</font></strong>(PM, POSV : LIST): LIST;
+<font color="#B22222">(* Insert Position Vector. Fuegt bei der Polynommatrix PM in jede Polynomliste
+PL Nullen an den Stellen ein, an denen bei POSV auch Nullen stehen.
+Bsp.: Sei eine Polynomliste PLi = (P1, P2, P3), und sei
+POSV = (0, 1, 0, 1, 1, 0, 0). Dann wird als neue Polynomliste
+(0, P1, 0, P2, P3, 0, 0) an die Matrix zurueckgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EXPPL</font></strong>(P, GB : LIST): LIST;
+<font color="#B22222">(* Exclude P from GB. Loescht das Polynom P aus der Polynomliste GB. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EX0PL</font></strong>(PL : LIST): LIST;
+<font color="#B22222">(* Exclude 0 from PL. Loescht alle Nullen aus der Polynomliste PL. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVF</font></strong>(EV, L : LIST): LIST;
+<font color="#B22222">(* Exponent Vector First. Liefert die ersten L Stellen des Exponentenvektors
+EV zurueck. Bsp.: Sei EV = (4, 3, 0, 1, 9), und sei L = 3, dann wird 
+(4, 3, 0) zurueckgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVR</font></strong>(PM, L : LIST): LIST;
+<font color="#B22222">(* Exponent Vector Reduction. Bei der Polynommatrix PM wird jeder
+Exponentenvektor jeden Polynoms um die ersten L Stellen gekuerzt. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MREAD</font></strong>(VL : LIST): LIST;
+<font color="#B22222">(* Matrix Read. Liest eine Polynommatrix entsprechend der Variablenliste 
+VL und der gegebenen Einheit (Textdatei, "Bildschirm") ein. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NMREAD</font></strong>(VL, T : LIST): LIST;
+<font color="#B22222">(* Non-Commutative Matrix Read. Liest eine Polynommatrix mit nicht-
+kommutativen Polynomen entsprechend der Variablenliste VL, der Relations-
+matrix T und der gegebenen Einheit (Textdatei, "Bildschirm") ein. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE TA</font></strong>(L : LIST; T : LIST): LIST;
+<font color="#B22222">(* T Adaption. Die Exponentenvektoren jeden Polynoms in der Polynomliste T
+werden um L Stellen erweitert. Bsp.: Sei EV = (2, 1, 3) und L = 2, 
+dann wird EV zu (0, 0, 2, 1, 3). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE TR</font></strong>(L : LIST; T : LIST): LIST;
+<font color="#B22222">(* T Readaption. Die Exponentenvektoren jeden Polynoms in der Polynomliste 
+T werden um L Stellen gekuerzt. Bsp.: Sei EV = (0, 0, 2, 1, 3) und 
+L = 2, dann wird EV zu (2, 1, 3). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NEXTPAIR</font></strong>(<strong><font color="#228B22">VAR</font></strong> P1, P2, PPL : LIST);
+<font color="#B22222">(* Next Pair of Polynomials. Bestimmt aus der Polynompaarliste PPL das
+naechste Paar P1, P2 von Polynomen. Gleichzeitig wird dieses Paar aus
+der Liste entfernt. Siehe Groebner Basis Algorithmen! *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVT</font></strong>(P1, P2, L : LIST): LIST;
+<font color="#B22222">(* Exponent Vector Test. Ueberprueft, ob die Exponentenvektoren der HT der
+Polynome P1 und P2 in den fuehrenden L Stellen uebereinstimmen. Ist dies
+der Fall, dann wird die 1, ansonsten die 0 zurueckgegeben. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WRS1</font></strong>(SZ, C1, C2, C3 : LIST);
+<font color="#B22222">(* Write Situation. Ausgegben wird die CPU-Zeit minus eine Startzeit SZ,
+die Anzahl der H-Polynome C1, die Anzahl der S-Polynome C2 und die
+Anzahl der uebrigen Paare von Polynomen C3. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE WRS2</font></strong>(SZ, C1, TW1, C2, SPN, C3 : LIST);
+<font color="#B22222">(* Write Situation. Ausgegben wird die CPU-Zeit minus eine Startzeit SZ,
+die Anzahl der H-Polynome C1 und das letzte H-Polynom, die Anzahl der
+S-Polynome C2 und das letzte S-Polynom, sowie die Anzahl der uebrigen
+Paare von Polynomen C3. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVL</font></strong>(PM : LIST) : LIST;
+<font color="#B22222">(* Exponent Vector Length. Bestimmt in einer Polynommatrix PM die Laenge des
+Exponentenvektors des ersten Polynoms ungleich dem Nullpolynom. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NORMF</font></strong>(<strong><font color="#228B22">VAR</font></strong> PL, GBTM : LIST);
+<font color="#B22222">(* Normative Factors. Berechnet eine Matrix GBTM, auf deren Hauptdiagonalen
+die Normfaktoren der Polynome der Polynomliste PL stehen. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE GBTMRED</font></strong>(GBTM, POSV : LIST) : LIST;
+<font color="#B22222">(* GBTM Reduction. Reduziert die Spalten von GBTM entsprechend der
+auftretenden Nullen in POSV. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MTPLV</font></strong>(PM : LIST; <strong><font color="#228B22">VAR</font></strong> L : LIST): LIST;
+<font color="#B22222">(* Matrix to Polynomial List Vertical. Erzeugt eine Polynomliste PL derart,
+dass L (gleich Zeilenzahl) neue verschiedene Variablen mit der Matrix
+multipliziert werden (1. Variable mit der 1. Zeile, ...), und anschliessend
+die so erhaltene Matrix spaltenweise aufaddiert wird. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE PLVTM</font></strong>(PL, L : LIST): LIST;
+<font color="#B22222">(* Polynomial List Vertical To Matrix. Das Gegenstueck zu MTPLV. Beachtet
+werden mua hierbei nur, dass Anteile der Polynome aus der Polynomliste PL
+enstprechend der L neu eingefuehrten Variablen wieder in eine Matrix
+zerlegt werden, d.h. das erste Polynom der Polynomliste PL verteilt sich
+in der ersten Spalte, ... . *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MTPLH</font></strong>(PM : LIST; <strong><font color="#228B22">VAR</font></strong> L : LIST): LIST;
+<font color="#B22222">(* Matrix to Polynomial List Horizontal. Erzeugt eine Polynomliste PL derart,
+dass L (gleich Spaltenzahl) neue verschiedene Variablen mit der Matrix
+multipliziert werden (1. Variable mit der 1. Spalte, ...), und anschlieaend
+die so erhaltene Matrix zeilenweise aufaddiert wird. *)</font>
+
+
+
+<strong><font color="#4169E1">PROCEDURE PLHTP</font></strong>(PL : LIST): LIST;
+<font color="#B22222">(* Polynomial List Horizontal To Polynomial. Jedes Polynom aus PL wird mit
+einer neuen , zu den anderen verschiedenen, Variablen multipliziert und
+zu einem Polynom aufaddiert. *)</font>
+
+
+
+<strong><font color="#4169E1">PROCEDURE VMADD</font></strong>(PM : LIST): LIST;
+<font color="#B22222">(* Vertical Matrix Addition. Erzeugt wird eine Polynomliste, deren Elemente
+aus den aufaddierten Spalten der Matrix PM gebildet wurden. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SYZHLP.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,129 @@
+
+<html>
+<head>
+<title>./maskern/LISTTOOLS.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T20:32:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: LISTTOOLS.mi,v 1.1 1994/11/28 20:32:51 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: LISTTOOLS.mi,v $
+ * Revision 1.1  1994/11/28  20:32:51  dolzmann
+ * New modules SYSINFO.md, SYSINFO.mi, LISTTOOLS.md, and LISTTOOLS.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE LISTTOOLS;
+<font color="#B22222">(* List Tools Implementation Module. *)</font>
+
+FROM MASBIOS	IMPORT	LETTER, MASORD;
+FROM MASELEM	IMPORT	GAMMAINT, MASEVEN;
+FROM MASSTOR	IMPORT	ADV, COMP, INV, LIST, SIL; 
+FROM SACLIST	IMPORT	EQUAL, LIST2, LIST5, SLELT; 
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: LISTTOOLS.mi,v 1.1 1994/11/28 20:32:51 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1994 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE CLISTFA</font></strong>(atom:LIST):LIST;
+<font color="#B22222">(* character list from atom. 
+The decimal printable representation of atom is returned as a character 
+list. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result:LIST;
+	<strong><font color="#228B22">VAR</font></strong> minus:BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">IF</font> atom&lt;0 <font color="#4169E1">THEN</font>
+		minus:=TRUE;
+		atom:=-atom;
+	<font color="#4169E1">ELSE</font>
+		minus:=FALSE;
+	<strong><font color="#4169E1">END</font></strong>;
+	<font color="#4169E1">REPEAT</font>
+		result:=COMP((atom MOD 10),result);
+		atom:=atom DIV 10;
+	<font color="#4169E1">UNTIL</font> atom=0;
+	<font color="#4169E1">IF</font> minus <font color="#4169E1">THEN</font> result:=COMP(MASORD("-"),result); <strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> CLISTFA; 
+
+
+<strong><font color="#4169E1">PROCEDURE LIST6</font></strong>(a1,a2,a3,a4,a5,a6:LIST):LIST;
+<font color="#B22222">(* list of 6 elements. The list (a1,a2,...a6) is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+	RETURN COMP(a1,LIST5(a2,a3,a4,a5,a6));
+<strong><font color="#4169E1">END</font></strong> LIST6;
+
+
+<strong><font color="#4169E1">PROCEDURE LPAIRS</font></strong>(L:LIST):LIST;
+<font color="#B22222">(* list pairs. L=(l1,...ln) is a list. A list containing all lists (li,lj),
+where li and lj are elements of L and i &lt;&gt; j is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> result, pointer, first, second: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(L,  first,L);
+		pointer:=L;
+		<font color="#4169E1">WHILE</font> pointer&lt;&gt;SIL <font color="#4169E1">DO</font>
+			ADV(pointer,  second,pointer);
+			result:=COMP(LIST2(first,second),result);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN result;
+<strong><font color="#4169E1">END</font></strong> LPAIRS;
+
+
+<strong><font color="#4169E1">PROCEDURE LSRCHQ</font></strong>(a,L:LIST):LIST;
+<font color="#B22222">(* List search equal. 
+a is an element, 
+L is a list.
+The first position of a in L is returned if a is member of L, 
+otherwise 0 is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> b,i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	i:=0;
+	<font color="#4169E1">WHILE</font> L&lt;&gt;SIL <font color="#4169E1">DO</font>
+		i:=i+1;
+		ADV(L,  b,L);
+		<font color="#4169E1">IF</font> EQUAL(a,b)=1 <font color="#4169E1">THEN</font> RETURN i; <strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN 0;
+<strong><font color="#4169E1">END</font></strong> LSRCHQ;
+
+
+<strong><font color="#4169E1">PROCEDURE UPCASE</font></strong>(clist:LIST):LIST;
+<font color="#B22222">(* upcase character list. 
+clist is a character list. All letters in clist are converted to upper case. 
+The result is returned. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> c:GAMMAINT;
+	<strong><font color="#228B22">VAR</font></strong> result:LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	result:=SIL;
+	<font color="#4169E1">WHILE</font> clist&lt;&gt;SIL <font color="#4169E1">DO</font>
+		ADV(clist,c,clist);
+		<font color="#4169E1">IF</font> LETTER(c) <font color="#4169E1">AND</font> MASEVEN(c) <font color="#4169E1">THEN</font>
+			result:=COMP(c+1,result);
+		<font color="#4169E1">ELSE</font>
+			result:=COMP(c,result);
+		<strong><font color="#4169E1">END</font></strong>;
+	<strong><font color="#4169E1">END</font></strong>;
+	RETURN INV(result);
+<strong><font color="#4169E1">END</font></strong> UPCASE;
+
+
+<strong><font color="#4169E1">END</font></strong> LISTTOOLS.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

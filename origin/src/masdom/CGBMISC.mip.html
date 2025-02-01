@@ -1,0 +1,1066 @@
+
+<html>
+<head>
+<title>./masdom/CGBMISC.mip</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T16:47:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: CGBMISC.mip,v 1.10 1996/06/08 16:47:13 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1992-1996 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: CGBMISC.mip,v $
+ * Revision 1.10  1996/06/08 16:47:13  pesch
+ * Reformatted, removed obsolete procedures.
+ *
+ * Revision 1.9  1996/04/24 12:09:55  pesch
+ * Used EVOWRITE instead of WRORD for writing term orders.
+ * Removed WRORD.
+ * Reformatted import lists.
+ *
+ * Revision 1.8  1996/04/23 13:52:31  pesch
+ * Corrected printing of options.
+ *
+ * Revision 1.7  1995/03/23  16:05:46  pesch
+ * Added new data structure Colp for coloured polynomials.
+ *
+ * Revision 1.6  1995/03/06  15:49:36  pesch
+ * Added new procedure GSYSF, Groebner system with factorization. This uses
+ * the new procedures GBSYSF and CONSGBF (also added).
+ *
+ * Added new procedures DIP2AD, AD2DIP and DIPPFACTAV.
+ *
+ * Fixed error in CHECK.
+ *
+ * New option for factorization of conditions: factorize with optimization
+ * of variable ordering.
+ *
+ * Revision 1.5  1994/04/14  16:46:11  dolzmann
+ * Syntactical errors (founded by Mocka) corrected.
+ *
+ * Revision 1.4  1994/04/10  17:58:39  pesch
+ * Added option to compute generic case (coeficients are considered
+ * rational functions, the necessary non-zero conditions are collected) only.
+ *
+ * Revision 1.3  1994/04/09  18:06:00  pesch
+ * Reformatted parts of the CGB sources. Updated comments in CGB*.md.
+ *
+ * Revision 1.2  1994/03/14  16:42:59  pesch
+ * Minor changes requested by A. Dolzmann
+ *
+ * Revision 1.1  1994/03/11  15:58:16  pesch
+ * Major changes to CGB.
+ * C-Preprocessor now used for .mip files. The corresponding .mi files have
+ * been removed.
+ * Many new CGB-Functions and fixes of old ones.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+#include "debug.h"
+
+IMPLEMENTATION MODULE CGBMISC;
+
+<font color="#B22222">(* Comprehensive-Groebner-Bases Miscellaneous Programs Implementation Module.*)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM ADTOOLS	IMPORT	ADDDFSTR;
+
+FROM CGBAPPL	IMPORT	CGBQUA, CPART, DIMEXE, GBHELP, GTEST, INTDIM, MCOEF,
+			NFEXEC, NSET, WRCONJ, WRDIMS, WRQFN0, WRTEST;
+
+FROM CGBDSTR	IMPORT	CondCons, CondEmpty, CondIsEmpty, CondNzero,
+			CondParts, CondZero;
+
+FROM CGBFUNC	IMPORT	ADDCON, AINB, CGBCOL, CGBFRM, CGBLM, CGBLPM, DCLWR,
+			DET, DETPOL, DWRIT, EQPLCL, FINDBC, FINDCP, FINDRM,
+			GREPOL, MKPOL, REDSRT, SETCOL, VERIFY, WMEMB, WRTERM; 
+
+FROM CGBSYS	IMPORT	ADDCGB, CHDEGL, CMULT, COLDIF, COLPRD, FINCOL,
+			FINDPI, GBDIFF, GBSYS, GBUPD, GLEXTP, GLOBRE, GRED,
+			GSRED, GSYSN0, KEYCOL, MINPP, MKACOL, MKCGB, MKCOL,
+			MKN0, MKN1, MKNEWP, MKPAIR, NFORM, NFTOP, PRSCOP,
+			RDNORM, REDUCT, REFIND, REXTP, RMGRT, SPOL, UPDPP,
+			VRNORM, WHSRT, WUPD;
+
+FROM DIPADOM	IMPORT	DIFIP, DILRD, DILWR, DIPBCP, DIPDIF, DIPEXP, DIPNEG,
+			DIPROD, DIPSUM, DIREAD, DIWRIT;
+
+FROM DIPC	IMPORT	DILBSO, DIPBSO, DIPERM, DIPEVL, DIPFMO, DIPFP,
+			DIPLBC, DIPLPM, DIPMAD, DIPMCP, DIPTDG, EVCOMP,
+			EVDIF, EVLCM, EVMT, EVORD, EVOWRITE, EVSIGN, EVSUM,
+			GRLEX, IGRLEX, INVLEX, LEX, PFDIP, REVILEX, REVITDG,
+			REVLEX, REVTDEG, VALIS; 
+
+FROM DIPI	IMPORT	DIIPAB, DIIPCP, DIIPIQ, DIIPNG, DIIPON, DIIPSG,
+			DIIPWR;
+
+FROM DIPIDGB	IMPORT	DIIPDNF;
+
+FROM DIPIGB	IMPORT	DIIGBA, DIIPGB, DIIPNF;
+
+FROM DIPTOO	IMPORT	DIPVOPP, INVPERM;
+
+FROM DIPTOOLS	IMPORT	ADDDFDIP, DIPFDIPP, DIPPFDIP;
+
+FROM IO		IMPORT	WriteI;
+
+FROM MASADOM	IMPORT	ADCNST, ADDDREAD, ADDDWRIT, ADDIF, ADEXP, ADFACT,
+			ADFACTO, ADFI, ADFIP, ADGCD, ADGCDC, ADINV, ADINVT,
+			ADLCM, ADNEG, ADONE, ADPROD, ADQUOT, ADREAD, ADSIGN,
+			ADSUM, ADTOIP, ADVLDD, ADWRIT, DomSummary;
+
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, DIGIT, LETTER, LISTS,
+			MASORD, SWRITE;
+
+FROM MASERR	IMPORT	ERROR, fatal, harmless, severe, spotless;
+
+FROM MASSTOR	IMPORT	ADV, BETA, COMP, FIRST, INV, LENGTH, LIST, LIST1,
+			LISTVAR, RED, SFIRST, SIL, SRED, TIME;
+
+FROM MASSYM2	IMPORT	SREAD1, UWRITE, UWRIT1;
+
+FROM SACLIST	IMPORT	ADV2, ADV3, AREAD, AWRITE, CINV, CLOUT, COMP2, COMP3,
+			CONC, EQUAL, FIRST2, FIRST3, FIRST4, FOURTH, LAST,
+			LIST2, LIST3, LIST4, LIST5, LWRITE, MEMBER, OWRITE,
+			RED2, SECOND, THIRD;
+
+FROM SACPFAC	IMPORT	IPFAC;
+
+FROM SACPOL	IMPORT	VLREAD, VLWRIT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: CGBMISC.mip,v 1.10 1996/06/08 16:47:13 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1992-1996 Universitaet Passau";
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* EVORD and VALIS handling                                                  *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#228B22">VAR</font></strong> EVORDSTACK: LIST; <font color="#B22222">(* Stack for EVORD-values, see EvordSet. *)</font>
+    VALISSTACK: LIST; <font color="#B22222">(* Stack for VALIS-values, see ValisSet. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE EvordSet</font></strong>(T: LIST);
+<font color="#B22222">(* EVORD set.
+T is a termorder.
+The global variable EVORD is set to T.
+The old value of EVORD is put on top of a stack and can be restored
+using EvordReset(). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(EvordSet);
+     EVORDSTACK:=COMP(EVORD,EVORDSTACK); 
+     EVORD:=T;
+<strong><font color="#4169E1">END</font></strong> EvordSet;
+
+<strong><font color="#4169E1">PROCEDURE EvordReset</font></strong>();
+<font color="#B22222">(* Reset evord.
+The global variable EVORD is set to the top element of EVORDSTACK.
+(EVORDSTACK is set by EvordSet().) *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(EvordReset);
+     <font color="#4169E1">IF</font> EVORDSTACK=SIL <font color="#4169E1">THEN</font> ERROR(severe, "Error in EvordReset. Stack empty.");
+     <font color="#4169E1">ELSE</font> ADV(EVORDSTACK, EVORD,EVORDSTACK); <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> EvordReset;
+
+<strong><font color="#4169E1">PROCEDURE ValisSet</font></strong>(V: LIST);
+<font color="#B22222">(* Set valis.
+V is a variables list. The global variable VALIS is set to T.
+The old value of VALIS is put on top of a stack and can be restored
+using ValisReset(). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(ValisSet);
+     VALISSTACK:=COMP(VALIS,VALISSTACK); 
+     VALIS:=V;
+<strong><font color="#4169E1">END</font></strong> ValisSet;
+
+<strong><font color="#4169E1">PROCEDURE ValisReset</font></strong>();
+<font color="#B22222">(* Reset valis.
+The global variable VALIS is set to the top element of VALISSTACK.
+(VALISSTACK is set by ValisSet().) *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(ValisReset);
+     <font color="#4169E1">IF</font> VALISSTACK=SIL <font color="#4169E1">THEN</font> ERROR(severe, "Error in ValisReset. Stack empty.");
+     <font color="#4169E1">ELSE</font> ADV(VALISSTACK, VALIS,VALISSTACK); <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ValisReset;
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* Sets                                                                      *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE SetInsert</font></strong>(e, A: LIST): LIST;
+<font color="#B22222">(* Set insert.
+A is a set.
+e is an element.
+Returns the set A U {e}.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(SetInsert);
+     <font color="#4169E1">IF</font> MEMBER(e,A)=1 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(COMP(e,A));
+<strong><font color="#4169E1">END</font></strong> SetInsert;
+
+<strong><font color="#4169E1">PROCEDURE SetUnion</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Set union.
+A is a set.
+B is a set.
+Returns the set A U B. *)</font>
+<strong><font color="#228B22">VAR</font></strong> e: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(SetInsert);
+     <font color="#4169E1">WHILE</font> B&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	  ADV(B, e,B);
+     	  A:=SetInsert(e,A);
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN(A);
+<strong><font color="#4169E1">END</font></strong> SetUnion;
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* Miscellaneous CGB Functions                                               *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE CGBOPT</font></strong>(O: LIST);
+<font color="#B22222">(*Comprehensive Groebner Basis Options.
+O is a list with an arbitrary number of elements.
+The global variable PAR is set according to O.
+The elements of O (if existent) are interpreted as follows:
+1st element: if =0 no output during computation, if &gt;0 chatty.
+2nd element: if =0 do not factorize coefficients, if =1 do factorize
+             coefficients, if =2 do factorize coefficients with variable order
+             optimization.
+3rd element: if =0 use top reduction only, if =1 use "normal" reduction.
+4th element: evaluate conditions using:
+     	     if =0: simple methode, if =1: reduced sets, if =2: Groebner bases.
+5th element: if =0: characteristic 0, if &lt;&gt;0 arbritrary characteristic.
+6th element: term order for polynomials.
+7th element: term order for coefficients.
+8th element: if =1: generic case only, if &lt;&gt;1 all cases.
+*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CGBOPT);
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.outputlevel,O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.factorize,O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.normalform,O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.compcond,O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.char, O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.TermOrderPol, O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, PAR.TermOrderCoef, O); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> O&lt;&gt;SIL <font color="#4169E1">THEN</font> ADV(O, dummy,O); PAR.genericOnly:=(dummy=1); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">CASE</font> PAR.factorize <font color="#4169E1">OF</font>
+     	 0: PAR.Factorize:=dummyfactorize|
+         1: PAR.Factorize:=ADFACT|
+         2: PAR.Factorize:=ADFACTO;
+     <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> PAR.normalform=0 <font color="#4169E1">THEN</font> PAR.NormalForm:=NFTOP; 
+     	                 <font color="#4169E1">ELSE</font> PAR.NormalForm:=NFORM; <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> PAR.genericOnly <font color="#4169E1">THEN</font>
+       PAR.CondEval:=CondEvalGen;
+       PAR.CondRamif:=CondRamifGen;
+     <font color="#4169E1">ELSE</font>
+       <font color="#4169E1">CASE</font> PAR.compcond <font color="#4169E1">OF</font>
+           0: PAR.CondEval:=CondEvalSim;
+              PAR.CondRamif:=CondRamifSim|
+     	   1: <font color="#4169E1">IF</font> PAR.char=0 <font color="#4169E1">THEN</font>
+     	        PAR.CondEval:=CondEvalRed;
+              PAR.CondRamif:=CondRamifRed;
+     	      <font color="#4169E1">ELSE</font>
+     	        PAR.CondEval:=CondEvalDred;
+                PAR.CondRamif:=CondRamifDred;
+     	      <strong><font color="#4169E1">END</font></strong>|
+     	   2: PAR.CondEval:=CondEvalGb;
+              PAR.CondRamif:=CondRamifGb;
+       <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> PAR.char=0 <font color="#4169E1">THEN</font> PAR.IsCnst:=ADCNST;
+     	           <font color="#4169E1">ELSE</font> PAR.IsCnst:=dummycnst; <strong><font color="#4169E1">END</font></strong>;
+     PAR.Factors:=DIPPFACTAV;
+<strong><font color="#4169E1">END</font></strong> CGBOPT;
+
+<strong><font color="#4169E1">PROCEDURE CGBOPTWRITE</font></strong>();
+<font color="#B22222">(*Comprehensive Groebner Basis Options Write
+Writes the options from the global Variable PAR on the output stream*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CGBOPTWRITE);
+     BLINES(1);
+     SWRITE("Options <font color="#4169E1">for</font> computation <font color="#4169E1">of</font> Groebner systems are: ");
+	SWRITE("(");
+	UWRIT1(PAR.outputlevel);SWRITE(",");
+	<font color="#4169E1">IF</font> PAR.factorize <font color="#4169E1">THEN</font> SWRITE("1,"); <font color="#4169E1">ELSE</font> SWRITE("0,"); <strong><font color="#4169E1">END</font></strong>;
+	UWRIT1(PAR.normalform);SWRITE(",");
+	UWRIT1(PAR.compcond);SWRITE(",");
+	UWRIT1(PAR.char);SWRITE(",");
+	UWRIT1(PAR.TermOrderPol);SWRITE(",");
+	UWRIT1(PAR.TermOrderCoef);SWRITE(",");
+	<font color="#4169E1">IF</font> PAR.genericOnly <font color="#4169E1">THEN</font> SWRITE("1"); <font color="#4169E1">ELSE</font> SWRITE("0"); <strong><font color="#4169E1">END</font></strong>;	
+	SWRITE(")");
+     BLINES(0);
+     <font color="#4169E1">CASE</font> PAR.outputlevel <font color="#4169E1">OF</font>
+     	 0: SWRITE("No output.")|
+     	 1: SWRITE("Some output during computation.");
+     <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+     <font color="#4169E1">CASE</font> PAR.factorize <font color="#4169E1">OF</font>
+         0: SWRITE ("Without factorization <font color="#4169E1">of</font> coefficients.")|
+     	 1: SWRITE ("With factorization <font color="#4169E1">of</font> coefficients.")|
+     	 2: SWRITE ("With factorization using variable order optimization <font color="#4169E1">of</font> coefficients.");
+     <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+     <font color="#4169E1">IF</font> PAR.normalform=0 <font color="#4169E1">THEN</font> SWRITE("Top-reduction only.");
+     	                 <font color="#4169E1">ELSE</font> SWRITE("Normal reduction."); <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+     SWRITE("Conditions are evaluated ");
+     <font color="#4169E1">CASE</font> PAR.compcond <font color="#4169E1">OF</font>
+         0: SWRITE("by comparing.")|
+         1: SWRITE("using reduced sets. "); BLINES(0)|
+         2: SWRITE("using Groebner bases."); BLINES(0)|
+     <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+     SWRITE("Characteristic is ");
+     <font color="#4169E1">IF</font> PAR.char=0 <font color="#4169E1">THEN</font> SWRITE("0."); <font color="#4169E1">ELSE</font> SWRITE("arbitrary."); <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+     SWRITE("Term order: "); EVOWRITE(PAR.TermOrderPol); BLINES(0);
+     SWRITE("Coefficient term order: "); EVOWRITE(PAR.TermOrderCoef);
+     BLINES(0);
+     <font color="#4169E1">IF</font> PAR.genericOnly <font color="#4169E1">THEN</font> SWRITE("Generic <font color="#4169E1">case</font> only.");
+                        <font color="#4169E1">ELSE</font> SWRITE("All cases are considered."); <strong><font color="#4169E1">END</font></strong>;
+     BLINES(0);
+     BLINES(1);
+<strong><font color="#4169E1">END</font></strong> CGBOPTWRITE;
+
+<strong><font color="#4169E1">PROCEDURE dummycnst</font></strong>(A: LIST): BOOLEAN;
+<font color="#B22222">(* Dummy constant.
+Value for PAR.IsCnst. Returns false always (nothing is constant). *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(dummycnst);
+     RETURN(FALSE);
+<strong><font color="#4169E1">END</font></strong> dummycnst;
+
+<strong><font color="#4169E1">PROCEDURE dummyfactorize</font></strong>(A: LIST): LIST;
+<font color="#B22222">(* Dummy factorize.
+Value for PAR.factorize. Does not factorize. Returns a list containing A.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(dummyfactorize);
+     RETURN(LIST1(A));
+<strong><font color="#4169E1">END</font></strong> dummyfactorize;
+
+<strong><font color="#4169E1">PROCEDURE CondEvalSim</font></strong>(Cond, COEF: LIST): COLOUR;
+<font color="#B22222">(* Condition evaluate using simple method.
+Cond is a Condition.
+COEF is a (coefficient) polynomial.
+Tests whether COEF =0, &lt;&gt;0 or unknown wrt. to Cond.
+Returns zero iff COEF is an element of CondZero(Cond).
+Returns nzero iff COEF is an element of CondNzero(Cond).
+Otherwise returns unknown. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondEvalSim);
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondZero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(zero); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondNzero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(unknown);
+<strong><font color="#4169E1">END</font></strong> CondEvalSim;
+
+<strong><font color="#4169E1">PROCEDURE CondEvalRed</font></strong>(Cond, COEF: LIST): COLOUR;
+<font color="#B22222">(* Condition evaluate using reduced set method.
+Cond is a Condition where CondZero(Cond) is a reduced set and 
+CondNzero(Cond) is reduced wrt CondZero(Cond).
+COEF is a (coefficient) polynomial.
+Tests whether COEF =0, &lt;&gt;0 or unknown wrt. to Cond.
+Returns zero iff a reduction of COEF to zero wrt. CondZero(Cond) is found.
+Returns nzero iff a normal form of COEF wrt. CondZero(Cond) is an
+element of CondNzero(Cond). (Note: only one of the possible normal
+forms is checked.)
+Otherwise returns unknown. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondEvalRed);
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondZero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(zero); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondNzero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     EvordSet(PAR.TermOrderCoef);
+     COEF:=PFINOR(CondZero(Cond),COEF);
+     EvordReset();
+     <font color="#4169E1">IF</font> COEF=SIL <font color="#4169E1">THEN</font> RETURN(zero); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> (MEMBER(COEF, CondNzero(Cond))=1) <font color="#4169E1">OR</font> (PAR.IsCnst(COEF))
+       <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(unknown);
+<strong><font color="#4169E1">END</font></strong> CondEvalRed;
+
+<strong><font color="#4169E1">PROCEDURE CondEvalDred</font></strong>(Cond, COEF: LIST): COLOUR;
+<font color="#B22222">(* Condition evaluate using d-reduced set method.
+Cond is a Condition where CondZero(Cond) is a d-reduced set and 
+CondNzero(Cond) is d-reduced wrt CondZero(Cond).
+COEF is a (coefficient) polynomial.
+Tests whether COEF =0, &lt;&gt;0 or unknown wrt. to Cond.
+Returns zero iff a d-reduction of COEF to zero wrt. CondZero(Cond) is found.
+Returns nzero iff a d-normal form of COEF wrt. CondZero(Cond) is an
+element of CondNzero(Cond). (Note: only one of the possible normal
+forms is checked.)
+Otherwise returns unknown. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondEvalDred);
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondZero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(zero); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondNzero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     EvordSet(PAR.TermOrderCoef);
+     COEF:=PFIDNOR(CondZero(Cond),COEF);
+     EvordReset();
+     <font color="#4169E1">IF</font> COEF=SIL <font color="#4169E1">THEN</font> RETURN(zero); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondNzero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(unknown);
+<strong><font color="#4169E1">END</font></strong> CondEvalDred;
+
+<strong><font color="#4169E1">PROCEDURE CondEvalGb</font></strong>(Cond, COEF: LIST): COLOUR;
+<font color="#B22222">(* Evaluate Condition using GB method.
+Cond is a Condition, where CondZero(Cond) is a Groebner basis and
+CondNzero(Cond) is reduced wrt. CondZero(Cond).
+COEF is a (coefficient) polynomial.
+Tests whether COEF =0, &lt;&gt;0 or unknown wrt. to Cond.
+Returns zero iff COEF reduces to zero wrt. CondZero(Cond).
+Returns nzero iff the normal form of COEF wrt. CondZero(Cond) is an
+element of CondNzero(Cond). (Note: only one of the possible normal
+forms is checked.)
+Otherwise returns unknown. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondEvalGb);
+     EvordSet(PAR.TermOrderCoef);
+     COEF:=PFINOR(CondZero(Cond),COEF);
+     EvordReset();
+     <font color="#4169E1">IF</font> COEF=SIL <font color="#4169E1">THEN</font> RETURN(zero); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> (MEMBER(COEF, CondNzero(Cond))=1) <font color="#4169E1">OR</font> (PAR.IsCnst(COEF))
+       <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(unknown);
+<strong><font color="#4169E1">END</font></strong> CondEvalGb;
+
+<strong><font color="#4169E1">PROCEDURE CondRamifSim</font></strong>(COEF, Cond: LIST; <strong><font color="#228B22">VAR</font></strong> CD0, CD1: LIST);
+<font color="#B22222">(* Condition ramificate.
+COEF is a (coefficient) polynomial.
+Cond is a Condition.
+Returns Conditions CD0 and CD1 such that CondEvalsim(COEF,CD0)=zero,
+CondEvalsim(COEF,CD1)=nzero and for all coefficients c: 
+CondEvalsim(C,Cond)=zero/nzero ==&gt; CondEvalsim(C,CDi)=zero/nzero
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondRamifSim);
+     CD0:=CondCons(COMP(COEF,CondZero(Cond)), CondNzero(Cond));
+     CD1:=CondCons(CondZero(Cond), COMP(COEF,CondNzero(Cond)));
+<strong><font color="#4169E1">END</font></strong> CondRamifSim;
+
+<strong><font color="#4169E1">PROCEDURE CondRamifRed</font></strong>(COEF, Cond: LIST; <strong><font color="#228B22">VAR</font></strong> CD0, CD1: LIST);
+<font color="#B22222">(* Condition ramificate using reduced sets.
+COEF is a (coefficient) polynomial.
+Cond is a Condition such that CondZero(Cond) contains a reduced set.
+Returns Conditions CD0 and CD1 such that CondEvalred(COEF,CD0)=zero,
+CondEvalred(COEF,CD1)=nzero and for all coefficients c: 
+CondEvalred(C,Cond)=zero/nzero ==&gt; CondEvalred(C,CDi)=zero/nzero.
+If CD0 or CD1 would be a contradiction (1=0 or 0&lt;&gt;0) CondEmpty is
+returned.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> RED, RS: LIST;
+    ONE, ZERO: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondRamifRed);
+     CD0:=CondEmpty();
+     CD1:=CondEmpty();
+     EvordSet(PAR.TermOrderCoef);
+     <font color="#B22222">(* Condition COEF=0 *)</font>
+     RED:=PFILS(COMP(COEF,CondZero(Cond)),ONE);
+     RS:=PFILNOR(RED,CondNzero(Cond),ZERO);
+     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> (ONE <font color="#4169E1">OR</font> ZERO) <font color="#4169E1">THEN</font> 
+       CD0:=CondCons(SetInsert(COEF,SetUnion(RED,CondZero(Cond))),
+     	       	      SetUnion(RS,CondNzero(Cond))); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#B22222">(* Condition COEF&lt;&gt;0 *)</font>
+     RS:=PFILNOR(CondZero(Cond),COMP(COEF,CondNzero(Cond)),ZERO);
+     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ZERO <font color="#4169E1">THEN</font>
+       CD1:=CondCons(CondZero(Cond),SetUnion(RS,CondNzero(Cond))); <strong><font color="#4169E1">END</font></strong>;
+     EvordReset();
+<strong><font color="#4169E1">END</font></strong> CondRamifRed;
+
+<strong><font color="#4169E1">PROCEDURE CondRamifDred</font></strong>(COEF, Cond: LIST; <strong><font color="#228B22">VAR</font></strong> CD0, CD1: LIST);
+<font color="#B22222">(* Condition ramificate using d-reduced sets
+COEF is a (coefficient) polynomial.
+Cond is a Condition such that CondZero(Cond) is a d-reduced set.
+Returns Conditions CD0 and CD1 such that CondEvaldred(COEF,CD0)=zero,
+CondEvaldred(COEF,CD1)=nzero and for all coefficients c: 
+CondEvaldred(C,Cond)=zero/nzero ==&gt; CondEvaldred(C,CDi)=zero/nzero.
+If CD0 or CD1 would be a contradiction (0&lt;&gt;0) CondEmpty is
+returned.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> RED, RS: LIST;
+    ONE, ZERO: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondRamifDred);
+     CD0:=CondEmpty();
+     CD1:=CondEmpty();
+     EvordSet(PAR.TermOrderCoef);
+     <font color="#B22222">(* Condition COEF=0 *)</font>
+     RED:=PFILDS(COMP(COEF,CondZero(Cond)),ONE);
+     RS:=PFILDNOR(RED,CondNzero(Cond),ZERO);
+     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> (ONE <font color="#4169E1">OR</font> ZERO) <font color="#4169E1">THEN</font> 
+       CD0:=CondCons(SetInsert(COEF,SetUnion(RED,CondZero(Cond))),
+     	       	      SetUnion(RS,CondNzero(Cond))); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#B22222">(* Condition COEF&lt;&gt;0 *)</font>
+     RS:=PFILDNOR(CondZero(Cond),COMP(COEF,CondNzero(Cond)),ZERO);
+     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ZERO <font color="#4169E1">THEN</font>
+       CD1:=CondCons(CondZero(Cond),SetUnion(RS,CondNzero(Cond))); <strong><font color="#4169E1">END</font></strong>;
+     EvordReset();
+<strong><font color="#4169E1">END</font></strong> CondRamifDred;
+
+<strong><font color="#4169E1">PROCEDURE CondRamifGb</font></strong>(COEF, Cond: LIST; <strong><font color="#228B22">VAR</font></strong> CD0, CD1: LIST);
+<font color="#B22222">(* Condition ramificate using Groebner bases.
+COEF is a (coefficient) polynomial.
+Cond is a Condition such that CondZero(Cond) is a Groebner basis.
+Returns Conditions CD0 and CD1 such that CondEvalgb(COEF,CD0)=zero,
+CondEvalgb(COEF,CD1)=nzero and for all coefficients c: 
+CondEvalgb(C,Cond)=zero/nzero ==&gt; CondEvalgb(C,CDi)=zero/nzero.
+If CD0 or CD1 would be a contradiction (1=0 or 0&lt;&gt;0) CondEmpty is
+returned.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> GB, RS: LIST;
+    ONE, ZERO: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondRamifGb);
+     CD0:=CondEmpty();
+     CD1:=CondEmpty();
+     EvordSet(PAR.TermOrderCoef);
+     GB:=PFIGBA(CondZero(Cond),COEF,PAR.outputlevel,ONE);
+     RS:=PFILNOR(GB,CondNzero(Cond),ZERO);
+     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> (ONE <font color="#4169E1">OR</font> ZERO) <font color="#4169E1">THEN</font> CD0:=CondCons(GB,RS); <strong><font color="#4169E1">END</font></strong>;
+     RS:=PFILNOR(CondZero(Cond),COMP(COEF,CondNzero(Cond)),ZERO);
+     <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ZERO <font color="#4169E1">THEN</font> CD1:=CondCons(CondZero(Cond),RS); <strong><font color="#4169E1">END</font></strong>;
+     EvordReset();
+<strong><font color="#4169E1">END</font></strong> CondRamifGb;
+
+<strong><font color="#4169E1">PROCEDURE CondEvalGen</font></strong>(Cond, COEF: LIST): COLOUR;
+<font color="#B22222">(* Condition evaluate in generic case.
+Cond is a Condition.
+COEF is a (coefficient) polynomial.
+Tests whether COEF =0, &lt;&gt;0 or unknown wrt. to Cond.
+Returns nzero iff COEF is an element of CondNzero(Cond).
+Otherwise returns unknown. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondEvalGen);
+     <font color="#4169E1">IF</font> MEMBER(COEF, CondNzero(Cond))=1 <font color="#4169E1">THEN</font> RETURN(nzero); <strong><font color="#4169E1">END</font></strong>;
+     RETURN(unknown);
+<strong><font color="#4169E1">END</font></strong> CondEvalGen;
+
+<strong><font color="#4169E1">PROCEDURE CondRamifGen</font></strong>(COEF, Cond: LIST; <strong><font color="#228B22">VAR</font></strong> CD0, CD1: LIST);
+<font color="#B22222">(* Condition ramificate in generic case.
+COEF is a (coefficient) polynomial.
+Cond is a Condition.
+Returns empty condition in CD0.
+Returns Condition CD1 such that CondEvalGen(COEF,CD1)=nzero
+and for all coefficients c: 
+CondEvalGen(C,Cond)=nzero ==&gt; CondEvalGen(C,CD1)=nzero
+*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(CondRamifGen);
+     CD0:=CondEmpty();
+     CD1:=CondCons(SIL, COMP(COEF,CondNzero(Cond)));
+<strong><font color="#4169E1">END</font></strong> CondRamifGen;
+
+
+<font color="#B22222">(* Do not use any of the following outside from CGB! -- mp*)</font>
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* LIST output                                                               *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FLWRITE</font></strong>(L: LIST);
+<font color="#B22222">(* Formatted list write.
+The input list L is written to the output stream.*)</font>
+
+<strong><font color="#228B22">VAR</font></strong>  E: LIST;
+     I: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     <font color="#4169E1">IF</font> L &lt; BETA <font color="#4169E1">THEN</font> AWRITE(L); RETURN <strong><font color="#4169E1">END</font></strong>;
+     SWRITE("(");
+     <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+     	  ADV(L, E,L);
+	  <font color="#4169E1">IF</font> E &lt; BETA <font color="#4169E1">THEN</font> AWRITE(E); <font color="#4169E1">ELSE</font> FILWRITE(E,1); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(","); <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     SWRITE(")");
+     RETURN;
+<strong><font color="#4169E1">END</font></strong> FLWRITE;
+
+<strong><font color="#4169E1">PROCEDURE FILWRITE</font></strong>(L: LIST; N:INTEGER);
+<font color="#B22222">(* Formatted indented list write.
+The input list L is written to the output stream.*)</font>
+
+<strong><font color="#228B22">VAR</font></strong>  E: LIST;
+     I: INTEGER;
+     R: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     BLINES(0);
+     <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font> SWRITE(" "); <strong><font color="#4169E1">END</font></strong>;
+     SWRITE("(");
+     R:=FALSE;
+     <font color="#4169E1">WHILE</font> L &lt;&gt; SIL <font color="#4169E1">DO</font>
+     	  ADV(L, E,L);
+	  <font color="#4169E1">IF</font> E &lt; BETA <font color="#4169E1">THEN</font> AWRITE(E); <font color="#4169E1">ELSE</font> FILWRITE(E,N+1); R:=TRUE; <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(","); <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">IF</font> R <font color="#4169E1">THEN</font>
+     	  BLINES(0); 
+	  <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> N <font color="#4169E1">DO</font> SWRITE(" "); <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     SWRITE(")");
+<strong><font color="#4169E1">END</font></strong> FILWRITE;
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* Polynomial conversion                                                     *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE XPFDIP</font></strong> (DP, DOM, VARL: LIST): LIST;
+<font color="#B22222">(* Recursive polynomial (with domain-descriptor) from distributive polynomial.
+DP is a polynomial in distributive representation.
+DOM is a domain descriptor.
+VARL is a list of variables.
+Returns a Polynomial (DOM, P, R, VARL) where
+P is the recursive representation of DP and R is the number of variables of DP.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> R, B, TEVORD: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     EvordSet(INVLEX);
+     DIPBSO(DP);	<font color="#B22222">(* PFDIP needs INVLEX sorted polynomial! *)</font>
+     PFDIP(DP, R,B);	<font color="#B22222">(* R: #variables; B: rec.-pol.*)</font>
+     EvordReset();
+     RETURN(LIST4(DOM, B, R, VARL));
+<strong><font color="#4169E1">END</font></strong> XPFDIP;
+
+<strong><font color="#4169E1">PROCEDURE PFLDIPL</font></strong> (DIPL, DOM, VARL: LIST): LIST;
+<font color="#B22222">(* Recursive polynomial list (with domain-descriptor) from distributive
+polynomial list.
+DIPL is a list of polynomials in distributive representation.
+DOM is a domain descriptor.
+VARL is a list of variables.
+Returns a list containing an element
+(DOM, P, R, VARL) for each distributive polynomial dp in DIPL where
+P is the recursive representation of dp and R is the number of variables of dp
+(all polynomials in DIPL are assumed to have the same number of variables).
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> RET, P, B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFLDIPL);
+     RET:=SIL;
+     <font color="#4169E1">WHILE</font> DIPL &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(DIPL, P,DIPL);
+	  RET:=COMP(XPFDIP(P, DOM, VARL), RET);
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN (INV(RET));
+<strong><font color="#4169E1">END</font></strong> PFLDIPL;
+
+<strong><font color="#4169E1">PROCEDURE XDIPFPF</font></strong> (P: LIST; <strong><font color="#228B22">VAR</font></strong> DOM, VARL: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial from recursive polynomial (with domain-descriptor).
+P is a polynomial in recursive representation. 
+Returns this polynomial in distributive representation, sorted according
+to the value of EVORD, the domain-descriptor in DOM and the list of
+variables in VARL.
+*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> B, R, DI: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(XDIPFPF);
+     FIRST4(P, DOM, B, R, VARL);
+     DI:=DIPFP(R, B);
+     DIPBSO(DI);	<font color="#B22222">(* DIPFP returns INVLEX sorted polynomial! *)</font>
+     RETURN(DI);
+<strong><font color="#4169E1">END</font></strong> XDIPFPF;
+
+<strong><font color="#4169E1">PROCEDURE DIPLFPFL</font></strong> (PFL: LIST; <strong><font color="#228B22">VAR</font></strong> DOM, VARL: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial list from recursive polynomial
+(with domain-descriptor) list.
+PFL is a list of polynomials in recursive representation. 
+Returns a list of this polynomials in distributive representation
+the domain-descriptor in DOM and the list of variables in VARL.
+*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> RET, P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(DIPLFPFL);
+     RET:=SIL;
+     <font color="#4169E1">WHILE</font> PFL &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(PFL, P, PFL);
+       	  RET:=COMP(XDIPFPF(P, DOM, VARL), RET);
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN(INV(RET));
+<strong><font color="#4169E1">END</font></strong> DIPLFPFL;
+
+<strong><font color="#4169E1">PROCEDURE DIFPF</font></strong>(P, D: LIST; <strong><font color="#228B22">VAR</font></strong> DOM, VARL: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial with arbitrary domain coefficients from
+recursive polynomial (with domain-descriptor).
+P is a polynomial with domain descriptor.
+D is a domain descriptor.
+Returns P in distributive representation over domain D,
+sorted according to the value of EVORD, the domain-descriptor of P in DOM, and
+the list of variables in VARL.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> AL, EL, B, BL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(DIFPF);
+     P:=XDIPFPF(P,DOM,VARL);
+     <font color="#4169E1">IF</font> P=0 <font color="#4169E1">THEN</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+     ValisSet(VARL);
+     B:=SIL;
+     <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	   DIPMAD(P, AL,EL,P); 
+           BL:=ADFI(D,AL);  
+           <font color="#4169E1">IF</font> ADSIGN(BL) &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=DIPMCP(EL,BL,B) <strong><font color="#4169E1">END</font></strong>; 
+     <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <font color="#4169E1">ELSE</font> B:=INV(B); DIPBSO(B); <strong><font color="#4169E1">END</font></strong>; 
+     ValisReset();
+     RETURN(B);
+<strong><font color="#4169E1">END</font></strong> DIFPF;
+
+<strong><font color="#4169E1">PROCEDURE DILFPFL</font></strong>(PFL, D: LIST; <strong><font color="#228B22">VAR</font></strong> DOM, VARL: LIST): LIST;
+<font color="#B22222">(* Distributive polynomial list with arbitrary domain coefficients from
+recursive polynomial list (with domain-descriptor).
+P is a polynomial list with domain descriptor.
+D is a domain descriptor.
+Returns a list containing the polynomials from PFL
+in distributive representation over domain D,
+sorted according to the value of EVORD, the domain-descriptor of PFL
+in DOM, and the list of variables in VARL.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> RET, P: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(DILFPFL);
+     RET:=SIL;
+     <font color="#4169E1">WHILE</font> PFL &lt;&gt; SIL <font color="#4169E1">DO</font>
+          ADV(PFL, P, PFL);
+       	  RET:=COMP(DIFPF(P,D, DOM, VARL), RET);
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN(INV(RET));
+<strong><font color="#4169E1">END</font></strong> DILFPFL;
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* Groebner bases and related procedures for recursive integral polynomials  *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE PFIGB</font></strong>(PFL, TF: LIST; <strong><font color="#228B22">VAR</font></strong> ONE: BOOLEAN): LIST;
+<font color="#B22222">(* Integral Polynomial Groebner Basis.
+PFL is a list of polynomials in recursive representation.
+TF is the trace flag.
+Returns the Groebner Basis of PFL wrt. to the total degree inverse 
+lexicographical term order.
+ONE=TRUE iff 1 is an element of the Groebner Basis.*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> GB, DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFIGB);
+     ONE:=FALSE;
+     PFL:=DIPLFPFL(PFL, DOM, VARL); DILBSO(PFL);
+     ValisSet(VARL);
+     GB:=DIIPGB(PFL, TF);
+     <font color="#4169E1">IF</font> GB&lt;&gt;SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> DIIPON(FIRST(GB))=1 <font color="#4169E1">THEN</font> ONE:=TRUE; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+     ValisReset();
+     RETURN (PFLDIPL(GB, DOM, VARL));
+<strong><font color="#4169E1">END</font></strong> PFIGB;
+
+<strong><font color="#4169E1">PROCEDURE PFIGBA</font></strong>(PFL, P, TF: LIST; <strong><font color="#228B22">VAR</font></strong> ONE: BOOLEAN): LIST;
+<font color="#B22222">(* Integral Polynomial Groebner Basis augmentation.
+PFL is a list of polynomials in recursive representation.
+P is a polynomial.
+TF is the trace flag.
+Returns the Groebner Basis of PFL and P wrt. to the total degree inverse 
+lexicographical term order.
+ONE=TRUE iff 1 is an element of the Groebner Basis.*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> GB, DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFIGBA);
+     ONE := FALSE;
+     P:=XDIPFPF(P, DOM,VARL);
+     PFL:=DIPLFPFL(PFL, DOM,VARL);
+     ValisSet(VARL);
+     GB:=DIIGBA(P,PFL,TF);
+     ValisReset();
+     <font color="#4169E1">IF</font> GB&lt;&gt;SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> DIIPON(FIRST(GB))=1 <font color="#4169E1">THEN</font> ONE:=TRUE; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+     RETURN (PFLDIPL(GB, DOM, VARL));
+<strong><font color="#4169E1">END</font></strong> PFIGBA;
+
+<strong><font color="#4169E1">PROCEDURE PFILS</font></strong>(B: LIST; <strong><font color="#228B22">VAR</font></strong> ONE: BOOLEAN): LIST;
+<font color="#B22222">(* Integral polynomial list irreducible set.
+B is a list of polynomials in recursive representation.
+Returns the result of reducing B.
+ONE=TRUE iff 1 is an element of the result. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFILS);
+     ONE:=FALSE;
+     B:=DIPLFPFL(B, DOM, VARL);
+     ValisSet(VARL);
+     B:=DIILIS(B);
+     <font color="#4169E1">IF</font> B&lt;&gt;SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> DIIPON(FIRST(B))=1 <font color="#4169E1">THEN</font> ONE:=TRUE; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+     ValisReset();
+     RETURN (PFLDIPL(B, DOM, VARL));
+<strong><font color="#4169E1">END</font></strong> PFILS;
+
+<strong><font color="#4169E1">PROCEDURE DIILIS</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Distributive integral polynomial list irreducible set.
+P is a list of distributive integral polynomials,
+PP is the result of reducing each p element of P modulo P-(p)
+until no further reductions are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   CL, EL, FL, IRR, LL, PL, PP, PS, RP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      <font color="#B22222">(*initialise. *)</font> PP:=P; PS:=BETA; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); DIIPCP(PL, CL,PL); 
+            <font color="#4169E1">IF</font> PL &lt;&gt; 0 <font color="#4169E1">THEN</font> PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RP:=PS; PP:=INV(PS); LL:=LENGTH(PP); IRR:=0; 
+      <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(*reduce until all polynomials are irreducible. *)</font> 
+      LOOP ADV(PP, PL,PP); EL:=DIPEVL(PL); PL:=DIIPNF(PP,0,PL); 
+           <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> LL:=LL-1; 
+              <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">ELSE</font> PL:=DIIPNORM(PL); FL:=DIPEVL(PL); SL:=EVSIGN(FL); 
+              <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> PP:=LIST1(PL); EXIT; <strong><font color="#4169E1">END</font></strong>; 
+              SL:=EQUAL(EL,FL); 
+              <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> IRR:=IRR+1; <font color="#4169E1">ELSE</font> IRR:=0; DIIPCP(PL,
+                 CL,PL); <strong><font color="#4169E1">END</font></strong>; 
+              PS:=LIST1(PL); SRED(RP,PS); RP:=PS; <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> IRR = LL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+     RETURN(PP);
+<strong><font color="#4169E1">END</font></strong> DIILIS; 
+
+
+<strong><font color="#4169E1">PROCEDURE PFINOR</font></strong>(B, P: LIST): LIST;
+<font color="#B22222">(* Integral Polynomial Normal Form.
+B is a list of polynomials in recursive representation.
+P is a polynomial in recursive representation.
+Returns the normal form of P wrt. B, or SIL if this normal form is 0. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> NF, DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFINOR);
+     B:=DIPLFPFL(B, DOM,VARL);
+     ValisSet(VARL);
+     NF:=DIIPNF(B, 0, XDIPFPF(P, DOM,VARL));
+     <font color="#4169E1">IF</font> NF=0 <font color="#4169E1">THEN</font> ValisReset(); RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+     NF:=DIIPNORM(NF);
+     ValisReset();
+     RETURN (XPFDIP(NF, DOM, VARL));
+<strong><font color="#4169E1">END</font></strong> PFINOR;
+
+
+<strong><font color="#4169E1">PROCEDURE PFILNOR</font></strong>(B, P: LIST; <strong><font color="#228B22">VAR</font></strong> ZERO: BOOLEAN): LIST;
+<font color="#B22222">(* Integral Polynomial List Normal Form.
+B is a list of polynomials in recursive representation.
+P is a list of polynomials in recursive representation.
+Returns a list of (non-zero, not constant) normal forms of each p in P wrt. B.
+ZERO=TRUE iff one of the normal forms is zero. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> RET, NF, p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFILNOR);
+     RET:=SIL;
+     ZERO:=FALSE;
+     <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	  ADV(P, p, P);
+     	  NF:=PFINOR(B, p);
+     	  <font color="#4169E1">IF</font> NF&lt;&gt;SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> (MEMBER(NF,RET)=0) <font color="#4169E1">AND</font> (<font color="#4169E1">NOT</font> PAR.IsCnst(NF))
+     	       	    	    <font color="#4169E1">THEN</font> RET:=COMP(NF,RET); <strong><font color="#4169E1">END</font></strong>;
+     	       	     <font color="#4169E1">ELSE</font> ZERO:=TRUE; <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN (INV(RET));
+<strong><font color="#4169E1">END</font></strong> PFILNOR;
+
+
+<strong><font color="#4169E1">PROCEDURE PFILDS</font></strong>(B: LIST; <strong><font color="#228B22">VAR</font></strong> ONE: BOOLEAN): LIST;
+<font color="#B22222">(* Integral polynomial list d-irreducible set.
+B is a list of polynomials in recursive representation.
+Returns the result of d-reducing B.
+ONE=FALSE.*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> DOM, VARL, L, P, NP, HC, HT, NHC, NHT, dummy: LIST;
+    I: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFILDS);
+     ONE:=FALSE;
+     <font color="#4169E1">IF</font> B=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+     B:=DIPLFPFL(B, DOM, VARL);
+     L:=LENGTH(B);
+     I:=0;
+     LOOP
+     	 ADV(B, P,B);
+     	 NP:=DIIPDNF(B,0,P);
+     	 <font color="#4169E1">IF</font> NP=0 <font color="#4169E1">THEN</font> L:=L-1;
+     	 <font color="#4169E1">ELSE</font>
+     	     NP:=DIIPAB(NP);
+	     DIPMAD(P, HC,HT,dummy);
+     	     DIPMAD(NP, NHC,NHT,dummy);
+     	     <font color="#4169E1">IF</font> (EQUAL(HC,NHC)=1) <font color="#4169E1">AND</font> (EQUAL(HT,NHT)=1)
+     	       <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> I&gt;0 <font color="#4169E1">THEN</font> I:=I+1; <font color="#4169E1">ELSE</font> I:=1; <strong><font color="#4169E1">END</font></strong>;
+     	       <font color="#4169E1">ELSE</font> I:=0; <strong><font color="#4169E1">END</font></strong>;
+     	       B:=CONC(B,LIST1(NP)); 
+     	 <strong><font color="#4169E1">END</font></strong>;
+     	 <font color="#4169E1">IF</font> I&gt;=L <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN (PFLDIPL(B, DOM, VARL));
+<strong><font color="#4169E1">END</font></strong> PFILDS;
+
+
+<strong><font color="#4169E1">PROCEDURE PFIDNOR</font></strong>(B, P: LIST): LIST;
+<font color="#B22222">(* Integral Polynomial D Normal Form.
+B is a list of polynomials in recursive representation.
+P is a polynomial in recursive representation.
+Returns the d-normal form of P wrt. B, or SIL if this normal form is 0. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> NF, DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFIDNOR);
+     B:=DIPLFPFL(B, DOM,VARL);
+     ValisSet(VARL);
+     NF:=DIIPDNF(B, 0, XDIPFPF(P, DOM,VARL));
+     <font color="#4169E1">IF</font> NF=0 <font color="#4169E1">THEN</font> ValisReset(); RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+     NF:=DIIPAB(NF);
+     ValisReset();
+     RETURN (XPFDIP(NF, DOM,VARL));
+<strong><font color="#4169E1">END</font></strong> PFIDNOR;
+
+<strong><font color="#4169E1">PROCEDURE PFILDNOR</font></strong>(B, P: LIST; <strong><font color="#228B22">VAR</font></strong> ZERO: BOOLEAN): LIST;
+<font color="#B22222">(* Integral Polynomial List D-Normal Form.
+B is a list of polynomials in recursive representation.
+P is a list of polynomials in recursive representation.
+Returns a list of (non-zero) d-normal forms of each p in P wrt. B.
+ZERO=TRUE iff one of the d-normal forms is zero. *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> RET, NF, p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFILDNOR);
+     RET:=SIL;
+     ZERO:=FALSE;
+     <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	  ADV(P, p, P);
+     	  NF:=PFIDNOR(B, p);
+     	  <font color="#4169E1">IF</font> NF&lt;&gt;SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> MEMBER(NF,RET)=0 <font color="#4169E1">THEN</font> RET:=COMP(NF,RET); <strong><font color="#4169E1">END</font></strong>;
+     	       	     <font color="#4169E1">ELSE</font> ZERO:=TRUE; <strong><font color="#4169E1">END</font></strong>;
+     <strong><font color="#4169E1">END</font></strong>;
+     RETURN (INV(RET));
+<strong><font color="#4169E1">END</font></strong> PFILDNOR;
+
+<strong><font color="#4169E1">PROCEDURE PFWRITE</font></strong>(P: LIST);
+<font color="#B22222">(* Integral polynomial write.
+P is a polynomial in recursive representation with domain-descriptor.
+P is written to the outputstream (wrt. the term order in EVORD).
+*)</font>
+<strong><font color="#228B22">VAR</font></strong> DOM, VARL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(PFWRITE);
+     P:=XDIPFPF(P, DOM,VARL);
+     ValisSet(VARL);
+     DIIPWR(P,VARL);
+     ValisReset();
+<strong><font color="#4169E1">END</font></strong> PFWRITE;
+
+<strong><font color="#4169E1">PROCEDURE DIIPNORM</font></strong>(P: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynomial norm.
+Returns a polynomial r, were  n*r=p for an Integer n, the content of r is 1
+and the highest coefficient of r is not negative.*)</font>
+<strong><font color="#228B22">VAR</font></strong> C, DUMMY: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(DIIPNORM);
+     DIIPCP(P, C,DUMMY);
+     P:=DIIPIQ(P,C);
+     <font color="#4169E1">IF</font> DIIPSG(P)=-1 <font color="#4169E1">THEN</font> RETURN (DIIPNG(P));
+     	       	     <font color="#4169E1">ELSE</font> RETURN (P); <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> DIIPNORM;
+
+<font color="#B22222">(*****************************************************************************)</font>
+<font color="#B22222">(* Routines for distributive polynomials over polynomial rings		     *)</font>
+<font color="#B22222">(*****************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIP2AD</font></strong>(P,d,rest: LIST): LIST;
+<font color="#B22222">(* distributive polynomial to arbitrary domain.
+   P is a polynomial in distributive representation,
+   d is a domain number, rest is a domain descriptor,
+   P1 is P with added domain numbers and descriptors *)</font>
+<strong><font color="#228B22">VAR</font></strong> P1,exp,coe: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   P1:=BETA;
+   <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(P,exp,P);
+      P1:=COMP(exp,P1);
+      ADV(P,coe,P);
+      coe:=COMP(d,COMP(coe,rest));
+      P1:=COMP(coe,P1);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while... *)</font>
+   P1:=INV(P1);
+   RETURN P1;
+<strong><font color="#4169E1">END</font></strong> DIP2AD;
+
+<strong><font color="#4169E1">PROCEDURE AD2DIP</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> d, rest: LIST): LIST;
+<font color="#B22222">(* arbitrary domain to distributive polynomial.
+   P is a polynomial in distributive representation
+   with domain numbers and descriptors,
+   P1 is P without domain numbers and descriptors *)</font>
+<strong><font color="#228B22">VAR</font></strong> P1,exp,coe,val: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   P1:=BETA;
+   <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(P,exp,P);
+      P1:=COMP(exp,P1);
+      ADV(P,coe,P);
+      ADV2(coe, d,val,rest);
+      P1:=COMP(val,P1);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while... *)</font>
+   P1:=INV(P1);
+   RETURN(P1);
+<strong><font color="#4169E1">END</font></strong> AD2DIP;
+
+<strong><font color="#4169E1">PROCEDURE DIPPFACTAV</font></strong> (P: LIST) :LIST;
+<font color="#B22222">(* Distributive polynomial over polynomial ring factorize in all variables.
+P is a distributive polynomial over a polynomial ring.
+Returns a list of all irreducible factors of P seen as a polynomial
+in all variables (including the variables in the coefficients). *)</font>
+<strong><font color="#228B22">VAR</font></strong> c, d, dd, ExpPol, f, pol, PP, PV, q, r, VP,  rest, RET, s, vlist: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+DEB_BEGIN(DIPPFACTAV);
+     <font color="#4169E1">IF</font> P=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+     dd := ADDDFDIP(P);
+     <font color="#4169E1">IF</font> dd=0 <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+     DIPFDIPP(P,ADDDFSTR("INT "), q, vlist);
+     ValisSet(vlist);
+     q:=AD2DIP(q, d,rest);
+     DIPVOPP(LIST1(q),VALIS, PP,VP,PV);
+     ValisSet(VP);
+     q:=FIRST(PP);
+     EvordSet(INVLEX);
+     DIPBSO(q);
+     PFDIP(q, r,q);
+     EvordReset();
+     IPFAC(r,q, s,c,f);
+     RET:=SIL;
+     PV:=INVPERM(PV);
+     <font color="#4169E1">WHILE</font> f&lt;&gt;SIL <font color="#4169E1">DO</font>
+     	  ADV(f, ExpPol,f);
+	  pol:=DIPFP(r,SECOND(ExpPol));
+<font color="#B22222">(*	  DIPBSO(pol);*)</font>
+     	  pol:=DIPERM(pol,PV); 
+	  pol:=DIP2AD(pol,d,rest);
+	  DIPPFDIP(pol,THIRD(dd),dd, pol,vlist);
+     	  RET:=COMP(pol, RET);
+     <strong><font color="#4169E1">END</font></strong>;
+     ValisReset();
+     ValisReset();
+     RETURN(RET);
+<strong><font color="#4169E1">END</font></strong> DIPPFACTAV;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+     <font color="#B22222">(* LISTVAR makes global variables known to the garbage collector. *)</font>
+     EVORDSTACK:=SIL; LISTVAR(EVORDSTACK);
+     VALISSTACK:=SIL; LISTVAR(VALISSTACK);
+     LISTVAR(PAR.TermOrderPol);
+     LISTVAR(PAR.TermOrderCoef);
+     CGBOPT(CONC(LIST5(1,1,0,0,0),LIST3(IGRLEX,IGRLEX,0)));
+<strong><font color="#4169E1">END</font></strong> CGBMISC.
+
+<font color="#B22222">(* -EOF- *)</font>
+
+</pre>
+</body>
+
+</html>

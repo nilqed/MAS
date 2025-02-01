@@ -1,0 +1,1546 @@
+
+<html>
+<head>
+<title>./masdom/CGBSYS.mip</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T16:47:15+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: CGBSYS.mip,v 1.16 1996/06/08 16:47:15 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1996 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: CGBSYS.mip,v $
+ * Revision 1.16  1996/06/08 16:47:15  pesch
+ * Reformatted, removed obsolete procedures.
+ *
+ * Revision 1.15  1996/04/23 14:52:16  pesch
+ * Corrected previous fix.
+ *
+ * Revision 1.14  1996/04/23 13:53:18  pesch
+ * Fixed problems with zero polynomials for factorised GS, too.
+ *
+ * Revision 1.13  1996/04/16 19:18:25  pesch
+ * Fixed three bugs, which caused zero (completely "green") polynomials
+ * to be added to polynomial lists unneccessarily.
+ *
+ * Revision 1.12  1995/11/04 20:39:32  pesch
+ * Renamed massignal.m? to massig.m? because of conflict with MASSIGNAL.m?
+ * on certain OS.
+ *
+ * Revision 1.11  1995/09/12  17:35:57  pesch
+ * Use massignal instead of mpsignal.
+ *
+ * Revision 1.10  1995/09/12  17:11:12  pesch
+ * Fixed typos.
+ *
+ * Revision 1.9  1995/03/23  16:05:47  pesch
+ * Added new data structure Colp for coloured polynomials.
+ *
+ * Revision 1.8  1995/03/06  15:49:38  pesch
+ * Added new procedure GSYSF, Groebner system with factorization. This uses
+ * the new procedures GBSYSF and CONSGBF (also added).
+ *
+ * Added new procedures DIP2AD, AD2DIP and DIPPFACTAV.
+ *
+ * Fixed error in CHECK.
+ *
+ * New option for factorization of conditions: factorize with optimization
+ * of variable ordering.
+ *
+ * Revision 1.7  1994/04/14  16:46:13  dolzmann
+ * Syntactical errors (founded by Mocka) corrected.
+ *
+ * Revision 1.6  1994/04/14  12:42:23  pesch
+ * Defined Action according to POSIX.
+ *
+ * Revision 1.5  1994/04/12  13:41:57  pesch
+ * Made signal handler for consgb a global procedure.
+ * (Subprocedures cannot be used as arguments e.g. to signal.)
+ *
+ * Revision 1.4  1994/04/10  16:57:42  pesch
+ * Modified CONSGB. Returns its result now. When a condition is ramified,
+ * we continue with this new case distinction first. This is useful to
+ * have the generic case computed first.
+ *
+ * Revision 1.3  1994/04/09  18:06:02  pesch
+ * Reformatted parts of the CGB sources. Updated comments in CGB*.md.
+ *
+ * Revision 1.2  1994/03/14  16:43:00  pesch
+ * Minor changes requested by A. Dolzmann
+ *
+ * Revision 1.1  1994/03/11  15:58:19  pesch
+ * Major changes to CGB.
+ * C-Preprocessor now used for .mip files. The corresponding .mi files have
+ * been removed.
+ * Many new CGB-Functions and fixes of old ones.
+ *
+ * Revision 1.2  1992/02/12  17:31:19  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:09:31  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+#include "debug.h"
+
+IMPLEMENTATION MODULE CGBSYS;
+
+<font color="#B22222">(* Comprehensive-Groebner-Bases System Implementation Module. *)</font>
+
+<font color="#B22222">(* Derived from an ALDES program written by Elke Schoenfeld,
+   Universitaet Passau, 1991. *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+
+FROM CGBDSTR	IMPORT	CdWrite, ColCons, ColConsCond, ColEmpty, ColIsEmpty,
+			ColParts, ColWhite, ColpCol, ColpCons, ColpConsCond,
+			ColpHT, ColpIsCnst, ColpIsZero, ColpParts, ColpPol,
+			CondEmpty, CondIsEmpty, CondParts, CondWrite;
+
+FROM CGBFUNC	IMPORT	ADDCON, AINB, CGBFRM, CGBLM, CGBLPM, DCLWR, DET,
+			DETPOL, DWRIT, EQPLCL, FINDBC, FINDCP, FINDRM,
+			GREPOL, MKPOL, REDSRT, SETCOL, VERIFY, WMEMB; 
+
+FROM CGBMAIN	IMPORT	WRGBS;
+
+FROM CGBMISC	IMPORT	CGBPAR, COLOUR, FLWRITE, PAR;
+
+FROM DIPADOM	IMPORT	DIFIP, DILRD, DILWR, DIPBCP, DIPDIF, DIPEXP, DIPNEG,
+			DIPROD, DIPSUM, DIREAD, DIWRIT;
+
+FROM DIPC	IMPORT	DIPEVL, DIPFMO, DIPLBC, DIPLPM, DIPMAD, DIPMCP,
+			DIPTDG, EVCOMP, EVDIF, EVLCM, EVMT, EVORD, EVSIGN,
+			EVSUM, VALIS;
+
+FROM DIPRNGB	IMPORT	EVPLM, EVPLSO;
+
+FROM MASADOM	IMPORT	ADCNST, ADDDREAD, ADDDWRIT, ADDIF, ADEXP, ADFACT,
+			ADFI, ADFIP, ADGCD, ADGCDC, ADINV, ADINVT, ADLCM,
+			ADNEG, ADONE, ADPROD, ADQUOT, ADREAD, ADSIGN, ADSUM,
+			ADTOIP, ADVLDD, ADWRIT, DomSummary;
+
+FROM MASBIOS	IMPORT	BKSP, BLINES, CREAD, CREADB, CUNIT, DIGIT, LETTER,
+			LISTS, MASORD, SOUNIT, SWRITE;
+
+FROM MASERR	IMPORT	ERROR, fatal, harmless, severe, spotless;
+
+FROM massig	IMPORT	Action, SIGUSR1, SIG_IGN, SIG_IGN, signal;
+
+FROM MASSIGNAL  IMPORT	SigUsr1HandleDefault; <font color="#B22222">(* MASSIGNAL must be
+     	       	    	      	   	     	 initialized*)</font>
+
+FROM MASSTOR	IMPORT	ADV, COMP, FIRST, INV, LIST, LIST1, RED, SFIRST, SIL,
+			SRED, TIME;
+
+FROM SACLIST	IMPORT	ADV2, ADV3, AREAD, AWRITE, CINV, CLOUT, COMP2, COMP3,
+			CONC, EQUAL, FIRST2, FIRST3, FIRST4, LAST, LIST2,
+			LIST3, LIST4, LIST5, LWRITE, MEMBER, OWRITE, RED2,
+			SECOND, THIRD;
+
+FROM SYSTEM     IMPORT  ADR;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: CGBSYS.mip,v 1.16 1996/06/08 16:47:15 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1996 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE GRED</font></strong>(COND,PCO,PCI,RE: LIST; <strong><font color="#228B22">VAR</font></strong> RCO,HA: LIST); 
+<font color="#B22222">(*Parametric reduction. COND is a condition, PCO and PCI are coloured
+polynomials. PCI is determined by cond. RE is a term in PCO coloured
+red or white by COND. RE is a multiple of the headterm (wrt cond) of PCI.
+RCO is the result
+of one step reduction of PCO ( by PCI ) to eliminate the term RE. HA
+is the multiple factor of PCO. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, ALIST, AP, APP, C, EL, FCOL, FL, FPOL, GCOL, GPOL, HE,
+      KEY, Q, RA, RAL, RAP, RCOLS, RPOL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GRED);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Get polynomials and colours. Update colouring of PCI. *)</font> 
+      ColpParts(PCO, FPOL,FCOL);
+      ColpParts(PCI, GPOL,GCOL); 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> CondIsEmpty(COND) <font color="#4169E1">THEN</font> GCOL:=SETCOL(COND,GCOL); <strong><font color="#4169E1">END</font></strong>; 
+      HE:=ColpHT(PCI);
+      KEYCOL(RE,FCOL, KEY,ALIST);
+      RCO:=SIL; Q:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Prepare PCO and PCI for reduction. *)</font>
+      RA:=FINDBC(RE,FPOL); 
+      <font color="#4169E1">IF</font> HE = SIL <font color="#4169E1">THEN</font> 	     	   <font color="#B22222">(* ---to do---: ok? *)</font>
+        HA:=ADFI(RA,0);
+     	EL:=RE;
+      <font color="#4169E1">ELSE</font>
+        HA:=FINDBC(HE,GPOL);
+	EL:=EVDIF(RE,HE);
+      <strong><font color="#4169E1">END</font></strong>;
+      ADV(RA, RAL,RAP); 
+      FL:=FIRST(RAP); 
+      TL:=EVSIGN(EL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*If RA is coloured red reduce with gcd of RA and HA.
+        If RA is coloured white reduce with product of RA and HA. *)</font> 
+      <font color="#4169E1">IF</font> ALIST &lt;&gt; SIL <font color="#4169E1">THEN</font>
+        AP:=DIPFMO(RA,EL);
+        APP:=DIPROD(GPOL,AP); 
+        FPOL:=DIPBCP(FPOL,HA);
+        GCOL:=WHSRT(GCOL,EL,ALIST);
+       <font color="#4169E1">ELSE</font>
+         ADGCDC(RA,HA, C,RA,HA);
+         AP:=DIPFMO(RA,EL); 
+         <font color="#B22222">(* Note: if gcd is not defined for the current domain, AL and BL
+            remain unchanged by definiton of ADGCDC *)</font>
+         APP:=DIPROD(GPOL,AP);
+         FPOL:=DIPBCP(FPOL,HA); 
+         <font color="#4169E1">IF</font> TL &lt;&gt; 0 <font color="#4169E1">THEN</font> GCOL:=COLPRD(GCOL,EL); <strong><font color="#4169E1">END</font></strong>; 
+       <strong><font color="#4169E1">END</font></strong>; 
+       GBDIFF(COND,FPOL,FCOL,APP,GCOL, RPOL,RCOLS); 
+       <font color="#4169E1">IF</font> RPOL &lt;&gt; 0 <font color="#4169E1">THEN</font>
+         AL:=DIPLBC(RPOL);
+         <font color="#4169E1">IF</font> ADSIGN(AL) = -1 <font color="#4169E1">THEN</font> RPOL:=DIPNEG(RPOL); <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ColIsEmpty(RCOLS) <font color="#4169E1">THEN</font> RCO:=ColpCons(RPOL,RCOLS); <strong><font color="#4169E1">END</font></strong>; 
+       <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> GRED; 
+
+
+<strong><font color="#4169E1">PROCEDURE GBDIFF</font></strong>(COND,A,ACOLS,B,BCOLS: LIST; <strong><font color="#228B22">VAR</font></strong> C,CCOLS: LIST); 
+<font color="#B22222">(*Parametric difference. COND is a condition. A and B are polynomials.
+ACOLS is the colouring of A wrt cond, BCOLS is the colouring of B wrt
+COND. C=A-B. CCOLS is the colouring of C wrt COND. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AKEY, AL, ALIST, APP, BKEY, BL, BLIST, CL, CP,
+      CPP, EL, FL, R, SL, W: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GBDIFF);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*A or B zero. *)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; CCOLS:=BCOLS; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; CCOLS:=ACOLS; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Match coefficients. *)</font>
+      CP:=SIL; R:=SIL; W:=SIL; 
+      <font color="#4169E1">REPEAT</font>
+            EL:=DIPEVL(A);
+            FL:=DIPEVL(B);
+            SL:=EVCOMP(EL,FL); 
+            <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font>
+                 DIPMAD(A, AL,EL,A); 
+                 COLDIF(EL,ACOLS,R,W, R,W);
+                 CP:=DIPMCP(EL,AL,CP);
+            ELSIF SL = -1 <font color="#4169E1">THEN</font>
+                 DIPMAD(B, BL,FL,B); 
+                 COLDIF(FL,BCOLS,R,W, R,W);
+                 CL:=ADNEG(BL); 
+                 CP:=DIPMCP(FL,CL,CP);
+            <font color="#4169E1">ELSE</font> 
+                 DIPMAD(A, AL,EL,A); 
+                 DIPMAD(B, BL,FL,B);
+                 CL:=ADDIF(AL,BL); 
+                 <font color="#4169E1">IF</font> ADSIGN(CL) &lt;&gt; 0 <font color="#4169E1">THEN</font>
+                   CP:=DIPMCP(EL,CL,CP); 
+                   KEYCOL(EL,ACOLS, AKEY,ALIST); 
+                   KEYCOL(FL,BCOLS, BKEY,BLIST); 
+                   <font color="#4169E1">IF</font> (AKEY &lt;&gt; 0) <font color="#4169E1">AND</font> (BKEY = 0) <font color="#4169E1">THEN</font>
+                     MKACOL(ALIST,EL,R,W, R,W); <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> (AKEY = 0) <font color="#4169E1">AND</font> (BKEY &lt;&gt; 0) <font color="#4169E1">THEN</font>
+                     MKACOL(BLIST,EL,R,W, R,W); <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> (AKEY &lt;&gt; 0) <font color="#4169E1">AND</font> (BKEY &lt;&gt; 0) <font color="#4169E1">THEN</font>
+                      MKCOL(COND,CL,EL,R,W, R,W); <strong><font color="#4169E1">END</font></strong>; 
+                 <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> (A = SIL) <font color="#4169E1">OR</font> (B = SIL); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Finish. *)</font> 
+      APP:=A; 
+      <font color="#4169E1">IF</font> A &lt;&gt; SIL <font color="#4169E1">THEN</font> FINCOL(A,ACOLS,R,W, R,W); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B &lt;&gt; SIL <font color="#4169E1">THEN</font> FINCOL(B,BCOLS,R,W, R,W); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> B &lt;&gt; SIL <font color="#4169E1">THEN</font> APP:=DIPNEG(B); <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=APP; <font color="#4169E1">ELSE</font> CPP:=CP; C:=INV(CP); SRED(CPP,APP); <strong><font color="#4169E1">END</font></strong>; 
+
+<font color="#B22222">(*4*)</font><font color="#B22222">(* IF C = SIL THEN
+        C:=0;
+        CCOLS:=SIL;
+      ELSE
+        IF (R &lt;&gt; SIL) OR (W &lt;&gt; SIL) THEN
+          IF R &lt;&gt; SIL THEN R:=INV(R); END;
+          IF W &lt;&gt; SIL THEN W:=INV(W); END;
+          CCOLS:=LIST2(R,W); ELSE CCOLS:=SIL;
+        END;
+      END;
+
+*)</font>
+<font color="#B22222">(*4*)</font> <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> 
+        C:=0;
+        CCOLS:=ColEmpty(); <font color="#B22222">(* ---CHANGED--- *)</font>
+      <font color="#4169E1">ELSE</font>
+          <font color="#4169E1">IF</font> R &lt;&gt; SIL <font color="#4169E1">THEN</font> R:=INV(R); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* ---CHANGED--- *)</font>
+          <font color="#4169E1">IF</font> W &lt;&gt; SIL <font color="#4169E1">THEN</font> W:=INV(W); <strong><font color="#4169E1">END</font></strong>; 
+          CCOLS:=ColCons(R,W);
+      <strong><font color="#4169E1">END</font></strong>; 
+
+<font color="#B22222">(*7*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> GBDIFF; 
+
+
+<strong><font color="#4169E1">PROCEDURE COLPRD</font></strong>(COL1,TTERM: LIST): LIST; 
+<font color="#B22222">(*Colour product. COL1 contains a list of red terms and a list of white
+terms. TTERM is a term. Every term in COL1 is multiplied with TTERM.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   CRED, CWHITE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(COLPRD);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Case COL1 empty. *)</font>
+      <font color="#4169E1">IF</font> ColIsEmpty(COL1) <font color="#4169E1">THEN</font> RETURN(ColEmpty()); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Multiplication. *)</font>
+      ColParts(COL1, CRED,CWHITE); 
+      <font color="#4169E1">IF</font> CRED &lt;&gt; SIL <font color="#4169E1">THEN</font> CRED:=CMULT(CRED,TTERM,1); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CWHITE &lt;&gt; SIL <font color="#4169E1">THEN</font> CWHITE:=CMULT(CWHITE,TTERM,2); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Finish. *)</font> 
+      RETURN(ColCons(CRED,CWHITE));
+<strong><font color="#4169E1">END</font></strong> COLPRD; 
+
+
+<strong><font color="#4169E1">PROCEDURE CMULT</font></strong>(ONECL,TTERM,B: LIST): LIST; 
+<font color="#B22222">(*Colour multiplication.
+If B=1 then ONECL is a list of (red) terms.
+If B=2 then ONECL is a list of pairs, each containing a (white) term
+and the white part of its coefficient.
+TTERM is a term. Every term in ONECL is multiplicated with TTERM.
+CCOL is the result. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   CCOL, CELEM, QLIST, T, TELEM: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(CMULT);
+<font color="#B22222">(*1*)</font> CCOL:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Multiplication of terms. *)</font> 
+      <font color="#4169E1">WHILE</font> ONECL &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(ONECL, TELEM,ONECL); 
+           <font color="#4169E1">IF</font> B = 2 <font color="#4169E1">THEN</font> FIRST2(TELEM, T,QLIST); <font color="#4169E1">ELSE</font> T:=TELEM; <strong><font color="#4169E1">END</font></strong>; 
+           T:=EVSUM(TTERM,T); 
+           <font color="#4169E1">IF</font> B = 2 <font color="#4169E1">THEN</font> CELEM:=LIST2(T,QLIST); CCOL:=COMP(CELEM,CCOL);
+                    <font color="#4169E1">ELSE</font> CCOL:=COMP(T,CCOL); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(INV(CCOL));
+<strong><font color="#4169E1">END</font></strong> CMULT; 
+
+
+<strong><font color="#4169E1">PROCEDURE WHSRT</font></strong>(COL,TTERM,ALIST: LIST): LIST; 
+<font color="#B22222">(*White sort. COL contains a list of red terms and a list of white terms.
+The form of COL is
+((r1,... ,rn),((w1,(wp11,; ,wp1s)),... ,(wm,(wpm1,; ,wpms)))).
+TTERM is a term. ALIST is a list of coefficients.
+The form of ALIST is (a1,... ,at).
+Every term of COL is multiplied with TTERM. The resulting terms are
+coloured white by adding ALIST to its white part. The list of red terms
+is empty. The list of white terms z is as follows
+( (r1*tterm,(a1,... ,at)),... ,(rn*tterm,(a1,... ,at)),
+(w1*tterm,(a1,... ,at,wp11,... ,wp1s)),... ,
+(wm*tterm,(a1,... ,at,wpm1,... ,wpms)) ).
+CWHIT0  contains the same terms as z in a nondecreasing order.
+COLS is pair containg an empty list of red terms and the list CWHIT0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, BL, BLIST, CP, CRED, CWHIT0, CWHITE, CWHITP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(WHSRT);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Get red and white terms. *)</font>
+      <font color="#4169E1">IF</font> ColIsEmpty(COL) <font color="#4169E1">THEN</font> RETURN(ColEmpty()); <strong><font color="#4169E1">END</font></strong>;
+      FIRST2(COL, CRED,CWHITE);
+      CWHIT0:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Match terms. *)</font> 
+      <font color="#4169E1">IF</font> (CWHITE &lt;&gt; SIL) <font color="#4169E1">AND</font> (CRED &lt;&gt; SIL) <font color="#4169E1">THEN</font> <font color="#B22222">(* --- to do ---: OK? *)</font>
+        <font color="#4169E1">REPEAT</font>
+              ADV(CRED, AL,CRED);
+              <font color="#4169E1">REPEAT</font>
+                    ADV(CWHITE, CP,CWHITP);
+                    FIRST2(CP, BL,BLIST); 
+                    SL:=EVCOMP(AL,BL); 
+                    <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font>
+                      CWHIT0:=COMP(LIST2(EVSUM(TTERM,AL),ALIST),CWHIT0);
+                    <font color="#4169E1">ELSE</font>
+                      CWHIT0:=COMP(LIST2(EVSUM(TTERM,BL),WUPD(ALIST,BLIST)),
+                                   CWHIT0);
+                      CWHITE:=CWHITP;
+                    <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">UNTIL</font> (SL = 1) <font color="#4169E1">OR</font> (CWHITE = SIL); 
+              <font color="#4169E1">IF</font> SL &lt;= 0
+                <font color="#4169E1">THEN</font> CWHIT0:=COMP(LIST2(EVSUM(TTERM,AL),ALIST),CWHIT0); <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">UNTIL</font> (CRED = SIL) <font color="#4169E1">OR</font> (CWHITE = SIL); 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*No more terms left. *)</font> 
+      <font color="#4169E1">IF</font> (CWHITE=SIL) <font color="#4169E1">AND</font> (CRED=SIL) <font color="#4169E1">THEN</font> RETURN(LIST2(SIL,INV(CWHIT0))); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Red terms left. *)</font> 
+      <font color="#4169E1">WHILE</font> CRED &lt;&gt; SIL <font color="#4169E1">DO</font> 
+           ADV(CRED, AL,CRED);
+           CWHIT0:=COMP(LIST2(EVSUM(TTERM,AL),ALIST),CWHIT0);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*White terms left. *)</font> 
+      <font color="#4169E1">WHILE</font> CWHITE &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(CWHITE, CP,CWHITE);
+           FIRST2(CP, BL,BLIST);
+           CWHIT0:=COMP(LIST2(EVSUM(TTERM,BL),WUPD(ALIST,BLIST)),CWHIT0);
+       <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*9*)</font> RETURN(LIST2(SIL,INV(CWHIT0)));
+<strong><font color="#4169E1">END</font></strong> WHSRT; 
+
+
+<strong><font color="#4169E1">PROCEDURE WUPD</font></strong>(ALIST,BLIST: LIST): LIST; 
+<font color="#B22222">(*White part update. ALIST and BLIST are sets of coefficients.
+Returns the union of ALIST and BLIST. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, CLIST, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(WUPD);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> ALIST = BLIST <font color="#4169E1">THEN</font> RETURN(BLIST); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> BLIST = SIL <font color="#4169E1">THEN</font> RETURN(ALIST) <strong><font color="#4169E1">END</font></strong>;
+      CLIST:=BLIST;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> ALIST &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(ALIST, A,ALIST);
+           <font color="#4169E1">IF</font> MEMBER(A,BLIST) = 0 <font color="#4169E1">THEN</font> CLIST:=COMP(A,CLIST); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(CLIST);
+<strong><font color="#4169E1">END</font></strong> WUPD; 
+
+
+<strong><font color="#4169E1">PROCEDURE COLDIF</font></strong>(T,ACOLS,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Colour difference. T is term. ACOLS contains a list of red terms
+and a list of white terms. COLR is a list of red terms. COLW is
+a list of white terms.
+If T is member of the red terms in ACOLS, it is added to COLR. The
+result is CRED.
+If T is member of the white terms in ACOLS, it is added to COLW with
+its white part. The result is CWHITE. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ACRED, ACWHIT, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(COLDIF);
+<font color="#B22222">(*1*)</font> FIRST2(ACOLS, ACRED,ACWHIT);
+      CRED:=COLR;
+      CWHITE:=COLW; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> MEMBER(T,ACRED)=1 <font color="#4169E1">THEN</font> CRED:=COMP(T,CRED); RETURN; <strong><font color="#4169E1">END</font></strong>;
+      CP:=FINDCP(T,ACWHIT);
+      <font color="#4169E1">IF</font> CP &lt;&gt; SIL <font color="#4169E1">THEN</font> CWHITE:=COMP(CP,CWHITE); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> COLDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE KEYCOL</font></strong>(EL,ACOLS: LIST; <strong><font color="#228B22">VAR</font></strong> KEY,ALIST: LIST); 
+<font color="#B22222">(*Key colour. EL is a term.
+ACOLS contains a list of red terms and a list of white terms.
+If EL is member of the red terms in ACOLS then KEY=1 and ALIST is empty.
+If EL is member of the white terms in ACOLS then KEY=2 and ALIST is
+the white part of EL.
+If EL is not in ACOLS (EL is coloured green) then KEY=0 and ALIST is empty. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ACRED, ACWHIT, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(KEYCOL);
+<font color="#B22222">(*1*)</font> ALIST:=SIL; KEY:=0; 
+<font color="#B22222">(*2*)</font> FIRST2(ACOLS, ACRED,ACWHIT);
+      <font color="#4169E1">IF</font> MEMBER(EL,ACRED) = 1 <font color="#4169E1">THEN</font> KEY:=1; RETURN; <strong><font color="#4169E1">END</font></strong>;
+      CP:=FINDCP(EL,ACWHIT); 
+      <font color="#4169E1">IF</font> CP &lt;&gt; SIL <font color="#4169E1">THEN</font> KEY:=2; ALIST:=SECOND(CP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> KEYCOL; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKACOL</font></strong>(ALIST,EL,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Make colour. ALIST is a list of coefficients. EL is a term.
+COLR is a list of red terms. COLW is a list of white terms.
+If ALIST is empty, EL is added to COLR. The result is CRED.
+If ALIST is not empty, the pair of EL and ALIST is added to COLW. the
+result is CWHITE. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKACOL);
+<font color="#B22222">(*1*)</font> CRED:=COLR; CWHITE:=COLW; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> ALIST = SIL <font color="#4169E1">THEN</font> CRED:=COMP(EL,CRED); RETURN; <strong><font color="#4169E1">END</font></strong>;
+      CWHITE:=COMP(LIST2(EL,ALIST),CWHITE);
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> MKACOL; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKCOL</font></strong>(COND,CA,CE,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Make new colour. COND is a condition. CA is a coefficient. CE is
+a term. COLR is a list of red terms. COLW is a list of white terms.
+If CA is coloured red by COND, CE is added to COLR. the result is CRED.
+If CA is coloured white by COND, the pair with CE and the white factors
+of CA are added to COLW. the result is CWHITE. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, CL, PACK, QALIST, WFACTS: LIST;
+      C: COLOUR;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKCOL);
+<font color="#B22222">(*1*)</font> CRED:=COLR; CWHITE:=COLW; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*CA is a constant. *)</font>
+      <font color="#4169E1">IF</font> PAR.IsCnst(CA) <font color="#4169E1">THEN</font> CRED:=COMP(CE,CRED); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Factorization of CA. *)</font> 
+      QALIST:=PAR.Factorize(CA);
+      WFACTS:=SIL; CL:=0; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Check factors of CA. *)</font> 
+      <font color="#4169E1">WHILE</font> (QALIST &lt;&gt; SIL) <font color="#4169E1">AND</font> (CL = 0) <font color="#4169E1">DO</font>
+            ADV(QALIST, A,QALIST); 
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> PAR.IsCnst(A) <font color="#4169E1">THEN</font> 
+	      C:=PAR.CondEval(COND,A);
+     	      <font color="#4169E1">IF</font>    C=unknown <font color="#4169E1">THEN</font> WFACTS:=COMP(A,WFACTS);
+     	      ELSIF C=zero    <font color="#4169E1">THEN</font> CL:=1;  <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Finish. *)</font> 
+      <font color="#4169E1">IF</font> CL = 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> WFACTS = SIL 
+           <font color="#4169E1">THEN</font> CRED:=COMP(CE,CRED);
+           <font color="#4169E1">ELSE</font> PACK:=LIST2(CE,WFACTS); CWHITE:=COMP(PACK,CWHITE); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*8*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> MKCOL; 
+
+
+<strong><font color="#4169E1">PROCEDURE FINCOL</font></strong>(APP,ACOLS,COLR,COLW: LIST; <strong><font color="#228B22">VAR</font></strong> CRED,CWHITE: LIST); 
+<font color="#B22222">(*Finish colouring. APP is a polynomial.
+ACOLS contains a list of red terms and a list of white terms.
+COLR is a list of red terms. COLW is a list of white terms.
+The red terms of APP are added to COLR. the result is CRED.
+The white terms of APP are added to COLW with their white part.
+The result is CWHITE. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, EL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(FINCOL);
+<font color="#B22222">(*1*)</font> CRED:=COLR; CWHITE:=COLW; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> APP &lt;&gt; SIL <font color="#4169E1">DO</font>
+            DIPMAD(APP, AL,EL,APP); 
+            COLDIF(EL,ACOLS,CRED,CWHITE, CRED,CWHITE);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> FINCOL; 
+
+
+<strong><font color="#4169E1">PROCEDURE NFORM</font></strong>(GA,FCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> N0,N1: LIST); 
+<font color="#B22222">(*Parametric normalform.
+GA is a condition. FCO is a polynomial coloured wrt GA.
+P is a list of polynomials coloured wrt GA.
+FCO is reduced modulo P wrt GA. N0 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+coloured completely green by cond and c is a multiplicative factor.
+N1 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+not coloured completely green by cond and c is a multiplicative
+factor. *)</font>
+<font color="#B22222">(* ---to do---: this "multiplicative factor" is useless, remove! *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CCL, COL, COND, D, DCOND, DL, F, PCI, PCO, POL, QC, RE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(NFORM);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Prepare c=1. *)</font>
+      N0:=SIL; N1:=SIL;
+      <font color="#4169E1">IF</font> FCO = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      COND:=GA; 
+      F:=ColpPol(FCO); 
+      C:=ADFI(DIPLBC(F),1);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Case FCO is zero (completely coloured green) or P is empty. *)</font> 
+      <font color="#4169E1">IF</font> ColpIsZero(FCO) <font color="#4169E1">THEN</font> N0:=LIST3(COND,FCO,C); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> N1:=LIST3(COND,FCO,C); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      PCO:=FCO;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Reduction. *)</font> 
+      LOOP
+          <font color="#4169E1">IF</font> ColpIsZero(PCO) <font color="#4169E1">THEN</font> N0:=LIST3(COND,PCO,C); EXIT; <strong><font color="#4169E1">END</font></strong>;
+          FINDPI(PCO,P, PCI,RE); 
+          <font color="#4169E1">IF</font> PCI = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+          GRED(COND,PCO,PCI,RE, PCO,QC); 
+          C:=ADPROD(C,QC);
+      <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> N0 &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Get headterm wrt. COND. *)</font> 
+      <font color="#4169E1">IF</font> ColpHT(PCO) &lt;&gt; SIL <font color="#4169E1">THEN</font> N1:=LIST3(COND,PCO,C); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Determine. *)</font>
+      ColpParts(PCO, POL,COL);
+      DETPOL(COND,POL,COL, DL,CCL); 
+      <font color="#4169E1">WHILE</font> CCL &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV2(CCL, DCOND,PCO,CCL); 
+     	       	    	      	     <font color="#B22222">(* ---to do---: OK? *)</font>
+           <font color="#4169E1">IF</font> ColpIsZero(PCO) <font color="#4169E1">THEN</font> N0:=COMP3(DCOND,PCO,C,N0); 
+                              <font color="#4169E1">ELSE</font> N1:=COMP3(DCOND,PCO,C,N1); <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*7*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> NFORM; 
+
+
+<strong><font color="#4169E1">PROCEDURE NFTOP</font></strong>(GA,FCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> N0,N1: LIST); 
+<font color="#B22222">(*Normalform by topreduction.
+GA is a condition. FCO is a polynomial coloured wrt GA.
+P is a list of polynomials coloured wrt GA.
+FCO is reduced modulo P wrt GA. N0 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+coloured completely green by cond and c is a multiplicative factor.
+N1 is the set of tripel of the form
+(cond,pco,c), where cond is a condition, pco is a normalform of fco
+not coloured completely green by cond and c is a multiplicative
+factor. *)</font>
+<font color="#B22222">(* ---to do---: this "multiplicative factor" is useless, remove! *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, C, CCL, COL, D, DCOND, DL, F, N, NL, PCI, PCO, 
+      POL, QC, RE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(NFTOP);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Prepare c=1. *)</font> 
+      N0:=SIL; N1:=SIL;
+      <font color="#4169E1">IF</font> FCO = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      F:=ColpPol(FCO);
+      C:=ADFI(DIPLBC(F),1);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Case FCO is zero (completely coloured green) or P is empty. *)</font> 
+      <font color="#4169E1">IF</font> ColpIsZero(FCO) <font color="#4169E1">THEN</font> N0:=LIST3(GA,FCO,C); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> N1:=LIST3(GA,FCO,C); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> N:=LIST2(C,LIST2(GA,FCO)); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Reduction. *)</font> 
+      <font color="#4169E1">WHILE</font> N &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV2(N, C,NL,N); 
+           <font color="#4169E1">WHILE</font> NL &lt;&gt; SIL <font color="#4169E1">DO</font>
+                ADV2(NL, GA,PCO,NL); 
+                LOOP
+                    <font color="#4169E1">IF</font> ColpIsZero(PCO) <font color="#4169E1">THEN</font> N0:=COMP3(GA,PCO,C,N0); EXIT; <strong><font color="#4169E1">END</font></strong>;
+                    FINDPITOP(PCO,P, PCI,RE); 
+                    <font color="#4169E1">IF</font> PCI &lt;&gt; SIL <font color="#4169E1">THEN</font>
+                      GRED(GA,PCO,PCI,RE, PCO,QC);
+                      C:=ADPROD(C,QC);
+                    <font color="#4169E1">ELSE</font>
+                      <font color="#4169E1">IF</font> ColpHT(PCO) &lt;&gt; SIL
+                        <font color="#4169E1">THEN</font> N1:=COMP3(GA,PCO,C,N1);
+                        <font color="#4169E1">ELSE</font> ColpParts(PCO, POL,COL);
+			     DETPOL(GA,POL,COL, DL,CCL);
+                             N:=COMP2(C,CCL,N);
+                      <strong><font color="#4169E1">END</font></strong>; 
+                      EXIT;
+                    <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*7*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> NFTOP; 
+
+
+<strong><font color="#4169E1">PROCEDURE FINDPI</font></strong>(PCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> PCI,RE: LIST); 
+<font color="#B22222">(*Find polynomial.
+PCO is a coloured polynomial.
+P is a list of coloured polynomials. 
+A polynomial for the reduction over all terms of PCO modulo P
+is searched.
+PCI is emtpy if no polynomial is found, else PCI is the found
+polynomial and RE is the term of PCO to be eliminated. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ALIST, COL, HE, KEY, POL, PP, RA: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(FINDPI);
+     ColpParts(PCO, POL,COL);
+     <font color="#4169E1">WHILE</font> (POL &lt;&gt; SIL) <font color="#4169E1">DO</font>
+          DIPMAD(POL, RA,RE,POL);
+          KEYCOL(RE,COL, KEY,ALIST); 
+          <font color="#4169E1">IF</font> KEY &lt;&gt; 0 <font color="#4169E1">THEN</font> <font color="#B22222">(* RE not zero (green) *)</font>
+     	    PP:=P;
+            <font color="#4169E1">REPEAT</font>
+                  ADV(PP, PCI,PP);
+                  HE:=ColpHT(PCI);
+                  <font color="#4169E1">IF</font> HE &lt;&gt; SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> EVMT(RE,HE)=1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+     	       	    	       <font color="#4169E1">ELSE</font> ERROR(severe,
+			           "Error in FINDPI, this cannot happen.");
+     	                      <font color="#B22222">(* --- to do ---: HE=SIL cannot happen ?? *)</font>
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">UNTIL</font> PP = SIL; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+      PCI:=SIL;
+<strong><font color="#4169E1">END</font></strong> FINDPI; 
+
+<strong><font color="#4169E1">PROCEDURE FINDPITOP</font></strong>(PCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> PCI,RE: LIST); 
+<font color="#B22222">(*Find polynomial.
+PCO is a non-zero coloured polynomial.
+P is a list of coloured polynomials.
+A polynomial for the topreduction of PCO modulo P is searched.
+PCI is emtpy if no polynomial is found, else PCI is the found
+polynomial and RE is the term of PCO to be eliminated. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ALIST, HE, PI, RA: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(FINDPITOP);
+     RE:=ColpHT(PCO); 
+     <font color="#4169E1">IF</font> RE = SIL <font color="#4169E1">THEN</font> RE:=FIRST(FIRST(ColWhite(ColpCol(PCO)))); <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#4169E1">REPEAT</font>
+           ADV(P, PCI,P);
+           HE:=ColpHT(PCI); 
+           <font color="#4169E1">IF</font> HE &lt;&gt; SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> EVMT(RE,HE)=1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+     	       	    	<font color="#4169E1">ELSE</font> ERROR(severe,
+			           "Error in FINDPITOP, this cannot happen.");
+     	       	    	 <font color="#B22222">(* --- to do ---: HE=SIL cannot happen ?? *)</font>
+     	   <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">UNTIL</font>(P = SIL); 
+     PCI:=SIL;
+<strong><font color="#4169E1">END</font></strong> FINDPITOP; 
+
+
+<strong><font color="#4169E1">PROCEDURE SPOL</font></strong>(COND,HA,HB: LIST): LIST; 
+<font color="#B22222">(*Parametric s-polynomial.
+COND is a condition.
+HA and HB are coloured polynomials.
+Return SIL if the spolynomial of HA, HB need not be considered else returns
+the s-polynomial of HA and HB with colouring. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, ACOL, AL, APP, B, BCOL, BL, BPP, CL, DL, DL1, EL, EL1,
+      GL, H, HCOLS, RAL, RAP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(SPOL);
+      <font color="#4169E1">IF</font> (HA = SIL) <font color="#4169E1">OR</font> (HB = SIL) <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>; 
+      ColpParts(HA, A,ACOL); ColpParts(HB, B,BCOL);
+<font color="#B22222">(*3*)</font> EL:=ColpHT(HA);
+      DL:=ColpHT(HB);
+      GL:=EVLCM(EL,DL);
+      <font color="#4169E1">IF</font> EQUAL(GL,EVSUM(EL,DL)) = 1 <font color="#4169E1">THEN</font> RETURN SIL; <strong><font color="#4169E1">END</font></strong>;
+        <font color="#B22222">(* Buchbergers first criterion: disjoint head terms *)</font>
+<font color="#B22222">(*4*)</font> ACOL:=SETCOL(COND,ACOL); AL:=FINDBC(EL,A); ADV(AL, RAL,RAP); 
+      BCOL:=SETCOL(COND,BCOL); BL:=FINDBC(DL,B);
+<font color="#B22222">(*5*)</font> ADGCDC(AL,BL, CL,AL,BL);
+      <font color="#B22222">(* Note: if gcd is not defined for the current domain, AL and BL
+         remain unchanged by definiton of ADGCDC *)</font>
+      EL1:=EVDIF(GL,EL); DL1:=EVDIF(GL,DL);
+      APP:=DIPFMO(BL,EL1);
+      BPP:=DIPFMO(AL,DL1);
+      <font color="#4169E1">IF</font> EVSIGN(EL1) &lt;&gt; 0 <font color="#4169E1">THEN</font> ACOL:=COLPRD(ACOL,EL1); <strong><font color="#4169E1">END</font></strong>; 
+      APP:=DIPROD(A,APP);
+      <font color="#4169E1">IF</font> EVSIGN(DL1) &lt;&gt; 0 <font color="#4169E1">THEN</font> BCOL:=COLPRD(BCOL,DL1); <strong><font color="#4169E1">END</font></strong>; 
+      GBDIFF(COND,APP,ACOL,DIPROD(B,BPP),BCOL, H,HCOLS); 
+      <font color="#4169E1">IF</font> H &lt;&gt; 0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> ADSIGN(DIPLBC(H)) = -1 <font color="#4169E1">THEN</font> H:=DIPNEG(H); <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ColIsEmpty(HCOLS) <font color="#4169E1">THEN</font> RETURN ColpCons(H,HCOLS); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*8*)</font> RETURN SIL;
+<strong><font color="#4169E1">END</font></strong> SPOL; 
+
+
+<strong><font color="#4169E1">PROCEDURE GBSYS</font></strong>(CNDS,P: LIST): LIST;
+<font color="#B22222">(*Groebner system.
+CNDS is a case distinction.
+P is a list of polynomials.
+Returns a Groebner-system for P relative to CNDS. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   BB, COND, CONDS, GSYS, PAIRS, PCO, PELEM, PL, PP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GBSYS);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Case P is empty. *)</font>
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Determine P relative to CNDS. *)</font>
+      DET(CNDS,P, CONDS,PL); 
+      <font color="#4169E1">IF</font> PAR.outputlevel&gt;0 <font color="#4169E1">THEN</font>
+	SWRITE("The polynomial system is determined by: "); BLINES(0); 
+        DWRIT(CONDS); BLINES(1);
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Check degree of polynomials and construct pairs. *)</font>
+      BB:=SIL; GSYS:=SIL;
+      <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PL, PELEM,PL); FIRST2(PELEM, COND,PP); 
+           PCO:=CHDEGL(PP); 
+           <font color="#4169E1">IF</font> PCO &lt;&gt; SIL <font color="#4169E1">THEN</font>
+             GSYS:=GBUPD(COND,LIST1(PCO),GSYS);
+           <font color="#4169E1">ELSE</font>
+             PAIRS:=MKPAIR(PP); 
+<font color="#B22222">(*             IF PAIRS &lt;&gt; SIL THEN BB:=COMP3(COND,PP,PAIRS,BB); *)</font>
+             <font color="#4169E1">IF</font> PAIRS &lt;&gt; SIL <font color="#4169E1">THEN</font> BB:=COMP3(COND,REXTP(PP),PAIRS,BB); 
+     	       <font color="#B22222">(* ---to do---: Removing extraneous polynomials should be
+     	       	    	       done here, too??? *)</font>
+                             <font color="#4169E1">ELSE</font> GSYS:=GBUPD(COND,PP,GSYS); <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Construct groebner-system. *)</font>
+<font color="#B22222">(*7*)</font> RETURN(CONSGB(BB,GSYS));
+<strong><font color="#4169E1">END</font></strong> GBSYS;
+
+<strong><font color="#228B22">VAR</font></strong> pGSYS, pCOND: POINTER <font color="#4169E1">TO</font> LIST;
+
+<strong><font color="#4169E1">PROCEDURE SigUsr1HandleCONSGB</font></strong>(signo:INTEGER);
+<font color="#B22222">(* Handler for sigusr1 in CONSGB. *)</font>
+<strong><font color="#228B22">VAR</font></strong> dummy: Action;
+    Dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     dummy:=signal(SIGUSR1,SIG_IGN);
+     Dummy:=SOUNIT("CON:x");
+     BLINES(0);
+     SWRITE("______________________________________________________________________________"); BLINES(0);
+     SWRITE("SIGUSR1 received in CONSGB:"); BLINES(1);
+     SWRITE("Groebner system at the moment:"); BLINES(1);
+     WRGBS(pGSYS^); BLINES(1);
+     SWRITE("Actual condition:"); BLINES(1);
+     CondWrite(pCOND^); BLINES(0);
+     SWRITE("______________________________________________________________________________"); BLINES(0);
+     Dummy:=CUNIT("CON:x");
+     dummy:=signal(SIGUSR1,SigUsr1HandleCONSGB);
+<strong><font color="#4169E1">END</font></strong> SigUsr1HandleCONSGB;
+
+
+<strong><font color="#4169E1">PROCEDURE CONSGB</font></strong>(BB,GSYS: LIST): LIST;
+<font color="#B22222">(*Construct groebner-system. BB is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn),
+where condi is a condition, pi is a polynomials list determined by condi
+and pairsi is the polynomials pairs list of pi for i= 1; n.
+GSYS is the actual groebner-system.
+GSYS is completed. The result is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   COND, GS1, HCO, HCOL, N0, N1, P, PAIR, PAIRS, PLIST,
+      PRSL: LIST; 
+<strong><font color="#228B22">VAR</font></strong> sighandleold: Action;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CONSGB);
+     PLIST:=BB;
+     COND:=CondEmpty(); <font color="#B22222">(* Initialization necessary for signal handler only *)</font>
+     pGSYS:=ADR(GSYS);
+     pCOND:=ADR(COND);
+     sighandleold:=signal(SIGUSR1,SigUsr1HandleCONSGB);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*S-polynomials and normalforms. *)</font> 
+      <font color="#4169E1">WHILE</font> PLIST &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV3(PLIST, COND,P,PAIRS,PLIST); 
+           <font color="#4169E1">WHILE</font> PAIRS &lt;&gt; SIL <font color="#4169E1">DO</font>
+                ADV(PAIRS, PAIR,PAIRS); 
+                PRSL:=SIL; GS1:=SIL;
+                HCO:=SPOL(COND,SECOND(PAIR),THIRD(PAIR));
+                <font color="#4169E1">IF</font> HCO = SIL <font color="#4169E1">THEN</font> <font color="#B22222">(* s-polynomial is zero. *)</font>
+                  <font color="#4169E1">IF</font> PAIRS = SIL <font color="#4169E1">THEN</font> GSYS:=GBUPD(COND,P,GSYS); <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">ELSE</font>
+                  <font color="#4169E1">IF</font> ColpIsCnst(HCO) <font color="#4169E1">THEN</font> <font color="#B22222">(* s-polynomial is a constant *)</font>
+                    PAIRS:=SIL; 
+                    GSYS:=GBUPD(COND,LIST1(HCO),GSYS); 
+                  <font color="#4169E1">ELSE</font>
+     	       	    PAR.NormalForm(COND,HCO,P, N0,N1); 
+                    VRNORM(COND,P,N0,N1,PAIRS, P,PAIRS,PRSL,GS1);
+                  <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+     	        <font color="#4169E1">IF</font> PRSL&lt;&gt;SIL <font color="#4169E1">THEN</font> PLIST:=CONC(PRSL,PLIST); <strong><font color="#4169E1">END</font></strong>;
+     	       	    	      	   	 <font color="#B22222">(* PRSL first, we want ramifications
+     	       	    	      	   	    of COND to be treated first, esp.
+					    to have the generic case first. *)</font>
+                GSYS:=CONC(GSYS,GS1);
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+      sighandleold:=signal(SIGUSR1,sighandleold);
+      RETURN(GSYS);
+<strong><font color="#4169E1">END</font></strong> CONSGB; 
+
+<font color="#B22222">(**********************************************************************
+FACTORIZING
+**********************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE GBSYSF</font></strong>(CNDS,P: LIST): LIST;
+<font color="#B22222">(*Groebner system with factorization.
+CNDS is a case distinction.
+P is a list of polynomials.
+Returns a Groebner-system for P relative to CNDS. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   BB, COND, CONDS, GSYS, PAIRS, PCO, PELEM, PL, PP, p, FL, F, f, tmpFL, tmpF, fl, pl: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GBSYSF);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Case P is empty. *)</font>
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+      FL:=SIL;
+      <font color="#4169E1">WHILE</font> P&lt;&gt;SIL <font color="#4169E1">DO</font>
+      	   ADV(P, p,P);
+     	   F:=PAR.Factors(p);
+     	   <font color="#4169E1">IF</font> FL=SIL <font color="#4169E1">THEN</font>
+     	       <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font> ADV(F, f,F); FL:=COMP(LIST1(f),FL); <strong><font color="#4169E1">END</font></strong>;
+     	   <font color="#4169E1">ELSE</font>
+     	       tmpFL:=FL;
+     	       FL:=SIL;
+     	       <font color="#4169E1">WHILE</font> tmpFL&lt;&gt;SIL <font color="#4169E1">DO</font>
+	            ADV(tmpFL, fl,tmpFL);
+		    tmpF:=F;
+		    <font color="#4169E1">WHILE</font> tmpF&lt;&gt;SIL <font color="#4169E1">DO</font>
+		    	 ADV(tmpF, f,tmpF); FL:=COMP(COMP(f,fl),FL); <strong><font color="#4169E1">END</font></strong>;
+     	       <strong><font color="#4169E1">END</font></strong>;
+     	    <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;
+     	   
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Determine P relative to CNDS. *)</font>
+      PL:=SIL;
+      <font color="#4169E1">WHILE</font> FL&lt;&gt;SIL <font color="#4169E1">DO</font>
+      	   ADV(FL, fl,FL);
+	   DET(CNDS,fl, CONDS,pl); 
+     	   PL:=CONC(pl,PL);
+      <strong><font color="#4169E1">END</font></strong>;
+ 
+      <font color="#4169E1">IF</font> PAR.outputlevel&gt;0 <font color="#4169E1">THEN</font>
+	SWRITE("The polynomial system is determined by: "); BLINES(0); 
+        CdWrite(CONDS); BLINES(1);
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Check degree of polynomials and construct pairs. *)</font>
+      BB:=SIL; GSYS:=SIL;
+      <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PL, PELEM,PL); FIRST2(PELEM, COND,PP); 
+           PCO:=CHDEGL(PP); 
+           <font color="#4169E1">IF</font> PCO &lt;&gt; SIL <font color="#4169E1">THEN</font>
+             GSYS:=GBUPD(COND,LIST1(PCO),GSYS);
+           <font color="#4169E1">ELSE</font>
+             PAIRS:=MKPAIR(PP); 
+             <font color="#4169E1">IF</font> PAIRS &lt;&gt; SIL <font color="#4169E1">THEN</font> BB:=COMP3(COND,REXTP(PP),PAIRS,BB); 
+     	       <font color="#B22222">(* ---to do---: Removing extraneous polynomials should be
+     	       	    	       done here, too??? *)</font>
+                             <font color="#4169E1">ELSE</font> GSYS:=GBUPD(COND,PP,GSYS); <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Construct groebner-system. *)</font>
+<font color="#B22222">(*7*)</font> RETURN(CONSGBF(BB,GSYS));
+<strong><font color="#4169E1">END</font></strong> GBSYSF;
+
+<strong><font color="#4169E1">PROCEDURE SigUsr1HandleCONSGBF</font></strong>(signo:INTEGER);
+<font color="#B22222">(* Handler for sigusr1 in CONSGBF. *)</font>
+<strong><font color="#228B22">VAR</font></strong> dummy: Action;
+    Dummy: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     dummy:=signal(SIGUSR1,SIG_IGN);
+     Dummy:=SOUNIT("CON:x");
+     BLINES(0);
+     SWRITE("______________________________________________________________________________"); BLINES(0);
+     SWRITE("SIGUSR1 received in CONSGB:"); BLINES(1);
+     SWRITE("Groebner system at the moment:"); BLINES(1);
+     WRGBS(pGSYS^); BLINES(1);
+     SWRITE("Actual condition:"); BLINES(1);
+     CondWrite(pCOND^); BLINES(0);
+     SWRITE("______________________________________________________________________________"); BLINES(0);
+     Dummy:=CUNIT("CON:x");
+     dummy:=signal(SIGUSR1,SigUsr1HandleCONSGBF);
+<strong><font color="#4169E1">END</font></strong> SigUsr1HandleCONSGBF;
+
+
+<strong><font color="#4169E1">PROCEDURE CONSGBF</font></strong>(BB,GSYS: LIST): LIST;
+<font color="#B22222">(*Construct groebner-system. BB is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn),
+where condi is a condition, pi is a polynomials list determined by condi
+and pairsi is the polynomials pairs list of pi for i= 1; n.
+GSYS is the actual groebner-system.
+GSYS is completed. The result is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   COND, GS1, HCO, HCOL, N0, N1, P, PAIR, PAIRS, PLIST,
+      PRSL, tmpN1, con, cond, pcol, c, p, col, FL, f, CD, CL, con, pol : LIST; 
+<strong><font color="#228B22">VAR</font></strong> sighandleold: Action;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CONSGBF);
+     PLIST:=BB;
+     COND:=CondEmpty(); <font color="#B22222">(* Initialization necessary for signal handler only *)</font>
+     pGSYS:=ADR(GSYS);
+     pCOND:=ADR(COND);
+     sighandleold:=signal(SIGUSR1,SigUsr1HandleCONSGBF);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*S-polynomials and normalforms. *)</font> 
+      <font color="#4169E1">WHILE</font> PLIST &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV3(PLIST, COND,P,PAIRS,PLIST); 
+           <font color="#4169E1">WHILE</font> PAIRS &lt;&gt; SIL <font color="#4169E1">DO</font>
+                ADV(PAIRS, PAIR,PAIRS); 
+                PRSL:=SIL; GS1:=SIL;
+                HCO:=SPOL(COND,SECOND(PAIR),THIRD(PAIR));
+                <font color="#4169E1">IF</font> HCO = SIL <font color="#4169E1">THEN</font> <font color="#B22222">(* s-polynomial is zero. *)</font>
+                  <font color="#4169E1">IF</font> PAIRS = SIL <font color="#4169E1">THEN</font> GSYS:=GBUPD(COND,P,GSYS); <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">ELSE</font>
+                  <font color="#4169E1">IF</font> ColpIsCnst(HCO) <font color="#4169E1">THEN</font> <font color="#B22222">(* s-polynomial is a constant. *)</font>
+                    PAIRS:=SIL; 
+                    GSYS:=GBUPD(COND,LIST1(HCO),GSYS); 
+                  <font color="#4169E1">ELSE</font>
+     	       	    PAR.NormalForm(COND,HCO,P, N0,N1); 
+     	       	    tmpN1:=N1;
+     	       	    N1:=SIL;
+		    <font color="#4169E1">WHILE</font> tmpN1&lt;&gt;SIL <font color="#4169E1">DO</font>
+		    	 ADV3(tmpN1, cond,pcol,c,tmpN1);
+     	       	    	 FIRST2(pcol, p,col);
+     	       	    	 FL:=PAR.Factors(p);
+			 <font color="#4169E1">WHILE</font> FL&lt;&gt;SIL <font color="#4169E1">DO</font>
+			      ADV(FL, f,FL);
+<font color="#B22222">(*			      DETPOL(COND,f,INICOL(COND,f), CD,CL);*)</font>
+			      DETPOL(COND,f,ColConsCond(f,COND), CD,CL);
+     	       	    	      <font color="#4169E1">WHILE</font> CL&lt;&gt;SIL <font color="#4169E1">DO</font>
+			      	   ADV2(CL, con,pol,CL);
+     	       	    	      	   <font color="#4169E1">IF</font> ColpIsZero(pol)
+				      <font color="#4169E1">THEN</font> N0:=COMP3(con,pol,1, N0);
+     	       	    	      	      <font color="#4169E1">ELSE</font> N1:=COMP3(con,pol,1, N1);
+     	       	    	      	   <strong><font color="#4169E1">END</font></strong>;
+     	       	    	      <strong><font color="#4169E1">END</font></strong>;
+     	       	    	 <strong><font color="#4169E1">END</font></strong>;
+	       	    <strong><font color="#4169E1">END</font></strong>;
+
+                    VRNORM(COND,P,N0,N1,PAIRS, P,PAIRS,PRSL,GS1);
+                  <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+     	        <font color="#4169E1">IF</font> PRSL&lt;&gt;SIL <font color="#4169E1">THEN</font> PLIST:=CONC(PRSL,PLIST); <strong><font color="#4169E1">END</font></strong>;
+     	       	    	      	   	 <font color="#B22222">(* PRSL first, we want ramifications
+     	       	    	      	   	    of COND to be treated first, esp.
+					    to have the generic case first. *)</font>
+                GSYS:=CONC(GSYS,GS1);
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+      sighandleold:=signal(SIGUSR1,sighandleold);
+      RETURN(GSYS);
+<strong><font color="#4169E1">END</font></strong> CONSGBF; 
+
+<font color="#B22222">(**********************************************************************
+END FACTORIZING
+**********************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE VRNORM</font></strong>(COND,PP,N0,N1,PPAIRS: LIST;
+                 <strong><font color="#228B22">VAR</font></strong> P,PAIRS,PAIRSL,GSYS: LIST);
+<font color="#B22222">(*Verify normalforms. 
+COND is a condition.
+PP is a polynomials list determined by COND.
+N0 is a set of tripel (ga,pco,c), where ga is
+a condition, pco is a normalform determined and coloured completely
+green (=0) by ga and c is a multiplicative factor.
+N1 is a set of tripel
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+not coloured completely green (=0) by ga and c is a multiplicative factor.
+PPAIRS is the polynomials pairs list of PP.
+The normalforms are checked.
+PP is updated to P.
+PPAIRS is updated to PAIRS. 
+PAIRSL is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn) constructed from the information
+of the N0 and N1.
+GSYS is a list of pairs, each containing a condition and a groebner
+base wrt. this condition. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, GSYS0, GSYS1, N1P, NCO, NPCOND, PRS0, PRS1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(VRNORM);
+<font color="#B22222">(*1*)</font> PAIRSL:=SIL; GSYS:=SIL; PRS0:=SIL; PRS1:=SIL; 
+      GSYS0:=SIL; GSYS1:=SIL; P:=PP; PAIRS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">IF</font> N1 = SIL <font color="#4169E1">THEN</font> <font color="#B22222">(* all normal forms are zero *)</font>
+     	<font color="#4169E1">IF</font> PPAIRS = SIL <font color="#4169E1">THEN</font> <font color="#B22222">(* no more pairs *)</font>
+     	  GSYS:=GBUPD(COND,P,GSYS);  <font color="#B22222">(* this case is finished, add to GSYS *)</font>
+     	<font color="#4169E1">ELSE</font>
+          PAIRS:=PPAIRS;
+     	<strong><font color="#4169E1">END</font></strong>;
+        RETURN;
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Check N0. *)</font> 
+      <font color="#4169E1">IF</font> N0 &lt;&gt; SIL <font color="#4169E1">THEN</font> <font color="#B22222">(* there are zero and non-zero normal forms *)</font>
+        <font color="#4169E1">IF</font> PPAIRS = SIL <font color="#B22222">(* no more pairs *)</font>
+          <font color="#4169E1">THEN</font> GSYSN0(N0,P, GSYS0); <font color="#B22222">(* this cases are finished,
+     	       	    	      	       add them to GSYS0 *)</font>
+          <font color="#4169E1">ELSE</font> MKN0(N0,P,PPAIRS, PRS0); <font color="#B22222">(* generate new pairs lists *)</font>
+        <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Check N1 (&lt;&gt;SIL here). *)</font> 
+      ADV3(N1, NPCOND,NCO,C,N1P); 
+      <font color="#4169E1">IF</font> (N1P = SIL) <font color="#4169E1">AND</font> (N0 = SIL) <font color="#4169E1">THEN</font> <font color="#B22222">(* Only one normal form which is 
+                                            not zero *)</font>
+        
+        <font color="#4169E1">IF</font> ColpIsCnst(NCO) <font color="#4169E1">THEN</font> <font color="#B22222">(* It is a constant. *)</font>
+     	  GSYS:=GBUPD(COND,LIST1(NCO),GSYS); RETURN; <font color="#B22222">(* Case closed *)</font>
+        <font color="#4169E1">ELSE</font> <font color="#B22222">(* It is not a constant. *)</font>
+          PAIRS:=MKNEWP(P,NCO,PPAIRS); 
+          P:=MINPP(P,NCO);
+        <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">ELSE</font> <font color="#B22222">(* There are more then one normal forms *)</font>
+        MKN1(N1,P,PPAIRS, PRS1,GSYS1);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Update PAIRSL. *)</font>
+      PAIRSL:=CONC(PRS0,PRS1);
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*Update GSYS. *)</font>
+      GSYS:=CONC(GSYS0,GSYS1);
+      RETURN;
+<strong><font color="#4169E1">END</font></strong> VRNORM; 
+
+<strong><font color="#4169E1">PROCEDURE CHDEGL</font></strong>(PLIST: LIST): LIST; 
+<font color="#B22222">(* Check degree of polynomial list.
+PLIST is a list of coloured polynomials. 
+Returns an element of PLIST, such that the degree wrt the colouring of
+the polynomial is 0, or emtpy if no such polynomial exists. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PCO: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(CHDEGL);
+     <font color="#4169E1">IF</font> PLIST = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+     <font color="#4169E1">REPEAT</font>
+           ADV(PLIST, PCO,PLIST);
+           <font color="#4169E1">IF</font> ColpIsCnst(PCO) <font color="#4169E1">THEN</font> RETURN(PCO); <strong><font color="#4169E1">END</font></strong>;
+     <font color="#4169E1">UNTIL</font> (PLIST = SIL);
+     RETURN(SIL);
+<strong><font color="#4169E1">END</font></strong> CHDEGL; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKN1</font></strong>(NN1,P,PAIRS: LIST; <strong><font color="#228B22">VAR</font></strong> PPLIST,GSYS: LIST); 
+<font color="#B22222">(* Make n1.
+NN1 is a set of tripel of the form
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+not coloured completely green by ga and c is a multiplicative
+factor.
+P is a list of coloured polynomials.
+PAIRS is the polynomials pairs list of P.
+PPLIST is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn) constructed from the information
+of the NN1.
+GSYS is a list of pairs, each containing a condition and a groebner
+basis wrt this condition. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, NPCOND, PCO, PP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKN1);
+<font color="#B22222">(*1*)</font> PPLIST:=SIL; GSYS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Check degree of normalforms. Update Groebner-System and pairslist. *)</font>
+      <font color="#4169E1">WHILE</font> NN1 &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV3(NN1, NPCOND,PCO,C,NN1);
+           <font color="#4169E1">IF</font> ColpIsCnst(PCO) <font color="#4169E1">THEN</font>
+             GSYS:=GBUPD(NPCOND,LIST1(PCO),GSYS);
+           <font color="#4169E1">ELSE</font>
+             PP:=MINPP(P,PCO);
+             PPLIST:=COMP3(NPCOND,PP,MKNEWP(P,PCO,PAIRS),PPLIST); 
+             <font color="#4169E1">IF</font> PAR.outputlevel = 1 <font color="#4169E1">THEN</font> 
+     	       SWRITE("New <font color="#4169E1">case</font>"); BLINES(0); CondWrite(NPCOND);
+               BLINES(1); DCLWR(PP,0); <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> MKN1; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKN0</font></strong>(NN0,P,PAIRS: LIST; <strong><font color="#228B22">VAR</font></strong> PPLIST: LIST); 
+<font color="#B22222">(*Make n0.
+NN0 is a set of tripel of the form
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+coloured completely green by ga and c is a multiplicative
+factor.
+P is a list of coloured polynomials.
+PAIRS is the polynomials pairs list of P.
+PPLIST is a list of the form
+(cond1,p1,pairs1,... ,condn,pn,pairsn) constructed from the information
+of the NN0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, NPCOND, PCO: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKN0);
+<font color="#B22222">(*1*)</font> PPLIST:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> NN0 &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV3(NN0, NPCOND,PCO,C,NN0); 
+           PPLIST:=COMP3(NPCOND,P,PAIRS,PPLIST);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> MKN0; 
+
+
+<strong><font color="#4169E1">PROCEDURE GSYSN0</font></strong>(NN0,P: LIST; <strong><font color="#228B22">VAR</font></strong> GSYS: LIST); 
+<font color="#B22222">(*Groebner-System n0 update.
+NN0 is a set of tripel of the form
+(ga,pco,c), where ga is a condition, pco is a normalform determined and
+coloured completely green by ga and c is a multiplicative
+factor.
+P is a list of coloured polynomials.
+for each GA in NN0, the pair of the form (ga,p) is added to GSYS. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, NPCOND, PCO: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GSYSN0);
+<font color="#B22222">(*1*)</font> GSYS:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Update GSYS. *)</font>
+      <font color="#4169E1">WHILE</font> NN0 &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV3(NN0, NPCOND,PCO,C,NN0); 
+           GSYS:=GBUPD(NPCOND,P,GSYS);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> GSYSN0; 
+
+
+<strong><font color="#4169E1">PROCEDURE MINPP</font></strong>(PP,PCO: LIST): LIST; 
+<font color="#B22222">(*Minimize polynomials list. PP is a list of coloured polynomials.
+PCO is a coloured polynomial.
+P is a list of PCO and those polynomials in PP, such that their
+headterms wrt the colouring can not be divided by the headterm of PCO
+relative to its colouring. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  EI, P, PCI: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MINPP);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Get headterm of PCO. *)</font>
+      P:=SIL; 
+      EI:=ColpHT(PCO); 
+      <font color="#4169E1">IF</font> EI=SIL <font color="#4169E1">THEN</font> ERROR(severe,
+		           "Error in MINPP, this cannot happen."); <strong><font color="#4169E1">END</font></strong>;
+     	                   <font color="#B22222">(* --- to do ---: EI=SIL cannot happen ?? *)</font>
+
+      <font color="#B22222">(* RETURN (INV(COMP(PCO,PP))); END;*)</font> <font color="#B22222">(* ---CHANGED--- *)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Check headterms of PP. *)</font> 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PP, PCI,PP);
+           <font color="#4169E1">IF</font> EVMT(ColpHT(PCI),EI) = 0 <font color="#4169E1">THEN</font> P:=COMP(PCI,P); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Get PCO. *)</font> 
+<font color="#B22222">(*6*)</font> RETURN(INV(COMP(PCO,P)));
+<strong><font color="#4169E1">END</font></strong> MINPP;
+
+
+<strong><font color="#4169E1">PROCEDURE UPDPP</font></strong>(COND,P: LIST): LIST; 
+<font color="#B22222">(*Update polynomials. COND is a condition. P is a list of polynomials
+determined and coloured wrt a predecessor of COND. The colouring of
+each polynomial is updated. The result is the polynomial-list PP. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   COL, PCO, POL, PP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(UPDPP);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+      PP:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Update. *)</font> 
+      <font color="#4169E1">REPEAT</font>
+            ADV(P, PCO,P);
+            FIRST2(PCO, POL,COL); 
+            PP:=COMP(LIST2(POL,SETCOL(COND,COL)),PP);
+      <font color="#4169E1">UNTIL</font> P=SIL;
+<font color="#B22222">(*6*)</font> RETURN(INV(PP));
+<strong><font color="#4169E1">END</font></strong> UPDPP; 
+
+
+<strong><font color="#4169E1">PROCEDURE GBUPD</font></strong>(COND,P,GBSYS: LIST): LIST; 
+<font color="#B22222">(*Groebner-system update. COND is a condition. P is a list of polynomials
+determined and coloured wrt a predecessor of COND. GBSYS is the actual
+Groebner-system. The colouring of each polynomial
+in P is updated relative to COND. Extraneous polynomials are eliminated.
+The condititon and the resulting polynomials list are added to GBSYS.
+The result is GSYS. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ELEM, PP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GBUPD);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* PP:=UPDPP(COND,REXTP(P)); *)</font>
+      PP:=REXTP(UPDPP(COND,P));
+     	  <font color="#B22222">(* ---to do---: Colouring should be updated before extraneous
+                          polynomials are removed ... correct???
+                          What happens if PP is SIL ??? *)</font>
+      GBSYS:=COMP(LIST2(COND,PP),GBSYS); 
+      <font color="#4169E1">IF</font> PAR.outputlevel = 1 <font color="#4169E1">THEN</font> 
+        SWRITE("New Groebner-Basis: "); BLINES(0); CondWrite(COND); BLINES(1);
+        DCLWR(PP,0);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(GBSYS);
+<strong><font color="#4169E1">END</font></strong> GBUPD; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKPAIR</font></strong>(PP: LIST): LIST; 
+<font color="#B22222">(*Make pairs. PP is a list of coloured polynomials. The polynomials
+pairs list is constructed containing those polynomials whose headterm
+relative to the colouring is defined. The list pairs is in a
+nondecreasing order. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ELI, ELJ, PI, PJ, QP, PAIRS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKPAIR);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (PP = SIL) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (RED(PP) = SIL) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+      PAIRS:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Construct pairs. *)</font> 
+      <font color="#4169E1">REPEAT</font>
+            ADV(PP, PI,QP);
+            ELI:=ColpHT(PI); 
+            <font color="#4169E1">IF</font> ELI &lt;&gt; SIL <font color="#4169E1">THEN</font>
+              <font color="#4169E1">WHILE</font> QP &lt;&gt; SIL <font color="#4169E1">DO</font> 
+                   ADV(QP, PJ,QP);
+                   ELJ:=ColpHT(PJ); 
+                   <font color="#4169E1">IF</font> ELJ &lt;&gt; SIL <font color="#4169E1">THEN</font>
+                     PAIRS:=COMP(LIST3(EVLCM(ELI,ELJ),PI,PJ),PAIRS); 
+                   <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+           PP:=RED(PP); 
+      <font color="#4169E1">UNTIL</font> PP = SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Merge. *)</font> 
+      <font color="#4169E1">IF</font> PAIRS &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(EVPLSO(PAIRS)); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(SIL);
+<strong><font color="#4169E1">END</font></strong> MKPAIR; 
+
+
+<strong><font color="#4169E1">PROCEDURE PRSCOP</font></strong>(PAIRS: LIST): LIST; 
+<font color="#B22222">(*Pairs copy. PAIRS is a polynomials pairs list. PPAIRS is a copy of PAIRS. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PAIR, PPAIRS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(PRSCOP);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> PAIRS = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+      PPAIRS:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">WHILE</font> PAIRS &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PAIRS, PAIR,PAIRS); 
+           PPAIRS:=COMP(PAIR,PPAIRS);
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> RETURN(INV(PPAIRS));
+<strong><font color="#4169E1">END</font></strong> PRSCOP; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKNEWP</font></strong>(P,POL,PRS: LIST): LIST; 
+<font color="#B22222">(*Make new pairs. P is a list of coloured polynomials. POL is a
+coloured polynomial. PRS is the polynomials pairslist of P. The new
+pairs between POL and P are constructed and added to PRS. The result
+is PPAIRS. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ELI, ELJ, PLI, PPAIRS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKNEWP);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Prepare input. *)</font> 
+      PPAIRS:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Update pairs. *)</font>
+      ELI:=ColpHT(POL); 
+      <font color="#4169E1">WHILE</font> P &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(P, PLI,P);
+           ELJ:=ColpHT(PLI); 
+           <font color="#4169E1">IF</font> ELJ &lt;&gt; SIL <font color="#4169E1">THEN</font>
+             PPAIRS:=COMP(LIST3(EVLCM(ELI,ELJ),POL,PLI),PPAIRS);
+           <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Copy and merge. *)</font>
+      PPAIRS:=EVPLSO(PPAIRS); 
+      <font color="#4169E1">IF</font> PRS &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(EVPLM(PRSCOP(PRS),PPAIRS)); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(PPAIRS);
+<strong><font color="#4169E1">END</font></strong> MKNEWP; 
+
+
+<strong><font color="#4169E1">PROCEDURE MKCGB</font></strong>(PL: LIST; <strong><font color="#228B22">VAR</font></strong> X,I: LIST); 
+<font color="#B22222">(*Make Comprehensive-Groebner-Basis. PL is a Groebner-System.
+X is the Comprehensive-Groebner-Basis from PL. I is the number of
+conditions in PL. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PCO, PELEM, PLIST: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(MKCGB);
+<font color="#B22222">(*1*)</font> X:=SIL; I:=0; 
+      <font color="#4169E1">IF</font> PL = SIL <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      ADV(PL, PELEM,PL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Get first groebner basis. *)</font>
+      PLIST:=SECOND(PELEM); 
+      <font color="#4169E1">WHILE</font> PLIST &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PLIST, PCO,PLIST);
+           X:=COMP(FIRST(PCO),X);
+      <strong><font color="#4169E1">END</font></strong>; 
+      I:=1; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Get other bases of PL. *)</font> 
+      <font color="#4169E1">WHILE</font> PL &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PL, PELEM,PL);
+           X:=ADDCGB(SECOND(PELEM),X);
+           I:=I+1;
+       <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Merge. *)</font> 
+      <font color="#4169E1">IF</font> X &lt;&gt; SIL <font color="#4169E1">THEN</font> X:=INV(DIPLPM(X)) <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*7*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> MKCGB; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADDCGB</font></strong>(PLIST,P: LIST): LIST; 
+<font color="#B22222">(*Add polynomials to comprehensive-groebner-basis. PLIST is
+list of coloured polynomials. P is a list of polynomials.
+Those polynomials that are not in P, are added to P without their
+colouring. the result is PP. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   APCO, APOL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(ADDCGB);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> PLIST = SIL <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font>
+           ADV(PLIST, APCO,PLIST);
+	   APOL:=FIRST(APCO);
+           <font color="#4169E1">IF</font> MEMBER(APOL,P) = 0 <font color="#4169E1">THEN</font> P:=COMP(APOL,P); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> PLIST=SIL;
+<font color="#B22222">(*5*)</font> RETURN(P);
+<strong><font color="#4169E1">END</font></strong> ADDCGB; 
+
+
+<strong><font color="#4169E1">PROCEDURE GSRED</font></strong>(GS: LIST): LIST; 
+<font color="#B22222">(*Groebner-System reduction. GS is a groebner-system. 
+Returns the reduced groebner-system. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PELEM, RS: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GSRED);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> GS = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+      RS:=SIL;
+<font color="#B22222">(*2*)</font> <font color="#4169E1">REPEAT</font>
+           ADV(GS, PELEM,GS); 
+           RS:=COMP(REDUCT(PELEM),RS);
+      <font color="#4169E1">UNTIL</font> GS=SIL;
+<font color="#B22222">(*5*)</font> RETURN(RS);
+<strong><font color="#4169E1">END</font></strong> GSRED; 
+
+
+<strong><font color="#4169E1">PROCEDURE REDUCT</font></strong>(PELEM: LIST): LIST; 
+<font color="#B22222">(*Reduct. PELEM is a pair containing a condition and a polynomials
+list determined and coloured wrt the condition.
+The polynomials list is to be reduced.
+The result together with the condition is R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   COND, J1Y, NCO, PCO, PLIST, QP, RLIST: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(REDUCT);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Get polynomials list. *)</font>
+      FIRST2(PELEM, COND,PLIST);	<font color="#B22222">(* --- to do --- : &lt;&gt;SIL ?*)</font>
+      <font color="#4169E1">IF</font> PLIST = SIL <font color="#4169E1">THEN</font> RETURN(LIST2(COND,SIL)); <strong><font color="#4169E1">END</font></strong>; 
+                                        <font color="#B22222">(* --- to do --- : =PELEM?*)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Check degree and remove extraneous polynomials. *)</font> 
+      PCO:=CHDEGL(PLIST); 
+      <font color="#4169E1">IF</font> PCO &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(LIST2(COND,LIST1(PCO)));
+                    <font color="#4169E1">ELSE</font> PLIST:=REXTP(PLIST); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (PLIST = SIL) <font color="#4169E1">THEN</font> RETURN(LIST2(COND,PLIST)); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (RED(PLIST) = SIL) <font color="#4169E1">THEN</font> RETURN(LIST2(COND,PLIST)); <strong><font color="#4169E1">END</font></strong>; 
+      QP:=PLIST; RLIST:=SIL; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Reduction. *)</font> 
+      <font color="#4169E1">REPEAT</font>
+            ADV(PLIST, PCO,PLIST); 
+            RDNORM(COND,PCO,QP, NCO); 
+            <font color="#4169E1">IF</font> NCO &lt;&gt; SIL <font color="#4169E1">THEN</font> RLIST:=COMP(NCO,RLIST); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> PLIST=SIL;
+<font color="#B22222">(*7*)</font> RETURN(LIST2(COND,INV(RLIST)));
+<strong><font color="#4169E1">END</font></strong> REDUCT; 
+
+
+<strong><font color="#4169E1">PROCEDURE REXTP</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Remove extraneous polynomials. P is a list of coloured polynomials.
+extraneous polynomials relative to their colouring are to be removed.
+PP is the resulting list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EI, EJ, PB, PCI, PCO, PS, QP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(REXTP);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Length P &lt;= 1. *)</font>
+      <font color="#4169E1">IF</font> (P = SIL) <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(* IF (RED(P) = SIL) THEN RETURN(P); END;*)</font>
+         <font color="#B22222">(* ---to do---: This single pol. could be 
+                         zero wrt. the new condition!
+                         Is this beeing handled correctly??*)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Remove extraneous polynomials. *)</font> 
+      QP:=SIL; 
+      <font color="#4169E1">REPEAT</font> 
+            ADV(P, PCO,P);
+            EI:=ColpHT(PCO); 
+            <font color="#4169E1">IF</font> EI &lt;&gt; SIL <font color="#4169E1">THEN</font>
+              PB:=P; TL:=0; 
+              <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font> 
+                   ADV(PB, PCI,PB);
+                   EJ:=ColpHT(PCI); 
+<font color="#B22222">(* --- to do ---: check EVMT, case EJ=SIL *)</font>
+                   <font color="#4169E1">IF</font> EJ &lt;&gt; SIL <font color="#4169E1">THEN</font> TL:=EVMT(EI,EJ); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+              PB:=QP; 
+              <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font>
+                   ADV(PB, PCI,PB);
+                   EJ:=ColpHT(PCI); 
+                   <font color="#4169E1">IF</font> EJ &lt;&gt; SIL <font color="#4169E1">THEN</font> TL:=EVMT(EI,EJ); <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> QP:=COMP(PCO,QP); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> P = SIL; 
+<font color="#B22222">(*5*)</font> RETURN(INV(QP));
+<strong><font color="#4169E1">END</font></strong> REXTP; 
+
+
+<strong><font color="#4169E1">PROCEDURE RDNORM</font></strong>(COND,FCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> NCO: LIST);
+<font color="#B22222">(*Reduction normalform. COND is a condition. FCO is a coloured
+polynomial. P is a list of polynomials determined and coloured by COND.
+NCO is the normalform of fco modulo P relative to COND. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   PCI, QC, RE: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(RDNORM);
+<font color="#B22222">(*1*)</font> NCO:=FCO;
+      LOOP
+          REFIND(NCO,P, PCI,RE); 
+          <font color="#4169E1">IF</font> PCI = SIL <font color="#4169E1">THEN</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+          GRED(COND,NCO,PCI,RE, NCO,QC);
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN;
+<strong><font color="#4169E1">END</font></strong> RDNORM; 
+
+
+<strong><font color="#4169E1">PROCEDURE REFIND</font></strong>(PCO,P: LIST; <strong><font color="#228B22">VAR</font></strong> PLI,RE: LIST); 
+<font color="#B22222">(*Reduction find polynomial. PCO is a coloured polynomial.
+P is a list of determined and coloured polynomials.
+A polynomial for the reduction of PCO modulo P is searched.
+PLI is emtpy if no polynomial is found. Else PLI is the found
+polynomial and RE is the term of PCO to be eliminated. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   ALIST, HE, HT, KEY, POL, PP, RA, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+     DEB_BEGIN(REFIND);
+     RE:=SIL; PLI:=SIL; 
+     <font color="#4169E1">IF</font> (PCO = SIL) <font color="#4169E1">OR</font> (P = SIL) <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+     POL:=ColpPol(PCO);
+     <font color="#B22222">(*Get headterm of PCO. *)</font>
+     HT:=ColpHT(PCO); 
+     <font color="#B22222">(*Find PLI. *)</font> 
+     SL:=0;
+     <font color="#4169E1">WHILE</font> (POL &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL = 0) <font color="#4169E1">DO</font>
+          DIPMAD(POL, RA,RE,POL);
+          KEYCOL(RE,ColpCol(PCO), KEY,ALIST); 
+          <font color="#4169E1">IF</font> (KEY&lt;&gt;0) <font color="#4169E1">AND</font> (EQUAL(HT,RE)=0) <font color="#4169E1">THEN</font> <font color="#B22222">(* RE not zero (green)
+     	       	    	      	   	     	   and not headterm *)</font>
+            PP:=P;
+            <font color="#4169E1">REPEAT</font>
+                  ADV(PP, PLI,PP);
+                  HE:=ColpHT(PLI); 
+                  <font color="#4169E1">IF</font> HE&lt;&gt;SIL <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> EVMT(RE,HE)=1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">UNTIL</font> (PP=SIL); 
+          <strong><font color="#4169E1">END</font></strong>; 
+     <strong><font color="#4169E1">END</font></strong>; 
+     PLI:=SIL;
+<strong><font color="#4169E1">END</font></strong> REFIND; 
+
+
+<strong><font color="#4169E1">PROCEDURE RMGRT</font></strong>(COND,PP: LIST): LIST; 
+<font color="#B22222">(*Remove green terms. COND is a condition. PP is a list of polynomials
+determined and coloured relative to COND. If COND contains coefficients
+to be zero, all green monomials of the polynomials in PP are removed.
+P is the resulting polynomials list. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   COL, COND0, COND1, P, PCO, PPCO, PPOL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(RMGRT);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Check condition. *)</font>
+      <font color="#4169E1">IF</font> CondIsEmpty(COND) <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      CondParts(COND, COND0,COND1); 
+      <font color="#4169E1">IF</font> COND0 = SIL <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      P:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Remove green monomials. *)</font> 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PP, PCO,PP);
+           COL:=SECOND(PCO); 
+           PPOL:=MKPOL(PCO);
+           BLINES(0); 		<font color="#B22222">(* --- to do --- ??? *)</font>
+           <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ColIsEmpty(COL) <font color="#4169E1">THEN</font> P:=COMP(LIST2(PPOL,COL),P); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(INV(P));
+<strong><font color="#4169E1">END</font></strong> RMGRT; 
+
+
+<strong><font color="#4169E1">PROCEDURE GLOBRE</font></strong>(COND,P: LIST): LIST; 
+<font color="#B22222">(*Global reduction. COND is a condition. P is a list of polynomials.
+CGB is the coloured polynomials list after global reduction. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   CGB, COL, NCO, PCO, PLIST, POL, QP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GLOBRE);
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Colour P relative to COND. *)</font>
+      PLIST:=SIL; 
+      <font color="#4169E1">REPEAT</font>
+            ADV(P, POL,P);
+            PLIST:=COMP(ColpConsCond(POL,COND),PLIST);
+      <font color="#4169E1">UNTIL</font> P=SIL;
+      PLIST:=INV(PLIST); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Check degree and remove green monomials. *)</font>
+      PCO:=CHDEGL(PLIST); 
+      <font color="#4169E1">IF</font> PCO &lt;&gt; SIL <font color="#4169E1">THEN</font> RETURN(LIST1(PCO)); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Remove extraneous polynomials. *)</font>
+      PLIST:=GLEXTP(RMGRT(COND,PLIST)); 
+      <font color="#4169E1">IF</font> (PLIST = SIL) <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (RED(PLIST) = SIL) <font color="#4169E1">THEN</font> RETURN(PLIST); <strong><font color="#4169E1">END</font></strong>; 
+      QP:=PLIST; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Global reduction. *)</font> 
+      CGB:=SIL; 
+      <font color="#4169E1">WHILE</font> PLIST &lt;&gt; SIL <font color="#4169E1">DO</font>
+           ADV(PLIST, PCO,PLIST); 
+           RDNORM(COND,PCO,QP, NCO);
+           RDNORM(COND,NCO,CGB, NCO); 
+           <font color="#4169E1">IF</font> (NCO &lt;&gt; SIL) <font color="#4169E1">AND</font> (WMEMB(ColpPol(NCO),CGB) = 0)
+             <font color="#4169E1">THEN</font> CGB:=COMP(NCO,CGB); <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*Merge. *)</font> 
+      RETURN(CGBLPM(CGB)); 
+<strong><font color="#4169E1">END</font></strong> GLOBRE; 
+
+
+<strong><font color="#4169E1">PROCEDURE GLEXTP</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Global extraneous polynomials remove. P is a list of
+coloured polynomials. Determined polynomials that are extraneous, are
+removed. The resulting polynomials list is PP. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   EI, EJ, PB, PCI, PCO, PP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      DEB_BEGIN(GLEXTP);
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Length P &lt;= 1. *)</font>
+      <font color="#4169E1">IF</font> (P = SIL)  <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (RED(P) = SIL) <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>; 
+      PP:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Remove extraneous polynomials. *)</font> 
+      <font color="#4169E1">REPEAT</font>
+            ADV(P, PCO,P);
+            EI:=ColpHT(PCO); 
+            TL:=0; 
+            <font color="#4169E1">IF</font> EI &lt;&gt; SIL <font color="#4169E1">THEN</font> 
+              PB:=P; 
+              <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font>
+                   ADV(PB, PCI,PB);
+                   EJ:=ColpHT(PCI); 
+                   <font color="#4169E1">IF</font> EJ &lt;&gt; SIL <font color="#4169E1">THEN</font> TL:=EVMT(EI,EJ); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+              PB:=PP;
+              <font color="#4169E1">WHILE</font> (PB &lt;&gt; SIL) <font color="#4169E1">AND</font> (TL = 0) <font color="#4169E1">DO</font>
+                   ADV(PB, PCI,PB);
+                   EJ:=ColpHT(PCI); 
+                   <font color="#4169E1">IF</font> EJ &lt;&gt; SIL <font color="#4169E1">THEN</font> TL:=EVMT(EI,EJ); <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> PP:=COMP(PCO,PP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> P = SIL; 
+<font color="#B22222">(*6*)</font> RETURN(INV(PP));
+<strong><font color="#4169E1">END</font></strong> GLEXTP; 
+
+
+<strong><font color="#4169E1">END</font></strong> CGBSYS.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

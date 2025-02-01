@@ -1,0 +1,169 @@
+
+<html>
+<head>
+<title>./sacring/SACANF.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:50+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACANF.mi,v 1.3 1992/10/15 16:28:54 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACANF.mi,v $
+ * Revision 1.3  1992/10/15  16:28:54  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:44  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:50  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACANF;
+
+<font color="#B22222">(* SAC Algebraic Number Field Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, BETA,
+                    LIST1, SFIRST, SRED, LENGTH, INV, 
+                    FIRST, RED, COMP, ADV;
+
+FROM SACLIST IMPORT LIST3, CONC, CINV, ADV2, COMP2, FIRST2, 
+                    EQUAL, RED2, SECOND, LIST2;
+
+FROM SACRN IMPORT RNSIGN, RNINT, RNINV, RNNEG;
+
+FROM SACPOL IMPORT PLDCF, PDEG, PBIN;
+
+FROM SACIPOL IMPORT IUPBES;
+
+FROM SACPGCD IMPORT IPPGSD, IPSRP;
+
+FROM SACRPOL IMPORT RPSUM, RPRNP, RPNEG, RPDIF, RPQR, RPPROD;
+
+FROM SACROOT IMPORT IUPVSI, RIB;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACANF.mi,v 1.3 1992/10/15 16:28:54 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE AFDIF</font></strong>(AL,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field element difference.  AL and BL are elements
+of Q(alpha) for some algebraic number alpha.  CL=AL-BL.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CL:=RPDIF(1,AL,BL); RETURN(CL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFINV</font></strong>(M,AL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field inverse.  AL is a nonzero
+element of Q(alpha) for some algebraic number alpha.  M is the
+rational minimal polynomial for alpha.  BL=1/AL.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, AL3, BL, CL, J1Y, QL, RL, VL1, VL2, VL3: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL1:=M; AL2:=AL; VL1:=0; RL:=RNINT(1); VL2:=LIST2(0,RL); 
+      LOOP J1Y:=PLDCF(AL2); CL:=RNINV(J1Y); VL2:=RPRNP(1,CL,VL2); 
+           <font color="#4169E1">IF</font> PDEG(AL2) = 0 <font color="#4169E1">THEN</font> BL:=VL2; RETURN(BL); <strong><font color="#4169E1">END</font></strong>; 
+           AL2:=RPRNP(1,CL,AL2); RPQR(1,AL1,AL2, QL,AL3); 
+           J1Y:=RPPROD(1,QL,VL2); VL3:=RPDIF(1,VL1,J1Y); AL1:=AL2; 
+           AL2:=AL3; VL1:=VL2; VL2:=VL3; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong> AFINV; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFNEG</font></strong>(AL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field element negation.  AL is an element of
+Q(alpha) for some algebraic number alpha.  BL= -AL.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BL:=RPNEG(1,AL); RETURN(BL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFNEG; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPROD</font></strong>(M,AL,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field element product.  AL and BL are elements of
+Q(alpha) for some algebraic number alpha.  M is the minimal polynomial
+of alpha.  CL=AL+BL.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, CLP, QL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CLP:=RPPROD(1,AL,BL); RPQR(1,CLP,M, QL,CL); 
+<font color="#B22222">(*4*)</font> RETURN(CL); <strong><font color="#4169E1">END</font></strong> AFPROD; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFQ</font></strong>(M,AL,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field quotient.  AL and BL are
+elements of Q(alpha) for some algebraic number alpha with BL
+nonzero.  M is the minimal polynomial for alpha.  CL=AL/BL.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> CL:=0; <font color="#4169E1">ELSE</font> J1Y:=AFINV(M,BL); 
+         CL:=AFPROD(M,AL,J1Y); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(CL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFQ; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFSIGN</font></strong>(M,I,AL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field sign.  M is the integral minimal polynomial
+of a real algebraic number alpha.  I is an acceptable isolating
+interval for alpha.  AL is an element of Q(alpha).  SL=SIGN(AL).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP, ALS, IS, J1Y, NL, RL, SL, SLH, SLP, SLS, UL, VL, WL:
+     LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*AL rational.*)</font> 
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> SL:=0; RETURN(SL); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> PDEG(AL) = 0 <font color="#4169E1">THEN</font> J1Y:=SECOND(AL); SL:=RNSIGN(J1Y); 
+         RETURN(SL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Obtain the greatest squarefree divisor of an integral
+      polynomial similiar to AL.*)</font> IPSRP(1,AL, RL,ALP); 
+      SLS:=RNSIGN(RL); ALS:=IPPGSD(1,ALP); IS:=I; FIRST2(IS, UL,VL); 
+      SLP:=0; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Obtain an isolating interval for alpha containing no roots of
+      ALS.  Return SIGN(AL(alpha)). *)</font> 
+      LOOP NL:=IUPVSI(ALS,IS); WL:=RIB(UL,VL); 
+           <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> SL:=IUPBES(ALP,WL); SL:=SLS*SL; 
+              RETURN(SL); <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> SLP = 0 <font color="#4169E1">THEN</font> SLP:=IUPBES(M,VL); <strong><font color="#4169E1">END</font></strong>; 
+           SLH:=IUPBES(M,WL); 
+           <font color="#4169E1">IF</font> SLH &lt;&gt; SLP <font color="#4169E1">THEN</font> UL:=WL; <font color="#4169E1">ELSE</font> VL:=WL; SLP:=SLH; <strong><font color="#4169E1">END</font></strong>; 
+           IS:=LIST2(UL,VL); 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> AFSIGN; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFSUM</font></strong>(AL,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field element sum.  AL and BL are elements of
+Q(alpha) for some algebraic number alpha.  CL=AL+BL.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CL:=RPSUM(1,AL,BL); RETURN(CL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFSUM; 
+
+
+<strong><font color="#4169E1">PROCEDURE RUPMRN</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Rational univariate polynomial minimal polynomial of a rational number.  
+R is a rational number.  M is the rational minimal polynomial of R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, J2Y, M: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RNINT(1); J2Y:=RNNEG(R); M:=PBIN(J1Y,1,J2Y,0); RETURN(M); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RUPMRN; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACANF.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,225 @@
+
+<html>
+<head>
+<title>./masnc/DINNGB.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-12-16T13:23:13+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DINNGB.md,v 1.1 1995/12/16 13:23:13 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: DINNGB.md,v $
+ * Revision 1.1  1995/12/16 13:23:13  kredel
+ * Moved from the masdom directory.
+ *
+ * Revision 1.1  1994/03/11  15:35:17  pesch
+ * Groebner bases for non noetherian polynomial rings.
+ * Diplomarbeit I. Bader.
+ * Modified.
+ * Does not give correct results. Do not use.
+ * Should be rewritten.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DINNGB;
+<font color="#B22222">(* DIP Groebner bases for non noetherian polynomial rings.*)</font>
+
+  <font color="#B22222">(* Import lists and declarations. *)</font>
+   
+  FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DINNGB.md,v 1.1 1995/12/16 13:23:13 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1993 Universitaet Passau";
+
+
+  <strong><font color="#4169E1">PROCEDURE DINNCP</font></strong>(EL,A,B: LIST): LIST;
+  <font color="#B22222">(* distributive polynomial non-commutative product. e is a non-negative
+     integer. A and B are distributive polynomials in 2 variables. C is the
+      non-commutative product of A and B with respect to  Y * X = X**e Y. *)</font>
+  
+
+  <strong><font color="#4169E1">PROCEDURE EVNNCP</font></strong>(EL,S,T: LIST): LIST;
+  <font color="#B22222">(* exponent vector non-commutative product. S and T are exponent vectors.
+     of length 2. C is the non-commutative product S * T with respect
+     to the relation Y * X = X**e Y. *)</font>
+   
+
+
+  <strong><font color="#4169E1">PROCEDURE EVNRDT</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative right division test. s and t are
+     exponent vectors. C=1 if s rdiv t otherwise, C=0. *)</font>
+  
+
+  <strong><font color="#4169E1">PROCEDURE EVNCRD</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative right division. s and t a are
+     exponent vectors, if s rdiv t then the output is t//s. *)</font>
+ 
+  <strong><font color="#4169E1">PROCEDURE EVNLDT</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative left division test. s and t are
+     exponent vectors. C=1 if s ldiv t otherwise, C=0. *)</font>
+
+ 
+  <strong><font color="#4169E1">PROCEDURE EVNCLD</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative left division. s and t a are
+     exponent vectors. The output is s\\t if s ldiv t . *)</font>
+  
+  <strong><font color="#4169E1">PROCEDURE EVLLCM</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative least left common multiple. s and t are
+     exponent vectors. C is the least left common multiple of s and t. *)</font>
+ 
+
+
+  <strong><font color="#4169E1">PROCEDURE EVLRCM</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative least right common multiple.
+     s and t exponent vectors. C is the least right common multiple
+     of s and t if it exists! *)</font>
+ 
+  <strong><font color="#4169E1">PROCEDURE EVRCMT</font></strong>(EL,S,T:LIST):LIST;
+  <font color="#B22222">(* exponent vectors non-commutative right multiple test.
+     S and T are exponent vectors. C=1 if S and T have some right common
+     multiple otherweise, C=0. *)</font>
+  
+
+
+  <strong><font color="#4169E1">PROCEDURE DNNLNF</font></strong>(EL,P,S:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian left normal form.
+   P is a list of non zero polynomials in distributive rational representation.
+   S is a distributive rational polynomial. R is a polynomial such that S is
+   left reducible to R modulo P and R is in normal form with respect to P. *)</font>
+
+  
+  <strong><font color="#4169E1">PROCEDURE DNNLIS</font></strong>(EL,P: LIST): LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian left irreducible set.
+     P is a list of distributive rational polynomials, PP is the
+     result of left reducing each p element of P modulo P-(p)
+     until no further reductions are possible. *)</font>
+  
+  <strong><font color="#4169E1">PROCEDURE DNNLSP</font></strong>(EL,A,B:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian left S-polynomial.
+     A and B are polynomials in distributive rational representation
+     in 2 variables. C is the left S-polynomial of A and B. *)</font>
+ 
+<strong><font color="#4169E1">PROCEDURE DNNLGB</font></strong>(EL,P,TF: LIST): LIST;
+<font color="#B22222">(* distributive non-noetherian polynomials left Groebner base.
+P is a list of rational polynomials in distributive representation
+in 2 variables. PP is the left Groebner base of P. t is the
+trace flag. *)</font>
+   
+
+<strong><font color="#4169E1">PROCEDURE DNNRNF</font></strong>(EL,P,S:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian right normal form.
+   P is a list of non zero polynomials in distributive rational representation.
+   S is a distributive rational polynomial. R is a polynomial such that S is
+   right reducible to R modulo P and R is in normal form with respect to P. *)</font>
+
+ 
+  <strong><font color="#4169E1">PROCEDURE DNNRIS</font></strong>(EL,P: LIST): LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian right irreducible set.
+     P is a list of distributive rational polynomials, PP is the
+     result of right reducing each p element of P modulo P-(p)
+     until no further reductions are possible. *)</font>
+ 
+
+  <strong><font color="#4169E1">PROCEDURE DNNRSP</font></strong>(EL,A,B:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian right S-polynomial.
+     A and B are polynomials in distributive rational representation.
+     C is the right S-polynomial of A and B if it exists! *)</font>
+ 
+
+ <strong><font color="#4169E1">PROCEDURE DNNRGB</font></strong>(EL,P,TF: LIST): LIST;
+ <font color="#B22222">(* distributive polynomials non-noetherian right Groebner base.
+  P is a list of rational polynomials in distributive representation in 
+  2 variables. PP is the right Groebner base of P. t is the trace flag. *)</font>
+
+
+
+<strong><font color="#4169E1">PROCEDURE DNLCPL</font></strong>(EL,P: LIST;  <strong><font color="#228B22">VAR</font></strong> D,B: LIST);
+<font color="#B22222">(* distributive polynomial non-noetherian left  construct pair list.
+P is list of polynomials in distributive representation in 2 variables.
+B is the polynomials pairs list and D is the pairs list. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DNRCPL</font></strong>(EL,P: LIST;  <strong><font color="#228B22">VAR</font></strong> D,B: LIST);
+<font color="#B22222">(* distributive polynomial non-noetherian right construct pair list.
+P is list of polynomials in distributive representation in 2 variables.
+B is the polynomials pairs list and
+D is the pairs list. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DNLUPL</font></strong>(EL,PL,P,D,B: LIST): LIST;
+<font color="#B22222">(* distributive polynomial non-noetherian left update pair list.
+P is list of polynomials in distributive representation in 2 variables.
+B is the polynomials pairs list and D is the pairs list. p is a non zero 
+polynomial in distributive representation. D, P and B are modified.
+DP is the updated pairs list. *)</font>
+
+
+ <strong><font color="#4169E1">PROCEDURE DNRUPL</font></strong>(EL,PL,P,D,B: LIST): LIST;
+ <font color="#B22222">(* distributive polynomial non-noetherian right update pair list.
+ P is list of polynomials in distributive representation in 2 variables.
+ B is the polynomials pairs list and
+ D is the pairs list. p is a non zero polynomial in
+distributive representation. D, P and B are modified.
+DP is the updated pairs list. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DNN2GB</font></strong>(EL,P,TF: LIST): LIST;
+<font color="#B22222">(* distributive polynomials non-noetherian 2-sided Groebner base.
+P is a list of rational polynomials in distributive representation
+in 2 variables. PP is the Groebner base of P. t is the trace flag.*)</font>   
+
+
+
+  <strong><font color="#4169E1">PROCEDURE DNNTGB</font></strong>(EL,P,TF:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian two-sided Groebner base. P is
+     a list of rational polynomials in distributive representation in 2
+     variables. PP is the two-sided Groebner base of P. t is the trace
+     flag. The non-commutative produkt is computed w.r.t Y*X=X**eY. *)</font>
+
+
+
+  <strong><font color="#4169E1">PROCEDURE DNNLES</font></strong>(EL,P:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian left exponents set.
+     P is a list of polinomials in distributive representation. PP is the
+     the list which is result of *-multiplication of each polynomial of P
+     from the left with the main variable. The non-commutative
+     multiplication is computed w.r.t the relation Y * X = X**e Y. *)</font>
+
+  
+
+  <strong><font color="#4169E1">PROCEDURE DNNRES</font></strong>(EL,P,DL,DP:LIST):LIST;
+  <font color="#B22222">(* distributive polynomials non-noetherian right exponents set. P is a
+    list of polynomials in distributive representation, d and d'are non-
+    negative integers with  d' &gt;= d. PP is the is result of *-multiplication
+    of each polynomial of P from the right with exponents (e**i) of the
+    first variable in the variable list, where i ranges from d to d'.
+    The *-multiplication is computed w.r.t the relation Y * X = X**e Y. *)</font>
+    
+
+  <strong><font color="#4169E1">PROCEDURE DIPSPS</font></strong>(D,B:LIST):LIST;
+  <font color="#B22222">(* distibutive polynomials S-polynomials set.
+     D is the pairs list and B is the polynomials pairs list.
+     D and B are modified. H is the set of all non-zero S-polynomials. *)</font>
+  
+<strong><font color="#4169E1">PROCEDURE DIPLMD</font></strong>(P:LIST):LIST;
+ <font color="#B22222">(* distributive polynomial list maximum degree.
+    P is a non-empty list of polynomials in distributive form in r variables.
+    d is the maximum degree of all polynomials of P w.r.t the main variable .*)</font>
+ 
+  <strong><font color="#4169E1">PROCEDURE IPOWER</font></strong>(EL,AL:LIST):LIST;
+  <font color="#B22222">(* integer power. e and a are  positive integers. C=e**a. *)</font>
+ 
+
+<strong><font color="#4169E1">END</font></strong> DINNGB.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

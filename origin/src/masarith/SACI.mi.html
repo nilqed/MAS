@@ -1,0 +1,969 @@
+
+<html>
+<head>
+<title>./masarith/SACI.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-11-05T13:12:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACI.mi,v 1.4 1995/11/05 08:44:29 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACI.mi,v $
+ * Revision 1.4  1995/11/05 08:44:29  kredel
+ * Preparation for 64 bit integers.
+ *
+ * Revision 1.3  1992/10/15  16:28:18  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  13:19:12  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:40  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACI;
+
+<font color="#B22222">(* SAC Integer Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT MASEVEN, MASQREM, MASSIGN, MASABS, MASODD, MASEXP;
+
+
+FROM MASBIOS IMPORT CREAD, CREADB, CWRITE,
+                    SWRITE, BLINES, MASORD, DIGIT, BKSP, 
+                    DIBUFF;
+
+
+FROM MASSTOR IMPORT BETA, SIL, LIST, 
+                    COMP, ADV, FIRST, RED, SFIRST, SRED,
+                    LENGTH, INV, LIST1;
+
+
+FROM SACLIST IMPORT LAST, CONC, CINV, 
+                    ADV2, FIRST2, LIST2, LIST3, LIST10,
+                    OWRITE, AWRITE;
+
+
+FROM SACD IMPORT TABP2, ZETA, THETA, ETA,
+                 DPR, DQR, DGCD, DPCC, DEGCD, DRAN, DSQRTF,
+                 DLOG2;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACI.mi,v 1.4 1995/11/05 08:44:29 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+    
+<strong><font color="#4169E1">PROCEDURE AADV</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL,LP: LIST);
+<font color="#B22222">(*Arithmetic advance.  L is a list.  If L ne () then a=FIRST(L) and
+LP=RED(L).  Otherwise a=0 and LP=().*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> L &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(L,AL,LP); <font color="#4169E1">ELSE</font> AL:=0; LP:=BETA; <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AADV;
+
+
+<strong><font color="#4169E1">PROCEDURE IABSF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integer absolute value function.  A is an integer.  B=ABS(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SL:=ISIGNF(A);
+      <font color="#4169E1">IF</font> SL &gt;= 0 <font color="#4169E1">THEN</font> B:=A; <font color="#4169E1">ELSE</font> B:=INEG(A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IABSF;
+
+
+<strong><font color="#4169E1">PROCEDURE ICOMP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer comparison.  A and B are integers.  s=SIGN(A-B).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, DL, J1Y, SL, UL, VL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a and b single-precision.*)</font>
+      <font color="#4169E1">IF</font> (A &lt; BETA) <font color="#4169E1">AND</font> (B &lt; BETA) <font color="#4169E1">THEN</font> J1Y:=A-B; SL:=MASSIGN(J1Y);
+         RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> J1Y:=ISIGNF(B); SL:=-J1Y; RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*b single-precision.*)</font>
+      <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> SL:=ISIGNF(A); RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compare corresponding digits.*)</font> SL:=0; AP:=A; BP:=B;
+      <font color="#4169E1">REPEAT</font> ADV(AP,AL,AP); ADV(BP,BL,BP); UL:=MASSIGN(AL); VL:=MASSIGN(BL);
+             <font color="#4169E1">IF</font> UL*VL = -1 <font color="#4169E1">THEN</font> SL:=UL; RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+             DL:=AL-BL;
+             <font color="#4169E1">IF</font> DL &lt;&gt; 0 <font color="#4169E1">THEN</font> SL:=MASSIGN(DL); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*same length$*)</font>
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*use sign of longer input.*)</font>
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> J1Y:=ISIGNF(BP); SL:=-J1Y; <font color="#4169E1">ELSE</font>
+         SL:=ISIGNF(AP); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(SL);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> ICOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE IDEGCD</font></strong>(AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> CL,UL1,VL1,UL2,VL2: LIST);
+<font color="#B22222">(*Integer doubly extended greatest common divisor algorithm.  a and b
+are integers.  c=GCD(a,b).  a*u1+b*v1=c and a*u2+b*v2=0.
+If a ne 0 and b ne 0 then ABS(u1) le ABS(b)/(2*c), ABS(v1) le
+ABS(a)/(2*c), u2=-b/c and v2=a/c.  Otherwise u1=v2=SIGN(a),
+v1=SIGN(b) and u2=-SIGN(b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IEGCD(AL,BL,CL,UL1,VL1);
+      <font color="#4169E1">IF</font> CL = 0 <font color="#4169E1">THEN</font> UL2:=0; VL2:=0; <font color="#4169E1">ELSE</font> J1Y:=IQ(BL,CL);
+         UL2:=INEG(J1Y); VL2:=IQ(AL,CL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IDEGCD;
+
+
+<strong><font color="#4169E1">PROCEDURE IDIF</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer difference.  A and B are integers.  C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BP, C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BP:=INEG(B); C:=ISUM(A,BP); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE IDIPR2</font></strong>(A,B,AL,BL: LIST): LIST;
+<font color="#B22222">(*Integer digit inner product, length 2.  A and B are integers.
+a and b are beta-integers.  C=A*a+B*b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, J1Y, J2Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=IDPR(A,AL); J2Y:=IDPR(B,BL); C:=ISUM(J1Y,J2Y); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IDIPR2;
+
+
+<strong><font color="#4169E1">PROCEDURE IDPR</font></strong>(A,BL: LIST): LIST;
+<font color="#B22222">(*Integer-digit product.  A is an integer.  b is a beta-digit.
+C=A*b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, CL, CLP, EL, FL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or bl zero$*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (BL = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a single-precision$*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> DPR(A,BL,EL,FL);
+         <font color="#4169E1">IF</font> EL = 0 <font color="#4169E1">THEN</font> C:=FL; <font color="#4169E1">ELSE</font> C:=LIST2(FL,EL); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*a multiple-precision.*)</font> AP:=A; C:=BETA; CLP:=0;
+      <font color="#4169E1">REPEAT</font> ADV(AP,AL,AP); DPR(AL,BL,EL,FL); CL:=FL+CLP; CLP:=EL;
+             <font color="#4169E1">IF</font> CL &gt;= BETA <font color="#4169E1">THEN</font> CL:=CL-BETA; CLP:=CLP+1; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> CL &lt;= -BETA <font color="#4169E1">THEN</font> CL:=CL+BETA; CLP:=CLP-1; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP(CL,C);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      <font color="#4169E1">IF</font> CLP &lt;&gt; 0 <font color="#4169E1">THEN</font> C:=COMP(CLP,C); <strong><font color="#4169E1">END</font></strong>;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IDPR;
+
+
+<strong><font color="#4169E1">PROCEDURE IDP2</font></strong>(A,KL: LIST): LIST;
+<font color="#B22222">(*Integer division by power of 2.  A is an integer.  k is a
+non-negative beta-digit.  B is the integral part of A/2**k.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, J1Y, QL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or kl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (KL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> QL:=KL DIV ZETA; J1Y:=QL*ZETA; RL:=KL-J1Y; B:=A;
+      <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> B:=LIST1(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> (QL &gt; 0) <font color="#4169E1">AND</font> (B &lt;&gt; SIL) <font color="#4169E1">DO</font> B:=RED(B); QL:=QL-1; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> RED(B) = SIL <font color="#4169E1">THEN</font> B:=FIRST(B); <strong><font color="#4169E1">END</font></strong>;
+      B:=IDQ(B,TABP2[INTEGER(RL+1)]); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IDP2;
+
+
+<strong><font color="#4169E1">PROCEDURE IDQ</font></strong>(A,BL: LIST): LIST;
+<font color="#B22222">(*Integer-digit quotient.  A is an integer.  b is a non-zero
+beta-digit.  C=INTEGER(A/b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IDQR(A,BL,C,RL); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IDQ;
+
+
+<strong><font color="#4169E1">PROCEDURE IDQR</font></strong>(A,BL: LIST; <strong><font color="#228B22">VAR</font></strong> Q,RL: LIST);
+<font color="#B22222">(*Integer-digit quotient and remainder.  A is an integer.  b is a
+non-zero beta-digit.  Q is the integral part of A/b and r=A-b*Q.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL0, AP, J1Y, QL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> Q:=A DIV BL; J1Y:=BL*Q; RL:=A-J1Y; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a multiple-precision.*)</font> AP:=CINV(A); Q:=SIL; RL:=0;
+      <font color="#4169E1">REPEAT</font> ADV(AP,AL0,AP); DQR(RL,AL0,BL,QL,RL);
+             <font color="#4169E1">IF</font> (QL &lt;&gt; 0) <font color="#4169E1">OR</font> (Q &lt;&gt; SIL) <font color="#4169E1">THEN</font> Q:=COMP(QL,Q); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      <font color="#4169E1">IF</font> RED(Q) = SIL <font color="#4169E1">THEN</font> Q:=FIRST(Q); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IDQR;
+
+
+<strong><font color="#4169E1">PROCEDURE IDREM</font></strong>(A,BL: LIST): LIST;
+<font color="#B22222">(*Integer-digit remainder.  A is an integer.  b is a non-zero
+beta-digit.  r=A-b*INTEGER(A/b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  Q, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IDQR(A,BL,Q,RL); RETURN(RL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IDREM;
+
+
+<strong><font color="#4169E1">PROCEDURE IEGCD</font></strong>(AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> CL,UL1,VL1: LIST);
+<font color="#B22222">(*Integer extended greatest common divisor algorithm.  a and b are
+integers.  c=GCD(a,b).  a*u1+b*v1=c.  If a ne 0 and b ne 0
+then ABS(u1) le ABS(b)/(2*c) and ABS(v1) le ABS(a)/(2*c).
+Otherwise u1=SIGN(a) and v1=SIGN(b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IHEGCD(AL,BL,CL,VL1);
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> UL1:=0; <font color="#4169E1">ELSE</font> J1Y:=IPROD(BL,VL1);
+         J1Y:=IDIF(CL,J1Y); UL1:=IQ(J1Y,AL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IEGCD;
+
+
+<strong><font color="#4169E1">PROCEDURE IEVEN</font></strong>(A: LIST): BOOLEAN;
+<font color="#B22222">(*Integer even.  A is an integer.  If A is even then true is returned 
+and otherwise false. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y: LIST;
+     TL: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> TL:=MASEVEN(A); <font color="#4169E1">ELSE</font> J1Y:=FIRST(A);
+         TL:=MASEVEN(J1Y); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IEVEN;
+
+
+<strong><font color="#4169E1">PROCEDURE IEXP</font></strong>(A,NL: LIST): LIST;
+<font color="#B22222">(*Integer exponentiation.  A is an integer.  n is a non-negative
+beta-integer.  B=A**n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, KL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl less than or equal to 1.*)</font>
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=1; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> KL:=NL DIV 2; B:=IEXP(A,KL); B:=IPROD(B,B);
+      <font color="#4169E1">IF</font> NL &gt; 2*KL <font color="#4169E1">THEN</font> B:=IPROD(B,A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IEXP;
+
+
+
+<strong><font color="#4169E1">PROCEDURE IFCL2</font></strong>(AL: LIST; <strong><font color="#228B22">VAR</font></strong> ML,NL: LIST);
+<font color="#B22222">(*Integer, floor and ceiling, logarithm, base 2.  a is a non-zero
+integer.  m and n, gamma-integers, are the floor and ceiling of
+LOG2(ABS(a)) respectively.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, ALP, RL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*process beta-digits.*)</font> TL:=0;
+      <font color="#4169E1">IF</font> AL &lt; BETA <font color="#4169E1">THEN</font> AL1:=AL; ML:=0; <font color="#4169E1">ELSE</font> ALP:=AL; ML:=-ZETA;
+         <font color="#4169E1">REPEAT</font> ADV(ALP,AL1,ALP); ML:=ML+ZETA;
+                <font color="#4169E1">IF</font> (ALP &lt;&gt; SIL) <font color="#4169E1">AND</font> (AL1 &lt;&gt; 0) <font color="#4169E1">THEN</font> TL:=1; <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">UNTIL</font> ALP = SIL;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*process leading digits.*)</font>
+      <font color="#4169E1">IF</font> AL1 &lt; 0 <font color="#4169E1">THEN</font> AL1:=-AL1; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">WHILE</font> AL1 &lt;&gt; 1 <font color="#4169E1">DO</font> MASQREM(AL1,2,AL1,RL);
+            <font color="#4169E1">IF</font> RL &lt;&gt; 0 <font color="#4169E1">THEN</font> TL:=1; <strong><font color="#4169E1">END</font></strong>;
+            ML:=ML+1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> NL:=ML+TL; RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IFCL2;
+
+
+<strong><font color="#4169E1">PROCEDURE IGCD</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer greatest common divisor.  A and B are integers.  C=GCD(A,B).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A2, A3, A4, AL, BL, C, HL, ML1, ML2, UL1, UL2, VL1,
+     VL2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute absolute values and compare.*)</font> A1:=IABSF(A);
+      A2:=IABSF(B);
+      <font color="#4169E1">IF</font> ICOMP(A1,A2) &lt; 0 <font color="#4169E1">THEN</font> A3:=A1; A1:=A2; A2:=A3; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute remainders.*)</font>
+      <font color="#4169E1">WHILE</font> A2 &lt;&gt; 0 <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> A1 &lt; BETA <font color="#4169E1">THEN</font> C:=DGCD(A1,A2); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+            ML1:=ILOG2(A1); ML2:=ILOG2(A2);
+            <font color="#4169E1">IF</font> (ML1-ML2) &gt;= (ZETA DIV 2) <font color="#4169E1">THEN</font> A4:=IREM(A1,A2); A3:=A2; <font color="#4169E1">ELSE</font>
+               HL:=ML1-ZETA; AL:=ITRUNC(A1,HL); BL:=ITRUNC(A2,HL);
+               DPCC(AL,BL,UL1,UL2,VL1,VL2);
+               <font color="#4169E1">IF</font> VL1 = 0 <font color="#4169E1">THEN</font> A4:=IREM(A1,A2); A3:=A2; <font color="#4169E1">ELSE</font>
+                  A3:=ILCOMB(A1,A2,UL1,VL1); A4:=ILCOMB(A1,A2,UL2,VL2);
+                  <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            A1:=A3; A2:=A4; <strong><font color="#4169E1">END</font></strong>;
+      C:=A1; RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IGCD;
+
+
+<strong><font color="#4169E1">PROCEDURE IGCDCF</font></strong>(A,B: LIST; <strong><font color="#228B22">VAR</font></strong> C,AB,BB: LIST);
+<font color="#B22222">(*Integer greatest common divisor and cofactors.  A and B are integers.
+C eq GCD(A,B).  If C eq 0 then AB eq BB eq 0 and otherwise
+AB eq A/C,BB eq B/C.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> C:=IGCD(A,B);
+      <font color="#4169E1">IF</font> (C = 0) <font color="#4169E1">OR</font> (C = 1) <font color="#4169E1">THEN</font> AB:=A; BB:=B; <font color="#4169E1">ELSE</font> AB:=IQ(A,C);
+         BB:=IQ(B,C); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IGCDCF;
+
+
+<strong><font color="#4169E1">PROCEDURE IHEGCD</font></strong>(A,B: LIST; <strong><font color="#228B22">VAR</font></strong> C,V: LIST);
+<font color="#B22222">(*Integer half-extended greatest common divisor.  A and B are integers.
+C=GCD(A,B).  If A ne 0, B*V=C(mod A), with ABS(V) le ABS(A)/2C.  If
+A=0,V=SIGN(B).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, A2, A3, A4, AL, BL, HL, J1Y, ML1, ML2, Q, SL, UL1, UL2,
+     V1, V2, V3, V4, VL1, VL2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute absolute values and compare, and prepare v1, v2.*)</font>
+      A1:=IABSF(A); SL:=ISIGNF(B);
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> A2:=INEG(B); <font color="#4169E1">ELSE</font> A2:=B; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> ICOMP(A1,A2) &lt; 0 <font color="#4169E1">THEN</font> A3:=A1; A1:=A2; A2:=A3; V1:=SL; V2:=0;
+         <font color="#4169E1">ELSE</font> V1:=0; V2:=SL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute r emainder and cosequence.*)</font>
+      <font color="#4169E1">WHILE</font> A2 &lt;&gt; 0 <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> A1 &lt;= BETA <font color="#4169E1">THEN</font> DEGCD(A1,A2,C,UL1,VL1);
+               V:=IDIPR2(V1,V2,UL1,VL1); RETURN; <strong><font color="#4169E1">END</font></strong>;
+            ML1:=ILOG2(A1); ML2:=ILOG2(A2);
+            <font color="#4169E1">IF</font> (ML1-ML2) &gt;= (ZETA DIV 2) <font color="#4169E1">THEN</font> IQR(A1,A2,Q,A4); A3:=A2;
+               V3:=V2;
+               J1Y:=IPROD(V2,Q); V4:=IDIF(V1,J1Y); <font color="#4169E1">ELSE</font> HL:=ML1-ZETA;
+               AL:=ITRUNC(A1,HL); BL:=ITRUNC(A2,HL);
+               DPCC(AL,BL,UL1,UL2,VL1,VL2);
+               <font color="#4169E1">IF</font> VL1 = 0 <font color="#4169E1">THEN</font> IQR(A1,A2,Q,A4); A3:=A2; V3:=V2;
+                  J1Y:=IPROD(V2,Q); V4:=IDIF(V1,J1Y); <font color="#4169E1">ELSE</font>
+                  A3:=ILCOMB(A1,A2,UL1,VL1); A4:=ILCOMB(A1,A2,UL2,VL2);
+                  V3:=IDIPR2(V1,V2,UL1,VL1); V4:=IDIPR2(V1,V2,UL2,VL2);
+                  <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            A1:=A3; A2:=A4; V1:=V3; V2:=V4; <strong><font color="#4169E1">END</font></strong>;
+      C:=A1; V:=V1; RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IHEGCD;
+
+
+<strong><font color="#4169E1">PROCEDURE ILCM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer least common multiple.  A and B are integers.
+C=LCM(A,B), a nonnegative integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, BP, C, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b eq 0.*)</font> AP:=IABSF(A); BP:=IABSF(B);
+      <font color="#4169E1">IF</font> AP = 0 <font color="#4169E1">THEN</font> C:=BP; RETURN(C); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> BP = 0 <font color="#4169E1">THEN</font> C:=AP; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a and b nonzero.*)</font> CP:=IGCD(AP,BP); APP:=IQ(AP,CP);
+      C:=IPROD(APP,BP); RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> ILCM;
+
+
+<strong><font color="#4169E1">PROCEDURE ILCOMB</font></strong>(A,B,UL,VL: LIST): LIST;
+<font color="#B22222">(*Integer linear combination.  A and B are non-negative integers.
+u and v are beta-integers such that A*u+B*v ge 0.  C=A*u+B*v.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AB, AL, AL0, AL1, BB, BL, BL0, BL1, C, CL0, CL1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert to lists.*)</font>
+      <font color="#4169E1">IF</font> A &gt; BETA <font color="#4169E1">THEN</font> AB:=A; <font color="#4169E1">ELSE</font> AB:=LIST1(A); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B &gt; BETA <font color="#4169E1">THEN</font> BB:=B; <font color="#4169E1">ELSE</font> BB:=LIST1(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*multiply and add.*)</font> C:=BETA; CL1:=0;
+      <font color="#4169E1">REPEAT</font> AADV(AB,AL,AB); AADV(BB,BL,BB); DPR(AL,UL,AL1,AL0);
+             DPR(BL,VL,BL1,BL0); CL0:=AL0+BL0; CL0:=CL0+CL1;
+             CL1:=AL1+BL1;
+             <font color="#4169E1">WHILE</font> CL0 &lt; 0 <font color="#4169E1">DO</font> CL0:=CL0+BETA; CL1:=CL1-1; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> CL0 &gt;= BETA <font color="#4169E1">THEN</font> CL0:=CL0-BETA; CL1:=CL1+1; <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP(CL0,C);
+             <font color="#4169E1">UNTIL</font> (AB = SIL) <font color="#4169E1">AND</font> (BB = SIL);
+      <font color="#4169E1">IF</font> CL1 &lt;&gt; 0 <font color="#4169E1">THEN</font> C:=COMP(CL1,C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*normalize.*)</font>
+      <font color="#4169E1">WHILE</font> (C &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(C) = 0) <font color="#4169E1">DO</font> C:=RED(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> RED(C) = SIL <font color="#4169E1">THEN</font> C:=FIRST(C); <font color="#4169E1">ELSE</font> C:=INV(C); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> ILCOMB;
+
+
+<strong><font color="#4169E1">PROCEDURE ILOG2</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integer logarithm, base 2.  A is an integer.  If A=0 then n=0.
+Otherwise n=FLOOR(LOG2(ABS(A)))+1, a beta-integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, J1Y, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> NL:=DLOG2(A); RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a multiple-precision.*)</font> AP:=A; NL:=0;
+      <font color="#4169E1">WHILE</font> RED(AP) &lt;&gt; SIL <font color="#4169E1">DO</font> AP:=RED(AP); NL:=NL+ZETA; <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=FIRST(AP); J1Y:=DLOG2(J1Y); NL:=NL+J1Y; RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> ILOG2;
+
+
+<strong><font color="#4169E1">PROCEDURE ILWRIT</font></strong>(L: LIST);
+<font color="#B22222">(*Integer list write.  L is a list of integers.  The list L is written
+in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=L; SWRITE("(");
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,AL,LP); IWRITE(AL);
+            <font color="#4169E1">IF</font> LP &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(","); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      SWRITE(")"); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ILWRIT;
+
+
+<strong><font color="#4169E1">PROCEDURE IMAX</font></strong>(AL,BL: LIST): LIST;
+<font color="#B22222">(*Integer maximum.  a and b are integers.  c is the maximum of a
+and b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SL:=ICOMP(AL,BL);
+      <font color="#4169E1">IF</font> SL &gt;= 0 <font color="#4169E1">THEN</font> CL:=AL; <font color="#4169E1">ELSE</font> CL:=BL; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(CL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IMAX;
+
+
+<strong><font color="#4169E1">PROCEDURE IMIN</font></strong>(AL,BL: LIST): LIST;
+<font color="#B22222">(*Integer minimum.  a and b are integers.  c is the minimum of a
+and b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SL:=ICOMP(AL,BL);
+      <font color="#4169E1">IF</font> SL &lt;= 0 <font color="#4169E1">THEN</font> CL:=AL; <font color="#4169E1">ELSE</font> CL:=BL; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(CL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IMIN;
+
+
+<strong><font color="#4169E1">PROCEDURE IMP2</font></strong>(A,HL: LIST): LIST;
+<font color="#B22222">(*Integer multiplication by power of 2.  A is an integer.  h is a
+non-negative beta-integer.  B=A*(2**h).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, IL, J1Y, QL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or hl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (HL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> QL:=HL DIV ZETA; J1Y:=QL*ZETA; RL:=HL-J1Y;
+      B:=IDPR(A,TABP2[INTEGER(RL+1)]);
+      <font color="#4169E1">IF</font> QL &lt;&gt; 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> B:=LIST1(B); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> QL <font color="#4169E1">DO</font> B:=COMP(0,B); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IMP2;
+
+
+<strong><font color="#4169E1">PROCEDURE INEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integer negation.  A is an integer.  B=-A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> B:=-A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a multiple-precision.*)</font> B:=BETA; AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AP,AL,AP); BL:=-AL; B:=COMP(BL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> INEG;
+
+
+<strong><font color="#4169E1">PROCEDURE IODD</font></strong>(A: LIST): BOOLEAN;
+<font color="#B22222">(*Integer odd.  A is an integer.  If a is odd then true is returned
+and otherwise false. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y: LIST;
+     TL: BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> TL:=MASODD(A); <font color="#4169E1">ELSE</font> J1Y:=FIRST(A); TL:=MASODD(J1Y);
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IODD;
+
+
+<strong><font color="#4169E1">PROCEDURE IORD2</font></strong>(AL: LIST): LIST;
+<font color="#B22222">(*Integer, order of 2.  a is a non-zero integer.  n is the largest
+integer such that 2**n divides a.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, ALP, J1Y, NL, QL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*count low-order beta-digits.*)</font>
+      <font color="#4169E1">IF</font> AL &lt; BETA <font color="#4169E1">THEN</font> NL:=-1; AL1:=AL; <font color="#4169E1">ELSE</font> J1Y:=-ZETA; NL:=J1Y-1;
+         ALP:=AL;
+         <font color="#4169E1">REPEAT</font> ADV(ALP,AL1,ALP); NL:=NL+ZETA;
+                <font color="#4169E1">UNTIL</font> AL1 &lt;&gt; 0;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*count low-order bits.*)</font>
+      <font color="#4169E1">REPEAT</font> MASQREM(AL1,2,QL,RL); AL1:=QL; NL:=NL+1;
+             <font color="#4169E1">UNTIL</font> RL &lt;&gt; 0;
+      RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IORD2;
+
+
+<strong><font color="#4169E1">PROCEDURE IPOWER</font></strong>(A,L: LIST; <strong><font color="#228B22">VAR</font></strong> B,NL: LIST);
+<font color="#B22222">(*Integer power.  A, greater than or equal to 3, is an odd positive
+integer.  L is a list (p(1),p(2), ...,p(k)) of the first k prime
+numbers, with p(k) greater than or equal to the base 3 logarithm of A.
+If A=B**m for some m greater than or equal to 2 then n is the least
+such m and B=A**(1/n).  Otherwise B=0 and n=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, LP, N, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute bound on nl.*)</font> N:=ILOG2(A); J1Y:=7*N; N:=J1Y DIV 11;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply iroot.*)</font> LP:=L;
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,NL,LP);
+            <font color="#4169E1">IF</font> NL &gt; N <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 3;*)</font>
+               B:=0; NL:=0; RETURN;
+               <strong><font color="#4169E1">END</font></strong>;
+            IROOT(A,NL,B,TL);
+            <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*non-power.*)</font> B:=0; NL:=0; RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPOWER;
+
+
+<strong><font color="#4169E1">PROCEDURE IPROD</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer product.  A and B are integers.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, APP, BL, BP, C, C2, CL, CLP, CP, CPP, EL, FL, I, ML, NL,
+     TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a and b single-precision.*)</font>
+      <font color="#4169E1">IF</font> (A &lt; BETA) <font color="#4169E1">AND</font> (B &lt; BETA) <font color="#4169E1">THEN</font> DPR(A,B,CLP,CL);
+         <font color="#4169E1">IF</font> CLP = 0 <font color="#4169E1">THEN</font> C:=CL; <font color="#4169E1">ELSE</font> C:=LIST2(CL,CLP); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*a or b single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> C:=IDPR(B,A); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> C:=IDPR(A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*interchange if b is longer.*)</font> ML:=LENGTH(A); NL:=LENGTH(B);
+      <font color="#4169E1">IF</font> ML &gt;= NL <font color="#4169E1">THEN</font> AP:=A; BP:=B; <font color="#4169E1">ELSE</font> AP:=B; BP:=A; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*set product to zero.*)</font> C2:=LIST2(0,0); C:=C2;
+      <font color="#4169E1">FOR</font> I:=1 <font color="#4169E1">TO</font> ML+NL-2 <font color="#4169E1">DO</font> C:=COMP(0,C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*multiply digits and add products.*)</font> CP:=C;
+      <font color="#4169E1">REPEAT</font> APP:=AP; ADV(BP,BL,BP);
+             <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> CPP:=CP; CLP:=0;
+                <font color="#4169E1">REPEAT</font> ADV(APP,AL,APP); DPR(AL,BL,EL,FL);
+                       CL:=FIRST(CPP); CL:=CL+FL; CL:=CL+CLP;
+                       CLP:=CL DIV BETA; TL:=CLP*BETA; CL:=CL-TL;
+                       SFIRST(CPP,CL); CLP:=EL+CLP; CPP:=RED(CPP);
+                       <font color="#4169E1">UNTIL</font> APP = SIL;
+                SFIRST(CPP,CLP); <strong><font color="#4169E1">END</font></strong>;
+             CP:=RED(CP);
+             <font color="#4169E1">UNTIL</font> BP = SIL;
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*leading digit zero$*)</font>
+      <font color="#4169E1">IF</font> CLP = 0 <font color="#4169E1">THEN</font> SRED(C2,SIL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*10*)</font> <strong><font color="#4169E1">END</font></strong> IPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE IPRODK</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer product, Karatsuba algorithm.  A and B are integers.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A0, A1, AP, AS, B0, B1, BP, BS, C, C0, C1, C2, CH, CS, KL, L, ML,
+     NL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b single-precision.*)</font>
+      <font color="#4169E1">IF</font> (A &lt; BETA) <font color="#4169E1">OR</font> (B &lt; BETA) <font color="#4169E1">THEN</font> C:=IPROD(A,B); RETURN(C);
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute lengths, ml and nl, ml ge nl.*)</font> ML:=LENGTH(A);
+      NL:=LENGTH(B);
+      <font color="#4169E1">IF</font> ML &gt;= NL <font color="#4169E1">THEN</font> AP:=A; BP:=B; <font color="#4169E1">ELSE</font> AP:=B; BP:=A; TL:=ML;
+         ML:=NL; NL:=TL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*use classical algorithm if nl is small.*)</font>
+      <font color="#4169E1">IF</font> NL &lt; 16 <font color="#4169E1">THEN</font> C:=IPROD(AP,BP); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*ml ge 2*nl.*)</font>
+      <font color="#4169E1">IF</font> ML &gt;= 2*NL <font color="#4169E1">THEN</font> L:=BETA;
+         <font color="#4169E1">REPEAT</font> ISEG(AP,NL,AP,A0); C0:=IPRODK(A0,BP); L:=COMP(C0,L);
+                <font color="#4169E1">UNTIL</font> AP = 0;
+         L:=INV(L); C:=ISSUM(NL,L); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*nl le ml lt 2*nl.*)</font> KL:=ML DIV 2;
+      <font color="#4169E1">IF</font> ML &gt; KL+KL <font color="#4169E1">THEN</font> KL:=KL+1; <strong><font color="#4169E1">END</font></strong>;
+      ISEG(AP,KL,A1,A0); ISEG(BP,KL,B1,B0); AS:=ISUM(A1,A0);
+      BS:=ISUM(B1,B0); C2:=IPRODK(A1,B1); C0:=IPRODK(A0,B0);
+      CS:=IPRODK(AS,BS); CH:=ISUM(C0,C2); C1:=IDIF(CS,CH);
+      L:=LIST3(C0,C1,C2); C:=ISSUM(KL,L); RETURN(C);
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IPRODK;
+
+
+<strong><font color="#4169E1">PROCEDURE IQ</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer quotient.  A and B are integers, B ne 0.  C is the integral
+part of A/B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IQR(A,B,C,R); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IQ;
+
+
+<strong><font color="#4169E1">PROCEDURE IQR</font></strong>(A,B: LIST; <strong><font color="#228B22">VAR</font></strong> Q,R: LIST);
+<font color="#B22222">(*Integer quotient and remainder.  A and B are integers, B ne 0.  Q is
+the quotient, integral part of A/B, and R is the remainder A-B*Q.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AH, AL, AL0, AL1, AL2, AP, APP, APPP, AS, BL, BL0, BL1, BP, BPP,
+     BS, CL, CL0, CL1, CL2, CLP1, DL, IL, J1Y, ML, NL, QL, RL, SL, T,
+     TL, UL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*b single-precision.*)</font>
+      <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> IDQR(A,B,Q,R); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> Q:=0; R:=A; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compare lengths.*)</font> ML:=LENGTH(A); NL:=LENGTH(B);
+      <font color="#4169E1">IF</font> ML &lt; NL <font color="#4169E1">THEN</font> Q:=0; R:=A; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute signs and normalize.*)</font> SL:=ISIGNF(A); T:=LAST(B);
+      BL:=FIRST(T); TL:=MASSIGN(BL); BL:=MASABS(BL); J1Y:=BL+1; 
+      DL:=BETA DIV J1Y;
+      J1Y:=SL*DL; AP:=IDPR(A,J1Y); J1Y:=TL*DL; BP:=IDPR(B,J1Y);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*compute app and appp.*)</font> APP:=AP; APPP:=BETA;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ML-NL <font color="#4169E1">DO</font> ADV(APP,AL,APP); APPP:=COMP(AL,APPP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*obtain leading digits of divisor.*)</font> BPP:=BP;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL-2 <font color="#4169E1">DO</font> BPP:=RED(BPP); <strong><font color="#4169E1">END</font></strong>;
+      ADV2(BPP,BL0,BL1,BPP);
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*initialize quotient.*)</font> Q:=BETA;
+<font color="#B22222">(*begining of loop executed for each quotient digit.*)</font>
+LOOP
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*obtain high-order digits of dividend.*)</font> AS:=APP;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL-2 <font color="#4169E1">DO</font> AS:=RED(AS); <strong><font color="#4169E1">END</font></strong>;
+      ADV2(AS,AL0,AL1,AS);
+      <font color="#4169E1">IF</font> AS = SIL <font color="#4169E1">THEN</font> AL2:=0; <font color="#4169E1">ELSE</font> AL2:=FIRST(AS); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <font color="#B22222">(*compute quotient digit approximation ql.*)</font>
+      <font color="#4169E1">IF</font> AL2 = BL1 <font color="#4169E1">THEN</font> QL:=BETA-1; <font color="#4169E1">ELSE</font> DQR(AL2,AL1,BL1,QL,RL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">REPEAT</font> DPR(BL0,QL,CL1,CL0); DPR(BL1,QL,CL2,CLP1); CL1:=CL1+CLP1;
+             <font color="#4169E1">IF</font> CL1 &gt;= BETA <font color="#4169E1">THEN</font> CL1:=CL1-BETA; CL2:=CL2+1; <strong><font color="#4169E1">END</font></strong>;
+             UL:=AL2-CL2;
+             <font color="#4169E1">IF</font> UL = 0 <font color="#4169E1">THEN</font> UL:=AL1-CL1; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> UL = 0 <font color="#4169E1">THEN</font> UL:=AL0-CL0; <strong><font color="#4169E1">END</font></strong>;
+             QL:=QL-1;
+             <font color="#4169E1">UNTIL</font> UL &gt;= 0;
+      QL:=QL+1;
+LOOP
+<font color="#B22222">(*10*)</font> <font color="#B22222">(*subtract ql*bp from app.*)</font> AS:=APP; BS:=BP; AH:=BETA; CL:=0;
+       <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> ADV(BS,BL,BS); DPR(BL,QL,CL2,CL1);
+           ADV(AS,AL,AS); AL:=AL-CL; AL:=AL-CL1; CL:=CL2;
+           <font color="#4169E1">WHILE</font> AL &lt; 0 <font color="#4169E1">DO</font> AL:=AL+BETA; CL:=CL+1; <strong><font color="#4169E1">END</font></strong>;
+           AH:=COMP(AL,AH); <strong><font color="#4169E1">END</font></strong>;
+       <font color="#4169E1">IF</font> AS = SIL <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> AL:=FIRST(AS); <strong><font color="#4169E1">END</font></strong>;
+       AL:=AL-CL;
+<font color="#B22222">(*11*)</font> <font color="#B22222">(*adjust ql if necessary.*)</font>
+       <font color="#4169E1">IF</font> AL &lt; 0 <font color="#4169E1">THEN</font> QL:=QL-1; <font color="#B22222">(*go to 10;*)</font> 
+                 <font color="#4169E1">ELSE</font> APP:=INV(AH); EXIT; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*12*)</font> <font color="#B22222">(*put ql in list.*)</font>
+       <font color="#4169E1">IF</font> (Q &lt;&gt; SIL) <font color="#4169E1">OR</font> (QL &lt;&gt; 0) <font color="#4169E1">THEN</font> Q:=COMP(QL,Q); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*13*)</font> <font color="#B22222">(*return for next quotient digit, if any.*)</font>
+       <font color="#4169E1">IF</font> APPP &lt;&gt; SIL 
+          <font color="#4169E1">THEN</font> ADV(APPP,AL,APPP); APP:=COMP(AL,APP); <font color="#B22222">(*go to 8;*)</font>
+          <font color="#4169E1">ELSE</font> EXIT; <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*14*)</font> <font color="#B22222">(*normalize quotient and remainder.*)</font>
+       <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font>
+          <font color="#4169E1">IF</font> RED(Q) = SIL <font color="#4169E1">THEN</font> Q:=FIRST(Q); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+       T:=0; AS:=APP;
+       <font color="#4169E1">REPEAT</font> AL:=FIRST(AS);
+              <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> T:=AS; <strong><font color="#4169E1">END</font></strong>;
+              AS:=RED(AS);
+              <font color="#4169E1">UNTIL</font> AS = SIL;
+       <font color="#4169E1">IF</font> T = 0 <font color="#4169E1">THEN</font> R:=0; <font color="#4169E1">ELSE</font> SRED(T,SIL); R:=APP;
+          <font color="#4169E1">IF</font> RED(R) = SIL <font color="#4169E1">THEN</font> R:=FIRST(R); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*15*)</font> <font color="#B22222">(*modify quotient and remainder.*)</font>
+       <font color="#4169E1">IF</font> SL*TL = -1 <font color="#4169E1">THEN</font> Q:=INEG(Q); <strong><font color="#4169E1">END</font></strong>;
+       IDQR(R,SL*DL,R,T); RETURN;
+<font color="#B22222">(*18*)</font> <strong><font color="#4169E1">END</font></strong> IQR;
+
+
+<strong><font color="#4169E1">PROCEDURE IRAND</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Integer, random.  n is a positive beta-integer.  A is an integer
+with random sign and random absolute value less than 2**n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, IDUM, IL, J1Y, QL, RL, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute sign and high-order beta-digit.*)</font> MASQREM(NL,ZETA,QL,RL);
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> QL:=QL-1; RL:=ZETA; <strong><font color="#4169E1">END</font></strong>;
+      AL:=DRAN(); SL:=MASSIGN(AL); J1Y:=ZETA-RL; J1Y:=J1Y+1;
+      AL:=AL DIV TABP2[INTEGER(J1Y)];
+      <font color="#4169E1">IF</font> QL = 0 <font color="#4169E1">THEN</font> A:=AL; RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+      A:=BETA;
+      <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP(AL,A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute remaining digits.*)</font>
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> QL <font color="#4169E1">DO</font> J1Y:=DRAN(); AL:=MASABS(J1Y);
+          <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> AL:=-AL; <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> (AL &lt;&gt; 0) <font color="#4169E1">OR</font> (A &lt;&gt; SIL) <font color="#4169E1">THEN</font> A:=COMP(AL,A); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> RED(A) = SIL <font color="#4169E1">THEN</font> A:=FIRST(A); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IRAND;
+
+
+<strong><font color="#4169E1">PROCEDURE IREAD</font></strong>(): LIST;
+<font color="#B22222">(*Integer read.  The integer A is read from the input stream.  Any
+preceding blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, B, BL, BLP, C, IDUM, IL, J1Y, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read sign.*)</font> SL:=1; C:=CREADB();
+      <font color="#4169E1">IF</font> C = MASORD("-") <font color="#4169E1">THEN</font> SL:=-1; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (C = MASORD("+")) <font color="#4169E1">OR</font> (C = MASORD("-")) <font color="#4169E1">THEN</font> C:=CREAD(); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> DIGIT(C) <font color="#4169E1">THEN</font> <font color="#B22222">(*go to 6;*)</font>
+         <font color="#B22222">(*6*)</font> <font color="#B22222">(*error.*)</font> SWRITE("ERROR FOUND BY IREAD."); DIBUFF;        
+         A:=0; RETURN(A);
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*skip leading zeros.*)</font>
+      <font color="#4169E1">WHILE</font> C = 0 <font color="#4169E1">DO</font> C:=CREAD(); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*is a=0.*)</font> A:=0;
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> DIGIT(C) <font color="#4169E1">THEN</font> BKSP; RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute theta-digits.*)</font> B:=SIL; BL:=0; IL:=0;
+      <font color="#4169E1">REPEAT</font> BL:=10*BL+C; IL:=IL+1;
+             <font color="#4169E1">IF</font> IL = ETA <font color="#4169E1">THEN</font> B:=COMP(BL,B); BL:=0; IL:=0; <strong><font color="#4169E1">END</font></strong>;
+             C:=CREAD();
+             <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font> DIGIT(C);
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*convert to base beta.*)</font> B:=INV(B);
+      <font color="#4169E1">WHILE</font> B &lt;&gt; SIL <font color="#4169E1">DO</font> A:=IDPR(A,THETA); ADV(B,BLP,B);
+            A:=ISUM(A,BLP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=IDPR(A,MASEXP(10,IL)); <strong><font color="#4169E1">END</font></strong>;
+      A:=ISUM(A,BL);
+      <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> A:=INEG(A); <strong><font color="#4169E1">END</font></strong>;
+      BKSP; RETURN(A);
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*error.*)</font> SWRITE("ERROR FOUND BY IREAD."); DIBUFF;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> IREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE IREM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer remainder.  A and B are integers, B non-zero.  C is the
+remainder of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, Q: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IQR(A,B,Q,C); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IREM;
+
+
+<strong><font color="#4169E1">PROCEDURE IROOT</font></strong>(A,NL: LIST; <strong><font color="#228B22">VAR</font></strong> B,TL: LIST);
+<font color="#B22222">(*Integer root.  A is a positive integer.  n, greater than or equal
+to 2, is a beta-integer.  B=FLOOR(A**(1/n)) and t=SIGN(A-B**n).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, BP, C, D, E, F, HL, J1Y, J2Y, KL, NLP, R, RL, SL, UL:
+     LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute first approximation.*)</font> KL:=ILOG2(A); NLP:=NL-1;
+      HL:=KL DIV NL; J1Y:=HL*NL; RL:=KL-J1Y; J1Y:=4*RL; UL:=J1Y DIV NL;
+      <font color="#4169E1">IF</font> HL &gt;= 2 <font color="#4169E1">THEN</font> J1Y:=UL+5; J2Y:=HL-2; B:=IMP2(J1Y,J2Y); <font color="#4169E1">ELSE</font>
+         B:=4; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*iterate modified newton method.*)</font>
+      LOOP   C:=IEXP(B,NLP); IQR(A,C,D,R); SL:=ICOMP(B,D);
+             <font color="#4169E1">IF</font> SL &lt;= 0 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*go to 3;*)</font> <font color="#4169E1">ELSE</font> E:=IDPR(B,NLP);
+                F:=ISUM(E,D); B:=IDQ(F,NL); <strong><font color="#4169E1">END</font></strong>;
+             <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*test whether result is too small.*)</font>
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> TL:=ISIGNF(R); <font color="#4169E1">ELSE</font> BP:=ISUM(B,1);
+         AP:=IEXP(BP,NL); TL:=ICOMP(A,AP);
+         <font color="#4169E1">IF</font> TL &gt;= 0 <font color="#4169E1">THEN</font> B:=BP; <font color="#4169E1">ELSE</font> TL:=1; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IROOT;
+
+
+<strong><font color="#4169E1">PROCEDURE ISEG</font></strong>(A,NL: LIST; <strong><font color="#228B22">VAR</font></strong> A1,A0: LIST);
+<font color="#B22222">(*Integer segmentation.  A is an integer.  n is a positive beta-
+integer.  A1 is the integral part of A/beta**n.  A0=A-A1*beta**n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a a beta digit.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> A1:=0; A0:=A; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*create lists.*)</font> A1:=A; A0:=BETA; IL:=0;
+      <font color="#4169E1">REPEAT</font> IL:=IL+1; ADV(A1,AL,A1); A0:=COMP(AL,A0);
+             <font color="#4169E1">UNTIL</font> (IL = NL) <font color="#4169E1">OR</font> (A1 = SIL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*normalize a1.*)</font>
+      <font color="#4169E1">IF</font> A1 = SIL <font color="#4169E1">THEN</font> A1:=0; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> RED(A1) = SIL <font color="#4169E1">THEN</font> A1:=FIRST(A1); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*normalize a0.*)</font>
+      <font color="#4169E1">WHILE</font> (A0 &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(A0) = 0) <font color="#4169E1">DO</font> A0:=RED(A0); <strong><font color="#4169E1">END</font></strong>;
+      A0:=INV(A0);
+      <font color="#4169E1">IF</font> A0 = SIL <font color="#4169E1">THEN</font> A0:=0; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> RED(A0) = SIL <font color="#4169E1">THEN</font> A0:=FIRST(A0); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ISEG;
+
+
+<strong><font color="#4169E1">PROCEDURE ISIGNF</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integer sign function.  A is an integer.  s=SIGN(A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> SL:=MASSIGN(A); RETURN(SL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a multiple-precision.*)</font> AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV(AP,AL,AP);
+             <font color="#4169E1">UNTIL</font> AL &lt;&gt; 0;
+      SL:=MASSIGN(AL); RETURN(SL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> ISIGNF;
+
+
+<strong><font color="#4169E1">PROCEDURE ISQRT</font></strong>(A: LIST; <strong><font color="#228B22">VAR</font></strong> B,TL: LIST);
+<font color="#B22222">(*Integer square root.  A is a non-negative integer.  B is the floor
+function of the square root of A and t is the sign of A-B*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, C, D, HL, J1Y, KL, R, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> DSQRTF(A,B,TL); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute single-precision approximation.*)</font> KL:=ILOG2(A);
+      HL:=KL-ZETA; <font color="#4169E1">IF</font> MASODD(HL) <font color="#4169E1">THEN</font> HL:=HL+1 <strong><font color="#4169E1">END</font></strong>; AL:=IDP2(A,HL);
+      DSQRTF(AL,BL,TL); BL:=BL+1; J1Y:=HL DIV 2; B:=IMP2(BL,J1Y);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*iterate modified newton method.*)</font>
+      LOOP IQR(A,B,C,R); SL:=ICOMP(B,C);
+           <font color="#4169E1">IF</font> SL &lt;= 0 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*go to 4;*)</font> <strong><font color="#4169E1">END</font></strong>;
+           D:=ISUM(B,C); B:=IDQ(D,2);
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute tl.*)</font> J1Y:=IPROD(B,B); TL:=ICOMP(A,J1Y); RETURN;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ISQRT;
+
+
+<strong><font color="#4169E1">PROCEDURE ISSUM</font></strong>(NL,L: LIST): LIST;
+<font color="#B22222">(*Integer shifted sum.  n is a positive integer.  L is a list
+(c(0),c(1), ...,c(k)), k non-negative, of integers c(i) with
+ABS(c(i)) less than beta**(2*n+1).  Either each c(i) is
+non-negative or each c(i) is non-positive.  C is the sum on i,
+from 0 to k, of c(i)*(beta**(i*n)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AL0, AL1, C, C0, C1, CL, CLP, IL, J1Y, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> C:=BETA; CL:=0; ADV(L,C0,LP);
+      <font color="#4169E1">IF</font> C0 &lt; BETA <font color="#4169E1">THEN</font> C0:=LIST1(C0); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> AADV(C0,AL0,C0); C:=COMP(AL0,C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*add.*)</font>
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,C1,LP);
+            <font color="#4169E1">IF</font> C1 &lt; BETA <font color="#4169E1">THEN</font> C1:=LIST1(C1); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> AADV(C0,AL0,C0); AADV(C1,AL1,C1);
+                AL:=AL0+AL1; AL:=AL+CL; CL:=AL DIV BETA; CLP:=CL*BETA;
+                AL:=AL-CLP; C:=COMP(AL,C); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> C0 &lt;&gt; SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(C0); CL:=CL+J1Y; <strong><font color="#4169E1">END</font></strong>;
+            C0:=C1; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">WHILE</font> (C0 &lt;&gt; SIL) <font color="#4169E1">OR</font> (CL &lt;&gt; 0) <font color="#4169E1">DO</font> AADV(C0,AL0,C0); AL:=AL0+CL;
+            CL:=0;
+            <font color="#4169E1">IF</font> AL &gt;= BETA <font color="#4169E1">THEN</font> AL:=AL-BETA; CL:=1; <font color="#4169E1">ELSE</font>
+               <font color="#4169E1">IF</font> AL &lt;= -BETA <font color="#4169E1">THEN</font> AL:=AL+BETA; CL:=-1; <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            C:=COMP(AL,C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*normalize.*)</font>
+      <font color="#4169E1">WHILE</font> (C &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(C) = 0) <font color="#4169E1">DO</font> C:=RED(C); <strong><font color="#4169E1">END</font></strong>;
+      C:=INV(C);
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> RED(C) = SIL <font color="#4169E1">THEN</font> C:=FIRST(C); <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ISSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE ISUM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Integer sum.  A and B are integers.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CLP, CP, CPP, CS, J1Y, J2Y, SL, TL, UL:
+     LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero$*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a and b single-precision$*)</font>
+      <font color="#4169E1">IF</font> (A &lt; BETA) <font color="#4169E1">AND</font> (B &lt; BETA) <font color="#4169E1">THEN</font> CL:=A+B;
+         <font color="#4169E1">IF</font> CL &gt;= BETA <font color="#4169E1">THEN</font> J1Y:=CL-BETA; C:=LIST2(J1Y,1); <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> CL &lt;= -BETA <font color="#4169E1">THEN</font> J1Y:=CL+BETA; J2Y:=-1;
+               C:=LIST2(J1Y,J2Y); <font color="#4169E1">ELSE</font> C:=CL; <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*determine signs of inputs.*)</font> SL:=ISIGNF(A); TL:=ISIGNF(B);
+      C:=BETA;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*a or b single-precision$*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> AP:=LIST1(A); <font color="#4169E1">ELSE</font> AP:=A; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> BP:=LIST1(B); <font color="#4169E1">ELSE</font> BP:=B; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*branch on signs.*)</font>
+      <font color="#4169E1">IF</font> SL = TL <font color="#4169E1">THEN</font> <font color="#B22222">(*if &lt;&gt; then go to 8;*)</font>
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*same signs, add with carry.*)</font> CLP:=0;
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> AP &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(AP,AL,AP); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> BP &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(BP,BL,BP); <font color="#4169E1">ELSE</font> BL:=0; <strong><font color="#4169E1">END</font></strong>;
+             CL:=AL+BL; CL:=CL+CLP; CLP:=0;
+             <font color="#4169E1">IF</font> CL &gt;= BETA <font color="#4169E1">THEN</font> CL:=CL-BETA; CLP:=1; <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> CL &lt;= -BETA <font color="#4169E1">THEN</font> CL:=CL+BETA; CLP:=-1; <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP(CL,C);
+             <font color="#4169E1">UNTIL</font> (CLP = 0) <font color="#4169E1">AND</font> ((AP = SIL) <font color="#4169E1">OR</font> (BP = SIL));
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AP:=BP; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*invert and concatenate.*)</font> CP:=INV(C); SRED(C,AP); C:=CP;
+      RETURN(C); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*from 5, goto 8*)</font>
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*opposite signs, add without carry.*)</font> UL:=0;
+      <font color="#4169E1">REPEAT</font> ADV(AP,AL,AP); ADV(BP,BL,BP); CL:=AL+BL;
+             <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> UL:=CL; <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP(CL,C);
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AP:=BP; SL:=TL; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <font color="#B22222">(*sum zero$*)</font>
+      <font color="#4169E1">IF</font> (UL = 0) <font color="#4169E1">AND</font> (AP = SIL) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*10*)</font> <font color="#B22222">(*continue with longer input$*)</font>
+       <font color="#4169E1">IF</font> (UL = 0) <font color="#4169E1">OR</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SL &lt;&gt; MASSIGN(UL)) <font color="#4169E1">THEN</font>
+          <font color="#4169E1">REPEAT</font> ADV(AP,AL,AP); C:=COMP(AL,C); UL:=AL;
+                 <font color="#4169E1">UNTIL</font> AL &lt;&gt; 0;
+          <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*11*)</font> <font color="#B22222">(*invert and normalize.*)</font> CP:=INV(C); CPP:=CP; CLP:=0;
+       <font color="#4169E1">REPEAT</font> CL:=FIRST(CPP); CL:=CL+CLP; CLP:=0;
+              <font color="#4169E1">IF</font> (UL &gt; 0) <font color="#4169E1">AND</font> (CL &lt; 0) <font color="#4169E1">THEN</font> CL:=CL+BETA; CLP:=-1;
+                 <font color="#4169E1">ELSE</font>
+                 <font color="#4169E1">IF</font> (UL &lt; 0) <font color="#4169E1">AND</font> (CL &gt; 0) <font color="#4169E1">THEN</font> CL:=CL-BETA; CLP:=1;
+                    <strong><font color="#4169E1">END</font></strong>;
+                 <strong><font color="#4169E1">END</font></strong>;
+              <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CS:=CPP; <strong><font color="#4169E1">END</font></strong>;
+              SFIRST(CPP,CL); CPP:=RED(CPP);
+              <font color="#4169E1">UNTIL</font> CPP = SIL;
+<font color="#B22222">(*12*)</font> <font color="#B22222">(*concatenate or delete leading zeros.*)</font>
+       <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> SRED(CS,SIL); <font color="#4169E1">ELSE</font> SRED(C,AP); <strong><font color="#4169E1">END</font></strong>;
+       C:=CP;
+       <font color="#4169E1">IF</font> RED(C) = SIL <font color="#4169E1">THEN</font> C:=FIRST(C); <strong><font color="#4169E1">END</font></strong>;
+       RETURN(C);
+<font color="#B22222">(*15*)</font> <strong><font color="#4169E1">END</font></strong> ISUM;
+
+
+<strong><font color="#4169E1">PROCEDURE ITRUNC</font></strong>(A,NL: LIST): LIST;
+<font color="#B22222">(*Integer truncation.  A is an integer.  n is a beta-integer.
+B=INTEGER(A/2**n).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, IL, J1Y, ML, QL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or nl=0.*)</font> B:=A;
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (NL = 0) <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*let abs(nl)=ql*zeta+rl, al=2**rl.*)</font> ML:=MASABS(NL); QL:=ML DIV ZETA;
+      J1Y:=QL*ZETA; RL:=ML-J1Y; AL:=TABP2[INTEGER(RL+1)];
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*nl gt 0.*)</font>
+      <font color="#4169E1">IF</font> NL &gt; 0 <font color="#4169E1">THEN</font> IL:=0;
+         <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> B:=LIST1(B); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">WHILE</font> (B &lt;&gt; SIL) <font color="#4169E1">AND</font> (IL &lt;&gt; QL) <font color="#4169E1">DO</font> B:=RED(B); IL:=IL+1; <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> RED(B) = SIL <font color="#4169E1">THEN</font> B:=FIRST(B); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">IF</font> RL &lt;&gt; 0 <font color="#4169E1">THEN</font> IDQR(B,AL,B,RL); <strong><font color="#4169E1">END</font></strong>;
+         RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*nl lt 0.*)</font>
+      <font color="#4169E1">IF</font> RL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=IDPR(B,AL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> QL = 0 <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> B:=LIST1(B); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> QL <font color="#4169E1">DO</font> B:=COMP(0,B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ITRUNC;
+
+
+<strong><font color="#4169E1">PROCEDURE IWRITE</font></strong>(A: LIST);
+<font color="#B22222">(*Integer write.  The input integer A is converted to decimal and
+written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B: ARRAY[1..30] <font color="#4169E1">OF</font> LIST;
+     IL: INTEGER;
+     HL, J1Y, H, AP, QL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*a single-precision.*)</font>
+      <font color="#4169E1">IF</font> A &lt; BETA <font color="#4169E1">THEN</font> AWRITE(A); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute list of theta-digits.*)</font> AP:=A; H:=BETA;
+      <font color="#4169E1">REPEAT</font> IDQR(AP,THETA,AP,HL); H:=COMP(HL,H);
+             <font color="#4169E1">UNTIL</font> AP = 0;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*write first theta-digit.*)</font> ADV(H,HL,H); AWRITE(HL);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*write remaining digits.*)</font>
+      <font color="#4169E1">WHILE</font> H &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(H,HL,H); HL:=MASABS(HL);
+            <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> INTEGER(ETA) <font color="#4169E1">DO</font> QL:=HL DIV 10; J1Y:=10*QL; 
+                B[IL]:=HL-J1Y;
+                HL:=QL; <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">FOR</font> IL:=INTEGER(ETA) <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> CWRITE(B[IL]); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IWRITE;
+
+
+<strong><font color="#4169E1">END</font></strong> SACI.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,1348 @@
+
+<html>
+<head>
+<title>./masdom/MASADOM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-03-06T15:53:27+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASADOM.mi,v 1.15 1995/03/06 15:53:27 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASADOM.mi,v $
+ * Revision 1.15  1995/03/06  15:53:27  pesch
+ * Added new domain function (FACTO): factorization with variable order
+ * optimization.
+ *
+ * Revision 1.14  1994/11/28  20:56:32  dolzmann
+ * New function for the computation of the content and the primitive part of a
+ * polynomial.
+ *
+ * Revision 1.13  1994/11/03  14:42:18  pfeil
+ * modified comment
+ *
+ * Revision 1.12  1994/09/07  12:10:52  rose
+ * Error messages corrected.
+ *
+ * Revision 1.11  1994/09/06  19:06:56  rose
+ * Error message in ADSUM corrected.
+ *
+ * Revision 1.10  1994/06/16  12:54:06  pfeil
+ * changed number of parameters in procedure DIPSFF.
+ * changed parameter type of procedures SetPFactFunc, SetPSqfrFunc.
+ *
+ * Revision 1.9  1994/06/10  12:06:53  pfeil
+ * Minor changes.
+ *
+ * Revision 1.8  1994/06/09  14:51:42  pfeil
+ * Added ADPFACT, ADPSFF, SetPFactFunc, SetPSqfrFunc for DIPDCGB.
+ *
+ * Revision 1.7  1994/05/19  10:43:19  rose
+ * Added DomPRec, ADPNF, ADPSP, ADPSUGNF, ADPSUGSP, SetPNormFunc, SetPSpolFunc,
+ * SetPSugNormFunc, SetPSugSpolFunc in connection with the new module DIPAGB
+ *
+ * Revision 1.6  1994/03/11  15:54:11  pesch
+ * Minor corrections.
+ *
+ * Revision 1.5  1993/05/11  10:36:02  kredel
+ * Added QR, REM, ... support
+ *
+ * Revision 1.4  1992/10/15  16:30:23  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.3  1992/06/12  13:51:10  kredel
+ * Added extended GCD support
+ *
+ * Revision 1.2  1992/02/12  17:31:37  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:09:55  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASADOM;
+
+<font color="#B22222">(* MAS Arbitrary Domain Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM DIPAGB   IMPORT ADDNFEDIP, EDIPSUGSP;
+
+FROM DIPC     IMPORT DIP2AD, AD2DIP, DIPBSO, EVORD, VALIS, DIPERM;
+
+FROM DIPTOO   IMPORT DIPVOPP, INVPERM;
+
+FROM DIPTOOLS IMPORT ADDNFDIP;
+
+FROM DOMIP    IMPORT DOMIPD;
+
+FROM MASBIOS  IMPORT BLINES, SWRITE, LISTS;
+
+FROM MASERR   IMPORT severe, fatal, ERROR;
+
+FROM MASSTOR  IMPORT LIST, LIST1, ADV, FIRST, RED, SIL, COMP, LISTVAR, INV;
+
+FROM MASSYM2  IMPORT SYWRIT, SREAD, ENTER; 
+
+FROM SACLIST  IMPORT OWRITE, CLOUT, SECOND, FIRST2, LIST2;
+
+FROM SYSTEM   IMPORT ADDRESS;
+
+
+<strong><font color="#228B22">CONST</font></strong> maxdom = 30;
+
+<strong><font color="#228B22">TYPE</font></strong> funcf1  = ARRAY [1..maxdom] <font color="#4169E1">OF</font> PROCF1;
+
+<strong><font color="#228B22">TYPE</font></strong> DomRec = RECORD
+                name:      LIST;   <font color="#B22222">(* full print name *)</font>
+                Sym:       LIST;   <font color="#B22222">(* symbol identificator *)</font>
+                AbsFunc:   PROCF1;
+                CnstFunc:  PROCF1B;
+                ConvFunc:  funcf1;
+                CompFunc:  PROCF2;
+                DifFunc:   PROCF2;
+                ExpFunc:   PROCF2;
+                FactFunc:  PROCF1;
+     	        FactoFunc: PROCF1;
+                FIntFunc:  PROCF2;
+                FIPolFunc: PROCF2;
+                GcdFunc:   PROCF2;
+                GcdcFunc:  PROCP2V3;
+                GcdeFunc:  PROCP2V3;
+                InvFunc:   PROCF1;
+                InvTFunc:  PROCF1;
+                LcmFunc:   PROCF2;
+                NegFunc:   PROCF1;
+                OneFunc:   PROCF1;
+                ProdFunc:  PROCF2;
+                QuotFunc:  PROCF2;
+                QrFunc:    PROCP2V2;
+                ReadFunc:  PROCF1;
+                RemFunc:   PROCF2;
+                SignFunc:  PROCF1;
+                SumFunc:   PROCF2;
+                ToipFunc:  PROCF1V1;
+                WritFunc:  PROCP1;
+                VlddFunc:  PROCF1;
+                DdrdFunc:  PROCF0;
+                DdwrFunc:  PROCP1;
+              <strong><font color="#4169E1">END</font></strong>;
+
+<strong><font color="#228B22">TYPE</font></strong> DomPRec = RECORD
+		 PFactFunc:	PROCF1;
+		 PNormFunc:     PROCF2;
+		 PSpolFunc:  	PROCF2;
+		 PSqfrFunc:	PROCF1;
+                 PSugNormFunc:  PROCF2;
+                 PSugSpolFunc:  PROCF2;
+                 PCppFunc:	PROCP1V2;
+	       <strong><font color="#4169E1">END</font></strong>;
+
+<strong><font color="#228B22">VAR</font></strong> domain: ARRAY [1..maxdom] <font color="#4169E1">OF</font> DomRec;
+
+<strong><font color="#228B22">VAR</font></strong> Pdomain: ARRAY [1..maxdom] <font color="#4169E1">OF</font> DomPRec;
+
+<strong><font color="#228B22">VAR</font></strong> curdom : INTEGER;
+
+<strong><font color="#228B22">VAR</font></strong> Dummy: LIST;
+
+<font color="#B22222">(* Domain:            (dom, val, rest ... )
+   Domain descriptor: (rest ... )
+   where   dom  = domain number
+           val  = value
+           rest = more information on domain
+*)</font>
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASADOM.mi,v 1.15 1995/03/06 15:53:27 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE ADABSF</font></strong>(A:LIST):LIST;
+<font color="#B22222">(*Arbitrary domain absolute value. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CP, AL, AP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      <font color="#4169E1">IF</font> ADDRESS(domain[INTEGER(AL)].AbsFunc) = ADDRESS(Dummyf1)
+         <font color="#4169E1">THEN</font> <font color="#4169E1">IF</font> domain[INTEGER(AL)].SignFunc(AP) = -1 
+                 <font color="#4169E1">THEN</font> CP:=domain[INTEGER(AL)].NegFunc(AP);
+                 <font color="#4169E1">ELSE</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+         <font color="#4169E1">ELSE</font> CP:=domain[INTEGER(AL)].AbsFunc(AP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP);
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADABSF;
+
+
+<strong><font color="#4169E1">PROCEDURE ADCNST</font></strong>(A: LIST): BOOLEAN; 
+<font color="#B22222">(*Arbitrary domain constant test. Returns true iff A is a constant. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Select. *)</font>
+      RETURN(domain[INTEGER(AL)].CnstFunc(AP));
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ADCNST;
+
+
+<strong><font color="#4169E1">PROCEDURE ADCOMP</font></strong>(A,B:LIST):LIST;
+<font color="#B22222">(*Arbitrary domain comparison. s=sign(a-b). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   SL, AL, AP, BL, BP, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADCOMP: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      <font color="#4169E1">IF</font> ADDRESS(domain[INTEGER(AL)].CompFunc) = ADDRESS(Dummyf2)
+         <font color="#4169E1">THEN</font> CP:=domain[INTEGER(AL)].DifFunc(AP,BP);
+              SL:=domain[INTEGER(AL)].SignFunc(CP);  
+         <font color="#4169E1">ELSE</font> SL:=domain[INTEGER(AL)].CompFunc(AP,BP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> RETURN(SL);  
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> ADCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE ADCONV</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary domain conversion. c=b:domain(a). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font>
+      CP:=domain[INTEGER(AL)].ConvFunc[INTEGER(BL)](BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP);
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADCONV; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADDIF</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain difference. c=a-b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADDIF: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].DifFunc(AP,BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain exponentiation. c=a**nl. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font>
+      CP:=domain[INTEGER(AL)].ExpFunc(AP,NL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP);
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADEXP; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADFACT</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain factorization. Returns a list containing
+all prime factors of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, FL, FL1, RET: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Advance. *)</font> ADV(A, AL,AP);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Select. *)</font> 
+      FL:=domain[INTEGER(AL)].FactFunc(AP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Create. (for every list-element add domain-descriptor) *)</font>
+      RET:=SIL;
+      <font color="#4169E1">WHILE</font> FL &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(FL, FL1,FL);
+	    RET:=COMP(COMP(AL,FL1),RET);
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(RET);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ADFACT; 
+
+<strong><font color="#4169E1">PROCEDURE ADFACTO</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain factorization with variable order optimization.
+A is an arbitrary domain polynomial.
+Returns a list containing all prime factors of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, FL, FL1, RET: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Advance. *)</font> ADV(A, AL,AP);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Select. *)</font> 
+      FL:=domain[INTEGER(AL)].FactoFunc(AP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Create. (for every list-element add domain-descriptor) *)</font>
+      RET:=SIL;
+      <font color="#4169E1">WHILE</font> FL &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(FL, FL1,FL);
+	    RET:=COMP(COMP(AL,FL1),RET);
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(RET);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ADFACTO; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADFI</font></strong>(D,A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain from integer. D is a domain element and A is an 
+integer. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CP, DP, d: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> ADV(D,d,DP); <font color="#B22222">(*DP:=RED(DP);*)</font>
+      CP:=domain[INTEGER(d)].FIntFunc(DP,A);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(d,CP); 
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADFI; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADFIP</font></strong>(D,A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain from integral polynomial. D is a domain element and A is 
+an integral polynomial in #vldd(D) variables. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CP, DP, d: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> ADV(D,d,DP); <font color="#B22222">(*DP:=RED(DP);*)</font>
+      CP:=domain[INTEGER(d)].FIPolFunc(DP,A);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(d,CP);
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADFIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADGCD</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain greatest common divisor. c=gcd(a,b). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADGCD: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].GcdFunc(AP,BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*7*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADGCD; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADGCDC</font></strong>(A,B: LIST; <strong><font color="#228B22">VAR</font></strong> C,AA,BB: LIST);
+<font color="#B22222">(*Arbitrary domain greatest common divisor and cofactors.
+C=gcd(A,B), A=C*AA, B=C*BB, if C=0 then AA=BB=0
+If gcd is undefined for the current domain C:=1, AA:=A, BB:=B. *)</font>
+<strong><font color="#228B22">VAR</font></strong> AL, AP, BL, BP, AAP, BBP, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal, "ADGCDC: incompatible domains");
+         C:=SIL; AA:=SIL; BB:=SIL; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Select. *)</font>  
+      domain[INTEGER(AL)].GcdcFunc(AP,BP,CP,AAP,BBP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Add domain-descriptor.*)</font>
+      C:=COMP(AL,CP); AA:=COMP(AL,AAP); BB:=COMP(AL,BBP);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ADGCDC; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADGCDE</font></strong>(A,B: LIST; <strong><font color="#228B22">VAR</font></strong> C,AA,BB: LIST);
+<font color="#B22222">(*Arbitrary domain greatest common divisor and linear combination.
+C=gcd(A,B), C=A*AA+B*BB. If gcd is undefined for the current domain 
+C:=1, AA:=0, BB:=0. *)</font>
+<strong><font color="#228B22">VAR</font></strong> AL, AP, BL, BP, AAP, BBP, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal, "ADGCDE: incompatible domains");
+          C:=SIL; AA:=SIL; BB:=SIL; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Select. *)</font>  
+      domain[INTEGER(AL)].GcdeFunc(AP,BP,CP,AAP,BBP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Add domain-descriptor.*)</font>
+      C:=COMP(AL,CP); AA:=COMP(AL,AAP); BB:=COMP(AL,BBP);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ADGCDE; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADINV</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain inverse. c=1/a. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font>
+      CP:=domain[INTEGER(AL)].InvFunc(AP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADINV; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADINVT</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain inverse existence test.
+tl=1 if a is invertible, tl=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP);  
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*select. *)</font> 
+      TL:=domain[INTEGER(AL)].InvTFunc(AP);
+<font color="#B22222">(*5*)</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong> ADINVT; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADLCM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain least common multiple. c=lcm(a,b). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP);
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADLCM: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].LcmFunc(AP,BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*7*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADLCM; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADNEG</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain negative. c=-a. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].NegFunc(AP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADNEG; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADONE</font></strong>(A: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain one. sl=1 if a=1, sl ne 1 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      SL:=domain[INTEGER(AL)].OneFunc(AP);
+<font color="#B22222">(*5*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> ADONE; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADPCPP</font></strong>(P: LIST; <strong><font color="#228B22">VAR</font></strong> c, pp: LIST);
+<font color="#B22222">(* Arbitrary domain polynomial content and primitive part. 
+P is a distributive polynomial over an arbitrary domain.
+The content of c and its primitive part is returned. 
+It holds P=c * pp.
+If the domain is a field then HC(pp)=1. 
+If ADSIGN is defined in the domain, then ADSIGN(HC(p))&gt;=0. *)</font>
+	<strong><font color="#228B22">VAR</font></strong> d: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+	<font color="#4169E1">IF</font> P=0 <font color="#4169E1">THEN</font> c:=0; pp:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+	d:=ADDNFDIP(P);
+	Pdomain[INTEGER(d)].PCppFunc(P,c,pp);
+<strong><font color="#4169E1">END</font></strong> ADPCPP;
+
+
+<strong><font color="#4169E1">PROCEDURE ADPFACT</font></strong>(P,VOO: LIST): LIST; 
+<font color="#B22222">(* Arbitrary domain polynomial factorization.
+   P is a polynomial in distributive representation
+   over an arbitrary domain,
+   VOO is a flag, use variable order optimization iff VOO = 1,
+   returns the list ((e1,f1),...,(ek,fk)), ei positive integers,
+   fi irreducible polynomials in distributive representation,
+   where P = u * f1**e1 * ... * fk**ek and u unit. *)</font>
+<font color="#B22222">(* the ordering of the factors is non-deterministic !! *)</font>
+<strong><font color="#228B22">VAR</font></strong> coe,d,rest,F,F1,ExpPol,exp,pol,Tord,
+    OVL,PV,IPV: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> P=SIL <font color="#4169E1">THEN</font> RETURN(P); <strong><font color="#4169E1">END</font></strong>;
+   coe:=SECOND(P);	<font color="#B22222">(* get coefficient *)</font>
+   ADV(coe,d,coe);	<font color="#B22222">(* get domain number from coefficient *)</font>
+   rest:=RED(coe);	<font color="#B22222">(* get domain descriptor from coeff. *)</font>
+   P:=AD2DIP(P);	<font color="#B22222">(* remove domain numbers and descriptors *)</font>
+   <font color="#4169E1">IF</font> VOO=1 <font color="#4169E1">THEN</font> <font color="#B22222">(* use variable order optimization *)</font>
+	OVL:=VALIS;
+	DIPVOPP(LIST1(P),OVL,P,VALIS,PV);
+	P:=FIRST(P);
+	IPV:=INVPERM(PV);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF VOO... *)</font>
+   Tord:=EVORD;	EVORD:=2;	<font color="#B22222">(* define term order L for factorization *)</font>
+   <font color="#4169E1">IF</font> Tord&lt;&gt;2 <font color="#4169E1">THEN</font> DIPBSO(P); <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* sort P w.r.t. L *)</font>
+   F:=Pdomain[INTEGER(d)].PFactFunc(P);	<font color="#B22222">(* select function *)</font>
+   <font color="#4169E1">IF</font> VOO=1 <font color="#4169E1">THEN</font> VALIS:=OVL; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* use old variable list *)</font>
+   <font color="#4169E1">IF</font> Tord&lt;&gt;2 <font color="#4169E1">THEN</font> EVORD:=Tord; <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* old term order *)</font>
+   F1:=SIL;
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(F,ExpPol,F);	<font color="#B22222">(* get next (ei,fi) *)</font>
+      FIRST2(ExpPol,exp,pol);	<font color="#B22222">(* get polynomial factor fi *)</font>
+      <font color="#4169E1">IF</font> VOO=1 <font color="#4169E1">THEN</font> pol:=DIPERM(pol,IPV); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* sort pol w.r.t. old VO *)</font>
+      <font color="#4169E1">IF</font> Tord&lt;&gt;2 <font color="#4169E1">THEN</font> DIPBSO(pol); <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* sort pol w.r.t. Tord *)</font>
+      pol:=DIP2AD(pol,d,rest);	<font color="#B22222">(* add domain number and descriptor *)</font>
+      F1:=COMP(LIST2(exp,pol),F1);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while... *)</font>
+   RETURN(INV(F1));
+<strong><font color="#4169E1">END</font></strong> ADPFACT; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADPNF</font></strong>(G,P: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain polynomial normalform.
+   G is a list of polynomials in distributive
+   representation over an arbitrary domain,
+   P is a polynomial as above,
+   returns a polynomial h such that P is reducible to h
+   modulo G and h is in normalform with respect to G *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> DomNum: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   DomNum:=ADDNFDIP(P);
+   <font color="#4169E1">IF</font> DomNum=0
+      <font color="#4169E1">THEN</font> RETURN(0); <font color="#B22222">(* P was the zero polynomial *)</font>
+      <font color="#4169E1">ELSE</font> RETURN(Pdomain[INTEGER(DomNum)].PNormFunc(G,P));
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADPNF;
+
+
+<strong><font color="#4169E1">PROCEDURE ADPROD</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain product. c=a*b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADPROD: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].ProdFunc(AP,BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADPROD; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADPSFF</font></strong>(A,VOO: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain polynomial squarefree factorization.
+   A is a polynomial in distributive representation
+   over an arbitrary domain,
+   VOO is a flag, use variable order optimization iff VOO = 1,
+   returns a list ((e1,p1),...,(ek,pk)), ei positive integers,
+   pi squarefree polynomials in distributive representation,
+   where A = u * p1**e1 * ... * pk**ek and u unit. *)</font>
+<strong><font color="#228B22">VAR</font></strong> coe,d,rest,Tord,F,F1,ExpPol,exp,pol,
+    OVL,PV,IPV: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> A=SIL <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+   coe:=SECOND(A);	<font color="#B22222">(* get coefficient *)</font>
+   ADV(coe,d,coe);	<font color="#B22222">(* get domain number from coefficient *)</font>
+   rest:=RED(coe);	<font color="#B22222">(* get domain descriptor from coeff. *)</font>
+   A:=AD2DIP(A);	<font color="#B22222">(* remove domain numbers and descriptors *)</font>
+   <font color="#4169E1">IF</font> VOO=1 <font color="#4169E1">THEN</font> <font color="#B22222">(* use variable ordering optimization *)</font>
+	OVL:=VALIS;
+	DIPVOPP(LIST1(A),OVL,A,VALIS,PV);
+	A:=FIRST(A);
+	IPV:=INVPERM(PV);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* IF VOO... *)</font>
+   Tord:=EVORD;	EVORD:=2;	<font color="#B22222">(* define term order L for factorization *)</font>
+   <font color="#4169E1">IF</font> Tord&lt;&gt;2 <font color="#4169E1">THEN</font> DIPBSO(A); <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* sort A w.r.t. L *)</font>
+   F:=Pdomain[INTEGER(d)].PSqfrFunc(A);	<font color="#B22222">(* select function *)</font>
+   <font color="#4169E1">IF</font> VOO=1 <font color="#4169E1">THEN</font> VALIS:=OVL; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* use old variable list *)</font>
+   <font color="#4169E1">IF</font> Tord&lt;&gt;2 <font color="#4169E1">THEN</font> EVORD:=Tord; <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* old term order *)</font>
+   F1:=SIL;
+   <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>
+      ADV(F,ExpPol,F);	<font color="#B22222">(* get next (ei,fi) *)</font>
+      FIRST2(ExpPol,exp,pol);	<font color="#B22222">(* get polynomial factor fi *)</font>
+      <font color="#4169E1">IF</font> VOO=1 <font color="#4169E1">THEN</font> pol:=DIPERM(pol,IPV); <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* sort pol w.r.t. old VO *)</font>
+      <font color="#4169E1">IF</font> Tord&lt;&gt;2 <font color="#4169E1">THEN</font> DIPBSO(pol); <strong><font color="#4169E1">END</font></strong>;	<font color="#B22222">(* sort pol w.r.t. Tord *)</font>
+      pol:=DIP2AD(pol,d,rest);	<font color="#B22222">(* add domain number and descriptor *)</font>
+      F1:=COMP(LIST2(exp,pol),F1);
+   <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* while... *)</font>
+   RETURN(INV(F1));
+<strong><font color="#4169E1">END</font></strong> ADPSFF;
+
+
+<strong><font color="#4169E1">PROCEDURE ADPSP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain polynomial S-polynomial.
+   A and B are polynomials in distributive
+   representation over an arbitrary domain,
+   returns the S-polynomial of A and B *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> DomNumA,DomNumB: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   DomNumA:=ADDNFDIP(A); DomNumB:=ADDNFDIP(B);
+   <font color="#4169E1">IF</font> (DomNumA=0) <font color="#4169E1">OR</font> (DomNumB=0) <font color="#4169E1">THEN</font> <font color="#B22222">(* A=0 OR B=0 *)</font> RETURN(0); <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> DomNumA=DomNumB
+      <font color="#4169E1">THEN</font> RETURN(Pdomain[INTEGER(DomNumA)].PSpolFunc(A,B));
+      <font color="#4169E1">ELSE</font> ERROR(fatal,"ADPSP: incompatible domains"); RETURN(SIL);
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADPSP;
+
+
+<strong><font color="#4169E1">PROCEDURE ADPSUGNF</font></strong>(G,P: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain normal with sugar strategy polynomial normalform.
+   G is a list of extended polynomials in distributive representation over an
+   arbitrary domain,
+   P is an extended polynomial as above,
+   returns an extended polynomial h such that P is reducible to h
+   modulo G and h is in normalform with respect to G *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> DomNum: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   DomNum:=ADDNFEDIP(P);
+   <font color="#4169E1">IF</font> DomNum=0
+      <font color="#4169E1">THEN</font> RETURN(P); <font color="#B22222">(* the unextended polynomial appropriate to P is 0 *)</font>
+      <font color="#4169E1">ELSE</font> RETURN(Pdomain[INTEGER(DomNum)].PSugNormFunc(G,P));
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADPSUGNF;
+
+
+<strong><font color="#4169E1">PROCEDURE ADPSUGSP</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(* Arbitrary domain normal with sugar strategy polynomial S-polynomial.
+   A and B are extended polynomials in distributive
+   representation over an arbitrary domain,
+   returns the extended S-polynomial of A and B *)</font>
+
+<strong><font color="#228B22">VAR</font></strong> DomNumA,DomNumB: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   DomNumA:=ADDNFEDIP(A); DomNumB:=ADDNFEDIP(B);
+   <font color="#4169E1">IF</font> (DomNumA=0) <font color="#4169E1">AND</font> (DomNumB=0)
+      <font color="#4169E1">THEN</font> <font color="#B22222">(* The unextended polynomials appropriate to A,B are 0 *)</font>
+           RETURN(EDIPSUGSP(A,B));
+   <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> DomNumA=0
+      <font color="#4169E1">THEN</font> <font color="#B22222">(* The unextended polynomial appropriate to A is 0 *)</font>
+           RETURN(Pdomain[INTEGER(DomNumB)].PSugSpolFunc(A,B));
+   <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> DomNumB=0
+      <font color="#4169E1">THEN</font> <font color="#B22222">(* The unextended polynomial appropriate to B is 0 *)</font>
+           RETURN(Pdomain[INTEGER(DomNumA)].PSugSpolFunc(A,B));
+   <strong><font color="#4169E1">END</font></strong>;
+   <font color="#4169E1">IF</font> DomNumA=DomNumB
+      <font color="#4169E1">THEN</font> RETURN(Pdomain[INTEGER(DomNumA)].PSugSpolFunc(A,B));
+      <font color="#4169E1">ELSE</font> ERROR(fatal,"ADPSUGSP: incompatible domains"); RETURN(SIL);
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> ADPSUGSP;
+
+
+<strong><font color="#4169E1">PROCEDURE ADQR</font></strong>(A,B:LIST; <strong><font color="#228B22">VAR</font></strong> Q,R:LIST);
+<font color="#B22222">(*Arbitrary domain quotient and remainder. q=a/b, r=a-(a/b)*b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, QP, RP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADQR: incompatible domains");
+         Q:=SIL; R:=SIL; RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Select. *)</font> 
+      domain[INTEGER(AL)].QrFunc(AP,BP,QP,RP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Add domain-descriptor.*)</font>
+      Q:=COMP(AL,QP); R:=COMP(AL,RP);
+      <font color="#B22222">(*Q:=ADQUOT(A,B); R:=ADDIF(A,ADPROD(B,Q));*)</font>
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ADQR;
+
+
+<strong><font color="#4169E1">PROCEDURE ADQUOT</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary domain quotient. c=a/b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADQUOT: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].QuotFunc(AP,BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADQUOT; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADREAD</font></strong>(D: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain read. d is the domain descriptor. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DL, DP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(D, DL,DP); <font color="#B22222">(*DP:=RED(DP);*)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(DL)].ReadFunc(DP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(DL,CP);
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADREAD; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADREM</font></strong>(A,B:LIST):LIST;
+<font color="#B22222">(*Arbitrary domain remainder. r=a-(a/b)*b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, Q, QP, R, RP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADREM: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      <font color="#4169E1">IF</font> ADDRESS(domain[INTEGER(AL)].RemFunc) = ADDRESS(Dummyp2v2)
+         <font color="#4169E1">THEN</font> domain[INTEGER(AL)].QrFunc(AP,BP,QP,RP);
+         <font color="#4169E1">ELSE</font> RP:=domain[INTEGER(AL)].RemFunc(AP,BP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> R:=COMP(AL,RP);
+<font color="#B22222">(*2*)</font> RETURN(R); <strong><font color="#4169E1">END</font></strong> ADREM;
+
+
+<strong><font color="#4169E1">PROCEDURE ADSIGN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary domain sign. cl=sign(a). *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      SL:=domain[INTEGER(AL)].SignFunc(AP);
+<font color="#B22222">(*5*)</font> RETURN(SL); <strong><font color="#4169E1">END</font></strong> ADSIGN; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADSUM</font></strong>(A,B: LIST): LIST; 
+<font color="#B22222">(*Arbitrary domain sum. c=a+b. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); ADV(B, BL,BP); 
+      <font color="#4169E1">IF</font> AL &lt;&gt; BL <font color="#4169E1">THEN</font> ERROR(fatal,"ADSUM: incompatible domains");
+         RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      CP:=domain[INTEGER(AL)].SumFunc(AP,BP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*create. *)</font> C:=COMP(AL,CP); 
+<font color="#B22222">(*6*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE ADTOIP</font></strong>(A: LIST; <strong><font color="#228B22">VAR</font></strong> LCM: LIST): LIST;
+<font color="#B22222">(*Arbitrary domain to integral polynomial conversion.
+LCM is the lcm of coefficient-denominators *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, RET: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Advance. *)</font> ADV(A, AL,AP);
+      RET:=COMP(DOMIPD, domain[INTEGER(AL)].ToipFunc(AP, LCM));
+      LCM:=COMP(DOMIPD, LCM);
+      RETURN(RET);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ADTOIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADWRIT</font></strong>(A: LIST); 
+<font color="#B22222">(*Arbitrary domain write. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(A, AL,AP); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      domain[INTEGER(AL)].WritFunc(AP);
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ADWRIT; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADDDREAD</font></strong>(): LIST; 
+<font color="#B22222">(*Arbitrary domain, domain descriptor read. A domain element with 
+descriptor D is read from the input stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, C, CP: LIST;
+      i: INTEGER; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> S:=SREAD(); C:=SIL; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> i:=0;
+      <font color="#4169E1">WHILE</font> i &lt; maxdom <font color="#4169E1">DO</font> i:=i+1; 
+            <font color="#4169E1">IF</font> domain[i].Sym = S <font color="#4169E1">THEN</font>
+               C:=domain[i].DdrdFunc();
+               <font color="#B22222">(* C:=COMP(SIL,C); *)</font>
+               C:=COMP(LIST(i),C); 
+               RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*undefined. *)</font> SYWRIT(S); 
+      ERROR(severe,"ADDDREAD: undefined domain.");
+<font color="#B22222">(*5*)</font> RETURN(C); <strong><font color="#4169E1">END</font></strong> ADDDREAD; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADDDWRIT</font></strong>(D: LIST); 
+<font color="#B22222">(*Arbitrary domain, domain descriptor write. d is a domain element with 
+descriptor. d is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DL, DP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(D, DL,DP); <font color="#B22222">(*DP:=RED(DP);*)</font> 
+      <font color="#4169E1">IF</font> ADDRESS(domain[INTEGER(DL)].DdwrFunc) = ADDRESS(Dummyp1)
+         <font color="#4169E1">THEN</font> ERROR(fatal,"ADDDWRIT: undefined domain.");
+         RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select and write. *)</font>
+      SYWRIT(domain[INTEGER(DL)].Sym); 
+      domain[INTEGER(DL)].DdwrFunc(DP);
+      SWRITE(" <font color="#B22222">(* "); 
+      CLOUT(domain[INTEGER(DL)].name);
+      SWRITE(" *)</font> "); 
+<font color="#B22222">(*5*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ADDDWRIT; 
+
+
+<strong><font color="#4169E1">PROCEDURE ADVLDD</font></strong>(D: LIST): LIST; 
+<font color="#B22222">(*variable list from domain descriptor. d is a domain element with 
+descriptor. if the domain depends on some variables, then
+the related variable list is returned, otherwise the empty
+list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   DL, DP, V: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*advance. *)</font> ADV(D, DL,DP); <font color="#B22222">(*DP:=RED(DP);*)</font> 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*select. *)</font> 
+      <font color="#4169E1">IF</font> ADDRESS(domain[INTEGER(DL)].VlddFunc) &lt;&gt; ADDRESS(Dummyf1)
+         <font color="#4169E1">THEN</font> V:=domain[INTEGER(DL)].VlddFunc(DP);
+         <font color="#4169E1">ELSE</font> V:=SIL <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN(V); <strong><font color="#4169E1">END</font></strong> ADVLDD; 
+
+
+<font color="#B22222">(* -------------- *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE SetAbsFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set absolute value function in domain. d is a domain 
+and f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetAbsFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].AbsFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetAbsFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetCnstFunc</font></strong>(d: Domain; f1: PROCF1B);
+<font color="#B22222">(*Set constant test function in domain. d is a domain 
+and f1 is a boolean-function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetCnstFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].CnstFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetCnstFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetCompFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set comparison function in domain. d is a domain 
+and f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetCompFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].CompFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetCompFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetConvFunc</font></strong>(d1, d2: Domain; f1: PROCF1);
+<font color="#B22222">(*Set conversion function in domain. d1 and d2 are domains and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d1) <font color="#4169E1">OR</font> (d1 &gt; maxdom) <font color="#4169E1">OR</font>
+         (1 &gt; d2) <font color="#4169E1">OR</font> (d2 &gt; maxdom) 
+         <font color="#4169E1">THEN</font> OWRITE(LIST(d1)); OWRITE(LIST(d2));
+              ERROR(fatal,"SetConvFunc: No valid domains.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d1)].ConvFunc[INTEGER(d2)]:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetConvFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDifFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set difference function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetDifFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].DifFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetDifFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetExpFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set exponential function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetExpFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].ExpFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetExpFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetFactFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set factorization function in domain. d is a domain
+and f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetFactFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].FactFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetFactFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetFactoFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set factorization with variable order optimization function in domain. 
+d is a domain and f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetFactoFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].FactoFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetFactoFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetFIntFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set from integer function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetFIntFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].FIntFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetFIntFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetFIPolFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set from integral polynomial function in domain. d is a domain 
+and f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetFIPolFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].FIPolFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetFIPolFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetGcdFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set gcd function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetGcdFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].GcdFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetGcdFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetGcdcFunc</font></strong>(d: Domain; p2v3: PROCP2V3);
+<font color="#B22222">(*Set gcd-and-cofactors function in domain. d is a domain
+and p2v3 is a procedure of 2 LIST and 3 VAR LIST arguments.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetGcdcFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].GcdcFunc:=p2v3;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetGcdcFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetGcdeFunc</font></strong>(d: Domain; p2v3: PROCP2V3);
+<font color="#B22222">(*Set gcd-and-lin-combination function in domain. d is a domain
+and p2v3 is a procedure of 2 LIST and 3 VAR LIST arguments.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetGcdeFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].GcdeFunc:=p2v3;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetGcdeFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetInvFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set inversion function in domain. d is a domain and 
+f is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetInvFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].InvFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetInvFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetInvTFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set inversion test function in domain. d is a domain and 
+f is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetInvTFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].InvTFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetInvTFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetLcmFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set lcm function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetLcmFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].LcmFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetLcmFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetNegFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set negation function in domain. d is a domain and 
+f is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetNegFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].NegFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetNegFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetOneFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set one test function in domain. d is a domain and 
+f is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetOneFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].OneFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetOneFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPCppFunc</font></strong>(d:Domain; p1v2: PROCP1V2);
+<font color="#B22222">(* Set Content and primitive part function. d is a domain and
+and p2v3 is a procedure of 2 LIST and 3 VAR LIST arguments.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetCppFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> Pdomain[INTEGER(d)].PCppFunc:=p1v2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetPCppFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPFactFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(* Set factorization function in domain.
+   d is a domain and f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+      ERROR(fatal,"SetPFactFunc: No valid domain.");
+      RETURN;
+   <strong><font color="#4169E1">END</font></strong>;
+   Pdomain[INTEGER(d)].PFactFunc:=f1;
+<strong><font color="#4169E1">END</font></strong> SetPFactFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPNormFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(* Set polynomial normalform function in domain.
+   d is a domain and f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+      ERROR(fatal,"SetPNormFunc: No valid domain.");
+      RETURN;
+   <strong><font color="#4169E1">END</font></strong>;
+   Pdomain[INTEGER(d)].PNormFunc:=f2;
+<strong><font color="#4169E1">END</font></strong> SetPNormFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetProdFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set product function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetProdFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].ProdFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetProdFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPSpolFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(* Set polynomial S-polynomial function in domain.
+   d is a domain and f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+      ERROR(fatal,"SetPSpolFunc: No valid domain.");
+      RETURN;
+   <strong><font color="#4169E1">END</font></strong>;
+   Pdomain[INTEGER(d)].PSpolFunc:=f2;
+<strong><font color="#4169E1">END</font></strong> SetPSpolFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPSqfrFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(* Set polynomial squarefree factorization function in domain.
+   d is a domain and f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+      ERROR(fatal,"SetPSqfrFunc: No valid domain.");
+      RETURN;
+   <strong><font color="#4169E1">END</font></strong>;
+   Pdomain[INTEGER(d)].PSqfrFunc:=f1;
+<strong><font color="#4169E1">END</font></strong> SetPSqfrFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPSugNormFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(* Set polynomial normal with sugar strategy normalform function in domain.
+   d is a domain and f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+      ERROR(fatal,"SetPSugNormFunc: No valid domain.");
+      RETURN;
+   <strong><font color="#4169E1">END</font></strong>;
+   Pdomain[INTEGER(d)].PSugNormFunc:=f2;
+<strong><font color="#4169E1">END</font></strong> SetPSugNormFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetPSugSpolFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(* Set polynomial normal with sugar strategy S-polynomial function in domain.
+   d is a domain and f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+      ERROR(fatal,"SetPSugSpolFunc: No valid domain.");
+      RETURN;
+   <strong><font color="#4169E1">END</font></strong>;
+   Pdomain[INTEGER(d)].PSugSpolFunc:=f2;
+<strong><font color="#4169E1">END</font></strong> SetPSugSpolFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetQrFunc</font></strong>(d: Domain; p2v2: PROCP2V2);
+<font color="#B22222">(*Set quotient and remainder function in domain. d is a domain 
+and p2v2 is a procedure of 2 LIST and 2 var LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetQrFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].QrFunc:=p2v2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetQrFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetQuotFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set quotient function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetQuotFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].QuotFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetQuotFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetReadFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set read function in domain. d is a domain and 
+f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetReadFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].ReadFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetReadFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetRemFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set remainder function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetRemFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].RemFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetRemFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetSignFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set sign function in domain. d is a domain and 
+f1 is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetSignFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].SignFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetSignFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetSumFunc</font></strong>(d: Domain; f2: PROCF2);
+<font color="#B22222">(*Set sum function in domain. d is a domain and 
+f2 is a function of two LIST arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetSumFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].SumFunc:=f2;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetSumFunc;
+ 
+
+<strong><font color="#4169E1">PROCEDURE SetToipFunc</font></strong>(d: Domain; f1v1: PROCF1V1);
+<font color="#B22222">(*Set conversion-to-integer-polynomial function in domain. d is a domain 
+and f1v1 is a function of one LIST and one VAR LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetToipFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].ToipFunc:=f1v1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetToipFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetWritFunc</font></strong>(d: Domain; p1: PROCP1);
+<font color="#B22222">(*Set write function in domain. d is a domain and 
+p1 is a procedure of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetWritFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].WritFunc:=p1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetWritFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetVlddFunc</font></strong>(d: Domain; f1: PROCF1);
+<font color="#B22222">(*Set variable list from domain descriptor function in domain. 
+d is a domain and f is a function of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetVlddFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].VlddFunc:=f1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetVlddFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDdrdFunc</font></strong>(d: Domain; f0: PROCF0);
+<font color="#B22222">(*Set domain descriptor read function in domain. d is a domain 
+and f0 is a function with no arguments. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d));
+              ERROR(fatal,"SetDdrdFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].DdrdFunc:=f0;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetDdrdFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE SetDdwrFunc</font></strong>(d: Domain; p1: PROCP1);
+<font color="#B22222">(*Set domain descriptor write function in domain. d is a domain 
+and p1 is a procedure of one LIST argument. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (1 &gt; d) <font color="#4169E1">OR</font> (d &gt; maxdom) <font color="#4169E1">THEN</font> OWRITE(LIST(d)); 
+              ERROR(fatal,"SetDdwrFunc: No valid domain.");
+              RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> domain[INTEGER(d)].DdwrFunc:=p1;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> SetDdwrFunc;
+
+
+<strong><font color="#4169E1">PROCEDURE NewDom</font></strong>(S, s: ARRAY <font color="#4169E1">OF</font> CHAR): Domain;
+<font color="#B22222">(*New domain. S is a domain identificator and s is a domain name.
+A new domain is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> curdom &gt;= maxdom <font color="#4169E1">THEN</font>
+         ERROR(fatal,"NewDom: No space <font color="#4169E1">for</font> new domains.");
+         RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> curdom:=curdom+1; domain[curdom].name:=LISTS(s);
+      domain[curdom].Sym:=ENTER(LISTS(S));
+      RETURN(Domain(curdom));
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> NewDom;
+
+
+<strong><font color="#4169E1">PROCEDURE DomSummary</font></strong>(); 
+<font color="#B22222">(*Arbitrary domain summary. A summary of all defined domains 
+is written to the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   l: LIST;
+      i: INTEGER; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SWRITE("List <font color="#4169E1">of</font> all defined domains"); BLINES(1);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*loop on domain array. *)</font> i:=0; l:=0; 
+      <font color="#4169E1">WHILE</font> i &lt; maxdom <font color="#4169E1">DO</font> i:=i+1; 
+            <font color="#4169E1">IF</font> domain[i].Sym &lt;&gt; Dummy <font color="#4169E1">THEN</font> l:=l+1; 
+               SYWRIT(domain[i].Sym); SWRITE(" "); 
+               CLOUT(domain[i].name); BLINES(0);
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*summary. *)</font>
+      <font color="#4169E1">IF</font> l &gt; 0 <font color="#4169E1">THEN</font> BLINES(1) <strong><font color="#4169E1">END</font></strong>;
+      OWRITE(l); SWRITE(" defined domains."); BLINES(1);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DomSummary;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyf0</font></strong>(): LIST;
+<font color="#B22222">(*Dummy function 0. An ERROR occurs if this function is called. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ERROR(fatal,"Dummyf0: Undefined function.");
+      RETURN(SIL);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyf0;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyp1</font></strong>(A: LIST);
+<font color="#B22222">(*Dummy procedure 1. An ERROR occurs if this procedure is called. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> OWRITE(A);
+      ERROR(fatal,"Dummyp1: Undefined procedure.");
+      RETURN;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyp1;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyf1</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Dummy function 1. An ERROR occurs if this function is called. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> OWRITE(A);
+      ERROR(fatal,"Dummyf1: Undefined function.");
+      RETURN(SIL);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyf1;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyf2</font></strong>(A, B: LIST): LIST;
+<font color="#B22222">(*Dummy function 2. An ERROR occurs if this function is called. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> OWRITE(A); OWRITE(B);
+      ERROR(fatal,"Dummyf2: Undefined function.");
+      RETURN(SIL);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyf2;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyf1b</font></strong>(A: LIST): BOOLEAN;
+<font color="#B22222">(*Dummy boolean function 1. An ERROR occurs if this function is called. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> OWRITE(A);
+      ERROR(fatal,"Dummyf1b: Undefined function.");
+      RETURN(FALSE);
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyf1b;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyf1v1</font></strong>(A: LIST; <strong><font color="#228B22">VAR</font></strong> B: LIST): LIST;
+<font color="#B22222">(*Dummy function 1v1. An ERROR occurs if this function is called. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> OWRITE(A); OWRITE(B); <font color="#B22222">(* Contents of B will usually be undefined *)</font>
+      ERROR(fatal,"Dummyf1v1: Undefined function.");
+      RETURN(SIL); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyf1v1;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyp1v2</font></strong>(A: LIST; <strong><font color="#228B22">VAR</font></strong> C, D: LIST);
+<font color="#B22222">(*Dummy procedure 2v2. An ERROR occurs if this procedure is called. *)</font> 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> OWRITE(A);  <font color="#B22222">(* Contents of C, D will usually be undefined *)</font>
+      ERROR(fatal,"Dummyp1v2: Undefined procedure.");
+      RETURN; 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyp1v2;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyp2v2</font></strong>(A, B: LIST; <strong><font color="#228B22">VAR</font></strong> C, D: LIST);
+<font color="#B22222">(*Dummy procedure 2v2. An ERROR occurs if this procedure is called. *)</font> 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> OWRITE(A); OWRITE(B); <font color="#B22222">(* Contents of C, D will usually be undefined *)</font>
+      ERROR(fatal,"Dummyp2v2: Undefined procedure.");
+      RETURN; 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyp2v2;
+
+
+<strong><font color="#4169E1">PROCEDURE Dummyp2v3</font></strong>(A, B: LIST; <strong><font color="#228B22">VAR</font></strong> C, D, E: LIST);
+<font color="#B22222">(*Dummy procedure 2v3. An ERROR occurs if this procedure is called. *)</font> 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> OWRITE(A); OWRITE(B); <font color="#B22222">(* Contents of C, D, E will usually be undefined *)</font>
+      ERROR(fatal,"Dummyp2v3: Undefined procedure.");
+      RETURN; 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Dummyp2v3;
+
+
+<strong><font color="#4169E1">PROCEDURE InitADom</font></strong>();
+<font color="#B22222">(*Initialize arbitrary domains. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i, j: INTEGER;
+      u: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> curdom:=0; Dummy:=ENTER(LISTS("Dummy"));
+      u:=LISTS("Undefined");
+<font color="#B22222">(*2*)</font> i:=0; 
+      <font color="#4169E1">WHILE</font> i &lt; maxdom <font color="#4169E1">DO</font> i:=i+1;
+            domain[i].name:=u; LISTVAR(domain[i].name); 
+            domain[i].Sym:=Dummy;
+            domain[i].AbsFunc:=Dummyf1;
+            domain[i].CnstFunc:=Dummyf1b;
+            domain[i].CompFunc:=Dummyf2;
+            j:=0;
+            <font color="#4169E1">WHILE</font> j &lt; maxdom <font color="#4169E1">DO</font> j:=j+1;
+                  domain[i].ConvFunc[j]:=Dummyf1;
+                  <strong><font color="#4169E1">END</font></strong>;
+            domain[i].DifFunc:=Dummyf2;
+            domain[i].ExpFunc:=Dummyf2;
+            domain[i].FactFunc:=Dummyf1;
+            domain[i].FactoFunc:=Dummyf1;
+            domain[i].FIntFunc:=Dummyf2;
+            domain[i].FIPolFunc:=Dummyf2;
+            domain[i].GcdFunc:=Dummyf2;
+            domain[i].GcdcFunc:=Dummyp2v3;
+            domain[i].GcdeFunc:=Dummyp2v3;
+            domain[i].InvFunc:=Dummyf1;
+            domain[i].InvTFunc:=Dummyf1;
+            domain[i].ProdFunc:=Dummyf2;
+            domain[i].QrFunc:=Dummyp2v2;
+            domain[i].QuotFunc:=Dummyf2;
+            domain[i].ReadFunc:=Dummyf1;
+            domain[i].QuotFunc:=Dummyf2;
+            domain[i].RemFunc:=Dummyf2;
+            domain[i].SignFunc:=Dummyf1;
+            domain[i].SumFunc:=Dummyf2;
+            domain[i].ToipFunc:=Dummyf1v1;
+            domain[i].WritFunc:=Dummyp1;
+            domain[i].VlddFunc:=Dummyf1;
+            domain[i].DdrdFunc:=Dummyf0;
+            domain[i].DdwrFunc:=Dummyp1;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitADom;
+
+
+<strong><font color="#4169E1">PROCEDURE InitADomP</font></strong>();
+<font color="#B22222">(* Initialize arbitrary domains polynomial. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   i: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+   <font color="#4169E1">FOR</font> i:=1 <font color="#4169E1">TO</font> maxdom <font color="#4169E1">DO</font>
+      Pdomain[i].PFactFunc   :=Dummyf1;
+      Pdomain[i].PNormFunc   :=Dummyf2;
+      Pdomain[i].PSpolFunc   :=Dummyf2;
+      Pdomain[i].PSqfrFunc   :=Dummyf1;
+      Pdomain[i].PSugNormFunc:=Dummyf2;
+      Pdomain[i].PSugSpolFunc:=Dummyf2;
+      Pdomain[i].PCppFunc    :=Dummyp1v2;
+   <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> InitADomP;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+
+     InitADom;
+     InitADomP;
+
+<strong><font color="#4169E1">END</font></strong> MASADOM.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

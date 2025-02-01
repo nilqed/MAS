@@ -1,0 +1,263 @@
+
+<html>
+<head>
+<title>./masarith/SACD.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:19+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACD.mi,v 1.3 1992/10/15 16:28:17 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACD.mi,v $
+ * Revision 1.3  1992/10/15  16:28:17  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  13:19:10  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:38  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACD;
+
+<font color="#B22222">(* SAC Digit Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT MASABS, MASEVEN, MASQREM, MASREM, MASSIGN;
+
+FROM MASSTOR IMPORT BETA, SIL, LIST,
+                    COMP, ADV; 
+
+FROM SACLIST IMPORT CONC, LIST10;
+
+
+<strong><font color="#228B22">VAR</font></strong> RINC, RMULT, RTERM: LIST;
+    
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACD.mi,v 1.3 1992/10/15 16:28:17 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE BEGIN2</font></strong>;
+<font color="#B22222">(*BEGIN2 calls BEGIN1 and then initializes the system globals for the
+arithmetic system.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  IL, J1Y, J2Y, L, ML, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*call begin1.*)</font> <font color="#B22222">(*BEGIN1; not required with modula-2*)</font>
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute zeta, eta, theta, delta, epsil and tabp2 elements.*)</font>
+      IL:=1; TL:=1;
+      <font color="#4169E1">WHILE</font> TL &lt; BETA <font color="#4169E1">DO</font> TABP2[INTEGER(IL)]:=TL; 
+            IL:=IL+1; TL:=TL+TL; <strong><font color="#4169E1">END</font></strong>;
+      ZETA:=IL-1; ETA:=0; TL:=BETA;
+      <font color="#4169E1">REPEAT</font> TL:=TL DIV 10; ETA:=ETA+1;
+             <font color="#4169E1">UNTIL</font> TL &lt; 10;
+      THETA:=1;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ETA <font color="#4169E1">DO</font> THETA:=10*THETA; <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=ZETA DIV 2; J1Y:=J1Y+1; DELTA:=TABP2[INTEGER(J1Y)]; 
+      EPSIL:=BETA DIV DELTA;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute rmult, rinc and rterm.*)</font>
+      J1Y:=LIST10(3,1,4,1,5,9,2,6,5,3);
+      J2Y:=LIST10(5,8,9,7,9,3,2,3,8,4); L:=CONC(J1Y,J2Y); ML:=0;
+      <font color="#4169E1">WHILE</font> ML &lt; (BETA DIV 10) <font color="#4169E1">DO</font> ADV(L,TL,L); J1Y:=10*ML; ML:=J1Y+TL; <strong><font color="#4169E1">END</font></strong>;
+      ML:=ML DIV 8; J1Y:=8*ML; RMULT:=J1Y+5;
+      J1Y:=LIST10(2,1,1,3,2,4,8,6,5,4);
+      J2Y:=LIST10(0,5,1,8,7,1,0,0,0,0); L:=CONC(J1Y,J2Y); ML:=0;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ETA <font color="#4169E1">DO</font> ADV(L,TL,L); J1Y:=10*ML; ML:=J1Y+TL; <strong><font color="#4169E1">END</font></strong>;
+      DQR(ML,0,THETA,RINC,TL);
+      <font color="#4169E1">IF</font> MASEVEN(RINC) <font color="#4169E1">THEN</font> RINC:=RINC+1; <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=LIST10(5,7,7,2,1,5,6,6,4,9);
+      J2Y:=LIST10(0,1,5,3,2,8,6,0,6,0); L:=CONC(J1Y,J2Y); ML:=0;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ETA <font color="#4169E1">DO</font> ADV(L,TL,L); J1Y:=10*ML; ML:=J1Y+TL; <strong><font color="#4169E1">END</font></strong>;
+      RTERM:=ML;
+<font color="#B22222">(*8*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> BEGIN2;
+
+
+<strong><font color="#4169E1">PROCEDURE BITRAN</font></strong>(): LIST;
+<font color="#B22222">(*Bit, random.  b is a random bit, 0 or 1.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, IDUM: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL:=DRANN(); AL:=AL+AL;
+      <font color="#4169E1">IF</font> AL &gt;= BETA <font color="#4169E1">THEN</font> BL:=1; <font color="#4169E1">ELSE</font> BL:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(BL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> BITRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE DEGCD</font></strong>(AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> CL,UL,VL: LIST);
+<font color="#B22222">(*Digit extended greatest common divisor.  a and b are beta-integers,
+a ge b ge 0.  c=GCD(a,b), a beta-integer.  a*u+b*v=c, with
+ABS(u) le b/2c, ABS(v) le a/2c.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, AL3, J1Y, QL, UL1, UL2, UL3, VL1, VL2, VL3: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL1:=AL; AL2:=BL; UL1:=1; UL2:=0; VL1:=0; VL2:=1;
+      <font color="#4169E1">WHILE</font> AL2 &lt;&gt; 0 <font color="#4169E1">DO</font> MASQREM(AL1,AL2,QL,AL3); AL1:=AL2; AL2:=AL3;
+            J1Y:=QL*UL2; UL3:=UL1-J1Y; UL1:=UL2; UL2:=UL3; J1Y:=QL*VL2;
+            VL3:=VL1-J1Y; VL1:=VL2; VL2:=VL3; <strong><font color="#4169E1">END</font></strong>;
+      CL:=AL1; UL:=UL1; VL:=VL1; RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DEGCD;
+
+
+<strong><font color="#4169E1">PROCEDURE DGCD</font></strong>(AL,BL: LIST): LIST;
+<font color="#B22222">(*Digit greatest common divisor.  a and b are beta-integers,
+a ge b ge 0.  c=GCD(a,b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AL2, AL3, CL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL1:=AL; AL2:=BL;
+      <font color="#4169E1">WHILE</font> AL2 &lt;&gt; 0 <font color="#4169E1">DO</font> AL3:=MASREM(AL1,AL2); AL1:=AL2; AL2:=AL3; <strong><font color="#4169E1">END</font></strong>;
+      CL:=AL1; RETURN(CL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DGCD;
+
+
+<strong><font color="#4169E1">PROCEDURE DLOG2</font></strong>(AL: LIST): LIST;
+<font color="#B22222">(*Digit logarithm, base 2.  a is a beta-digit.  If a=0 then n=0.
+otherwise n=FLOOR(LOG2(ABS(a)))+1.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALB, IL, J1Y, JL, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*al le 0.*)</font>
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> NL:=0; RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+      ALB:=MASABS(AL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*binary search.*)</font> IL:=1; JL:=ZETA+1;
+      <font color="#4169E1">REPEAT</font> J1Y:=IL+JL; NL:=J1Y DIV 2;
+             <font color="#4169E1">IF</font> ALB &gt;= TABP2[INTEGER(NL)] <font color="#4169E1">THEN</font> IL:=NL; <font color="#4169E1">ELSE</font> JL:=NL; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> JL-IL = 1;
+      NL:=IL; RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> DLOG2;
+
+
+<strong><font color="#4169E1">PROCEDURE DPCC</font></strong>(AL1,AL2: LIST; <strong><font color="#228B22">VAR</font></strong> UL,ULP,VL,VLP: LIST);
+<font color="#B22222">(*Digit partial cosequence calculation.  a1 and a2 are beta-integers,
+a1 ge a2 gt 0.  u, up, v and vp are the last cosequence elements
+of a1 and a2 which can be guaranteed to correspond to correct
+quotient digits.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, ALPP, J1Y, QL, ULPP, VLPP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL:=AL1; ALP:=AL2; UL:=1; ULP:=0; VL:=0; VLP:=1;
+      LOOP   QL:=AL DIV ALP; J1Y:=QL*ALP; ALPP:=AL-J1Y; J1Y:=QL*ULP;
+             ULPP:=UL-J1Y; J1Y:=QL*VLP; VLPP:=VL-J1Y;
+             <font color="#4169E1">IF</font> (ALPP &lt; MASABS(VLPP)) <font color="#4169E1">OR</font> (ALP-ALPP &lt; MASABS(VLP-VLPP))
+                <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>;
+             AL:=ALP; ALP:=ALPP; UL:=ULP; ULP:=ULPP; VL:=VLP; VLP:=VLPP;
+             <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> DPCC;
+
+
+<strong><font color="#4169E1">PROCEDURE DPR</font></strong>(AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> CL,DL: LIST);
+<font color="#B22222">(*Digit product.  a and b are beta-digits.  c and d are the unique
+beta-digits such that a*b=c*beta+d and c*d ge 0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL0, AL1, BL0, BL1, CL0, CL00, CL01, CL1, CL10, CL11, CL2, CLP,
+     DLP, J1Y, J2Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL1:=AL DIV EPSIL; J1Y:=AL1*EPSIL; AL0:=AL-J1Y; BL1:=BL DIV EPSIL;
+      J1Y:=BL1*EPSIL; BL0:=BL-J1Y;
+<font color="#B22222">(*2*)</font> CL0:=AL0*BL0; J1Y:=AL1*BL0; J2Y:=AL0*BL1; CL1:=J1Y+J2Y;
+      CL2:=AL1*BL1;
+<font color="#B22222">(*3*)</font> <font color="#4169E1">IF</font> CL0 &gt;= BETA <font color="#4169E1">THEN</font> CL01:=1; CL00:=CL0-BETA; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> CL0 &lt;= -BETA <font color="#4169E1">THEN</font> CL01:=-1; CL00:=CL0+BETA; <font color="#4169E1">ELSE</font> CL01:=0;
+            CL00:=CL0; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      CL11:=CL1 DIV DELTA; J1Y:=CL11*DELTA; CL10:=CL1-J1Y;
+<font color="#B22222">(*4*)</font> J1Y:=CL2+CL01; CLP:=J1Y+CL11;
+      <font color="#4169E1">IF</font> DELTA &lt;&gt; EPSIL <font color="#4169E1">THEN</font> CLP:=CLP+CL2; <strong><font color="#4169E1">END</font></strong>;
+      J1Y:=CL10*EPSIL; DLP:=J1Y+CL00;
+<font color="#B22222">(*5*)</font> <font color="#4169E1">IF</font> DLP &gt;= BETA <font color="#4169E1">THEN</font> CL:=CLP+1; DL:=DLP-BETA; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> DLP &lt;= -BETA <font color="#4169E1">THEN</font> CL:=CLP-1; DL:=DLP+BETA; <font color="#4169E1">ELSE</font> CL:=CLP;
+            DL:=DLP; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> DPR;
+
+
+<strong><font color="#4169E1">PROCEDURE DQR</font></strong>(AL1,AL0,BL: LIST; <strong><font color="#228B22">VAR</font></strong> QL,RL: LIST);
+<font color="#B22222">(*Digit quotient and remainder.  a1, a0 and b are beta-integers with
+a1*a0 ge 0 and ABS(b) gt ABS(a1).  q is the integral part of
+(a1*beta+a0)/b and r is (a1*beta+a0)-b*q.  q and r are
+beta-integers.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  ALP0, ALP1, BLP, QLP: LIST;
+     IL: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*al1 eq 0.*)</font>
+      <font color="#4169E1">IF</font> AL1 = 0 <font color="#4169E1">THEN</font> MASQREM(AL0,BL,QL,RL); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute absolute values.*)</font> ALP1:=MASABS(AL1); ALP0:=MASABS(AL0);
+      BLP:=MASABS(BL);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*shift and subtract.*)</font> QLP:=0;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> INTEGER(ZETA) <font color="#4169E1">DO</font> ALP1:=ALP1+ALP1; ALP0:=ALP0+ALP0;
+          <font color="#4169E1">IF</font> ALP0 &gt;= BETA <font color="#4169E1">THEN</font> ALP0:=ALP0-BETA; ALP1:=ALP1+1; <strong><font color="#4169E1">END</font></strong>;
+          QLP:=QLP+QLP;
+          <font color="#4169E1">IF</font> ALP1 &gt;= BLP <font color="#4169E1">THEN</font> ALP1:=ALP1-BLP; QLP:=QLP+1; <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*compute signs.*)</font>
+      <font color="#4169E1">IF</font> AL1 &lt; 0 <font color="#4169E1">THEN</font> QLP:=-QLP; ALP1:=-ALP1; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> BL &lt; 0 <font color="#4169E1">THEN</font> QLP:=-QLP; <strong><font color="#4169E1">END</font></strong>;
+      QL:=QLP; RL:=ALP1; 
+      RETURN;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> DQR;
+
+
+<strong><font color="#4169E1">PROCEDURE DRAN</font></strong>(): LIST;
+<font color="#B22222">(*Digit, random.  a is a random beta-digit.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AL1, AL2, IDUM, J1Y, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL1:=DRANN(); SL:=0; AL1:=AL1+AL1;
+      <font color="#4169E1">IF</font> AL1 &gt;= BETA <font color="#4169E1">THEN</font> SL:=1; AL1:=AL1-BETA; <strong><font color="#4169E1">END</font></strong>;
+      AL1:=AL1 DIV DELTA; AL2:=DRANN(); AL2:=AL2 DIV EPSIL; J1Y:=AL1*DELTA;
+      AL:=J1Y+AL2;
+      <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> AL:=-AL; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE DRANN</font></strong>(): LIST;
+<font color="#B22222">(*Digit, random non-negative.  a is a random non-negative beta-digit.
+Caution, the low-order bits of a are not very random.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> DPR(RTERM,RMULT,TL,AL); AL:=AL+RINC;
+      <font color="#4169E1">IF</font> AL &gt;= BETA <font color="#4169E1">THEN</font> AL:=AL-BETA; <strong><font color="#4169E1">END</font></strong>;
+      RTERM:=AL; RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> DRANN;
+
+
+<strong><font color="#4169E1">PROCEDURE DSQRTF</font></strong>(AL: LIST; <strong><font color="#228B22">VAR</font></strong> BL,TL: LIST);
+<font color="#B22222">(*Digit square root function.  a is a non-negative beta-integer.
+b is the floor function of the square root of a and t is the sign
+of a-b*b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  CL, HL, J1Y, KL, RL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*al=0.*)</font>
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> BL:=0; TL:=0; RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute first approximation.*)</font> KL:=DLOG2(AL); J1Y:=KL+1;
+      HL:=J1Y DIV 2; BL:=TABP2[INTEGER(HL)+1];
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*iterate modified newton method.*)</font>
+      LOOP MASQREM(AL,BL,CL,RL);
+           <font color="#4169E1">IF</font> BL &lt;= CL <font color="#4169E1">THEN</font> J1Y:=BL*BL; J1Y:=AL-J1Y; TL:=MASSIGN(J1Y);
+              RETURN; <strong><font color="#4169E1">END</font></strong>;
+           J1Y:=BL+CL; BL:=J1Y DIV 2;
+           <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> DSQRTF;
+
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(* Initialization. *)</font>
+
+BEGIN2;
+
+<strong><font color="#4169E1">END</font></strong> SACD.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

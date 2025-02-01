@@ -1,0 +1,1324 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT8.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT8.mi,v 1.4 1993/05/11 10:51:42 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT8.mi,v $
+ * Revision 1.4  1993/05/11  10:51:42  kredel
+ * Spelling errors corr.
+ *
+ * Revision 1.3  1992/10/15  16:29:00  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:34:56  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:16:07  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACEXT8;
+
+<font color="#B22222">(* SAC Extensions 8 Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font> 
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, INV, LIST1,
+                    COMP, SRED, ADV, FIRST, RED, SFIRST;
+
+FROM MASELEM IMPORT MASMAX, MASQREM; 
+
+FROM SACLIST IMPORT COMP4, FIRST4, COMP2, LIST2, SECOND, CINV, 
+                    OWRITE, CONC, MEMBER, EQUAL, ADV2, FIRST2, LAST;
+
+FROM MASBIOS IMPORT SWRITE, BLINES;
+
+FROM SACI IMPORT IDIF, IEXP, IPROD, INEG;
+
+FROM SACM IMPORT MDHOM, MDINV;
+
+FROM SACRN IMPORT RNINT, RNRED, RNFCL2, RNCOMP, RNDIF, 
+                  RNSUM, RNNEG, RNQ, RNSIGN, RNP2, RIRNP;
+
+FROM SACPOL IMPORT PBIN, PTBCF, PDEG, PLDCF, PMON, PLBCF, PINV, PRED, PCL;
+
+FROM SACIPOL IMPORT IPEXP, IPNEG, IPPROD, IPDMV, IPQ, IPPSR,
+                    IPIP, IUPBES, IUPBRE, IPCRA, IPMAXN, IPGSUB;
+
+FROM SACRPOL IMPORT RPFIP;
+
+FROM SACMPOL IMPORT MPDIF, MPMDP, MPPROD, MPHOM, MPQR;
+
+FROM SACRPOL IMPORT RPQR, RPRNP;
+
+FROM SACEXT2 IMPORT RNBCR;
+
+FROM SACEXT4 IMPORT IPINT, RPMAIP;
+
+FROM SACEXT5 IMPORT IUPRC, MUPRC, IPPSC, IPLCPP, IPDSCR;
+
+FROM SACEXT7 IMPORT IUPVOI, ISFPIR;
+
+FROM MASRN IMPORT RNDWRS;
+
+FROM DIPC IMPORT PPERMV;
+
+FROM SACPGCD IMPORT IPPP, IPSRP, IPCPP, IPGCDC, IPSPRS, 
+                    IPSCPP, IPRES, IPPGSD;
+
+FROM SACROOT IMPORT IPRIM, RIB, IUPRB, IUPRLP;
+
+FROM SACPFAC IMPORT IPFAC;
+
+FROM SACANF IMPORT AFDIF, AFSIGN, AFPROD, AFQ, AFNEG, AFSUM, AFINV;
+
+FROM SACUPFAC IMPORT IUSFPF;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACEXT8.mi,v 1.4 1993/05/11 10:51:42 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE AFCOMP</font></strong>(MB,I,AL,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field comparison.  MB is the integral minimal
+polynomial of a real algebraic number alpha.  I is an acceptable
+isolating interval for alpha.  a and b are elements of
+Q( alpha ).  t eq SIGN(a-b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   CL, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CL:=AFDIF(AL,BL); TL:=AFSIGN(MB,I,CL); RETURN(TL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFCOMP; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFFINT</font></strong>(M: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field element from integer.  M is an
+integer.  A is M represented as an element of an algebraic
+number field.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, R: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> R:=RNINT(M); AL:=PMON(R,0); RETURN(AL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFFINT; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFFRN</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field element from rational number.  R is a
+rational number.  A is R represented as an element of an algebraic
+number field.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL:=PMON(R,0); RETURN(AL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFFRN; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPAFP</font></strong>(RL,M,AL,B: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial algebraic number field element product.  
+M is the rational minimal polynomial of an algebraic number alpha.  
+a is an element of Q( alpha ).  B is a polynomial
+over Q( alpha ) in r variables, r ge 1.  C eq a cdot B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   BL, BP, C, CL, EL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*c=0.*)</font> 
+      <font color="#4169E1">IF</font> (AL = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> BP:=B; C:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(BP, EL,BL,BP); 
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=AFPROD(M,AL,BL); <font color="#4169E1">ELSE</font>
+                CL:=AFPAFP(RLP,M,AL,BL); <strong><font color="#4169E1">END</font></strong>; 
+             C:=COMP2(CL,EL,C); 
+             <font color="#4169E1">UNTIL</font> BP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> AFPAFP; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPAFQ</font></strong>(RL,M,A,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial algebraic number field element quotient.  
+M is the rational minimal polynomial of an algebraic
+number alpha.  A is a polynomial over Q( alpha ) in r variables,
+r ge 1.  b is an element of Q( alpha ).  C eq A/b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, C, CL, EL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> AP:=A; RLP:=RL-1; C:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); 
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=AFQ(M,AL,BL); <font color="#4169E1">ELSE</font>
+                CL:=AFPAFQ(RLP,M,AL,BL); <strong><font color="#4169E1">END</font></strong>; 
+             C:=COMP2(CL,EL,C); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      C:=INV(C); RETURN(C); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> AFPAFQ; 
+
+
+<font color="#B22222">(* -- depends indirectly on AFPRII :-(
+PROCEDURE AFPBRI(M,MB,I,L: LIST): LIST; 
+(*Algebraic number field polynomial basis real root isolation.
+M is the rational minimal polynomial of a real algebraic number
+alpha.  MB is the integral minimal polynomial of alpha.
+I is an acceptable isolating interval for alpha.  L is a
+nonempty squarefree basis (A sub 1 ,... , A sub n ) of univariate
+polynomials over Q( alpha ).  N is a list (i sub 1 ,b sub 1
+,... , i sub m ,b sub m ), m ge 0, where i sub 1 lt i sub 2 lt  ...   lt
+i sub m are strongly disjoint isolating intervals for all
+the real roots of a eq prod from (j eq 1) to n (a sub j).
+each i sub i has binary rational endpoints and is left open
+and right closed.  b sub i is the unique a sub j which has
+a root in i sub i.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   A1, A2, B1, I1, I11, I21, J1Y, J2Y, LP, LPP, ML, N, S, S1, S2, SL,
+     SP, SPP, SS1, SS2, T, T1, T2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*isolate roots of each a sub i.*)</font> LP:=L; S:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, A1,LP); S1:=AFPRCL(M,MB,I,A1); S:=COMP(S1,S); 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      S:=INV(S); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine to disjoint isolating intervals.*)</font> LP:=L; SP:=S; 
+      <font color="#4169E1">WHILE</font> RED(LP) &lt;&gt; SIL <font color="#4169E1">DO</font> A1:=FIRST(LP); S1:=FIRST(SP); 
+            LPP:=RED(LP); SPP:=RED(SP); 
+            <font color="#4169E1">REPEAT</font> A2:=FIRST(LPP); S2:=FIRST(SPP); 
+                   AFPRLS(M,MB,I,A1,A2,S1,S2, SS1,SS2); S1:=SS1; 
+                   SFIRST(SPP,SS2); LPP:=RED(LPP); SPP:=RED(SPP); 
+                   <font color="#4169E1">UNTIL</font> LPP = SIL; 
+            SFIRST(SP,S1); LP:=RED(LP); SP:=RED(SP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*prepare to merge intervals.*)</font> LP:=L; SP:=S; T:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, A1,LP); ADV(SP, S1,SP); T1:=BETA; 
+             <font color="#4169E1">WHILE</font> S1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(S1, I11,ML,S1); 
+                   T1:=COMP2(A1,I11,T1); <strong><font color="#4169E1">END</font></strong>; 
+             J1Y:=INV(T1); T:=COMP(J1Y,T); 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      T:=INV(T); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*merge-sort isolating intervals.*)</font> 
+      <font color="#4169E1">WHILE</font> RED(T) &lt;&gt; SIL <font color="#4169E1">DO</font> S:=BETA; 
+            <font color="#4169E1">WHILE</font> (T &lt;&gt; SIL) <font color="#4169E1">AND</font> (RED(T) &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV2(T,
+                  T1,T2,T); S1:=BETA; 
+                  <font color="#4169E1">WHILE</font> (T1 &lt;&gt; SIL) <font color="#4169E1">AND</font> (T2 &lt;&gt; SIL) <font color="#4169E1">DO</font>
+                        I11:=FIRST(T1); I21:=FIRST(T2); J1Y:=FIRST(I11); 
+                        J2Y:=FIRST(I21); SL:=RNCOMP(J1Y,J2Y); 
+                        <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> ADV2(T1, I1,B1,T1); <font color="#4169E1">ELSE</font>
+                           ADV2(T2, I1,B1,T2); <strong><font color="#4169E1">END</font></strong>; 
+                        S1:=COMP2(B1,I1,S1); <strong><font color="#4169E1">END</font></strong>; 
+                  <font color="#4169E1">IF</font> T1 = SIL <font color="#4169E1">THEN</font> T1:=T2; <strong><font color="#4169E1">END</font></strong>; 
+                  J1Y:=INV(S1); S1:=CONC(J1Y,T1); S:=COMP(S1,S); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> T &lt;&gt; SIL <font color="#4169E1">THEN</font> J1Y:=FIRST(T); S:=COMP(J1Y,S); <strong><font color="#4169E1">END</font></strong>; 
+            T:=INV(S); <strong><font color="#4169E1">END</font></strong>; 
+      N:=FIRST(T); RETURN(N); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> AFPBRI; 
+*)
+
+
+<font color="#B22222">(* -- depends on AFPRII :-(
+PROCEDURE AFPCLL(M,MB,I,A: LIST): LIST; 
+(*Algebraic number field polynomial real root isolation, Collins-Loos algorithm, list output version.  
+M is the rational minimal polynomial of a real algebraic number alpha.
+MB is the integral minimal polynomial of alpha.
+I is an acceptable isolating interval for alpha.  A is a monic
+univariate polynomial of degree n ge 0 over Q( alpha ).
+If n eq 0 then L eq ().
+If n gt 0, then L eq (L sub 0 ,... , L sub n-1 ),
+where L sub i is a strong isolation list for the real roots
+of der sup i (A).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, AS, BL, C, DL, L, L1, LP1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> L:=BETA; 
+      <font color="#4169E1">IF</font> PDEG(A) = 0 <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> AS:=A; AP:=AFPDMV(1,M,A); C:=BETA; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute derivatives.*)</font> 
+      <font color="#4169E1">WHILE</font> PDEG(AS) &gt; 1 <font color="#4169E1">DO</font> BL:=PTBCF(1,AS); C:=COMP(BL,C); AS:=AP; 
+            AP:=AFPDMV(1,M,AS); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*isolate roots.*)</font> LP1:=BETA; DL:=AFUPRB(MB,I,A); 
+      <font color="#4169E1">REPEAT</font> L1:=AFPRII(M,MB,I,AS,AP,DL,LP1); L:=COMP(L1,L); 
+             <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+             ADV(C, BL,C); AP:=AS; AS:=AFPINT(1,M,AP,BL); LP1:=L1; 
+             <font color="#4169E1">UNTIL</font> FALSE; 
+<font color="#B22222">(*7*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> AFPCLL; 
+*)
+
+<strong><font color="#4169E1">PROCEDURE AFPDIF</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial difference.  A and B are
+polynomials in r variables, r ge 0, over Q( alpha ), for some
+algebraic number alpha.  C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CL, CP, CPP, EL, FL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=AFPNEG(RL,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=AFDIF(A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP); 
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); 
+                CP:=COMP2(AL,EL,CP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP); 
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=AFNEG(BL); <font color="#4169E1">ELSE</font>
+                      CL:=AFPNEG(RLP,BL); <strong><font color="#4169E1">END</font></strong>; 
+                   CP:=COMP2(CL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP); 
+                   ADV2(BP, FL,BL,BP); 
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=AFDIF(AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=AFPDIF(RLP,AL,BL); <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> CPP:=BETA; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> CPP:=AFPNEG(RL,BP); <font color="#4169E1">ELSE</font> CPP:=AP; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      C:=INV(CP); 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=CPP; <font color="#4169E1">ELSE</font> SRED(CP,CPP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(C); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> AFPDIF; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPDMV</font></strong>(RL,M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial derivative, main variable.
+M is the rational minimal polynomial of an algebraic number alpha.
+A is a polynomial over Q( alpha ) in r variables, r ge 1.  B is
+the derivative of a with respect to its main variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, B, BL, EL, ELP, J1Y, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; RLP:=RL-1; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); 
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> J1Y:=AFFINT(EL); BL:=AFPROD(M,J1Y,AL); 
+                <font color="#4169E1">ELSE</font> J1Y:=AFFINT(EL); BL:=AFPAFP(RLP,M,J1Y,AL); <strong><font color="#4169E1">END</font></strong>; 
+             ELP:=EL-1; 
+             <font color="#4169E1">IF</font> EL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,ELP,B); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); 
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> AFPDMV; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPEMV</font></strong>(RL,M,A,AL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial evaluation of main variable.
+M is the rational minimal polynomial of an algebraic number alpha.
+A is a polynomial over Q( alpha ) in r variables, r ge 1.  a is an
+element of Q( alpha ).  B( x sub 1 ,... , x sub r-1 ) eq
+A(x sub 1 ,... , x sub r-1 ,a).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   A2, AP, B, EL1, EL2, IL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horners method.*)</font> ADV2(A, EL1,B,AP); RLP:=RL-1; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AP, EL2,A2,AP); 
+            <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1-EL2 <font color="#4169E1">DO</font>
+                <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=AFPROD(M,AL,B); <font color="#4169E1">ELSE</font>
+                   B:=AFPAFP(RLP,M,AL,B); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=AFSUM(B,A2); <font color="#4169E1">ELSE</font>
+               B:=AFPSUM(RLP,B,A2); <strong><font color="#4169E1">END</font></strong>; 
+            EL1:=EL2; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=AFPROD(M,AL,B); <font color="#4169E1">ELSE</font>
+             B:=AFPAFP(RLP,M,AL,B); <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> AFPEMV; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPEV</font></strong>(RL,M,A,IL,AL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial evaluation.  M is the rational
+minimal polynomial of an algebraic number alpha.  A is a
+polynomial in r ge 1 variables over Q( alpha ).  i satisfies
+1 le i le r, and a is an element of Q( alpha ).
+B(x sub 1 ,... , x sub i-1 , x sub i+1 ,... , x sub r) eq
+A(x sub 1 ,... , x sub i-1 , a , x sub i+1 ,... , x sub r ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   A1, AP, B, B1, EL1, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font> 
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> B:=AFPEMV(RL,M,A,AL); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*il lt rl.*)</font> RLP:=RL-1; AP:=A; B:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,A1,AP); B1:=AFPEV(RLP,M,A1,IL,AL); 
+             <font color="#4169E1">IF</font> B1 &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(B1,EL1,B); <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); 
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPEV; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPFIP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial from integral polynomial.  A is
+an integral polynomial in r variables, r ge 1.  B is a represented as
+a polynomial over an algebraic number field.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, B, BL, EL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=AFFINT(A); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion on rl.*)</font> B:=BETA; AP:=A; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); BL:=AFPFIP(RLP,AL); B:=COMP2(BL,EL,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPFIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPFRP</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial from rational polynomial.  A is
+a rational polynomial in r variables, r ge 1.  B is a represented as
+a polynomial over an algebraic number field.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, B, BL, EL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=AFFRN(A); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion on rl.*)</font> B:=BETA; AP:=A; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); BL:=AFPFRP(RLP,AL); B:=COMP2(BL,EL,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPFRP; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPINT</font></strong>(RL,M,A,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial integration.  M is the rational
+minimal polynomial of an algebraic number alpha. A is a nonzero
+polynomial over Q( alpha ) in r variables, r ge 1.  b is a polynomial
+over Q( alpha ) in r-1 variables.  B eq B(x sub 1 ,... , x sub r )
+is the integral of a with respect to its main variable, such that
+B(x sub 1 ,... , x sub r-1 ,0) eq b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, B, CL, EL, J1Y, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; B:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); EL:=EL+1; 
+             <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> J1Y:=AFFINT(EL); CL:=AFQ(M,AL,J1Y); 
+                <font color="#4169E1">ELSE</font> J1Y:=AFFINT(EL); CL:=AFPAFQ(RLP,M,AL,J1Y); <strong><font color="#4169E1">END</font></strong>; 
+             B:=COMP2(CL,EL,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,0,B); <strong><font color="#4169E1">END</font></strong>; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFPINT; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPME</font></strong>(RL,M,A,BL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field, polynomial multiple evaluation.
+M is the rational minimal polynomial of an algebraic number
+alpha.  A eq A(x sub 1 ,... , x sub r ) is a polynomial in
+r ge 1 variables over Q( alpha ).  b eq (b sub 1 ,... , b sub k )
+is a list of k elements of Q( alpha ) for some k, 1 le k le r.
+B eq A(b sub 1 ,... , b sub k ,x sub k+1 ,... , x sub r ),
+an element of Q( alpha )(x sub k+1 ,... , x sub r ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, BL1, BLP, IL, J1Y: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> IL:=0; BLP:=BL; B:=A; 
+      <font color="#4169E1">REPEAT</font> IL:=IL+1; ADV(BLP, BL1,BLP); J1Y:=RL-IL; J1Y:=J1Y+1; 
+             B:=AFPEV(J1Y,M,B,1,BL1); 
+             <font color="#4169E1">UNTIL</font> BLP = SIL; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFPME; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPMON</font></strong>(RL,M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial monic.  A is a polynomial in
+r variables, r ge 1, over Q( alpha ) for some algebraic number
+alpha.  M is the rational minimal polynomial of alpha.
+If A is nonzero then AP is the monic polynomial over Q( alpha )
+similar to A.  If A eq 0 then AP eq 0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, ALP, AP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AP:=0; RETURN(AP); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> AL:=PLBCF(RL,A); ALP:=AFINV(M,AL); 
+      AP:=AFPAFP(RL,M,ALP,A); RETURN(AP); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> AFPMON; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPMPR</font></strong>(M,MB,I,B,J,L: LIST;  <strong><font color="#228B22">VAR</font></strong> JS,JL: LIST); 
+<font color="#B22222">(*Algebraic number field polynomial minimal polynomial of a real root.
+M is the rational minimal polynomial of a real algebraic number
+alpha.  MB is the integral minimal polynomial of alpha.  I
+is an acceptable isolating interval for alpha.  J is an interval
+with binary rational number endpoints which is either left-open and
+right-closed, or a one-point interval.  B is a univariate polynomial
+over Q( alpha ) having a unique root beta of odd multiplicity
+in j.  L is a nonempty list of positive irreducible univariate
+integral polynomials exactly one of which has beta as a root.
+j is the index in L of the unique element n of L having beta
+as a root, and js is a subinterval of j with binary rational
+endpoints which is an isolating interval for beta as a root of n.
+js is either left-open and right-closed or a one-point interval.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, BL, CL, JLP, L1, LP, SL, TL, VL, VLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> FIRST2(J, AL,BL); TL:=AFUPSR(M,MB,I,B,BL); 
+LOOP 
+      <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 4;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+LOOP LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*test for real roots of each l sub i in current interval.*)</font> 
+      VL:=0; JLP:=0; LP:=L; JS:=LIST2(AL,BL); 
+      <font color="#4169E1">REPEAT</font> ADV(LP, L1,LP); JLP:=JLP+1; VLP:=IUPVOI(L1,JS); 
+             <font color="#4169E1">IF</font> VLP &gt; 1 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> VLP = 1 <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> VL = 1 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 3;*)</font> 
+                          <font color="#4169E1">ELSE</font> VL:=1; JL:=JLP; <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      RETURN; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*bisect current interval.*)</font> CL:=RIB(AL,BL); 
+      SL:=AFUPSR(M,MB,I,B,CL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> BL:=CL; EXIT; <font color="#B22222">(*GO TO 4;*)</font> <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> SL*TL &lt; 0 <font color="#4169E1">THEN</font> AL:=CL; <font color="#4169E1">ELSE</font> BL:=CL; TL:=SL; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(*GO TO 2;*)</font> 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*b has root at right end point of current interval.*)</font> JL:=0; 
+      JS:=LIST2(BL,BL); LP:=L; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, L1,LP); JL:=JL+1; 
+             <font color="#4169E1">IF</font> PDEG(L1) = 1 <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> IUPBES(L1,BL) = 0 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> FALSE; 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> AFPMPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPNEG</font></strong>(RL,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial negative.  A is a polynomial in
+r variables, r ge 0, over Q( alpha ) for some algebraic number
+alpha.  B=-A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, B, BL, EL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=AFNEG(A); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); 
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=AFNEG(AL); <font color="#4169E1">ELSE</font>
+                BL:=AFPNEG(RLP,AL); <strong><font color="#4169E1">END</font></strong>; 
+             B:=COMP2(BL,EL,B); 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      B:=INV(B); RETURN(B); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPNEG; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPNIP</font></strong>(MB,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial normalize to integral polynomial.
+MB is the integral minimal polynomial of an algebraic number alpha.
+A is a univariate polynomial over Q( alpha ) of positive degree.
+l is a list (l sub 1 ,... , l sub n ), n ge 1, of the positive
+irreducible factors of positive degree of a univariate integral
+polynomial which has among its roots the roots of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, C, CL, DL, J1Y, L, L1, LP, MP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*check for a having only rational coefficients.*)</font> IPSRP(2,A,
+      DL,AP); J1Y:=LIST2(2,1); AP:=PPERMV(2,AP,J1Y); 
+LOOP 
+      <font color="#4169E1">IF</font> PDEG(AP) = 0 <font color="#4169E1">THEN</font> C:=PLDCF(AP); EXIT; <font color="#B22222">(*GO TO 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute resultant of a and mb.*)</font> MP:=PINV(1,MB,1); 
+      C:=IPRES(2,AP,MP); 
+      EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font> 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*factor resultant.*)</font> IPFAC(1,C, SL,CL,LP); L:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, L1,LP); J1Y:=SECOND(L1); L:=COMP(J1Y,L); 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      L:=INV(L); RETURN(L); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPNIP; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPPR</font></strong>(RL,M,A,B: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial product.  A and B are polynomials
+in r variables, r ge 0, over Q( alpha ) for some algebraic number
+alpha.  M is the rational minimal polynomial of alpha.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, AS, BL, BS, C, C1, CL, EL, FL, J1Y, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=AFPROD(M,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=CINV(B); C:=0; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> ADV2(BS, BL,FL,BS); AP:=AS; C1:=BETA; 
+             <font color="#4169E1">REPEAT</font> ADV2(AP, AL,EL,AP); 
+                    <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=AFPROD(M,AL,BL); <font color="#4169E1">ELSE</font>
+                       CL:=AFPPR(RLP,M,AL,BL); <strong><font color="#4169E1">END</font></strong>; 
+                    J1Y:=EL+FL; C1:=COMP2(J1Y,CL,C1); 
+                    <font color="#4169E1">UNTIL</font> AP = SIL; 
+             C:=AFPSUM(RL,C,C1); 
+             <font color="#4169E1">UNTIL</font> BS = SIL; 
+      RETURN(C); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPPR; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPQR</font></strong>(RL,M,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> Q,R: LIST); 
+<font color="#B22222">(*Algebraic number field polynomial quotient and remainder.  A and B,
+B ne 0, are polynomials in r variables, r ge 1, over Q( alpha ), for
+some algebraic number alpha.  M is the rational minimal polynomial
+of alpha.  Q and R are the unique algebraic number field polynomials
+such that either B divides A, Q eq B/A, and r eq 0 or else B does not
+divide A and A eq BQ+R with degree(R) minimal.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, BL, BP, DL, ML, NL, Q1, QL, QP, RLP, RP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=PDEG(B); BL:=PLDCF(B); BP:=PRED(B); Q:=BETA; 
+      R:=A; RLP:=RL-1; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute quotient terms.*)</font> 
+LOOP
+      <font color="#4169E1">WHILE</font> R &lt;&gt; 0 <font color="#4169E1">DO</font> ML:=PDEG(R); DL:=ML-NL; 
+            <font color="#4169E1">IF</font> DL &lt; 0 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            AL:=PLDCF(R); 
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> QL:=AFQ(M,AL,BL); SL:=0; <font color="#4169E1">ELSE</font>
+               AFPQR(RLP,M,AL,BL, QL,SL); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+            Q:=COMP2(QL,DL,Q); Q1:=LIST2(DL,QL); RP:=PRED(R); 
+            QP:=AFPPR(RL,M,BP,Q1); R:=AFPDIF(RL,RP,QP); <strong><font color="#4169E1">END</font></strong>; 
+      EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font> 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPQR; 
+
+
+<font color="#B22222">(* -- depends on AFPRII :-(
+PROCEDURE AFPRCL(M,MB,I,A: LIST): LIST; 
+(*Algebraic number field polynomial real root isolation, Collins-Loos algorithm.  
+M is the rational minimal polynomial of a real algebraic
+number alpha.  MB is the integral minimal polynomial of alpha.
+I is an acceptable isolating interval for alpha.  A is a monic
+univariate polynomial of degree n ge 0 over Q( alpha ).  L is a
+strong isolation list for the real roots of a.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, AS, BL, C, DL, L, LP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> 
+      <font color="#4169E1">IF</font> PDEG(A) = 0 <font color="#4169E1">THEN</font> L:=BETA; RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> AS:=A; AP:=AFPDMV(1,M,A); C:=BETA; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute derivatives.*)</font> 
+      <font color="#4169E1">WHILE</font> PDEG(AS) &gt; 1 <font color="#4169E1">DO</font> BL:=PTBCF(1,AS); C:=COMP(BL,C); AS:=AP; 
+            AP:=AFPDMV(1,M,AS); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*isolate roots.*)</font> LP:=BETA; DL:=AFUPRB(MB,I,A); 
+      <font color="#4169E1">REPEAT</font> L:=AFPRII(M,MB,I,AS,AP,DL,LP); 
+             <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>; 
+             ADV(C, BL,C); AP:=AS; AS:=AFPINT(1,M,AP,BL); LP:=L; 
+             <font color="#4169E1">UNTIL</font> FALSE; 
+<font color="#B22222">(*7*)</font> RETURN(L); <strong><font color="#4169E1">END</font></strong> AFPRCL; 
+*)
+
+
+<font color="#B22222">(* -- zuviele goto's :-(
+PROCEDURE AFPRII(M,MB,J,A,AP,DL,LP: LIST): LIST; 
+(*Algebraic number field polynomial real root isolation induction.
+M is the rational minimal polynomial of a real algebraic number
+alpha.  MB is the integral minimal polynomial of alpha.  J is
+an acceptable isolating interval for alpha.  A is a positive
+univariate polynomial over Q( alpha ) of positive degree.  AP is
+the derivative of A.  d is a binary rational real root bound for A.
+LP is a strong isolation list for AP.  L is a strong isolation list
+for A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   ABP, AL1, AL2, ALHS1, ALS1, B, B1, B2, BL0, BL1, BLHS1, BLS1, CL,
+      CLH, DLP, I, I1, IP, IPP, J1Y, KL, L, LS, ML, ML1, NL, RL, RL0,
+      RL1, SL, SL1, SL2, SLBP, SLBP1, SLP, SLS1, TL0, TL1, TLP0,
+      TLP1, TLS1, UL, UL1, UL2, ULP, ULP1, ULS1, VL1, VLP1, VLS1, WLS0,
+      WLS1, ZL, ZL1, ZL2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*ap without roots.*)</font> DLP:=RNNEG(DL); 
+      <font color="#4169E1">IF</font> LP = SIL <font color="#4169E1">THEN</font> I:=LIST2(DLP,DL); L:=LIST2(I,1); RETURN(L); 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> ABP:=AFUPGS(M,AP); AFUPGC(M,A,ABP, B,B1,B2); 
+      NL:=PDEG(A); KL:=PDEG(B); LS:=LP; 
+      <font color="#4169E1">IF</font> EVEN(NL <font color="#4169E1">THEN</font> TL0:=1; <font color="#4169E1">ELSE</font> TL0:=-1; <strong><font color="#4169E1">END</font></strong>; 
+      TLP0:=-TL0; BL0:=DLP; I1:=FIRST(LS); AL1:=FIRST(I1); 
+      J1Y:=AFFRN(AL1); UL1:=AFPEMV(1,M,A,J1Y); SL1:=AFSIGN(MB,J,UL1); 
+      L:=BETA; 
+      <font color="#4169E1">IF</font> TL0*SL1 &gt; 0 <font color="#4169E1">THEN</font> RL0:=0; <font color="#4169E1">ELSE</font> RL0:=1; I:=LIST2(BL0,AL1); 
+         L:=COMP2(1,I,L); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> EVEN(KL <font color="#4169E1">THEN</font> WLS0:=1; <font color="#4169E1">ELSE</font> WLS0:=-1; <strong><font color="#4169E1">END</font></strong>; 
+      ML:=PDEG(ABP); 
+      <font color="#4169E1">IF</font> EVEN(ML <font color="#4169E1">THEN</font> SLBP1:=1; <font color="#4169E1">ELSE</font> SLBP1:=-1; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*root of a in (b sub i ,a sub i+1 ).*)</font> ADV2(LS, I1,ML1,LS); 
+      BL1:=SECOND(I1); J1Y:=AFFRN(BL1); VL1:=AFPEMV(1,M,A,J1Y); 
+      TL1:=AFSIGN(MB,J,VL1); 
+      <font color="#4169E1">IF</font> EVEN(ML1 <font color="#4169E1">THEN</font> TLP1:=TLP0; <font color="#4169E1">ELSE</font> TLP1:=-TLP0; <strong><font color="#4169E1">END</font></strong>; 
+      TLS1:=TL1; 
+      <font color="#4169E1">IF</font> TL1 = 0 <font color="#4169E1">THEN</font> TLS1:=TLP1; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> LS = SIL <font color="#4169E1">THEN</font> AL2:=DL; <font color="#4169E1">ELSE</font> J1Y:=FIRST(LS); 
+         AL2:=FIRST(J1Y); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> RNCOMP(BL1,AL2) &lt; 0 <font color="#4169E1">THEN</font> J1Y:=AFFRN(AL2); 
+         UL2:=AFPEMV(1,M,A,J1Y); SL2:=AFSIGN(MB,J,UL2); 
+         <font color="#4169E1">IF</font> TLS1*SL2 &lt;= 0 <font color="#4169E1">THEN</font> RL1:=1; <font color="#4169E1">ELSE</font> RL1:=0; <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">ELSE</font> UL2:=VL1; SL2:=TL1; RL1:=0; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*alpha sub i a root of a.*)</font> 
+      <font color="#4169E1">IF</font> KL = 0 <font color="#4169E1">THEN</font> WLS1:=WLS0; <font color="#4169E1">ELSE</font> WLS1:=AFUPSR(M,MB,J,B,BL1); 
+         <font color="#4169E1">IF</font> WLS1 = 0 <font color="#4169E1">THEN</font> WLS1:=-WLS0; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> WLS0*WLS1 &lt; 0 <font color="#4169E1">THEN</font> J1Y:=ML1+1; L:=COMP2(J1Y,I1,L); GO <font color="#4169E1">TO</font>
+         9; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*other roots of a in (a sub i ,b sub i ).*)</font> RL:=RL0+RL1; 
+      <font color="#4169E1">IF</font> RL = 2 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> SL1 &lt;&gt; 0 <font color="#4169E1">THEN</font> SLS1:=SL1; <font color="#4169E1">ELSE</font> SLS1:=TLP0; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> (RL = 1) <font color="#4169E1">OR</font> EVEN(ML1) <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> SLS1*TL1 &lt;= 0 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 6; <font color="#4169E1">ELSE</font> GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> TL1 = 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> SLS1*TLP0 &gt; 0 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 6; <strong><font color="#4169E1">END</font></strong>; 
+         ALS1:=AL1; BLS1:=BL1; GO <font color="#4169E1">TO</font> 8; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> SLS1*TL1 &lt; 0 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 6; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> SLS1*TLP0 &gt; 0 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 9; <font color="#4169E1">ELSE</font> GO <font color="#4169E1">TO</font> 7; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*6*)</font> <font color="#B22222">(*one root in (a sub i ,b sub i ).*)</font> 
+      I:=AFPRRI(M,MB,J,A,ABP,I1,SLS1,SLBP1); L:=COMP2(1,I,L); GO <font color="#4169E1">TO</font> 9; 
+<font color="#B22222">(*7*)</font> <font color="#B22222">(*zero or two roots of a in (a sub i ,b sub i ).*)</font> ALS1:=AL1; 
+      BLS1:=BL1; ULS1:=UL1; VLS1:=VL1; ALHS1:=AFFRN(ALS1); 
+      BLHS1:=AFFRN(BLS1); ULP1:=AFPEMV(1,M,AP,ALHS1); 
+      VLP1:=AFPEMV(1,M,AP,BLHS1); 
+      <font color="#4169E1">IF</font> VLP1 = 0 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">REPEAT</font> ZL:=AFQ(M,ULS1,ULP1); ZL1:=AFDIF(ALHS1,ZL); 
+             ZL:=AFQ(M,VLS1,VLP1); ZL2:=AFDIF(BLHS1,ZL); 
+             ZL:=AFCOMP(MB,J,ZL1,ZL2); 
+             <font color="#4169E1">IF</font> ZL &gt;= 0 <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+             CL:=RIB(ALS1,BLS1); CLH:=AFFRN(CL); UL:=AFPEMV(1,M,A,CLH); 
+             SL:=AFSIGN(MB,J,UL); ULP:=AFPEMV(1,M,AP,CLH); 
+             SLP:=AFSIGN(MB,J,ULP); 
+             <font color="#4169E1">IF</font> (SLS1*SL &gt; 0) <font color="#4169E1">AND</font> (SLP = 0) <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> (SL = 0) <font color="#4169E1">AND</font> (TLP0*SLP &lt; 0) <font color="#4169E1">THEN</font> BLS1:=CL; GO
+                <font color="#4169E1">TO</font> 8; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> SLS1*SL &lt;= 0 <font color="#4169E1">THEN</font> IP:=LIST2(ALS1,CL); 
+                IPP:=LIST2(CL,BLS1); 
+                <font color="#4169E1">IF</font> TLP0*SLP &lt;= 0 <font color="#4169E1">THEN</font>
+                   I:=AFPRRI(M,MB,J,A,ABP,IP,SLS1,SLBP1); 
+                   L:=COMP4(1,IPP,1,I,L); <font color="#4169E1">ELSE</font> J1Y:=-SLS1; 
+                   I:=AFPRRI(M,MB,J,A,ABP,IPP,J1Y,SLBP1); 
+                   L:=COMP4(1,I,1,IP,L); <strong><font color="#4169E1">END</font></strong>; 
+                GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> TLP0*SLP &gt; 0 <font color="#4169E1">THEN</font> ALS1:=CL; ULS1:=UL; ULP1:=ULP; 
+                <font color="#4169E1">ELSE</font> BLS1:=CL; VLS1:=UL; VLP1:=ULP; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> SIL; 
+<font color="#B22222">(*8*)</font> <font color="#B22222">(*roots at b sub i sup * and in (a sub i sup * ,b sub i sup * )*)</font> 
+      <font color="#4169E1">REPEAT</font> CL:=RIB(ALS1,BLS1); SL:=AFUPSR(M,MB,J,A,CL); 
+             <font color="#4169E1">IF</font> SLS1*SL &lt;= 0 <font color="#4169E1">THEN</font> SLBP:=AFUPSR(M,MB,J,ABP,CL); 
+                IP:=LIST2(ALS1,CL); IPP:=LIST2(CL,BLS1); 
+                <font color="#4169E1">IF</font> SLBP1*SLBP &lt;= 0 <font color="#4169E1">THEN</font>
+                   I:=AFPRRI(M,MB,J,A,ABP,IP,SLS1,SLBP1); 
+                   L:=COMP4(1,IPP,1,I,L); <font color="#4169E1">ELSE</font> J1Y:=-SLS1; 
+                   I:=AFPRRI(M,MB,J,A,ABP,IPP,J1Y,SLBP1); 
+                   L:=COMP4(1,I,1,IP,L); <strong><font color="#4169E1">END</font></strong>; 
+                GO <font color="#4169E1">TO</font> 9; <strong><font color="#4169E1">END</font></strong>; 
+             ALS1:=CL; 
+             <font color="#4169E1">UNTIL</font> SIL; 
+<font color="#B22222">(*9*)</font> <font color="#B22222">(*update.*)</font> 
+      <font color="#4169E1">IF</font> RL1 = 1 <font color="#4169E1">THEN</font> I:=LIST2(BL1,AL2); L:=COMP2(1,I,L); <strong><font color="#4169E1">END</font></strong>; 
+      AL1:=AL2; RL0:=RL1; TLP0:=TLP1; SL1:=SL2; WLS0:=WLS1; 
+      SLBP1:=-SLBP1; UL1:=UL2; 
+      <font color="#4169E1">IF</font> LS &lt;&gt; SIL <font color="#4169E1">THEN</font> GO <font color="#4169E1">TO</font> 3; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*10*)</font> <font color="#B22222">(*finish.*)</font> L:=INV(L); RETURN(L); 
+<font color="#B22222">(*13*)</font> <strong><font color="#4169E1">END</font></strong> AFPRII; 
+*)
+
+<strong><font color="#4169E1">PROCEDURE AFPRLS</font></strong>(M,MB,I,A1,A2,L1,L2: LIST;  <strong><font color="#228B22">VAR</font></strong> LS1,LS2: LIST); 
+<font color="#B22222">(*Algebraic number field polynomial real root list separation.
+M is the rational minimal polynomial of a real algebraic number
+alpha.  MB is the integral minimal polynomial of alpha.
+I is an acceptable isolating interval for alpha.  A1 and A2
+are univariate polynomials over Q( alpha ) with no common roots
+and real roots of only odd multiplicity.  L1 and L2 are strong
+isolation lists for the real roots of A1 and A2 respectively.  Let
+L1 eq (i sub 1,1 ,m sub 1,1 ,... , i sub (1,r sub 1),m sub (1,r sub 1)),
+L2 eq (i sub 2,1 ,m sub 2,1 ,... , i sub (2,r sub 2),m sub (2,r sub 2)).
+Then i sub 1,1  lt  i sub 1,2  lt  ...   lt  i sub (1,r sub 1)
+and  i sub 2,1  lt  i sub 2,2  lt  ...   lt  i sub (2,r sub 2) .
+l sub 1 sup *  eq (i sub 1,1 sup * ,m sub 1,1 ,... ,
+i sub (1,r sub 1) sup * ,m sub (1,r sub 1))
+and l sub 2 sup *  eq (i sub 2,1 sup * ,m sub 2,1 ,... ,
+i sub (2,r sub 2) sup * ,m sub (2,r sub 2)),
+where i sub i,j sup * is a binary rational subinterval of
+i sub i,j containing the root of a sub i in i sub i,j.
+each i sub 1,j sup * is strongly disjoint from each
+i sub 2,j sup *.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   I1, I2, LP1, LP2, ML1, ML2, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> 
+      <font color="#4169E1">IF</font> (L1 = SIL) <font color="#4169E1">OR</font> (L2 = SIL) <font color="#4169E1">THEN</font> LS1:=L1; LS2:=L2; 
+         RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      ADV2(L1, I1,ML1,LP1); LS1:=BETA; ADV2(L2, I2,ML2,LP2); LS2:=BETA; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*refine and merge.*)</font> 
+      <font color="#4169E1">REPEAT</font> AFPRRS(M,MB,I,A1,A2,I1,I2, I1,I2,SL); 
+             <font color="#4169E1">IF</font> SL &lt; 0 <font color="#4169E1">THEN</font> LS1:=COMP2(ML1,I1,LS1); 
+                <font color="#4169E1">IF</font> LP1 &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV2(LP1, I1,ML1,LP1); <font color="#4169E1">ELSE</font>
+                   I1:=0; <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font> LS2:=COMP2(ML2,I2,LS2); 
+                <font color="#4169E1">IF</font> LP2 &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV2(LP2, I2,ML2,LP2); <font color="#4169E1">ELSE</font>
+                   I2:=0; <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (I1 = 0) <font color="#4169E1">OR</font> (I2 = 0); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> I1 = 0 <font color="#4169E1">THEN</font> LS2:=COMP2(ML2,I2,LS2); 
+         <font color="#4169E1">WHILE</font> LP2 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(LP2, I2,ML2,LP2); 
+               LS2:=COMP2(ML2,I2,LS2); <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">ELSE</font> LS1:=COMP2(ML1,I1,LS1); 
+         <font color="#4169E1">WHILE</font> LP1 &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(LP1, I1,ML1,LP1); 
+               LS1:=COMP2(ML1,I1,LS1); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      LS1:=INV(LS1); LS2:=INV(LS2); RETURN; 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPRLS; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPRRI</font></strong>(M,MB,I,A,B,J,SL1,TL1: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial relative real root isolation.
+M is the rational minimal polynomial of a real algebraic number
+alpha.  MB is the integral minimal polynomial of alpha.  I is an
+acceptable isolating interval for alpha.  A and B are univariate
+polynomials over Q( alpha ).  J is a left open, right closed
+interval (a sub 1 ,a sub 2 ) where al sub 1 and al sub 2 are
+binary rational numbers with al sub 1 lt al sub 2.  A and B have
+unique roots, alpha and beta respectively, in J, each of odd
+multiplicity and with alpha ne beta.  sl sub 1 eq
+sign(a(al sub 1 +)) and tl sub 1 eq sign(b(al sub 1 +)).
+js eq (al sub 1 sup * ,al sub 2 sup * ) is al left-open, right-closed
+subinterval of j with al sub 1 sup * and al sub 2 sup *
+binary rational numbers and al sub 1 sup * lt al sub 2 sup *,
+such that js contains alpha but not beta.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, ALS1, ALS2, JS, SL, TL, UL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> FIRST2(J, ALS1,ALS2); 
+LOOP
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*bisect.*)</font> AL:=RIB(ALS1,ALS2); SL:=AFUPSR(M,MB,I,A,AL); 
+      <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> SL:=-SL1; <strong><font color="#4169E1">END</font></strong>; 
+      TL:=AFUPSR(M,MB,I,B,AL); 
+      <font color="#4169E1">IF</font> TL = 0 <font color="#4169E1">THEN</font> TL:=-TL1; <strong><font color="#4169E1">END</font></strong>; 
+      UL:=SL1*SL; VL:=TL1*TL; 
+      <font color="#4169E1">IF</font> UL &gt; 0 <font color="#4169E1">THEN</font> ALS1:=AL; <font color="#4169E1">ELSE</font> ALS2:=AL; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> UL &lt;&gt; VL <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(* if = then GO TO 2;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font> 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*construct js.*)</font> JS:=LIST2(ALS1,ALS2); RETURN(JS); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFPRRI; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPRRS</font></strong>(M,MB,I,A1,A2,I1,I2: LIST; <strong><font color="#228B22">VAR</font></strong> IS1,IS2,SL: LIST); 
+<font color="#B22222">(*Algebraic number field polynomial real root separation.  M is
+the rational minimal polynomial of a real algebraic number alpha.
+MB is the integral minimal polynomial of alpha.  I is an
+acceptable isolating interval for alpha.  A1 and A2 are
+univariate integral polynomials of positive degrees over Q( alpha ).
+I1 and I2 are intervals with binary rational number endpoints, each of
+which is either left-open and right-closed, or a one-point interval.
+I1 contains a unique root alpha sub 1 of A1 of odd multiplicity,
+and I2 contains a unique root alpha sub 2 ne alpha sub 1
+of A2 of odd multiplicity.  I sub 1 sup * and
+I sub 2 sup * are binary rational subintervals of I1 and I2
+containing alpha sub 1 and alpha sub 2 respectively, with
+I sub 1 sup * and I sub 2 sup * strongly disjoint.  If I1 is
+left-open and right-closed then so is I sub 1 sup *, and
+similarly for I2 and I sub 2 sup *.  s eq -1
+if I sub 1 sup *  lt  I sub 2 sup *, and s eq 1
+if I sub 1 sup *  gt  I sub 2 sup *.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL1, AL2, BL1, BL2, CL, DL1, DL2, SL1, SL2, TL, UL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*i1 and i2 disjoint.*)</font> FIRST2(I1, AL1,BL1); FIRST2(I2, AL2,BL2); 
+      <font color="#4169E1">IF</font> RNCOMP(BL1,AL2) &lt; 0 <font color="#4169E1">THEN</font> IS1:=I1; IS2:=I2; SL:=-1; RETURN; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> RNCOMP(BL2,AL1) &lt; 0 <font color="#4169E1">THEN</font> IS1:=I1; IS2:=I2; SL:=1; RETURN; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> DL1:=RNDIF(BL1,AL1); DL2:=RNDIF(BL2,AL2); SL1:=2; 
+      SL2:=2; 
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*bisect i1.*)</font> TL:=RNCOMP(DL1,DL2); 
+      <font color="#4169E1">IF</font> TL &gt;= 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> SL1 &gt; 1 <font color="#4169E1">THEN</font> SL1:=AFUPSR(M,MB,I,A1,BL1); <strong><font color="#4169E1">END</font></strong>; 
+         CL:=RIB(AL1,BL1); UL:=AFUPSR(M,MB,I,A1,CL); 
+         <font color="#4169E1">IF</font> (SL1 = 0) <font color="#4169E1">OR</font> (SL1*UL &lt; 0) <font color="#4169E1">THEN</font> AL1:=CL; VL:=1; 
+            <font color="#4169E1">ELSE</font> BL1:=CL; SL1:=UL; VL:=-1; <strong><font color="#4169E1">END</font></strong>; 
+         DL1:=RNDIF(BL1,AL1); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*bisect i2.*)</font> 
+      <font color="#4169E1">IF</font> TL &lt; 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> SL2 &gt; 1 <font color="#4169E1">THEN</font> SL2:=AFUPSR(M,MB,I,A2,BL2); <strong><font color="#4169E1">END</font></strong>; 
+         CL:=RIB(AL2,BL2); UL:=AFUPSR(M,MB,I,A2,CL); 
+         <font color="#4169E1">IF</font> (SL2 = 0) <font color="#4169E1">OR</font> (SL2*UL &lt; 0) <font color="#4169E1">THEN</font> AL2:=CL; VL:=-1; 
+            <font color="#4169E1">ELSE</font> BL2:=CL; SL2:=UL; VL:=1; <strong><font color="#4169E1">END</font></strong>; 
+         DL2:=RNDIF(BL2,AL2); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*i1 and i2 disjoint.*)</font> 
+      <font color="#4169E1">IF</font> (VL &lt; 0) <font color="#4169E1">AND</font> (RNCOMP(BL1,AL2) &lt; 0) <font color="#4169E1">THEN</font> SL:=-1; EXIT; <font color="#B22222">(*loop*)</font>
+         <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> (VL &gt; 0) <font color="#4169E1">AND</font> (RNCOMP(BL2,AL1) &lt; 0) 
+            <font color="#4169E1">THEN</font> SL:=1; EXIT; <font color="#B22222">(*loop*)</font> 
+            <font color="#4169E1">ELSE</font> <font color="#B22222">(*GO TO 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+      IS1:=LIST2(AL1,BL1); IS2:=LIST2(AL2,BL2); RETURN; 
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> AFPRRS; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFPSUM</font></strong>(RL,A,B: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial sum. A and B are polynomials over
+Q( alpha ) in r variables, r ge 1, for some algebraic number
+alpha.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, BL, BP, C, CL, CP, EL, FL, RLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=AFSUM(A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1; 
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP); 
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); 
+                CP:=COMP2(AL,EL,CP); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP); 
+                   CP:=COMP2(BL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP); 
+                   ADV2(BP, FL,BL,BP); 
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=AFSUM(AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=AFPSUM(RLP,AL,BL); <strong><font color="#4169E1">END</font></strong>; 
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font> 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AP:=BP; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=AP; <font color="#4169E1">ELSE</font> C:=INV(CP); SRED(CP,AP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(C); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> AFPSUM; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFSUPB</font></strong>(M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field squarefree univariate polynomial squarefree
+basis.  M is the rational minimal polynomial of an algebraic number
+alpha.  A eq (a sub 1 ,... , a sub n ), n ge 0, is a list of monic
+squarefree univariate polynomials over Q( alpha ), each of which
+is of positive degree.  B is a coarsest squarefree basis for A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   A1, AP, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=BETA; AP:=A; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, A1,AP); B:=AFUPBA(M,A1,B); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFSUPB; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPBA</font></strong>(M,A,B: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field univariate polynomial squarefree basis
+augmentation.  M is the rational minimal polynomial of an algebraic
+number alpha.  A is a monic squarefree univariate polynomial over
+Q( alpha ), of positive degree.  B eq (b sub 1 ,... , b sub s ),
+s ge 0, is a squarefree basis of univariate polynomials over
+Q( alpha ).  BS is a coarsest squarefree basis for
+(a,b sub 1 ,... , b sub s ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   ABP, AP, B1, BB1, BP, BS, C: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; BP:=B; BS:=BETA; 
+      <font color="#4169E1">WHILE</font> (BP &lt;&gt; SIL) <font color="#4169E1">AND</font> (PDEG(AP) &gt; 0) <font color="#4169E1">DO</font> ADV(BP, B1,BP); 
+            AFUPGC(M,AP,B1, C,ABP,BB1); 
+            <font color="#4169E1">IF</font> PDEG(C) &gt; 0 <font color="#4169E1">THEN</font> BS:=COMP(C,BS); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> PDEG(BB1) &gt; 0 <font color="#4169E1">THEN</font> BS:=COMP(BB1,BS); <strong><font color="#4169E1">END</font></strong>; 
+            AP:=ABP; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> PDEG(AP) &gt; 0 <font color="#4169E1">THEN</font> BS:=COMP(AP,BS); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">WHILE</font> BP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BP, B1,BP); BS:=COMP(B1,BS); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(BS); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFUPBA; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPCB</font></strong>(M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field univariate polynomial coarsest squarefree basis. 
+M is the rational minimal polynomial of an algebraic number alpha. 
+A eq (a sub 1 ,... , a sub n ), n ge 0, is a
+list of monic univariate polynomials over Q( alpha ), each of
+which is of positive degree.  B is a coarsest squarefree basis for A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   A1, AP, AP1, AS, B, L, L1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AS:=BETA; AP:=A; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, A1,AP); L:=AFUPSF(M,A1); 
+            <font color="#4169E1">REPEAT</font> ADV(L, L1,L); AP1:=SECOND(L1); AS:=COMP(AP1,AS); 
+                   <font color="#4169E1">UNTIL</font> L = SIL; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      B:=AFSUPB(M,AS); RETURN(B); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFUPCB; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPGC</font></strong>(M,A,B: LIST;  <strong><font color="#228B22">VAR</font></strong> C,AB,BB: LIST); 
+<font color="#B22222">(*Algebraic number field univariate polynomial greatest common divisor
+and cofactors.  A and B are univariate polynomials over
+Q( alpha ) for some algebraic number alpha.  M is the rational
+minimal polynomial of alpha.  C eq gcd(A,B), a monic polynomial.
+If C ne 0, then AB eq A/C and BB eq B/C, otherwise AB eq 0 and BB eq 0.
+*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, J1Y, ML, NL, Q, R: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq b eq 0.*)</font> 
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">AND</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; AB:=0; BB:=0; RETURN; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a eq 0 or b eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=AFPMON(1,M,B); AB:=0; J1Y:=PLDCF(B); 
+         BB:=PINV(0,J1Y,1); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=AFPMON(1,M,A); BB:=0; J1Y:=PLDCF(A); 
+         AB:=PINV(0,J1Y,1); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> ML:=PDEG(A); NL:=PDEG(B); 
+      <font color="#4169E1">IF</font> ML &gt;= NL <font color="#4169E1">THEN</font> AP:=A; C:=AFPMON(1,M,B); <font color="#4169E1">ELSE</font> AP:=B; 
+         C:=AFPMON(1,M,A); <strong><font color="#4169E1">END</font></strong>; 
+LOOP
+      <font color="#B22222">(*REPEAT*)</font> AFPQR(1,M,AP,C, Q,R); 
+                 <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 4;*)</font> 
+                          <font color="#4169E1">ELSE</font> AP:=C; C:=AFPMON(1,M,R); <strong><font color="#4169E1">END</font></strong>; 
+                 <font color="#B22222">(*UNTIL SIL;*)</font> 
+      <font color="#B22222">(*EXIT;*)</font> <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*make up cofactors.*)</font> AFPQR(1,M,A,C, AB,R); AFPQR(1,M,B,C,
+      BB,R); RETURN; 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> AFUPGC; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPGS</font></strong>(M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial greatest squarefree divisor.
+M is the rational minimal polynomial of an algebraic number alpha.
+A is a univariate polynomial over Q( alpha ).  If A eq 0 then
+B eq 0.  Otherwise B is the monic associate of the greatest
+squarefree divisor of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, BP, C, D: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font> 
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> B:=AFPMON(1,M,A); 
+      <font color="#4169E1">IF</font> PDEG(B) &gt; 0 <font color="#4169E1">THEN</font> BP:=AFPDMV(1,M,B); AFUPGC(M,B,BP, C,B,D); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> AFUPGS; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPRB</font></strong>(MB,I,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field univariate polynomial root bound.  MB is
+the integral minimal polynomial of a real algebraic number alpha.
+I is an acceptable isolating interval for alpha.  A is a monic
+univariate polynomial over Q( alpha ) of positive degree.
+B is a binary rational number which is a root bound for A.
+If A(x) eq x sup n + sum from (i eq 0) to n-1 (a sub i x sup i),
+then B is the smallest power of 2 such that 2 cdot (abs(a sub n-k ))
+sup 1/k le B for 1 le k le n.  If a sub n-k eq 0 for 1 le k le n
+then B eq 1.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AL1, AP, BL, EL, HL, HL1, HL2, HLP, IL, J, J1Y, N, NL, NL1,
+      QL, RL, TL, UL, VL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> ADV2(A, NL,AL,AP); 
+LOOP 
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> EL:=-1; EXIT; <font color="#B22222">(* GO TO 3;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+      TL:=0; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*process terms.*)</font> 
+      <font color="#4169E1">REPEAT</font> ADV2(AP, NL1,AL1,AP); IL:=NL-NL1; ANFAF(MB,I,AL1, N,J); 
+             J:=ISFPIR(N,J,0); FIRST2(J, UL,VL); 
+             <font color="#4169E1">IF</font> UL = 0 <font color="#4169E1">THEN</font> RNFCL2(VL, HLP,HL); <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> VL = 0 <font color="#4169E1">THEN</font> RNFCL2(UL, HLP,HL); <font color="#4169E1">ELSE</font> RNFCL2(UL,
+                   HLP,HL1); RNFCL2(VL, HLP,HL2); HL:=MASMAX(HL1,HL2); <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             MASQREM(HL,IL, QL,RL); 
+             <font color="#4169E1">IF</font> RL &gt; 0 <font color="#4169E1">THEN</font> QL:=QL+1; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> (TL = 0) <font color="#4169E1">OR</font> (QL &gt; EL) <font color="#4169E1">THEN</font> EL:=QL; <strong><font color="#4169E1">END</font></strong>; 
+             TL:=1; 
+             <font color="#4169E1">UNTIL</font> AP = SIL; 
+      EXIT; <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font> 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*compute b.*)</font> J1Y:=EL+1; BL:=RNP2(J1Y); RETURN(BL); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFUPRB; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPRL</font></strong>(M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field polynomial, root of a linear polynomial.  A
+is an element of Q( alpha )(x) of degree one, for some algebraic
+number alpha.  M is the rational minimal polynomial of alpha.
+a is the unique element of Q( alpha ) such that A(a) eq 0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, CL, DL, J1Y, L: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> PRED(A) = 0 <font color="#4169E1">THEN</font> AL:=0; <font color="#4169E1">ELSE</font> L:=PCL(A); FIRST2(L, CL,DL); 
+         J1Y:=AFNEG(DL); AL:=AFQ(M,J1Y,CL); RETURN(AL); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> RETURN(AL); <strong><font color="#4169E1">END</font></strong> AFUPRL; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPSF</font></strong>(M,A: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field univariate polynomial squarefree factorization.
+M is the rational minimal polynomial of an algebraic number alpha.
+A is a monic univariate polynomial over Q( alpha ) of positive degree.
+L is the list ((e sub 1 ,a sub 1 ) ,... , (e sub k ,a sub k )),
+where A eq prod from (i eq 1) to k (a sub i sup (e sub i)) is the
+squarefree factorization of A, with 1 le e sub 1 lt e sub 2
+le ...   lt e sub k and each a sub i a monic squarefree polynomial
+of positive degree.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, B, BP, C, CP, D, J1Y, JL, L: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> L:=BETA; AP:=AFPDMV(1,M,A); AFUPGC(M,A,AP,
+      B,C,CP); JL:=1; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute factors.*)</font> 
+      <font color="#4169E1">WHILE</font> PDEG(B) &gt; 0 <font color="#4169E1">DO</font> AFUPGC(M,B,C, D,BP,CP); 
+            <font color="#4169E1">IF</font> PDEG(CP) &gt; 0 <font color="#4169E1">THEN</font> J1Y:=LIST2(JL,CP); L:=COMP(J1Y,L); 
+               <strong><font color="#4169E1">END</font></strong>; 
+            B:=BP; C:=D; JL:=JL+1; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> J1Y:=LIST2(JL,C); L:=COMP(J1Y,L); L:=INV(L); 
+      RETURN(L); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AFUPSF; 
+
+
+<strong><font color="#4169E1">PROCEDURE AFUPSR</font></strong>(M,MB,I,A,CL: LIST): LIST; 
+<font color="#B22222">(*Algebraic number field univariate polynomial, sign at a rational
+point.  M is the rational minimal polynomial of a real algebraic
+number alpha.  MB is the integral minimal polynomial of alpha.
+I is an acceptable isolating interval for alpha.  A is a
+univariate polynomial over Q( alpha ).  c is a rational number.
+s eq sign(A(c)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, BL, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AL:=AFFRN(CL); BL:=AFPEMV(1,M,A,AL); SL:=AFSIGN(MB,I,BL); 
+      RETURN(SL); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> AFUPSR; 
+
+
+<strong><font color="#4169E1">PROCEDURE ANDWR</font></strong>(M,I,NL: LIST); 
+<font color="#B22222">(*Algebraic number decimal write.  M is the integral minimal polynomial
+of a real algebraic number alpha.  I is an acceptable isolating
+interval for alpha.  n is a nonnegative integer.  alpha is
+approximated by a rational number r with inaccuracy of approximation
+at most 10 sup -(n+1).  Then r is approximated by a decimal
+fraction d with n decimal digits following the decimal point and
+d is written in the output stream.  The inaccuracy of the approximation
+of d to r is at most (1/2) 10 sup -n.  If abs(d) gt abs(r) then
+the last digit is followed by $=-. If abs(d) lt abs(r) then by $=+.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   J, J1Y, R: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> PDEG(M) = 1 <font color="#4169E1">THEN</font> R:=IUPRLP(M); <font color="#4169E1">ELSE</font> J1Y:=NL+1; 
+         J:=ISFPIR(M,I,J1Y); R:=FIRST(J); <strong><font color="#4169E1">END</font></strong>; 
+      RNDWRS(R,NL); RETURN; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ANDWR; 
+
+
+<strong><font color="#4169E1">PROCEDURE ANFAF</font></strong>(M,I,AL: LIST;  <strong><font color="#228B22">VAR</font></strong> N,J: LIST); 
+<font color="#B22222">(*Algebraic number from algebraic number field element.  M is the
+integral minimal polynomial of a real algebraic number alpha.
+I is an acceptable isolating interval for alpha.  a is an
+element of Q( alpha ).  N is the integral minimal polynomial of a,
+and J is an acceptable isolating interval for a.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   A, B, BL1, BL2, C, DL, J1Y, J2Y, L, SL1, SL2, UL1, UL2, VL1,
+     VL2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a rational.*)</font> 
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> N:=PMON(1,1); J:=LIST2(0,0); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> PDEG(AL) = 0 <font color="#4169E1">THEN</font> J1Y:=-1; J1Y:=RNINT(J1Y); 
+         J2Y:=SECOND(AL); N:=PBIN(J1Y,1,J2Y,0); IPSRP(1,N, DL,N); 
+         L:=IPRIM(N); J:=FIRST(L); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*find minimal polynomial.*)</font> J1Y:=-1; J1Y:=RNINT(J1Y); 
+      J1Y:=PMON(J1Y,0); A:=PBIN(J1Y,1,AL,0); IPSRP(2,A, DL,A); 
+      J1Y:=LIST2(2,1); A:=PPERMV(2,A,J1Y); B:=PINV(1,M,1); 
+      C:=IPRES(2,A,B); N:=IPPGSD(1,C); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find acceptable isolating interval.*)</font> L:=IPRIM(N); 
+      <font color="#4169E1">REPEAT</font> ADV(L, J,L); FIRST2(J, UL1,UL2); VL1:=PMON(UL1,0); 
+             VL2:=PMON(UL2,0); BL1:=AFDIF(AL,VL1); BL2:=AFDIF(AL,VL2); 
+             SL1:=AFSIGN(M,I,BL1); SL2:=AFSIGN(M,I,BL2); 
+             <font color="#4169E1">IF</font> SL1*SL2 = -1 <font color="#4169E1">THEN</font> RETURN; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> FALSE; 
+<font color="#B22222">(*6*)</font> RETURN; <strong><font color="#4169E1">END</font></strong> ANFAF; 
+
+
+<strong><font color="#4169E1">PROCEDURE ANIIPE</font></strong>(MB,I,NB,J,TL,L: LIST;  <strong><font color="#228B22">VAR</font></strong> S,KL,K: LIST); 
+<font color="#B22222">(*Algebraic number isolating interval for a primitive element.
+MB is the integral minimal polynomial of a real algebraic number
+alpha.  I is a binary rational isolating interval for alpha
+which is either left-open and right-closed or a one-point interval.
+NB is the integral minimal polynomial of a real algebraic number
+beta.  J is a binary rational isolating interval for beta which
+is either left-open and right-closed or a one-point interval.
+t is an integer such that Q( alpha +t beta ) eq
+Q( alpha , beta ).  If degree(MB) eq 1 and degree(NB) eq 1,
+then L is a list containing a primitive positive integral polynomial
+p of degree 1, s eq p, k eq 1, and k is a binary rational isolating
+interval for the real root of p which is either left-open and
+right-closed or a one-point interval.  If degree(mb) eq 1,
+degree(NB) gt 1, then l eq (NB), S eq NB, k eq 1, and k eq j.
+If degree(MB) gt 1, degree(NB) eq 1, then L eq (MB), S eq MB, k eq 1,
+and k eq i.  If degree(MB) gt 1, degree(NB) gt 1, then L is a nonempty
+list of positive irreducible univariate integral polynomials exactly
+one of which has alpha +t beta as a root.  S is the element of L
+having alpha +t beta as a root, k is the index of S in L, and
+k is a left-open, right-closed binary rational isolating interval
+for alpha +t beta as a root of S.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, BL, CL, CLS, DL, DLS, EL, J1Y, J2Y, JP, JS, KLP, L1, LP, ML,
+      NL, SL1, SL2, SLP, TLP, VL, VLP: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*mb or nb has degree 1.*)</font> KL:=1; ML:=PDEG(MB); NL:=PDEG(NB); 
+      <font color="#4169E1">IF</font> (ML = 1) <font color="#4169E1">AND</font> (NL = 1) <font color="#4169E1">THEN</font> S:=FIRST(L); K:=IPRIM(S); 
+         K:=FIRST(K); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> ML = 1 <font color="#4169E1">THEN</font> S:=NB; K:=J; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> S:=MB; K:=I; RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialization.*)</font> FIRST2(I, AL,BL); SL1:=IUPBES(MB,BL); JP:=J; 
+      FIRST2(J, CL,DL); SL2:=IUPBES(NB,DL); TLP:=RNINT(TL); 
+LOOP
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*make new interval.*)</font> JS:=RIRNP(JP,TLP); FIRST2(JS, CLS,DLS); 
+      J1Y:=RNSUM(AL,CLS); J2Y:=RNSUM(BL,DLS); K:=LIST2(J1Y,J2Y); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*test for real roots of each l sub i in current interval.*)</font> 
+LOOP
+      VL:=0; KLP:=0; LP:=L; 
+      <font color="#4169E1">REPEAT</font> ADV(LP, L1,LP); KLP:=KLP+1; VLP:=IUPVOI(L1,K); 
+             <font color="#4169E1">IF</font> VLP &gt; 1 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 5;*)</font> <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">IF</font> VLP = 1 <font color="#4169E1">THEN</font>
+                <font color="#4169E1">IF</font> VL = 1 <font color="#4169E1">THEN</font> EXIT; <font color="#B22222">(*GO TO 5;*)</font> 
+                          <font color="#4169E1">ELSE</font> VL:=1; S:=L1; KL:=KLP; 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> LP = SIL; 
+      RETURN; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font> 
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*bisect isolating intervals for alpha and beta.*)</font> 
+      EL:=RIB(AL,BL); SLP:=IUPBES(MB,EL); 
+      <font color="#4169E1">IF</font> SLP*SL1 &lt; 0 <font color="#4169E1">THEN</font> AL:=EL; <font color="#4169E1">ELSE</font> BL:=EL; SL1:=SLP; <strong><font color="#4169E1">END</font></strong>; 
+      EL:=RIB(CL,DL); SLP:=IUPBES(NB,EL); 
+      <font color="#4169E1">IF</font> SLP*SL2 &lt; 0 <font color="#4169E1">THEN</font> CL:=EL; <font color="#4169E1">ELSE</font> DL:=EL; SL2:=SLP; <strong><font color="#4169E1">END</font></strong>; 
+      JP:=LIST2(CL,DL); 
+      <font color="#B22222">(*GO TO 3;*)</font> 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> ANIIPE; 
+
+
+<strong><font color="#4169E1">PROCEDURE ANPEDE</font></strong>(MB,NB: LIST;  <strong><font color="#228B22">VAR</font></strong> TL,S,T: LIST); 
+<font color="#B22222">(*Algebraic number primitive element for a double extension.
+MB eq MB(x) is the integral minimal polynomial of a real algebraic
+number alpha.  NB eq NB(x) is the integral minimal polynomial
+of a real algebraic number beta.  t is an integer such that
+Q( alpha +t beta ) eq Q( alpha , beta ).  If degree(MB) eq 1
+and degree(NB) eq 1, then S eq (x), a list of length of length 1
+containing the polynomial x.  If degree(MB) eq 1 and degree(NB) gt 1,
+then S eq (NB).  If degree(MB) gt 1 and degree(NB) eq 1, then S eq (MB).
+If degree(MB) gt 1 and degree(NB1) gt 1, then S is a list of the
+integral minimal polynomials of all algebraic numbers of the
+form alpha sub i + t beta sub j, where alpha sub i is some
+conjugate of alpha and beta sub j is some conjugate of
+beta.  Where n ge 1 is the length of S, t is a list
+(m sub 1 sup * ,n sub 1 sup * ,... , m sub n sup * , n sub n sup * ).
+For 1 le k le n, where gamma sub k is a root of s sub k,
+m sub k sup * is the representation of alpha as an element
+of Q( gamma sub k ) and n sub k sup * is the representation
+of beta as an element of Q( gamma sub k ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   C, CL, J1Y, J2Y, ML, MP, MS, NL, NP, NS, P, R, RB, RBP, RP, S1,
+      SL, SP, SP1: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*mb and nb have degree 1.*)</font> TL:=1; ML:=PDEG(MB); NL:=PDEG(NB); 
+      <font color="#4169E1">IF</font> (ML = 1) <font color="#4169E1">AND</font> (NL = 1) <font color="#4169E1">THEN</font> J1Y:=PMON(1,1); 
+         S:=LIST1(J1Y); MS:=IUPRLP(MB); MS:=AFFRN(MS); NS:=IUPRLP(NB); 
+         NS:=AFFRN(NS); T:=LIST2(MS,NS); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*mb or nb has degree 1.*)</font> 
+      <font color="#4169E1">IF</font> ML = 1 <font color="#4169E1">THEN</font> S:=LIST1(NB); MS:=IUPRLP(MB); MS:=AFFRN(MS); 
+         J1Y:=RNINT(1); NS:=PMON(J1Y,1); T:=LIST2(MS,NS); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> S:=LIST1(MB); J1Y:=RNINT(1); MS:=PMON(J1Y,1); 
+         NS:=IUPRLP(NB); NS:=AFFRN(NS); T:=LIST2(MS,NS); RETURN; <strong><font color="#4169E1">END</font></strong>; 
+      NP:=PINV(1,NB,1); 
+LOOP 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find t such that alpha +t beta is primitive.*)</font> J1Y:=-TL; 
+      J1Y:=PMON(J1Y,0); J2Y:=PMON(1,1); P:=PBIN(J1Y,1,J2Y,0); 
+      J1Y:=LIST1(P); MP:=IPGSUB(1,MB,2,J1Y); R:=IPRES(2,MP,NP); 
+      RP:=IPDMV(1,R); IPGCDC(1,R,RP, C,RB,RBP); 
+      <font color="#4169E1">IF</font> PDEG(C) &gt; 0 <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> TL &gt; 0 <font color="#4169E1">THEN</font> TL:=-TL; <font color="#4169E1">ELSE</font> J1Y:=-TL; TL:=J1Y+1; <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#B22222">(*GO TO 3;*)</font>
+         <font color="#4169E1">ELSE</font> EXIT; <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*get minimal polynomials for conjugates 
+      alpha sub i + t beta sub j . construct representations for 
+      alpha and beta as elements of Q( alpha sub i + t beta sub j ). *)</font> 
+      IPSCPP(1,R, SL,CL,R); S:=IUSFPF(R); SP:=S; T:=BETA; 
+      <font color="#4169E1">REPEAT</font> ADV(SP, S1,SP); SP1:=RPMAIP(1,S1); 
+             NS:=ANREPE(SP1,S1,MP,NP); J1Y:=AFFINT(TL); 
+             MS:=AFPROD(SP1,J1Y,NS); J1Y:=RNINT(1); J1Y:=PMON(J1Y,1); 
+             MS:=AFDIF(J1Y,MS); T:=COMP2(NS,MS,T); 
+             <font color="#4169E1">UNTIL</font> SP = SIL; 
+      T:=INV(T); RETURN; 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ANPEDE; 
+
+
+<strong><font color="#4169E1">PROCEDURE ANREPE</font></strong>(M,MB,A,B: LIST): LIST; 
+<font color="#B22222">(*Algebraic number represent element of a primitive extension.
+M is the rational minimal polynomial of an algebraic number
+gamma.  MB is the integral minimal polynomial of gamma.
+A and B are elements of Q( gamma ) (y) which can be and are
+represented as bivariate integral polynomials, i.e. as elements
+of Z(x,y).  A eq AP(x-ty) for a minimal polynomial AP of an
+algebraic number alpha, and B eq B(y) is the minimal polynomial
+of an algebraic number beta.  gamma is a primitive element
+for alpha and beta.  B is a univariate rational polynomial
+which is the representation for beta as an element of Q( gamma ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, BL, C0, C1, D, EL0, EL1, QL, R, RL, S, S1, T: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*get subresultant of degree one of a and b.*)</font> 
+      <font color="#4169E1">IF</font> PDEG(A) &gt; PDEG(B) <font color="#4169E1">THEN</font> S:=IPSPRS(2,A,B); <font color="#4169E1">ELSE</font>
+         S:=IPSPRS(2,B,A); <strong><font color="#4169E1">END</font></strong>; 
+      S:=INV(S); S1:=SECOND(S); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*reduce coefficients mod m.*)</font> FIRST4(S1, EL1,C1,EL0,C0); 
+      C1:=RPFIP(1,C1); C0:=RPFIP(1,C0); RPQR(1,C1,M, QL,C1); 
+      RPQR(1,C0,M, QL,C0); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*find similar integral polynomial for leading coefficient.*)</font> 
+      IPSRP(1,C1, AL,C1); C0:=RPRNP(1,AL,C0); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*multiply c sub 0 by negated inverse of c sub 1.*)</font> IUPRC(MB,C1,
+      T,RL); R:=RNRED(1,RL); R:=RNNEG(R); T:=RPFIP(1,T); 
+      D:=AFPROD(M,T,C0); BL:=RPRNP(1,R,D); RETURN(BL); 
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> ANREPE; 
+
+
+<strong><font color="#4169E1">PROCEDURE APDWR</font></strong>(M,I,BL,NL: LIST); 
+<font color="#B22222">(*Algebraic point, decimal write.  M,I, and b constitute the
+representation of an algebraic point in r-dimensional euclidean
+space for some r ge 1.  n is a nonnegative integer.  For each
+coordinate b sub i of b, b sub i is represented by a rational
+number r sub i with inaccuracy of approximation at most
+10 sup -(n+1).  Then r sub i is approximated by a decimal
+fraction d sub i with n decimal digits following the decimal
+point, and d sub i is written in the output stream.  The
+inaccuracy of the approximation of d sub i to r sub i is
+at most (1/2) 10 sup -n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   BL1, BLP, J, N: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BLP:=BL; SWRITE("( "); 
+      <font color="#4169E1">WHILE</font> BLP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(BLP, BL1,BLP); ANFAF(M,I,BL1, N,J); 
+            ANDWR(N,J,NL); 
+            <font color="#4169E1">IF</font> BLP &lt;&gt; SIL <font color="#4169E1">THEN</font> SWRITE(", "); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE(" )"); RETURN; 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> APDWR; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPAFME</font></strong>(RL,M,A,BL: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial, algebraic number field multiple evaluation.
+A is an integral polynomial in r
+variables, r ge 1.  M is the rational minimal polynomial of an
+algebraic number alpha.   b eq (b sub 1 ,... , b sub k ) is
+a list of k elements of Q( alpha ), for some k, 1 le k le r.
+b eq a(b sub 1 ,... , b sub k , x sub k+1 ,... , x sub r ),
+an element of Q( alpha )(x sub k+1 ,... , x sub r ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert a to a polynomial over Q( alpha ).*)</font> AP:=AFPFIP(RL,A); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*evaluate at b.*)</font> B:=AFPME(RL,M,AP,BL); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPAFME; 
+
+
+<strong><font color="#4169E1">PROCEDURE IUPMRN</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial minimal polynomial of a rational number. 
+R is a rational number.  M is the integral minimal polynomial of R.*)</font>
+<strong><font color="#228B22">VAR</font></strong>   J1Y, M, R1, R2: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> M:=PMON(1,1); <font color="#4169E1">ELSE</font> FIRST2(R, R1,R2); 
+         J1Y:=INEG(R1); M:=PBIN(R2,1,J1Y,0); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(M); 
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IUPMRN; 
+
+
+<strong><font color="#4169E1">PROCEDURE RPAFME</font></strong>(RL,M,A,BL: LIST): LIST; 
+<font color="#B22222">(*Rational polynomial, algebraic number field multiple evaluation.
+A is a rational polynomial in r
+variables, r ge 1.  M is the rational minimal polynomial of an
+algebraic number alpha.   b eq (b sub 1 ,... , b sub k ) is
+a list of k elements of Q( alpha ), for some k, 1 le k le r.
+B eq A(b sub 1 ,... , b sub k , x sub k+1 ,... , x sub r ),
+an element of Q( alpha )(x sub k+1 ,... , x sub r ).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   AP, B: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*convert a to a polynomial over Q( alpha ).*)</font> AP:=AFPFRP(RL,A); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*evaluate at b.*)</font> B:=AFPME(RL,M,AP,BL); RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> RPAFME; 
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT8.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

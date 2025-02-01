@@ -1,0 +1,75 @@
+
+<html>
+<head>
+<title>./masib/DIPRNIB.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPRNIB.md,v 1.1 1995/10/12 14:44:59 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPRNIB.md,v $
+ * Revision 1.1  1995/10/12 14:44:59  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPRNIB;
+
+<font color="#B22222">(* DIP Rational Numbers Polynomial Definition Module in the sense of Janet. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPRNIB.md,v 1.1 1995/10/12 14:44:59 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1995 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE DIRPNFJ</font></strong>(P,S: LIST): LIST; 
+<font color="#B22222">(*Distributive rational polynomial normal form in the sense of Janet. 
+  P is a list of non zero polynomials in distributive
+  representation in r variables. S is a distributive
+  polynomial. The result R is a polynomial such that S is reducible to R
+  modulo P in the sense of Janet and R is in normalform with respect to P. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIRLISJ</font></strong>(P: LIST): LIST;
+<font color="#B22222">(*Distributive rational polynomial list irreducible set.
+  P is a list of distributive polynomials,
+  The result is a set of polynomials, such that each polynomial p is in
+  Janet-normalform modulo P-(p) *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIRPCOM</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive rational polynom complete system.
+   Subalgorithm for computing Invbase.
+   Input: Distributive polynomial list F.
+   Output: G: complete system, such that Ideal(G) = Ideal(F). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIRPIB2</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive rational polynom involutive basis.
+   Mainalgorithm for computing Invbase.
+   Input: Distributive polynomial list F.
+   Output: G: involutive system, such that Ideal(G) = Ideal(F). *)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIRPIB</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Second Algorithm for computing the involutive Base for a given F.
+   Input: Distributiv Rational Polynomial List F.
+   Output: Equivalent involutive system G.*)</font>
+
+<strong><font color="#4169E1">END</font></strong> DIPRNIB.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

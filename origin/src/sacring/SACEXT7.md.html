@@ -1,0 +1,106 @@
+
+<html>
+<head>
+<title>./sacring/SACEXT7.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACEXT7.md,v 1.2 1992/02/12 17:34:53 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACEXT7.md,v $
+ * Revision 1.2  1992/02/12  17:34:53  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:15:35  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACEXT7;
+
+<font color="#B22222">(* SAC Extensions 7 Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACEXT7.md,v 1.2 1992/02/12 17:34:53 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<font color="#B22222">(* -- depends on IPRRII :-(
+PROCEDURE IPRICL(A: LIST): LIST; 
+(*Integral polynomial real root isolation, Collins-Loos algorithm.
+A is an integral polynomial.  L is a strong isolation list for A.*)</font>
+*)
+
+
+<font color="#B22222">(* -- zuviele gotos :-(
+PROCEDURE IPRRII(A,AP,DL,LP: LIST): LIST; 
+(*Integral polynomial real root isolation induction.  A is a primitive
+positive univariate integral polynomial of positive degree.  AP is
+the derivative of A.  D is a binary rational real root bound for A.
+LP is a strong isolation list for AP.  L is a strong isolation list
+for A.*)</font>
+*)
+
+
+<strong><font color="#4169E1">PROCEDURE IPRRRI</font></strong>(A,B,I,SL1,TL1: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial relative real root isolation.  A and B are
+univariate integral polynomials.  I is a left-open, right-closed
+interval (a sub 1 ,a sub 2 ) where al sub 1 and al sub 2 are
+binary rational numbers with al sub 1 lt al sub 2.  A and B have
+unique roots, alpha and beta respectively, in I, each of odd
+multiplicity and with alpha ne beta.  sl sub 1 eq
+sign(A(al sub 1 +)) and tl sub 1 eq sign(B(al sub 1 +)).
+is eq (al sub 1 sup * ,al sub 2 sup * ) is al left-open, right-closed
+subinterval of I with al sub 1 sup * and al sub 2 sup *
+binary rational numbers and al sub 1 sup * lt al sub 2 sup *,
+such that is contains alpha but not beta.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IPSIFI</font></strong>(A,I: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial standard isolating interval from isolating interval.
+I is an interval with binary rational endpoints, which is either 
+left-open and right-closed or a one-point interval.  A is a univariate
+integral polynomial which has a unique root alpha
+of odd multiplicity in I.  If I is a one-point interval, then
+J=I.  If I is left-open and right-closed, then J is either a
+standard left-open and right-closed subinterval of I containing
+alpha, or if alpha is a binary rational number, J may
+possibly instead be the one-point interval ( alpha , alpha ).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ISFPIR</font></strong>(A,I,KL: LIST): LIST; 
+<font color="#B22222">(*Integral squarefree polynomial isolating interval refinement.
+A is a squarefree univariate integral polynomial.  I is an
+isolating interval for a real root alpha of A.  k is a
+nonnegative beta -integer.  J is a subinterval of I isolating alpha
+with length less than 10 sup -k.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IUPVOI</font></strong>(A,I: LIST): LIST; 
+<font color="#B22222">(*Integral univariate polynomial, variations for open interval.
+A is a non-zero integral univariate polynomial.  I is an open
+interval (a,b) with a and b binary rational numbers such that
+a lt b.  Let t(z) be the transformation mapping the right half-plane
+onto the circle having I as diameter.  Let B(X) eq A(t(X)).
+then v is the number of sign variations in the coefficients of B.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACEXT7.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

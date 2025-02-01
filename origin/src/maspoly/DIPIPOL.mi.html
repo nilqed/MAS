@@ -1,0 +1,133 @@
+
+<html>
+<head>
+<title>./maspoly/DIPIPOL.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:33+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPIPOL.mi,v 1.3 1992/10/15 16:28:36 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPIPOL.mi,v $
+ * Revision 1.3  1992/10/15  16:28:36  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:51  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:03  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPIPOL;
+
+<font color="#B22222">(* DIP Integer Polynomial Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT INV, LIST, SIL, BETA, ADV, 
+                    SFIRST, SRED, COMP, FIRST, RED, LENGTH;
+
+FROM SACLIST IMPORT LIST2, FIRST2, COMP2, LIST3;
+
+FROM SACD IMPORT DRANN, DQR;
+
+FROM SACI IMPORT IRAND;
+
+FROM SACIPOL IMPORT IPABS, IPPROD, IPIP, IPSUM;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPIPOL.mi,v 1.3 1992/10/15 16:28:36 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE VIPIIP</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Vector of integral polynomials with vector of integers inner product. 
+A is a vector of integral polynomials in r variables, r non-negative.
+B is a vector of integers. C is the inner product of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, CL, C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or b=0.*)</font> C:=0;
+      <font color="#4169E1">IF</font> (A = SIL) <font color="#4169E1">OR</font> (B = SIL) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B;
+      <font color="#4169E1">REPEAT</font> ADV(AP, AL,AP); ADV(BP, BL,BP);
+             CL:=IPIP(RL,BL,AL); C:=IPSUM(RL,C,CL); 
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> VIPIIP;
+
+
+<strong><font color="#4169E1">PROCEDURE HIPRAN</font></strong>(RL,KL,QL,NL: LIST): LIST; 
+<font color="#B22222">(*Homogeneous integral polynomial random.  k is a positive
+beta-digit. q is a rational number q1/q2 with
+0 lt q1 le q2 lt beta. n is a non-negative beta-digit
+r ge 0.  A is a random homogeneous integral polynomial
+in r variables with homogeneous degree n. max norm of
+A lt 2**k and q is the probability that any
+particular term of A has a non-zero coefficient.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, DL, EL, J1Y, QL1, QL2, QLS, RLP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl gt 1.*)</font> 
+      <font color="#4169E1">IF</font> RL &gt; 1 <font color="#4169E1">THEN</font> RLP:=RL-1; A:=BETA; EL:=0; 
+         <font color="#4169E1">WHILE</font> EL &lt;= NL <font color="#4169E1">DO</font> J1Y:=NL-EL; AL:=HIPRAN(RLP,KL,QL,J1Y); 
+               <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(EL,AL,A); <strong><font color="#4169E1">END</font></strong>; 
+               EL:=EL+1; <strong><font color="#4169E1">END</font></strong>; 
+         <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute qls=int(ql*beta).*)</font> FIRST2(QL, QL1,QL2); 
+      DQR(QL1,0,QL2, QLS,TL); A:=0; AL:=0; DL:=DRANN(); 
+      <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> AL:=IRAND(KL); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl=1 or 0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> A:=AL; <font color="#4169E1">ELSE</font> A:=LIST2(NL,AL); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(A); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> HIPRAN; 
+
+
+<strong><font color="#4169E1">PROCEDURE IPRAN</font></strong>(RL,KL,QL,N: LIST): LIST; 
+<font color="#B22222">(*Integral polynomial random.  k is a positive beta-digit.
+q is a rational number q1/q2 with 0 lt q1 le q2 lt beta.
+N is a list (n sub r, ...,n sub 1) of non-negative beta-digits
+r ge 0.  A is a random integral polynomial in r variables
+with deg sub i of a le n sub i + 1 for 1 le i le r.
+Max norm of A lt 2**k and q is the probability that any
+particular term of A has a non-zero coefficient. Modified
+version, original version by G. E. Collins. *)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, DL, EL, NL, NP, QL1, QL2, QLS, RLP, TL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute qls=int(ql*beta).*)</font> FIRST2(QL, QL1,QL2); 
+      DQR(QL1,0,QL2, QLS,TL); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font> 
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> DL:=DRANN(); 
+         <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> A:=IRAND(KL); <font color="#4169E1">ELSE</font> A:=0; <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 0.*)</font> RLP:=RL-1; ADV(N, NL,NP); A:=BETA; EL:=0; 
+      <font color="#4169E1">WHILE</font> EL &lt;= NL <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> DL:=DRANN(); 
+               <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> AL:=IRAND(KL); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">ELSE</font> AL:=IPRAN(RLP,KL,QL,NP); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(EL,AL,A); <strong><font color="#4169E1">END</font></strong>; 
+            EL:=EL+1; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(A); 
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPRAN; 
+
+
+<strong><font color="#4169E1">END</font></strong> DIPIPOL.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

@@ -1,0 +1,181 @@
+
+<html>
+<head>
+<title>./masroot/RRUADOM.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-03-06T15:23:16+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: RRUADOM.mi,v 1.1 1994/03/11 15:21:52 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: RRUADOM.mi,v $
+ * Revision 1.1  1994/03/11  15:21:52  pesch
+ * Counting real roots of multivariate polynomials, Diplomarbeit F. Lippold
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE RRUADOM;
+<font color="#B22222">(* Real Root Univariate Arbitrary Domain Implementation Module *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASSTOR IMPORT LIST, SIL, ADV, COMP, INV, FIRST, LIST1, LENGTH;
+
+FROM SACLIST IMPORT CINV, SUFFIX, REDUCT, CONC, LIST2, LIST3, MEMBER, OWRITE;
+
+FROM DIPC IMPORT DIPDEG, DIPMAD, DIPMRD, DIPFMO;
+
+FROM DIPADOM IMPORT DIPNEG, DIPQR, DIPROD;
+
+FROM MASBIOS IMPORT BLINES, SWRITE;
+
+FROM MASADOM IMPORT ADFI, ADSIGN, ADSUM;
+
+FROM LINALG IMPORT ADVVSUM, ADVSVPROD, ADSIG, IMRTPROD;
+
+FROM RRADOM IMPORT RRVTEXT, RRCSR;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: RRUADOM.mi,v 1.1 1994/03/11 15:21:52 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1993 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE RRUADPOLTOVEC</font></strong>(D,g,d: LIST): LIST;
+<font color="#B22222">(* Real root univariate arbitrary domain polynomial to vector. 
+   g is an univariate polynomial of domain D with degree less than d. 
+   If a(i) is the coefficient of X**i in g then the list (a(p-1),...,a(0)) 
+   is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> v,a,t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  v := SIL; d:= d-1;
+  <font color="#4169E1">WHILE</font> g &lt;&gt; 0 <font color="#4169E1">DO</font>
+    DIPMAD(g,a,t,g);
+    <font color="#4169E1">IF</font> g = SIL <font color="#4169E1">THEN</font> g := 0 <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">WHILE</font> d &gt; FIRST(t) <font color="#4169E1">DO</font> v := COMP(ADFI(D,0),v); d:= d-1 <strong><font color="#4169E1">END</font></strong>;
+    v := COMP(a,v); d := d-1;
+  <strong><font color="#4169E1">END</font></strong>; 
+  <font color="#4169E1">WHILE</font> d &gt;= 0 <font color="#4169E1">DO</font> v := COMP(ADFI(D,0),v); d:= d-1 <strong><font color="#4169E1">END</font></strong>;
+  RETURN(INV(v));
+<strong><font color="#4169E1">END</font></strong> RRUADPOLTOVEC;
+
+<strong><font color="#4169E1">PROCEDURE RRUADSTRCONST</font></strong>(D,f,h: LIST): LIST;
+<font color="#B22222">(* Real root univariate arbitrary domain structure constants. 
+   f and h are univariate polynomials of domain D. 
+   f is monic with degree p &gt; 0. A matrix beta with entries beta[i,j] 
+   from D for 0 le i le p-1 and 0 le j le 3*p-3 is created, such that 
+   h * X**j = beta[0,j]+beta[1,j]*X+...+beta[p-1,j]X**(p-1) modulo f. 
+   beta is represented columnwise. *)</font>
+<strong><font color="#228B22">VAR</font></strong> beta,p,i,v,w,b,q,r: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  beta := SIL; 
+  p := DIPDEG(f);
+  <font color="#4169E1">IF</font> p &lt;= 0 <font color="#4169E1">THEN</font> RETURN(beta) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* r = h modulo f *)</font>
+  DIPQR(h,f,q,r);
+<font color="#B22222">(* create vector representation of -red(f) and r *)</font>
+  v := RRUADPOLTOVEC(D,DIPNEG(DIPMRD(f)),p);
+  w := RRUADPOLTOVEC(D,r,p);
+<font color="#B22222">(* compute structure constants *)</font>
+  beta := LIST1(CINV(w));
+  <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> 3*p-3 <font color="#4169E1">DO</font>
+    ADV(w,b,w);
+    w := SUFFIX(w,ADFI(D,0));
+    <font color="#4169E1">IF</font> ADSIGN(b) &lt;&gt; 0 <font color="#4169E1">THEN</font>
+      w := ADVVSUM(w,ADVSVPROD(v,b));
+    <strong><font color="#4169E1">END</font></strong>;
+    beta := COMP(CINV(w),beta);
+  <strong><font color="#4169E1">END</font></strong>;
+  beta := INV(beta);
+  RETURN(beta);
+<strong><font color="#4169E1">END</font></strong> RRUADSTRCONST;
+
+<strong><font color="#4169E1">PROCEDURE RRUADQUADFORM</font></strong>(beta: LIST): LIST;
+<font color="#B22222">(* Real root univariate arbitrary domain quadratic form. 
+   beta is the set of structure constants as computed by RRUADSTRCONST.
+   Let s(k) = tr(M(h)*M(X**k))=beta[0,k]+beta[1,k+1]+...+beta[p-1,k+p-1].
+   The matrix Q=(q(i,j)) with q(i,j) = s(i+j-2) is computed. *)</font>
+<strong><font color="#228B22">VAR</font></strong> Q,s,v,vs,w,x,y,i,p: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  Q := SIL; s := SIL;
+  <font color="#4169E1">IF</font> beta = SIL <font color="#4169E1">THEN</font> RETURN(Q) <strong><font color="#4169E1">END</font></strong>;
+  p := LENGTH(FIRST(beta)); i := 0; vs := SIL;
+<font color="#B22222">(* create the list s containing the sums of the diagonal elements of beta *)</font>
+  <font color="#4169E1">WHILE</font> beta &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(beta,w,beta); i := i+1; v := INV(vs);
+    <font color="#4169E1">IF</font> i &gt;= 2*p <font color="#4169E1">THEN</font> w := REDUCT(w,i+1-2*p); vs := SIL;
+                <font color="#4169E1">ELSE</font> ADV(w,y,w); vs := LIST1(y) <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">WHILE</font> v &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(v,x,v); ADV(w,y,w);
+      vs := COMP(ADSUM(x,y),vs);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> i &gt;= p <font color="#4169E1">THEN</font> ADV(vs,x,vs); s := COMP(x,s); <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* creating the matrix Q *)</font>
+  v := SIL; i := 0;
+  <font color="#4169E1">WHILE</font> s &lt;&gt; SIL <font color="#4169E1">DO</font>
+    ADV(s,x,s); i := i+1; vs := SIL;
+    <font color="#4169E1">WHILE</font> v &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(v,y,v); y := COMP(x,y);
+      vs := COMP(y,vs);
+    <strong><font color="#4169E1">END</font></strong>;
+    <font color="#4169E1">IF</font> i &lt;= p <font color="#4169E1">THEN</font> vs := COMP(LIST1(x),vs) <strong><font color="#4169E1">END</font></strong>;
+    v := INV(vs);
+    <font color="#4169E1">IF</font> i &gt;= p <font color="#4169E1">THEN</font> ADV(v,y,v); Q := COMP(y,Q) <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;
+  RETURN(Q);
+<strong><font color="#4169E1">END</font></strong> RRUADQUADFORM;
+
+<strong><font color="#4169E1">PROCEDURE RRUADCOUNT</font></strong>(D,f,H,v,tf: LIST): LIST;
+<font color="#B22222">(* Real root univariate arbirary domain count. 
+   f is a monic univariate polynomial of domain D with degree p &gt; 0. 
+   H is a list of univariate polynomials of length s. v is a vector of signs 
+   with length not greater than s. tf is the trace flag.
+   ZNL is a list of pairs (z,n) with n is an element of {-1,0,+1}**s and z &gt; 0
+   is the number of real zeroes of f wrt the sign condition n for the elements
+   of H. ZNL is sorted wrt the invers lexicographical order of the n. If there
+   does not exist any real zero or a zero satisfiing the sign condition v,
+   then the empty list is returned. *)</font>
+<strong><font color="#228B22">VAR</font></strong> ZNL,e,S,S1,S2,g,g0,g1,g2,gd,q,h,N,A,W,s,i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  e := DIPFMO(ADFI(D,1),LIST1(0));  <font color="#B22222">(* e = polynomial(1) *)</font>
+  s := ADSIG(D,RRUADQUADFORM(RRUADSTRCONST(D,f,e)));
+  <font color="#4169E1">IF</font> s = 0 <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+  <font color="#4169E1">IF</font> H = SIL <font color="#4169E1">THEN</font> ZNL := LIST1(LIST2(s,SIL)); RETURN(ZNL) <strong><font color="#4169E1">END</font></strong>;
+  S := LIST1(s); g := LIST1(e); N := LIST1(SIL);
+  A := LIST1(LIST1(1)); W := LIST3(LIST3(1,1,1),LIST3(-1,0,1),LIST3(1,0,1));
+  i := 0;
+  <font color="#4169E1">REPEAT</font>
+    ADV(H,h,H); i := i+1;
+    <font color="#4169E1">IF</font> tf = 1 <font color="#4169E1">THEN</font> BLINES(1); 
+                   SWRITE("Condition No. "); OWRITE(i); BLINES(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(* expanding the system *)</font>
+    N := RRVTEXT(N,LIST3(-1,0,1));
+    A := IMRTPROD(W,A);
+    S1 := SIL; S2 := SIL; g1 := SIL; g2 := SIL; g0 := g;
+    <font color="#4169E1">WHILE</font> g0 &lt;&gt; SIL <font color="#4169E1">DO</font>
+      ADV(g0,gd,g0);
+      DIPQR(DIPROD(gd,h),f,q,gd); g1 := COMP(gd,g1);
+      s := ADSIG(D,RRUADQUADFORM(RRUADSTRCONST(D,f,gd))); S1 := COMP(s,S1);
+      DIPQR(DIPROD(gd,h),f,q,gd); g2 := COMP(gd,g2);
+      s := ADSIG(D,RRUADQUADFORM(RRUADSTRCONST(D,f,gd))); S2 := COMP(s,S2);
+    <strong><font color="#4169E1">END</font></strong>;
+    S := CONC(S,CONC(INV(S1),INV(S2)));
+    g := CONC(g,CONC(INV(g1),INV(g2)));
+<font color="#B22222">(* solving the linear equation A*Z=S and reduce the system *)</font>
+    ZNL := RRCSR(i,v,tf,A,N,S,g);
+  <font color="#4169E1">UNTIL</font> (ZNL = SIL) <font color="#4169E1">OR</font> (H = SIL);
+  RETURN(ZNL);
+<strong><font color="#4169E1">END</font></strong> RRUADCOUNT;
+
+<strong><font color="#4169E1">END</font></strong> RRUADOM.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

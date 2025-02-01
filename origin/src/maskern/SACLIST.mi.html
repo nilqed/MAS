@@ -1,0 +1,615 @@
+
+<html>
+<head>
+<title>./maskern/SACLIST.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACLIST.mi,v 1.4 1992/10/16 13:47:57 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACLIST.mi,v $
+ * Revision 1.4  1992/10/16  13:47:57  kredel
+ * Errors found by Mocka
+ *
+ * Revision 1.3  1992/10/15  16:25:03  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:03  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:48  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACLIST;
+
+<font color="#B22222">(* List Processing Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT GAMMAINT, MASMAX, MASODD;
+
+
+FROM MASBIOS IMPORT BKSP, CREAD, CREADB, CWRITE, BLINES,
+                    DIGIT, DIBUFF, GWRITE,  
+                    MASORD, SWRITE;
+
+
+FROM MASSTOR IMPORT BETA, SIL, LIST, INV, LIST1,
+                    ADV, FIRST, RED, COMP, SFIRST, SRED;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACLIST.mi,v 1.4 1992/10/16 13:47:57 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE ADV2</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL,BL,LP: LIST);
+<font color="#B22222">(*Advance 2.  L is a list of length two or more.  a=FIRST(L),
+b=SECOND(L) and LP=RED(RED(L)).*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV(L,AL,LP); ADV(LP,BL,LP); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ADV2;
+
+
+<strong><font color="#4169E1">PROCEDURE ADV3</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL1,AL2,AL3,LP: LIST);
+<font color="#B22222">(*Advance 3.  L is a list of length 3 or more.  a1, a2 and a3 are
+the first three elements of L.  LP is the third reductum of L.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV2(L,AL1,AL2,LP); ADV(LP,AL3,LP); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ADV3;
+
+
+<strong><font color="#4169E1">PROCEDURE ADV4</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL1,AL2,AL3,AL4,LP: LIST);
+<font color="#B22222">(*Advance 4.  L is a list of length 4 or more.  a1, a2, a3, and a4
+are the first 4 elements of L.  LP is the fourth reductum of L.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV(L,AL1,LP); ADV(LP,AL2,LP); ADV(LP,AL3,LP); ADV(LP,AL4,LP);
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ADV4;
+
+
+<strong><font color="#4169E1">PROCEDURE AREAD</font></strong>(): LIST;
+<font color="#B22222">(*Atom read.  An atom A is read from the input stream.  Any preceding
+blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, C, I, J1Y, S: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*skip blanks and read sign, if any.*)</font> S:=1; C:=CREADB();
+      <font color="#4169E1">IF</font> C = MASORD("+") <font color="#4169E1">THEN</font> C:=CREAD(); <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> C = MASORD("-") <font color="#4169E1">THEN</font> C:=CREAD(); S:=-1; <font color="#4169E1">ELSE</font>
+            <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> DIGIT(C) <font color="#4169E1">THEN</font> 
+               <font color="#B22222">(*go to 3*)</font> 
+               <font color="#B22222">(*3*)</font> <font color="#B22222">(*error.*)</font> SWRITE("ERROR FOUND BY AREAD.");
+                     DIBUFF;
+                     RETURN(0);
+               <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read digits and convert.*)</font> A:=0; I:=BETA DIV 10;
+      <font color="#4169E1">REPEAT</font> <font color="#4169E1">IF</font> A &gt; I <font color="#4169E1">THEN</font>
+                <font color="#B22222">(*error.*)</font> SWRITE("ERROR FOUND BY AREAD.");
+                DIBUFF;
+                RETURN(0);
+                <strong><font color="#4169E1">END</font></strong>;
+             J1Y:=10*A; A:=J1Y+C;
+             <font color="#4169E1">IF</font> A &gt;= BETA <font color="#4169E1">THEN</font> 
+                <font color="#B22222">(*error.*)</font> SWRITE("ERROR FOUND BY AREAD.");
+                DIBUFF;
+                RETURN(0);
+                <strong><font color="#4169E1">END</font></strong>;
+             C:=CREAD();
+             <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font> DIGIT(C);
+      A:=S*A; BKSP; RETURN(A);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE AWRITE</font></strong>(A: LIST);
+<font color="#B22222">(*Atom write.  The atom A is written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  D: ARRAY[1..20] <font color="#4169E1">OF</font> LIST; 
+     AP, Q, J1Y: LIST;
+     N: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*write minus sign.*)</font>
+      <font color="#4169E1">IF</font> A &lt; 0 <font color="#4169E1">THEN</font> AP:=-A; SWRITE("-"); <font color="#4169E1">ELSE</font> AP:=A; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*convert to decimal.*)</font> N:=0;
+      <font color="#4169E1">REPEAT</font> Q:=AP DIV 10; N:=N+1; J1Y:=10*Q; D[N]:=AP-J1Y; AP:=Q;
+             <font color="#4169E1">UNTIL</font> AP = 0;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*write digits.*)</font>
+      <font color="#4169E1">REPEAT</font> CWRITE(D[N]); N:=N-1;
+             <font color="#4169E1">UNTIL</font> N = 0;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> AWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE CCONC</font></strong>(L1,L2: LIST): LIST;
+<font color="#B22222">(*Constructive concatenation.  L1 and L2 are lists.  L is the
+concatenation of L1 and L2.  The list L is constructed.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  L, LP1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*is l1 or l2 null.*)</font> L:=L2;
+      <font color="#4169E1">IF</font> L1 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+      L:=L1;
+      <font color="#4169E1">IF</font> L2 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*concatenate copy of l1.*)</font> LP1:=CINV(L1); L:=INV(LP1);
+      SRED(LP1,L2); RETURN(L);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CCONC;
+
+
+<strong><font color="#4169E1">PROCEDURE CINV</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Constructive inverse.  L is a list.  M=INV(L).  M is constructed
+using comp.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, LP, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> M:=BETA; LP:=L;
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,AL,LP); M:=COMP(AL,M); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CINV;
+
+
+<strong><font color="#4169E1">PROCEDURE CLOUT</font></strong>(L: LIST);
+<font color="#B22222">(*Character list out.  The input is a character list L=(C(1),C(2),...,
+C(n)).  The C(i) are sequentially transmitted to the output stream 
+using CWRITE.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=L;
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,C,LP); 
+            <font color="#4169E1">IF</font> C &lt; SIL <font color="#4169E1">THEN</font> CWRITE(C) <strong><font color="#4169E1">END</font></strong> <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CLOUT;
+
+
+<strong><font color="#4169E1">PROCEDURE COMP2</font></strong>(AL,BL,L: LIST): LIST;
+<font color="#B22222">(*Composition 2.  a and b are objects.  L is a list.
+M=COMP(a,COMP(b,L)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(BL,L); M:=COMP(AL,J1Y); RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> COMP2;
+
+
+<strong><font color="#4169E1">PROCEDURE COMP3</font></strong>(AL1,AL2,AL3,L: LIST): LIST;
+<font color="#B22222">(*Composition 3.  a1, a2 and a3 are objects.  L is a list.
+M=COMP(a1,COMP(a2,COMP(a3,L))).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(AL3,L); J1Y:=COMP(AL2,J1Y); M:=COMP(AL1,J1Y); RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> COMP3;
+
+
+<strong><font color="#4169E1">PROCEDURE COMP4</font></strong>(AL1,AL2,AL3,AL4,L: LIST): LIST;
+<font color="#B22222">(*Composition 4.  a1, a2, a3 and a4 are objects.  L is a list.
+M=COMP(a1,COMP(a2,COMP(a3,COMP(a4,l)))).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(AL4,L); J1Y:=COMP(AL3,J1Y); J1Y:=COMP(AL2,J1Y);
+      M:=COMP(AL1,J1Y); RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> COMP4;
+
+
+<strong><font color="#4169E1">PROCEDURE CONC</font></strong>(L1,L2: LIST): LIST;
+<font color="#B22222">(*Concatenation.  L1 and L2 are lists.  L=CONC(L1,L2).  The list L1 is
+modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  L, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*l1 null.*)</font> L:=L2;
+      <font color="#4169E1">IF</font> L1 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*l2 null.*)</font> L:=L1;
+      <font color="#4169E1">IF</font> L2 = SIL <font color="#4169E1">THEN</font> RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*l1 and l2 non-null.*)</font> LP:=LAST(L1); SRED(LP,L2); RETURN(L);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> CONC;
+
+
+<strong><font color="#4169E1">PROCEDURE EQUAL</font></strong>(AL,BL: LIST): LIST;
+<font color="#B22222">(*Equal.  a and b are objects.  t=1 if a and b are equal and
+otherwise t=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, ALP, BL1, BLP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*identical atoms or list representations.*)</font> TL:=0;
+      <font color="#4169E1">IF</font> AL = BL <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*al or bl is an atom.*)</font>
+      <font color="#4169E1">IF</font> (AL &lt; BETA) <font color="#4169E1">OR</font> (BL &lt; BETA) <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion.*)</font> ALP:=AL; BLP:=BL;
+      <font color="#4169E1">WHILE</font> (ALP &lt;&gt; SIL) <font color="#4169E1">AND</font> (BLP &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV(ALP,AL1,ALP);
+            ADV(BLP,BL1,BLP);
+            <font color="#4169E1">IF</font> EQUAL(AL1,BL1) = 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> ALP = BLP <font color="#4169E1">THEN</font> TL:=1; RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> EQUAL;
+
+
+<strong><font color="#4169E1">PROCEDURE EXTENT</font></strong>(AL: LIST): LIST;
+<font color="#B22222">(*Extent.  a is an object.  n=EXTENT(a).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, ALP, J1Y, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*al an atom.*)</font> NL:=0;
+      <font color="#4169E1">IF</font> AL &lt; BETA <font color="#4169E1">THEN</font> RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*al a list.*)</font> ALP:=AL;
+      <font color="#4169E1">WHILE</font> ALP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(ALP,AL1,ALP); J1Y:=EXTENT(AL1);
+            J1Y:=NL+J1Y; NL:=J1Y+1; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> EXTENT;
+
+
+<strong><font color="#4169E1">PROCEDURE FIRST2</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL,BL: LIST);
+<font color="#B22222">(*First 2.  L is a list of length 2 or more.  a=FIRST(L) and
+b=SECOND(L).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV(L,AL,LP); BL:=FIRST(LP); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> FIRST2;
+
+
+<strong><font color="#4169E1">PROCEDURE FIRST3</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL1,AL2,AL3: LIST);
+<font color="#B22222">(*First 3.  L is a list of length 3 or more.  a1=FIRST(L),
+a2=SECOND(L) and a3=THIRD(L).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV2(L,AL1,AL2,LP); AL3:=FIRST(LP); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> FIRST3;
+
+
+<strong><font color="#4169E1">PROCEDURE FIRST4</font></strong>(L: LIST; <strong><font color="#228B22">VAR</font></strong> AL1,AL2,AL3,AL4: LIST);
+<font color="#B22222">(*First 4.  L is a list of length 4 or more.  a1=FIRST(L),
+a2=SECOND(L), a3=THIRD(L) and a4=FOURTH(L).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> ADV(L,AL1,LP); ADV(LP,AL2,LP); ADV(LP,AL3,LP); AL4:=FIRST(LP);
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> FIRST4;
+
+
+<strong><font color="#4169E1">PROCEDURE FOURTH</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Fourth.  L is a list of length 4 or more.  a is the fourth element
+of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED3(L); AL:=FIRST(J1Y); RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> FOURTH;
+
+
+<strong><font color="#4169E1">PROCEDURE LAST</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Last.  L is a non-null list.  LP is the location of the last cell
+of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  LP, LPP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> LP:=L; LPP:=RED(LP);
+      <font color="#4169E1">WHILE</font> LPP &lt;&gt; SIL <font color="#4169E1">DO</font> LP:=LPP; LPP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(LP);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LAST; 
+
+
+<strong><font color="#4169E1">PROCEDURE LEINST</font></strong>(A,IL,AL: LIST): LIST;
+<font color="#B22222">(*List element insertion.  A is the list (a(1), ...,a(n)) of objects.
+i is a beta-integer, 0 le i le n.  a is an object.  If i=0, then
+L=(a,a(1), ...,a(n)).  If i=n, then L=(a(1), ...,a(n),a).
+otherwise, L=(a(1), ...,a(i),a,a(i+1), ...,a(n)).  A is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, JL, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*il=0.*)</font>
+      <font color="#4169E1">IF</font> IL = 0 <font color="#4169E1">THEN</font> L:=COMP(AL,A); RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il gt 0.*)</font> L:=A; AP:=A;
+      <font color="#4169E1">FOR</font> JL:=2 <font color="#4169E1">TO</font> IL <font color="#4169E1">DO</font> AP:=RED(AP); <strong><font color="#4169E1">END</font></strong>;
+      APP:=RED(AP); APP:=COMP(AL,APP); SRED(AP,APP); RETURN(L);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> LEINST;
+
+
+<strong><font color="#4169E1">PROCEDURE LELT</font></strong>(A,IL: LIST): LIST;
+<font color="#B22222">(*List element.  A is a list.  1 le i le LENGTH(A).  a is the i-th
+element of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, JL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A;
+      <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> AP:=RED(AP); <strong><font color="#4169E1">END</font></strong>;
+      AL:=FIRST(AP); RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LELT;
+
+
+<strong><font color="#4169E1">PROCEDURE LEROT</font></strong>(L,IL,JL: LIST): LIST;
+<font color="#B22222">(*List element rotation.  L is a list (a(1), ...,a(n)) of objects, n
+gt 0.  i and j, 1 le i le j le n, are beta-integers.  If i=j
+then M=L.  Otherwise M=(a(1), ...,a(i-1),a(j),a(i), ...,a(j-1),
+a(j+1), ...,a(n)).  L is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, KL, LP, LPP, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*il=jl.*)</font> M:=L;
+      <font color="#4169E1">IF</font> IL = JL <font color="#4169E1">THEN</font> RETURN(M); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il lt jl.*)</font> LP:=L;
+      <font color="#4169E1">FOR</font> KL:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> LP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+      ADV(LP,AL,LPP);
+      <font color="#4169E1">FOR</font> KL:=IL <font color="#4169E1">TO</font> JL-1 <font color="#4169E1">DO</font> BL:=FIRST(LPP); SFIRST(LPP,AL); AL:=BL;
+          LPP:=RED(LPP); <strong><font color="#4169E1">END</font></strong>;
+      SFIRST(LP,AL); RETURN(M);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> LEROT;
+
+
+<strong><font color="#4169E1">PROCEDURE LINS</font></strong>(AL,L: LIST);
+<font color="#B22222">(*List insertion.  L is a non-null list (a(1), ...,a(n)).  a is an
+object.  a is inserted in L after a(1) (suffixed to L if n=1),
+producing a modified list L=(a(1),a,a(2), ...,a(n)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED(L); A:=COMP(AL,J1Y); SRED(L,A); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LINS;
+
+
+<strong><font color="#4169E1">PROCEDURE LINSRT</font></strong>(AL,A: LIST): LIST;
+<font color="#B22222">(*List insertion.  A is a list (a(1), ...,a(n)) of beta-integers,
+n ge 0, with a(1) lt a(2) lt  ...lt a(n).  If n=0 then B=(a).
+If a lt a(1) then B=(a,a(1), ...,a(n)).  If a ge a(n) then
+B=(a(1), ...,a(n),a).  Otherwise B=(a(1), ...,a(i),a,a(i+1),
+ ...,a(n)) where a(i) le a lt a(i+1).  The list A is modified
+to produce B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, APP, AS, B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=0.*)</font>
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> B:=LIST1(AL); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*al lt al1.*)</font>
+      <font color="#4169E1">IF</font> AL &lt; FIRST(A) <font color="#4169E1">THEN</font> B:=COMP(AL,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; APP:=RED(AP);
+      <font color="#4169E1">WHILE</font> (APP &lt;&gt; SIL) <font color="#4169E1">AND</font> (AL &gt;= FIRST(APP)) <font color="#4169E1">DO</font> AP:=APP;
+            APP:=RED(AP); <strong><font color="#4169E1">END</font></strong>;
+      AS:=COMP(AL,APP); SRED(AP,AS); B:=A; RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> LINSRT;
+
+
+<strong><font color="#4169E1">PROCEDURE LIST10</font></strong>(AL1,AL2,AL3,AL4,AL5,AL6,AL7,AL8,AL9,AL10: LIST): LIST;
+<font color="#B22222">(*List, 10 elements.  a1, a2, a3, a4, a5, a6, a7, a8, a9 and a10 are
+objects.  L is the list (a1,a2,a3,a4,a5,a6,a7,a8,a9,a10).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(AL10,BETA); J1Y:=COMP(AL9,J1Y); J1Y:=COMP(AL8,J1Y);
+      J1Y:=COMP(AL7,J1Y); J1Y:=COMP(AL6,J1Y); J1Y:=COMP(AL5,J1Y);
+      J1Y:=COMP(AL4,J1Y); J1Y:=COMP(AL3,J1Y); J1Y:=COMP(AL2,J1Y);
+      L:=COMP(AL1,J1Y); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LIST10;
+
+
+<strong><font color="#4169E1">PROCEDURE LIST2</font></strong>(AL,BL: LIST): LIST;
+<font color="#B22222">(*List, 2 elements.  a and b are objects.  L is the list (a,b).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(BL,BETA); L:=COMP(AL,J1Y); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LIST2;
+
+
+<strong><font color="#4169E1">PROCEDURE LIST3</font></strong>(AL1,AL2,AL3: LIST): LIST;
+<font color="#B22222">(*List, 3 elements.  a1, a2 and a3 are objects.  L=(a1,a2,a3).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(AL3,BETA); J1Y:=COMP(AL2,J1Y); L:=COMP(AL1,J1Y);
+      RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LIST3;
+
+
+<strong><font color="#4169E1">PROCEDURE LIST4</font></strong>(AL1,AL2,AL3,AL4: LIST): LIST;
+<font color="#B22222">(*List, 4 elements.  a1, a2, a3 and a4 are objects.  L is the list
+(a1,a2,a3,a4).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(AL4,BETA); J1Y:=COMP(AL3,J1Y); J1Y:=COMP(AL2,J1Y);
+      L:=COMP(AL1,J1Y); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LIST4;
+
+
+<strong><font color="#4169E1">PROCEDURE LIST5</font></strong>(AL1,AL2,AL3,AL4,AL5: LIST): LIST;
+<font color="#B22222">(*List, 5 elements.  a1,a2,a3,a4 and a5 are objects.  L is the list
+(a1,a2,a3,a4,a5).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, L: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=COMP(AL5,BETA); J1Y:=COMP(AL4,J1Y); J1Y:=COMP(AL3,J1Y);
+      J1Y:=COMP(AL2,J1Y); L:=COMP(AL1,J1Y); RETURN(L);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LIST5;
+
+
+<strong><font color="#4169E1">PROCEDURE LREAD</font></strong>(): LIST;
+<font color="#B22222">(*List read.  The list L is read from the input stream.  Any preceding
+blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, IDUM, L, L1: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read list elements.*)</font> L:=BETA; C:=CREADB();
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> 
+         SWRITE("ERROR FOUND BY LREAD."); DIBUFF;
+         RETURN(L); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> LOOP C:=CREADB();
+           <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> L:=INV(L); RETURN(L); <font color="#4169E1">ELSE</font>
+              <font color="#4169E1">IF</font> C = MASORD("(") <font color="#4169E1">THEN</font> BKSP; L1:=LREAD(); <font color="#4169E1">ELSE</font>
+                 <font color="#4169E1">IF</font>    (C = MASORD("+")) 
+                    <font color="#4169E1">OR</font> (C = MASORD("-")) 
+                    <font color="#4169E1">OR</font> DIGIT(C) 
+                    <font color="#4169E1">THEN</font> BKSP; L1:=AREAD(); 
+                    <font color="#4169E1">ELSE</font> SWRITE("ERROR FOUND BY LREAD."); DIBUFF;
+                         L:=INV(L); RETURN(L) <strong><font color="#4169E1">END</font></strong>;
+                 <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           L:=COMP(L1,L); C:=CREADB();
+           <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> BKSP; <font color="#4169E1">ELSE</font>
+              <font color="#4169E1">IF</font> C &lt;&gt; MASORD(",") <font color="#4169E1">THEN</font>  
+                 SWRITE("ERROR FOUND BY LREAD."); DIBUFF;
+                 L:=INV(L); RETURN(L) <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong> 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> LREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE LSRCH</font></strong>(AL,A: LIST): LIST;
+<font color="#B22222">(*List search.  A is a list of beta-integers, (a(1), ...,a(n)),
+n ge 0.  If there is a j such that a=a(j) then i is the least
+such j.  Otherwise i=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AP, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; IL:=1;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP,AL1,AP);
+            <font color="#4169E1">IF</font> AL = AL1 <font color="#4169E1">THEN</font> RETURN(IL); <strong><font color="#4169E1">END</font></strong>;
+            IL:=IL+1; <strong><font color="#4169E1">END</font></strong>;
+      IL:=0; RETURN(IL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> LSRCH;
+
+
+<strong><font color="#4169E1">PROCEDURE LWRITE</font></strong>(L: LIST);
+<font color="#B22222">(*List write.  The input list L is written in the output stream.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  L1, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> SWRITE("("); LP:=L;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write list elements.*)</font>
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,L1,LP);
+            <font color="#4169E1">IF</font> L1 &lt; BETA <font color="#4169E1">THEN</font> AWRITE(L1); <font color="#4169E1">ELSE</font> LWRITE(L1); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> LP &lt;&gt; BETA <font color="#4169E1">THEN</font> SWRITE(","); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font> SWRITE(")"); RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> LWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE MEMBER</font></strong>(AL,L: LIST): LIST;
+<font color="#B22222">(*Membership test.  a is an object, L a list.  t=1 if a is a
+member of L and otherwise t=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, LP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> TL:=0; LP:=L;
+      <font color="#4169E1">WHILE</font> LP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(LP,AL1,LP); TL:=EQUAL(AL,AL1);
+            <font color="#4169E1">IF</font> TL = 1 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> MEMBER;
+
+
+<strong><font color="#4169E1">PROCEDURE ORDER</font></strong>(AL: LIST): LIST;
+<font color="#B22222">(*Order.  a is an object.  n=ORDER(a).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, ALP, J1Y, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*al an atom.*)</font> NL:=0;
+      <font color="#4169E1">IF</font> AL &lt; BETA <font color="#4169E1">THEN</font> RETURN(NL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*al a list.*)</font> ALP:=AL;
+      <font color="#4169E1">WHILE</font> ALP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(ALP,AL1,ALP); J1Y:=ORDER(AL1);
+            NL:=MASMAX(NL,J1Y); <strong><font color="#4169E1">END</font></strong>;
+      NL:=NL+1; RETURN(NL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> ORDER;
+
+
+<strong><font color="#4169E1">PROCEDURE OREAD</font></strong>(): LIST;
+<font color="#B22222">(*Object read.  The object B is read from the input stream.  Any
+preceding blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C, IDUM: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read list or atom.*)</font> C:=CREADB(); BKSP;
+      <font color="#4169E1">IF</font> C = MASORD("(") <font color="#4169E1">THEN</font> B:=LREAD(); <font color="#4169E1">ELSE</font> B:=AREAD(); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE OWRITE</font></strong>(B: LIST);
+<font color="#B22222">(*Object write.  The input object B is written in the output stream.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> B &lt; BETA <font color="#4169E1">THEN</font> AWRITE(B); <font color="#4169E1">ELSE</font> LWRITE(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> OWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE PAIR</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Pair.  A=(a(1), ...,a(m)) and B=(b(1), ...,b(n)) are lists with
+m and n non-negative.  C is the list (a(1),b(1), ...,a(r),b(r))
+where r=MIN(m,n).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A; BP:=B; C:=BETA;
+      <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (BP &lt;&gt; SIL) <font color="#4169E1">DO</font> ADV(AP,AL,AP);
+            ADV(BP,BL,BP); C:=COMP2(BL,AL,C); <strong><font color="#4169E1">END</font></strong>;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> PAIR;
+
+
+<strong><font color="#4169E1">PROCEDURE REDUCT</font></strong>(A,IL: LIST): LIST;
+<font color="#B22222">(*Reductum.  A is a list.  i is a non-negative beta-integer not less
+than LENGTH(A).  B=A, if i=0.  Otherwise, B is the i-th reductum of
+A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, JL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=A;
+      <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> IL <font color="#4169E1">DO</font> B:=RED(B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> REDUCT;
+
+
+<strong><font color="#4169E1">PROCEDURE RED2</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Reductum 2.  L is a list of length 2 or more.  LP=RED(RED(L)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED(L); LP:=RED(J1Y); RETURN(LP);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RED2;
+
+
+<strong><font color="#4169E1">PROCEDURE RED3</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Reductum 3.  L is a list of length 3 or more.  M is the third
+reductum of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED2(L); M:=RED(J1Y); RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RED3;
+
+
+<strong><font color="#4169E1">PROCEDURE RED4</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Reductum 4.  L is a list of length 4 or more.  M is the fourth
+reductum of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, M: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED(L); J1Y:=RED(J1Y); J1Y:=RED(J1Y); M:=RED(J1Y); RETURN(M);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> RED4;
+
+
+<strong><font color="#4169E1">PROCEDURE SECOND</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Second.  L is a list of length 2 or more.  a is the second element
+of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED(L); AL:=FIRST(J1Y); RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SECOND;
+
+
+<strong><font color="#4169E1">PROCEDURE SLELT</font></strong>(A,IL,AL: LIST);
+<font color="#B22222">(*Set list element.  A is a list.  1 le i le LENGTH(A).  The i-th
+element of A is changed to a.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, JL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=A;
+      <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> IL-1 <font color="#4169E1">DO</font> AP:=RED(AP); <strong><font color="#4169E1">END</font></strong>;
+      SFIRST(AP,AL); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SLELT;
+
+
+<strong><font color="#4169E1">PROCEDURE SUFFIX</font></strong>(L,BL: LIST): LIST;
+<font color="#B22222">(*Suffix.  L is a list (a(1), ..., a(n)), n non-negative.  b is an
+object.  LP=(a(1), ..., a(n),b).  L is modified.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, LP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=LIST1(BL); LP:=CONC(L,J1Y); RETURN(LP);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> SUFFIX;
+
+
+<strong><font color="#4169E1">PROCEDURE THIRD</font></strong>(L: LIST): LIST;
+<font color="#B22222">(*Third.  L is a list of length 3 or more.  a is the third element
+of L.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=RED2(L); AL:=FIRST(J1Y); RETURN(AL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> THIRD;
+
+
+<strong><font color="#4169E1">END</font></strong> SACLIST.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

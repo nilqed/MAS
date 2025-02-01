@@ -1,0 +1,65 @@
+
+<html>
+<head>
+<title>./maskern/LISTTOOLS.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-11-28T20:32:48+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: LISTTOOLS.md,v 1.1 1994/11/28 20:32:48 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: LISTTOOLS.md,v $
+ * Revision 1.1  1994/11/28  20:32:48  dolzmann
+ * New modules SYSINFO.md, SYSINFO.mi, LISTTOOLS.md, and LISTTOOLS.mi.
+ * Makefile adapted.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE LISTTOOLS;
+<font color="#B22222">(* List Tools Definition Module. *)</font>
+
+FROM MASSTOR	IMPORT	LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: LISTTOOLS.md,v 1.1 1994/11/28 20:32:48 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1994 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE CLISTFA</font></strong>(atom:LIST):LIST;
+<font color="#B22222">(* character list from atom. 
+The decimal printable representation of atom is returned as a character 
+list. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE LIST6</font></strong>(a1,a2,a3,a4,a5,a6:LIST):LIST;
+<font color="#B22222">(* list of 6 elements. The list (a1,a2,...a6) is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE LPAIRS</font></strong>(L:LIST):LIST;
+<font color="#B22222">(* list pairs. L=(l1,...ln) is a list. A list containing all lists (li,lj),
+where li and lj are elements of L and i &lt;&gt; j is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE LSRCHQ</font></strong>(a,L:LIST):LIST;
+<font color="#B22222">(* List search equal. 
+a is an element, 
+L is a list.
+The first position of a in L is returned if a is member of L, 
+otherwise 0 is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE UPCASE</font></strong>(clist:LIST):LIST;
+<font color="#B22222">(* upcase character list. 
+clist is a character list. All letters in clist are converted to upper case. 
+The result is returned. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> LISTTOOLS.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

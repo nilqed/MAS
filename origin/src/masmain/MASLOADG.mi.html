@@ -1,0 +1,115 @@
+
+<html>
+<head>
+<title>./masmain/MASLOADG.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T18:51:42+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASLOADG.mi,v 1.2 1996/06/08 18:51:42 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASLOADG.mi,v $
+ * Revision 1.2  1996/06/08 18:51:42  pesch
+ * For G-symmetric polynomial functions.
+ *
+ * Revision 1.1  1995/11/05 15:29:38  pesch
+ * *** empty log message ***
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASLOADG;
+<font color="#B22222">(* MAS Load Implementation Module G. *)</font>
+
+
+FROM GSYMFUIN	IMPORT	GINBAS, GINCHK, GINCUT, GINOPL, GINORP, GINRED,
+			GSYINF, GSYNSP, GSYORD, GSYPGR, GSYPGW, GSYSPG;
+
+FROM GSYMFURN	IMPORT	GRNBAS, GRNCHK, GRNCUT, GRNGGB, GRNOPL, GRNORP,
+			GRNRED;
+
+FROM GSYMINP	IMPORT	GSPREAD, GSRREAD;
+
+FROM MASLISPU	IMPORT	Compiledf0, Compiledf1, Compiledf2, Compiledf3,
+			Compiledp0, Compiledp1, Compiledp2, Compiledp2v2,
+			Compiledp2v3, Compiledp3;
+
+FROM NOETHER	IMPORT	NOEINF, NOEL32, NOENSP, NOEPIP, NOEPOW, NOEPPR,
+			NOEPRM, NOEPSM, NOERED;
+
+FROM TIPRNGB	IMPORT	DIREGB;
+
+FROM SACPOL	IMPORT	VLREAD;
+
+FROM SUBST	IMPORT	SUBCHK, SUBINF, SUBOPL, SUBORD, SUBORP, SUBPOW,
+			SUBRED, SUBSGR, SUBSGW, SUBSYM;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASLOADG.mi,v 1.2 1996/06/08 18:51:42 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";
+
+
+<strong><font color="#4169E1">PROCEDURE InitExternalsG</font></strong>;
+<strong><font color="#4169E1">BEGIN</font></strong>
+    Compiledf0(GSPREAD, "GSPREAD");
+    Compiledf0(GSRREAD, "GSRREAD");
+
+    Compiledf0(VLREAD, "VLREAD"); <font color="#B22222">(* from SACPOL *)</font>
+
+    Compiledp0(GSYINF, "GSYINF"); <font color="#B22222">(* from GSYMFUII *)</font>
+    Compiledp1(GSYPGW, "GSYPGW");
+    Compiledp1(GSYNSP, "GSYNSP");
+    Compiledf1(GSYPGR, "GSYPGR");
+    Compiledf1(GSYSPG, "GSYSPG");
+    Compiledf1(GSYORD, "GSYORD");
+
+    Compiledp2v2(GINCUT, "GINCUT");
+    Compiledp2v3(GINRED, "GINRED");
+    Compiledf1(GINBAS, "GINBAS");
+    Compiledf2(GINORP, "GINORP");
+    Compiledf2(GINOPL, "GINOPL");
+    Compiledf3(GINCHK, "GINCHK");
+
+    Compiledp2v2(GRNCUT, "GRNCUT"); <font color="#B22222">(* from GSYMFURN *)</font>
+    Compiledp2v3(GRNRED, "GRNRED");
+    Compiledf1(GRNBAS, "GRNBAS");
+    Compiledf1(GRNGGB, "GRNGGB");
+    Compiledf2(GRNORP, "GRNORP");
+    Compiledf2(GRNOPL, "GRNOPL");
+    Compiledf3(GRNCHK, "GRNCHK");
+
+    Compiledp0(NOEINF, "NOEINF"); <font color="#B22222">(* from NOETHER *)</font>
+    Compiledp1(NOENSP, "NOENSP");
+    Compiledp2v3(NOERED, "NOERED");
+    Compiledf2(NOEL32, "NOEL32");
+    Compiledf2(NOEPOW, "NOEPOW");
+    Compiledf2(NOEPSM, "NOEPSM");
+    Compiledf2(NOEPIP, "NOEPIP");
+    Compiledf2(NOEPRM, "NOEPRM");
+    Compiledf3(NOEPPR, "NOEPPR");
+
+    Compiledp0(SUBINF, "SUBINF"); <font color="#B22222">(* from SUBST *)</font>
+    Compiledp1(SUBSGW, "SUBSGW");
+    Compiledp2v3(SUBRED, "SUBRED");
+    Compiledf1(SUBSGR, "SUBSGR");
+    Compiledf1(SUBORD, "SUBORD");
+    Compiledf2(SUBORP, "SUBORP");
+    Compiledf2(SUBSYM, "SUBSYM");
+    Compiledf2(SUBOPL, "SUBOPL");
+    Compiledf2(SUBPOW, "SUBPOW");
+    Compiledf3(SUBCHK, "SUBCHK");
+
+    Compiledp2v2(DIREGB, "DIREGB");
+<strong><font color="#4169E1">END</font></strong> InitExternalsG;
+
+<strong><font color="#4169E1">END</font></strong> MASLOADG.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

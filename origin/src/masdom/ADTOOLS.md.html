@@ -1,0 +1,87 @@
+
+<html>
+<head>
+<title>./masdom/ADTOOLS.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:32+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: ADTOOLS.md,v 1.2 1994/11/28 20:43:07 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1994 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: ADTOOLS.md,v $
+ * Revision 1.2  1994/11/28  20:43:07  dolzmann
+ * Constructors and destructors for some domain descriptors introduced.
+ *
+ * Revision 1.1  1994/04/14  18:01:55  dolzmann
+ * Introduced new modules ADTOOLS and DIPTOOLS.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+  
+DEFINITION MODULE ADTOOLS;
+<font color="#B22222">(* Arbitrary Domain Tools Definition Module *)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: ADTOOLS.md,v 1.2 1994/11/28 20:43:07 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1994 Universitaet Passau";
+
+<strong><font color="#4169E1">PROCEDURE ADRFFADIP</font></strong>(adip:LIST):LIST;
+<font color="#B22222">(* arbitrary domain rational function from arbitrary domain intgeral
+polynomial. adip is an arbitrary domain integral polynomial. adip is 
+converted to an arbitrary domain rational function. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADDDFSTR</font></strong>(s:ARRAY <font color="#4169E1">OF</font> CHAR):LIST;
+<font color="#B22222">(* arbitrary domain domain descriptor from string. s is an string. 
+The string must finish with a blank character. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADCAST</font></strong>(e,dd:LIST):LIST;
+<font color="#B22222">(* arbitraray domain cast. e is an element, dd is an 
+arbitrary domain descriptor. The domain information of the elemnt e is 
+changed to the domain informations of dd. No conversion is done. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE ADRMDD</font></strong>(e: LIST):LIST;
+<font color="#B22222">(* arbitrary domain remove domain descriptor informations. 
+e is an arbitrary domain element. The domain descriptor informations 
+are removed from the element e, the result is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE AdLoadConvFunc</font></strong>();
+<font color="#B22222">(* arbitrary domain load conversion functions. This procedure is called from 
+the module MASLOADE after all domains are loaded. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                      D O M A I N   D E S C R I P T O R                      *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE RFDDFIPDD</font></strong>(ipdd:LIST):LIST;
+<font color="#B22222">(* rational function domain descriptor from integral polynomial domain
+descriptor. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IPDDCMP</font></strong>(vlist:LIST):LIST;
+<font color="#B22222">(* integral polynomial domain descriptor composition. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IPDECMP</font></strong>(e,vlist:LIST):LIST;
+<font color="#B22222">(* integral polynomial domain element composition. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE INTDDCMP</font></strong>():LIST;
+<font color="#B22222">(* integer domain descriptor composition. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE IPDDADV</font></strong>(p: LIST;  <strong><font color="#228B22">VAR</font></strong> q,r,vl:LIST);
+<font color="#B22222">(* integral polynomial domain descriptor advance *)</font>
+
+<strong><font color="#4169E1">PROCEDURE RFDDADV</font></strong>(e: LIST; <strong><font color="#228B22">VAR</font></strong> rat, vl: LIST);
+<font color="#B22222">(* rational function domain descriptor advance. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> ADTOOLS.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

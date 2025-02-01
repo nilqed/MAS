@@ -1,0 +1,231 @@
+
+<html>
+<head>
+<title>./maslog/MLOGBASE.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1994-12-09T09:42:52+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MLOGBASE.md,v 1.2 1994/11/28 21:04:12 dolzmann Exp $
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1993 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * $Log: MLOGBASE.md,v $
+ * Revision 1.2  1994/11/28  21:04:12  dolzmann
+ * New revision of the MASLOG system: New functions and bug fixes of old one.
+ *
+ * Revision 1.1  1993/12/17  17:12:12  dolzmann
+ * MASLOG is divided into three parts. (MLOGBASE, MLOGIO, MASLOG)
+ * Additional input procedures are added.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MLOGBASE;
+<font color="#B22222">(* Maslog Base Definition Module. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			       M L O G B A S E				      *
+*-----------------------------------------------------------------------------*
+* Author:   Andreas Dolzmann                                                  *
+* Language: MODULA II (mocka or mtc are possible.)                            *
+* System:   Program for the computer algebra system MAS by Heinz Kredel.      *
+* Project:  MASLOG
+* Remark:   Libraries maskern, maslisp are used.                              *
+* Abstract: A package for the MAS computer algebra system by Heinz Kredel.    *
+*           This package implements basic routins on formulas of the first    *
+*           order predicate calculus.                                         *
+******************************************************************************)</font>
+
+FROM MASSTOR IMPORT LIST;
+
+<font color="#B22222">(******************************************************************************
+*                       T Y P E   D E F I N I T I O N S                       *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">TYPE</font></strong> PROCFB1=PROCEDURE(LIST):BOOLEAN;
+<strong><font color="#228B22">TYPE</font></strong> PROCFB2=PROCEDURE(LIST, LIST):BOOLEAN;
+
+<font color="#B22222">(******************************************************************************
+*                              C O N S T A N T S                              *
+******************************************************************************)</font>
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MLOGBASE.md,v 1.2 1994/11/28 21:04:12 dolzmann Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1993 Universitaet Passau";
+
+<font color="#B22222">(******************************************************************************
+*                       G L O B A L   V A R I A B L E S                       *
+******************************************************************************)</font>
+
+
+<strong><font color="#228B22">VAR</font></strong> ET, VEL, NON, VERUM, FALSUM, EXIST, FORALL, 	<font color="#B22222">(* symbols for	*)</font>
+	TVAR, REP, IMP, EQUIV, ANTIV, XOR, LVAR: LIST;	<font color="#B22222">(* keywords.	*)</font>
+
+<strong><font color="#228B22">VAR</font></strong> ANY, BOOL: LIST;	<font color="#B22222">(* Special identifier in VARTAB *)</font>
+
+<font color="#B22222">(******************************************************************************
+*			 B A S I C   R O U T I N E S                          *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORGOP</font></strong>(phi: LIST): LIST;
+<font color="#B22222">(* formula get operation. phi is a formula; the operation keyword of the
+formula phi is returned.*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORGARGS</font></strong>(phi: LIST): LIST;
+<font color="#B22222">(* formula get arguments. phi is a formula; the arguments of the top level
+operation of the formula phi are returned. You must not apply FORGARGS to
+formulas without arguments! *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORGLVAR</font></strong>(lvar: LIST): LIST;
+<font color="#B22222">(* formula get list of variables. lvar is an object that describes a list of
+variables; FORGLVAR returns a list of all variables in lvar.  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPFOR</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> op: LIST; <strong><font color="#228B22">VAR</font></strong> args: LIST);
+<font color="#B22222">(* formula parse formula. phi is a formula; FORPFOR returns in op the top
+level operation symbol of phi and in args the arguments of the operation op.
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPARGS</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> first, red: LIST);
+<font color="#B22222">(* formula parse arguments. phi is an object that describes a list of
+arguments of an operation; FORPARGS returns in first the 1st argument of the
+list and in red the list of all following arguments. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPUNOP</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> op, arg: LIST);
+<font color="#B22222">(* formula parse unary operation. phi is a unary operation. The operator
+symbol op and the argument arg are returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPBINOP</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> op, first, second: LIST);
+<font color="#B22222">(* formula parse binary operation. phi is a binary operation. The operator
+symbol op and the arguments first and second are returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPUNOPA</font></strong>(arglist: LIST; <strong><font color="#228B22">VAR</font></strong> arg: LIST);
+<font color="#B22222">(* formula parse unary operation argument. arglist is a list containing the
+argument of a unary operator; FORPUNOPA returns in arg the arguments *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPBINOPA</font></strong>(red: LIST; <strong><font color="#228B22">VAR</font></strong> first, second: LIST);
+<font color="#B22222">(* formula parse binary operation argument. red is a list of the arguments of
+a binary operator; FORPBINOPA returns in first the 1st and in second the 2nd
+argument.  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPQUANT</font></strong>(phi: LIST; <strong><font color="#228B22">VAR</font></strong> quant, vars, formula: LIST);
+<font color="#B22222">(* formula parse quantifier. phi is a quantified formula; FORPQUANT returns in
+quant the quantifier of the formula phi, in vars the list of the bound
+variables (as an lvar object) and in formula the formula phi without
+quantifier. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPQUANTA</font></strong>(red: LIST; <strong><font color="#228B22">VAR</font></strong> lvar, formula: LIST);
+<font color="#B22222">(* formula parse quantifier arguments. red is the reductum of a quantified
+formula (e.g returned from FORPFOR); FORPQUANTA returns in lvar a list of all
+quantified variables as an lvar object and in formula the formula without
+quantifier.  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPLVAR</font></strong>(lvar: LIST; <strong><font color="#228B22">VAR</font></strong> varlist: LIST);
+<font color="#B22222">(* formula parse list of variables. lvar is an object that describes a list of
+variables; the list of all variables in lvar is returned in varlist. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPVAR</font></strong>(<strong><font color="#228B22">var</font></strong>: LIST; <strong><font color="#228B22">VAR</font></strong> name, sort: LIST);
+<font color="#B22222">(* formula parse variable. phi is a variable; FORPVAR returns in name the name
+and in sort the sort of var. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORPVARA</font></strong>(red: LIST; <strong><font color="#228B22">VAR</font></strong> name, sort:LIST);
+<font color="#B22222">(* formula parse variable arguments. red is the reductum of a variable (e.g.
+returned from FORPFOR); FORPVARA returns in name the name and in sort the sort
+of the variable. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKFOR</font></strong>(op,args:LIST):LIST;
+<font color="#B22222">(* formula make formula. op is a operation symbol; args a list of arguments;
+the formula op(arg1,arg2,...) is returned, if args=(arg1,arg2,...).  You can
+generate constants with this function, too. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKCNST</font></strong>(cnst: LIST):LIST;
+<font color="#B22222">(* formula make constant, i.e. a function with 0 arguments. cnst is a
+constant; the formula 'cnst()' is returned *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKUNOP</font></strong>(op,arg:LIST):LIST;
+<font color="#B22222">(* formula make unary operation. op is a operation symbol, arg is a argument;
+the formula op(arg) is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKBINOP</font></strong>(op,arg1,arg2:LIST): LIST;
+<font color="#B22222">(* formula make binary operation. op is the operation symbol, arg1, arg2 are
+the arguments; the formula op(arg1,arg2) is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKVAR</font></strong>(name,sort:LIST):LIST;
+<font color="#B22222">(* formula make variable. name is the name, sort the sort of the variable; an
+object that describes the variable is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKLVAR</font></strong>(vars:LIST):LIST;
+<font color="#B22222">(* formula make list of variables. vars is a list of the form (var1,
+var2,...); an lvar object that represents the list of variables in vars is
+returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORMKQUANT</font></strong>(quant,vars,formula:LIST):LIST;
+<font color="#B22222">(* formula make quantifier. quant is the quantifier symbol, vars is a list of
+variables, and formula the bound formula; the formula 'quant vars: formula'
+is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORTST</font></strong>(L: LIST; bbtst:PROCFB1):BOOLEAN;
+<font color="#B22222">(* formula test. L is a list, bbtst a bb-procedure to test whether a list
+represents a bb-formula or not; FORTST returns TRUE, if and only if L
+represents a formula. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORISVAR</font></strong>(L: LIST):BOOLEAN;
+<font color="#B22222">(* formula is variable. L is a list; FORISVAR returns TRUE if and only if L
+represents a variable. (The type of the variable is not checked.)  *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORISBOOLVAR</font></strong>(L: LIST):BOOLEAN;
+<font color="#B22222">(* formula is boolean variable. L is a list; FORISBOOLVAR returns true if and
+only if L represents a boolean variable *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORISLVAR</font></strong>(L: LIST): BOOLEAN;
+<font color="#B22222">(* formula is variable list. L is a list; FORISLVAR returns TRUE if and only
+if L represents an lvar-object. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                      I S   A T O M I C   F O R M U L A                      *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORISATOM</font></strong>(phi: LIST): BOOLEAN;
+<font color="#B22222">(* formula is atomic formula. phi is a formula, FORISATOM returns true, if and
+only if phi is an atomic formula. An atomic formula is either VERUM or FALSUM
+or a bb-formula or a variable of type bool. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORISBBFOR</font></strong>(phi: LIST):BOOLEAN;
+<font color="#B22222">(* formula is black-box formula. phi is a formula. TRUE is returned iff
+phi is a black-box formula. *)</font>
+
+<font color="#B22222">(******************************************************************************
+*                                 V A R T A B                                 *
+******************************************************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORVTSTORE</font></strong>():LIST;
+<font color="#B22222">(* formula variable table store. The actual VARTAB is returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORVTRESTORE</font></strong>(vt: LIST):LIST;
+<font color="#B22222">(* formula variable table restore. Vt is a variable table. 
+The actual VARTAB is set to the value of vt. The old value of VARTAB is 
+returned. *)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORVTENTER</font></strong>(sym: LIST):LIST;
+<font color="#B22222">(* formula variable table enter. Sym is a CLIST. 
+The symbol with print name sym is entered in 
+the actual variable table, if no symbol with name sym exists. 
+The unique identifier is returned. 
+*)</font>
+
+<strong><font color="#4169E1">PROCEDURE FORVTGET</font></strong>(id: LIST): LIST;
+<font color="#B22222">(* formula variable table get. The clist of the 
+name of the symbol with identifier id is 
+returned. If no symbol with identifier id exists, then 
+SIL is returned. *)</font>
+
+<strong><font color="#4169E1">END</font></strong> MLOGBASE.
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

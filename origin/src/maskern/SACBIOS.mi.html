@@ -1,0 +1,96 @@
+
+<html>
+<head>
+<title>./maskern/SACBIOS.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:55+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACBIOS.mi,v 1.3 1992/10/15 16:25:03 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACBIOS.mi,v $
+ * Revision 1.3  1992/10/15  16:25:03  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:01  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:46  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACBIOS;
+
+<font color="#B22222">(* SAC Basic I/O System Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASELEM IMPORT GAMMAINT;
+
+FROM MASBIOS IMPORT CWRITE;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACBIOS.mi,v 1.3 1992/10/15 16:25:03 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE CWRIT2</font></strong>(C1,C2: GAMMAINT);
+<font color="#B22222">(*Character write, 2 characters.  C1 and C2 are sequentially
+transmitted to the output stream using CWRITE.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CWRITE(C1); CWRITE(C2); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CWRIT2;
+
+
+<strong><font color="#4169E1">PROCEDURE CWRIT3</font></strong>(C1,C2,C3: GAMMAINT);
+<font color="#B22222">(*Character write, 3 characters.  C1, C2 and C3 are sequentially
+transmitted to the output stream using CWRITE.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CWRITE(C1); CWRITE(C2); CWRITE(C3); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CWRIT3;
+
+
+<strong><font color="#4169E1">PROCEDURE CWRIT4</font></strong>(C1,C2,C3,C4: GAMMAINT);
+<font color="#B22222">(*Character write, 4 characters.  C1, C2, C3, and C4 are sequentially
+transmitted to the output stream using CWRITE.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CWRITE(C1); CWRITE(C2); CWRITE(C3); CWRITE(C4); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CWRIT4;
+
+
+<strong><font color="#4169E1">PROCEDURE CWRIT5</font></strong>(C1,C2,C3,C4,C5: GAMMAINT);
+<font color="#B22222">(*Character write, 5 characters.  C1, C2, C3, C4 and C5 are
+sequentially transmitted to the output stream using CWRITE.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CWRITE(C1); CWRITE(C2); CWRITE(C3); CWRITE(C4); CWRITE(C5);
+      RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CWRIT5;
+
+
+<strong><font color="#4169E1">PROCEDURE CWRIT6</font></strong>(C1,C2,C3,C4,C5,C6: GAMMAINT);
+<font color="#B22222">(*Character write, 6 characters.  C1, C2, C3, C4, C5 and C6 are
+sequentially transmitted to the output stream using CWRITE.*)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> CWRITE(C1); CWRITE(C2); CWRITE(C3); CWRITE(C4); CWRITE(C5);
+      CWRITE(C6); RETURN;
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CWRIT6;
+
+
+<strong><font color="#4169E1">END</font></strong> SACBIOS.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

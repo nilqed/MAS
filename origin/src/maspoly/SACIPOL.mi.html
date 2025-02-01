@@ -1,0 +1,986 @@
+
+<html>
+<head>
+<title>./maspoly/SACIPOL.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:40:37+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACIPOL.mi,v 1.3 1992/10/15 16:28:40 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACIPOL.mi,v $
+ * Revision 1.3  1992/10/15  16:28:40  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:33:58  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:13  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE SACIPOL;
+
+<font color="#B22222">(* SAC Integer Polynomial System Implementation Module. *)</font>
+
+
+
+<font color="#B22222">(* Import list and declarations. *)</font>
+
+FROM MASELEM IMPORT MASODD;
+
+FROM MASSTOR IMPORT LIST, SIL, BETA, SRED, SFIRST,
+                    FIRST, RED, COMP, INV, ADV, LIST1;
+
+FROM SACLIST IMPORT AREAD, LIST2, COMP2, ADV2, FIRST2, 
+                    OWRITE, SUFFIX, CLOUT, CINV, RED2, SECOND, EQUAL;
+
+FROM MASBIOS IMPORT CREAD, CREADB,  
+                    DIBUFF, LETTER, DIGIT, 
+                    MASORD, BKSP, BLINES, SWRITE;
+
+FROM SACD IMPORT DRANN, DQR, ZETA; 
+
+FROM SACM IMPORT MIDCRA; 
+
+FROM SACI IMPORT IORD2, IMAX, IABSF, IQ, IQR, ILOG2, ISIGNF, ITRUNC, 
+                 IMP2, IWRITE, IREAD, IRAND, ISUM, IDIF, INEG, IPROD;
+
+FROM SACPOL IMPORT PCL, PRT, PMPMV, VREAD, PINV, PDEG, PLDCF, PLBCF, PRED;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: SACIPOL.mi,v 1.3 1992/10/15 16:28:40 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE IPABS</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial absolute value.  A is an integral polynomial in
+r variables.  B is the absolute value of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> SL:=IPSIGN(RL,A);
+      <font color="#4169E1">IF</font> SL &gt;= 0 <font color="#4169E1">THEN</font> B:=A; <font color="#4169E1">ELSE</font> B:=IPNEG(RL,A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPABS;
+
+
+<strong><font color="#4169E1">PROCEDURE IPCRA</font></strong>(M,ML,MLP,RL,A,AL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial chinese remainder algorithm.  M is a positive
+integer.  m is a positive beta-integer.  gcd(M,m)=1.  mp is the
+inverse of H sub m of M.  A is an integral polynomial in r variables
+whose coefficients belong to Z prime sub M, r non-negative.  a is a
+polynomial in r variables over Z sub m.  AS is the unique integral
+polynomial in r variables with coefficients in Z prime sub MS, where
+MS=M*m, which is congruent to A modulo M and to a modulo m.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AL1, ALP, AP, AS, AS1, E, EL, ES, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> AS:=MIDCRA(M,ML,MLP,A,AL); RETURN(AS); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> AP:=BETA; <font color="#4169E1">ELSE</font> AP:=A; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> ALP:=BETA; <font color="#4169E1">ELSE</font> ALP:=AL; <strong><font color="#4169E1">END</font></strong>;
+      RLP:=RL-1; AS:=BETA;
+      <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">OR</font> (ALP &lt;&gt; SIL) <font color="#4169E1">DO</font>
+            <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> A1:=0; ADV2(ALP, ES,AL1,ALP); <font color="#4169E1">ELSE</font>
+               <font color="#4169E1">IF</font> ALP = SIL <font color="#4169E1">THEN</font> AL1:=0; ADV2(AP, ES,A1,AP); <font color="#4169E1">ELSE</font>
+                  E:=FIRST(AP); EL:=FIRST(ALP);
+                  <font color="#4169E1">IF</font> E &gt; EL <font color="#4169E1">THEN</font> ADV2(AP, ES,A1,AP); AL1:=0; <font color="#4169E1">ELSE</font>
+                     <font color="#4169E1">IF</font> E &lt; EL <font color="#4169E1">THEN</font> ADV2(ALP, ES,AL1,ALP); A1:=0;
+                        <font color="#4169E1">ELSE</font> ADV2(AP, ES,A1,AP); ADV2(ALP, ES,AL1,ALP);
+                        <strong><font color="#4169E1">END</font></strong>;
+                     <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+               <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> AS1:=MIDCRA(M,ML,MLP,A1,AL1); <font color="#4169E1">ELSE</font>
+               AS1:=IPCRA(M,ML,MLP,RLP,A1,AL1); <strong><font color="#4169E1">END</font></strong>;
+            AS:=COMP2(AS1,ES,AS); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> AS = SIL <font color="#4169E1">THEN</font> AS:=0; <font color="#4169E1">ELSE</font> AS:=INV(AS); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(AS);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPCRA;
+
+
+<strong><font color="#4169E1">PROCEDURE IPDER</font></strong>(RL,A,IL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial derivative.  A is an integral polynomial in r
+variables.  1 le i le r.  B is the derivative of A with respect to
+its i-th variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font>
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> B:=IPDMV(RL,A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*il lt rl.*)</font> AP:=A; RLP:=RL-1; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); BL:=IPDER(RLP,AL,IL);
+             <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,EL,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPDER;
+
+
+<strong><font color="#4169E1">PROCEDURE IPDIF</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial difference.  A and B are integral polynomials in
+r variables, r ge 0.  C=A-B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CP, CPP, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=IPNEG(RL,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=IDIF(A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP);
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); CP:=COMP2(AL,EL,CP);
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=INEG(BL); <font color="#4169E1">ELSE</font>
+                      CL:=IPNEG(RLP,BL); <strong><font color="#4169E1">END</font></strong>;
+                   CP:=COMP2(CL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP);
+                   ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=IDIF(AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=IPDIF(RLP,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> (AP = SIL) <font color="#4169E1">AND</font> (BP = SIL) <font color="#4169E1">THEN</font> CPP:=BETA; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> CPP:=IPNEG(RL,BP); <font color="#4169E1">ELSE</font> CPP:=AP; <strong><font color="#4169E1">END</font></strong>;
+         <strong><font color="#4169E1">END</font></strong>;
+      C:=INV(CP);
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=CPP; <font color="#4169E1">ELSE</font> SRED(CP,CPP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IPDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE IPDMV</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial derivative, main variable.  A is an integral
+polynomial in r variables.  B is the derivative of A with respect to
+its main variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, ELP, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; RLP:=RL-1; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=IPROD(EL,AL); <font color="#4169E1">ELSE</font>
+                BL:=IPIP(RLP,EL,AL); <strong><font color="#4169E1">END</font></strong>;
+             ELP:=EL-1;
+             <font color="#4169E1">IF</font> EL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(BL,ELP,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPDMV;
+
+
+<strong><font color="#4169E1">PROCEDURE IPEMV</font></strong>(RL,A,AL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial evaluation of main variable.  A is an integral
+polynomial in r variables.  a is an integer.
+B(x(1), ...,x(r-1))=A(x(1), ...,x(r-1),a).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A2, AP, B, EL1, EL2, IL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horners method.*)</font> ADV2(A, EL1,B,AP); RLP:=RL-1;
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AP, EL2,A2,AP);
+            <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1-EL2 <font color="#4169E1">DO</font>
+                <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=IPROD(AL,B); <font color="#4169E1">ELSE</font>
+                   B:=IPIP(RLP,AL,B); <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=ISUM(B,A2); <font color="#4169E1">ELSE</font> B:=IPSUM(RLP,B,A2);
+               <strong><font color="#4169E1">END</font></strong>;
+            EL1:=EL2; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> B:=IPROD(AL,B); <font color="#4169E1">ELSE</font> B:=IPIP(RLP,AL,B);
+          <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPEMV;
+
+
+<strong><font color="#4169E1">PROCEDURE IPEVAL</font></strong>(RL,A,IL,AL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial evaluation.  A is an integral polynomial
+in r variables.  1 le i le r.  a is an integer.  B(x(1), ...,
+x(i-1),x(i+1), ...,x(r))=A(x(1), ...,x(i-1),a,x(i+1), ...,x(r)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, B, B1, EL1, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font>
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> B:=IPEMV(RL,A,AL); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*il lt rl.*)</font> RLP:=RL-1; AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,A1,AP); B1:=IPEVAL(RLP,A1,IL,AL);
+             <font color="#4169E1">IF</font> B1 &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(B1,EL1,B); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B);
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPEVAL;
+
+
+<strong><font color="#4169E1">PROCEDURE IPEXP</font></strong>(RL,A,NL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial exponentiation.  A is an integral polynomial in
+r variables, r ge 0.  n is a non-negative integer.  B=A**n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=0.*)</font>
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=PINV(0,1,RL); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> B:=A;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> NL-1 <font color="#4169E1">DO</font> B:=IPPROD(RL,B,A); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPEXP;
+
+
+<strong><font color="#4169E1">PROCEDURE IPFCB</font></strong>(V: LIST): LIST;
+<font color="#B22222">(*Integral polynomial factor coefficient bound.  V is the degree vector
+of a non-zero integral polynomial A.  b is a non-negative integer such
+that if b(1)* ...*b(k) divides A then the product of the infinity norms
+of the b(i) is less than or equal to 2**b times the infinity norm of A.
+Gelfonds bound is used.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, J1Y, NL, NL1, PL, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> NL:=0; PL:=1; VP:=V;
+      <font color="#4169E1">REPEAT</font> ADV(VP, NL1,VP);
+             <font color="#4169E1">IF</font> NL1 &gt; 0 <font color="#4169E1">THEN</font> J1Y:=NL+NL1; J1Y:=J1Y+NL1; NL:=J1Y-1;
+                J1Y:=NL1+1; PL:=IPROD(PL,J1Y); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> VP = SIL;
+      J1Y:=ILOG2(PL); NL:=NL+J1Y; J1Y:=NL+1; BL:=J1Y DIV 2; RETURN(BL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPFCB;
+
+
+<strong><font color="#4169E1">PROCEDURE IPFRP</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial from rational polynomial.  A is a rational
+polynomial in r variables, r ge 0, each of whose base coefficients is
+an integer.  B is a converted to integral polynomial representation.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a eq 0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl eq 0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=FIRST(A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 0.*)</font> AS:=A; RLP:=RL-1; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AS, EL,AL,AS);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=FIRST(AL); <font color="#4169E1">ELSE</font> BL:=IPFRP(RLP,AL);
+                <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AS = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPFRP;
+
+
+<strong><font color="#4169E1">PROCEDURE IPGSUB</font></strong>(RL,A,SL,L: LIST): LIST;
+<font color="#B22222">(*Integral polynomial general substitution.  A is an integral
+polynomial in r variables, r ge 1.  L is a list (b(1), ...,b(r)) of
+integral polynomials in s variables, s ge 1.  C(y(1), ...,y(s))=
+A(b(1)(y(1), ...,y(s)), ...,b(r)(y(1), ...,y(s))).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, C, J1Y, LP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> C:=PINV(RL,A,SL); LP:=L; TL:=RL+SL;
+      <font color="#4169E1">REPEAT</font> ADV(LP, B,LP); J1Y:=SL+1; C:=IPSUB(TL,C,J1Y,B); TL:=TL-1;
+             <font color="#4169E1">UNTIL</font> LP = SIL;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPGSUB;
+
+
+<strong><font color="#4169E1">PROCEDURE IPHDMV</font></strong>(RL,A,KL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial higher derivative, main variable.  A is an
+integral polynomial in r variables.  k is a non-negative
+gamma-integer B is the k-th derivative of A with respect to its main
+variable.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> B:=A; IL:=KL;
+      <font color="#4169E1">WHILE</font> (IL &gt; 0) <font color="#4169E1">AND</font> (B &lt;&gt; 0) <font color="#4169E1">DO</font> B:=IPDMV(RL,B); IL:=IL-1; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPHDMV;
+
+
+<strong><font color="#4169E1">PROCEDURE IPIHOM</font></strong>(RL,D,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial mod ideal homomorphism.  D is a list (d sub 1, ...,
+d sub r-1) of non-negative beta-integers, r ge 0.  A is an r-variate 
+integral polynomial.  B=A mod (x sub 1 ** d sub 1, ...,x sub
+r-1 ** d sub r-1).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> (RL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> RLP:=RL-1; B:=BETA; AS:=CINV(A);
+      <font color="#4169E1">WHILE</font> AS &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AS, AL,EL,AS); BL:=IPTRUN(RLP,D,AL);
+            <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(EL,BL,B); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPIHOM;
+
+
+<strong><font color="#4169E1">PROCEDURE IPIP</font></strong>(RL,AL,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial integer product.  a is an integer.  B is an
+integral polynomial in r variables.  C=a*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, BP, C, CL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*c=0.*)</font>
+      <font color="#4169E1">IF</font> (AL = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> BP:=B; C:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(BP, EL,BL,BP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=IPROD(AL,BL); <font color="#4169E1">ELSE</font>
+                CL:=IPIP(RLP,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP2(CL,EL,C);
+             <font color="#4169E1">UNTIL</font> BP = SIL;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPIP;
+
+
+<strong><font color="#4169E1">PROCEDURE IPIPR</font></strong>(RL,D,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial mod ideal product.  D is a list (d sub 1, ...,
+d sub r-1) of non-negative beta-integers, r ge 1.  A and B belong to
+Z(x sub 1, ...,x sub r-1,y)/(x sub 1 **d sub 1, ...,x sub r-1 ** d
+sub r-1).  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BS, C, C1, CL, EL, FL, J1Y, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=CINV(B); C:=0; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(BS, BL,FL,BS); AP:=AS; C1:=BETA;
+             <font color="#4169E1">REPEAT</font> ADV2(AP, AL,EL,AP);
+                    <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=IPROD(AL,BL); <font color="#4169E1">ELSE</font>
+                       CL:=IPTPR(RLP,D,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> J1Y:=EL+FL; C1:=COMP2(J1Y,CL,C1);
+                       <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">UNTIL</font> AP = SIL;
+             <font color="#4169E1">IF</font> C1 &lt;&gt; SIL <font color="#4169E1">THEN</font> C:=IPSUM(RL,C,C1); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> BS = SIL;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPIPR;
+
+
+<strong><font color="#4169E1">PROCEDURE IPIQ</font></strong>(RL,A,BL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial integer quotient.  A is an integral polynomial
+in r variables.  b is a non-zero integer which divides A.  C=A/b.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, C, CL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font> AP:=A; RLP:=RL-1; C:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=IQ(AL,BL); <font color="#4169E1">ELSE</font> CL:=IPIQ(RLP,AL,BL);
+                <strong><font color="#4169E1">END</font></strong>;
+             C:=COMP2(CL,EL,C);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      C:=INV(C); RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPIQ;
+
+
+<strong><font color="#4169E1">PROCEDURE IPMAXN</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial maximum norm.  A is an integral polynomial
+in r variables.  b is the maximum norm of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AP, BL, BL1, EL1, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> BL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+      AP:=A; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,AL1,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL1:=IABSF(AL1); <font color="#4169E1">ELSE</font>
+                BL1:=IPMAXN(RLP,AL1); <strong><font color="#4169E1">END</font></strong>;
+             BL:=IMAX(BL,BL1);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(BL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPMAXN;
+
+
+<strong><font color="#4169E1">PROCEDURE IPNEG</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial negative.  A is an integral polynomial in r
+variables, r ge 0.  B=-A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> B:=INEG(A); RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AP:=A; B:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=INEG(AL); <font color="#4169E1">ELSE</font> BL:=IPNEG(RLP,AL);
+                <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPNEG;
+
+
+<strong><font color="#4169E1">PROCEDURE IPONE</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial one.  A is an integral polynomial in r
+variables.  If A=1 then t=1, otherwise t=0.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, IL, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> TL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+      AL:=A;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> RL <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> PDEG(AL) &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN(TL); <strong><font color="#4169E1">END</font></strong>;
+          AL:=PLDCF(AL); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> AL = 1 <font color="#4169E1">THEN</font> TL:=1; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(TL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPONE;
+
+
+<strong><font color="#4169E1">PROCEDURE IPPROD</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial product.  A and B are integral polynomials in r
+variables, r ge 0.  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BS, C, C1, CL, EL, FL, J1Y, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=IPROD(A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=CINV(B); C:=0; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(BS, BL,FL,BS); AP:=AS; C1:=BETA;
+             <font color="#4169E1">REPEAT</font> ADV2(AP, AL,EL,AP);
+                    <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=IPROD(AL,BL); <font color="#4169E1">ELSE</font>
+                       CL:=IPPROD(RLP,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                    J1Y:=EL+FL; C1:=COMP2(J1Y,CL,C1);
+                    <font color="#4169E1">UNTIL</font> AP = SIL;
+             C:=IPSUM(RL,C,C1);
+             <font color="#4169E1">UNTIL</font> BS = SIL;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE IPPSR</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial pseudo-remainder.  A and B are integral
+polynomials in r variables, B non-zero.  C is the pseudo-remainder
+of A and B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B1, BB, BS, C, C1, CL, IL, J1Y, LL, ML, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*deg(b)=0.*)</font> NL:=PDEG(B);
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*deg(b) gt 0.*)</font> ML:=PDEG(A); C:=A; BB:=PRED(B); J1Y:=PLDCF(B);
+      B1:=LIST2(0,J1Y);
+      <font color="#4169E1">FOR</font> IL:=ML <font color="#4169E1">TO</font> NL BY -1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> C = 0 <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+          LL:=PDEG(C);
+          <font color="#4169E1">IF</font> LL = IL <font color="#4169E1">THEN</font> CL:=PLDCF(C); C:=PRED(C);
+             C:=IPPROD(RL,C,B1); J1Y:=LL-NL; C1:=LIST2(J1Y,CL);
+             BS:=IPPROD(RL,BB,C1); C:=IPDIF(RL,C,BS); <font color="#4169E1">ELSE</font>
+             C:=IPPROD(RL,C,B1); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPPSR;
+
+
+<strong><font color="#4169E1">PROCEDURE IPQ</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial quotient.  A and B are integral polynomials in
+r variables, r ge 0.  B is a non-zero divisor of A.  C=A/B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  C, R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=IQ(A,B); <font color="#4169E1">ELSE</font> IPQR(RL,A,B, C,R); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPQ;
+
+
+<strong><font color="#4169E1">PROCEDURE IPQR</font></strong>(RL,A,B: LIST; <strong><font color="#228B22">VAR</font></strong> Q,R: LIST);
+<font color="#B22222">(*Integral polynomial quotient and remainder.  A and B are integral
+polynomials in r variables with B non-zero.  Q and R are the unique
+integral polynomials such that either B divides A, Q=A/B and R=0 or
+else B does not divide A and A=BQ+R with deg(R) minimal.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, BL, BP, DL, ML, NL, Q1, QL, QP, RLP, RP, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*initialize.*)</font> NL:=PDEG(B); BL:=PLDCF(B); BP:=PRED(B); Q:=BETA;
+      R:=A; RLP:=RL-1;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute quotient terms.*)</font>
+      LOOP <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+           ML:=PDEG(R); DL:=ML-NL;
+           <font color="#4169E1">IF</font> DL &lt; 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           AL:=PLDCF(R);
+           <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> IQR(AL,BL, QL,SL); 
+                      <font color="#4169E1">ELSE</font> IPQR(RLP,AL,BL,QL,SL); <strong><font color="#4169E1">END</font></strong>;
+           <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           Q:=COMP2(QL,DL,Q); Q1:=LIST2(DL,QL); RP:=PRED(R);
+           QP:=IPPROD(RL,BP,Q1); R:=IPDIF(RL,RP,QP); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> Q = SIL <font color="#4169E1">THEN</font> Q:=0; <font color="#4169E1">ELSE</font> Q:=INV(Q); <strong><font color="#4169E1">END</font></strong>;
+      RETURN;
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPQR;
+
+
+<strong><font color="#4169E1">PROCEDURE IPRAN</font></strong>(RL,KL,QL,N: LIST): LIST;
+<font color="#B22222">(*Integral polynomial, random.  k is a positive beta-digit.  q is a
+rational number q1/q2 with 0 lt q1 le q2 lt beta.  N is a list
+(n sub r, ...,n sub 1) of non-negative beta-digits, r ge 0.  A is a
+random integral polynonial in r variables with deg sub i of a le n
+sub i for 1 le i le r.  Max norm of A lt 2**k and q is the
+probability that any particular term of a has a non-zero coefficient.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A, AL, DL, EL, IDUM, NL, NP, QL1, QL2, QLS, RLP, TL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute qls=int(ql*beta).*)</font> FIRST2(QL, QL1,QL2);
+      DQR(QL1,0,QL2, QLS,TL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> DL:=DRANN();
+         <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> A:=IRAND(KL); <font color="#4169E1">ELSE</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+         RETURN(A); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*rl gt 0.*)</font> RLP:=RL-1; ADV(N, NL,NP); A:=BETA;
+      <font color="#4169E1">FOR</font> EL:=0 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> DL:=DRANN();
+             <font color="#4169E1">IF</font> DL &lt; QLS <font color="#4169E1">THEN</font> AL:=IRAND(KL); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">ELSE</font> AL:=IPRAN(RLP,KL,QL,NP); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> A:=COMP2(EL,AL,A); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> A = SIL <font color="#4169E1">THEN</font> A:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(A);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE IPREAD</font></strong>( <strong><font color="#228B22">VAR</font></strong> RL,A,V: LIST);
+<font color="#B22222">(*Integral polynomial read.  The integral polynomial A is read from the
+input stream.  r, non-negative, is the number of variables of A and V
+is the variable list of A.  Any number of preceding blanks are skipped.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, C, EL, IDUM, RLP, VL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font> C:=CREADB();
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD("(") <font color="#4169E1">THEN</font> BKSP; A:=IREAD(); RL:=0; V:=BETA; RETURN;
+      <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl positive.*)</font> A:=BETA;
+      LOOP C:=CREADB();
+           <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           BKSP; IPREAD(RLP,AL,V); C:=CREADB();
+           <font color="#4169E1">IF</font> C &lt;&gt; MASORD("*") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           VL:=VREAD(); C:=CREADB();
+           <font color="#4169E1">IF</font> C &lt;&gt; MASORD("*") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           C:=CREAD();
+           <font color="#4169E1">IF</font> C &lt;&gt; MASORD("*") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+           EL:=AREAD(); A:=COMP2(AL,EL,A); C:=CREADB();
+           <font color="#4169E1">IF</font> C = MASORD(")") <font color="#4169E1">THEN</font> EXIT <font color="#4169E1">ELSE</font>
+              <font color="#4169E1">IF</font> C = MASORD("-") <font color="#4169E1">THEN</font> BKSP; <font color="#4169E1">ELSE</font>
+                 <font color="#4169E1">IF</font> C &lt;&gt; MASORD("+") <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+                 <strong><font color="#4169E1">END</font></strong>;
+              <strong><font color="#4169E1">END</font></strong>;
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*error.*)</font> 
+      <font color="#4169E1">IF</font> C &lt;&gt; MASORD(")") <font color="#4169E1">THEN</font>
+         SWRITE("error found by IPREAD."); DIBUFF; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font> A:=INV(A); RL:=RLP+1; V:=SUFFIX(V,VL); RETURN;
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IPREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE IPSIGN</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial sign.  A is an integral polynomial in r
+variables.  s is the sign of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  J1Y, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> J1Y:=PLBCF(RL,A); SL:=ISIGNF(J1Y); RETURN(SL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IPSIGN;
+
+
+<strong><font color="#4169E1">PROCEDURE IPSMV</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial substitution for main variable.  A is an
+integral polynomial in r variables, x(1), ...,x(r).  B is an
+integral polynomial in x(1), ...,x(r-1).  C(x(1), ...,x(r-1))=
+A(x(1), ...,x(r-1),B(x(1), ...,x(r-1))).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A2, AP, C, EL1, EL2, IL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=1.*)</font>
+      <font color="#4169E1">IF</font> RL = 1 <font color="#4169E1">THEN</font> C:=IPEMV(RL,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*apply horners method.*)</font> RLP:=RL-1; ADV2(A, EL1,C,AP);
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV2(AP, EL2,A2,AP);
+            <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1-EL2 <font color="#4169E1">DO</font> C:=IPPROD(RLP,C,B); <strong><font color="#4169E1">END</font></strong>;
+            C:=IPSUM(RLP,C,A2); EL1:=EL2; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL1 <font color="#4169E1">DO</font> C:=IPPROD(RLP,C,B); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPSMV;
+
+
+<strong><font color="#4169E1">PROCEDURE IPSUB</font></strong>(RL,A,IL,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial substitution.  A is an integral polynomial in
+r variables, x(1), ...,x(r).  1 le i le r.  B is an integral
+polynomial in x(1), ...,x(i-1).  C(x(1), ...,x(i-1),x(i+1), ...,
+x(r))=A(x(1), ...,x(i-1),B(x(1), ...,x(i-1)),x(i+1), ..., x(r)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  A1, AP, C, C1, EL1, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*il=rl.*)</font>
+      <font color="#4169E1">IF</font> IL = RL <font color="#4169E1">THEN</font> C:=IPSMV(RL,A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*il lt rl.*)</font> RLP:=RL-1; AP:=A; C:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,A1,AP); C1:=IPSUB(RLP,A1,IL,B);
+             <font color="#4169E1">IF</font> C1 &lt;&gt; 0 <font color="#4169E1">THEN</font> C:=COMP2(C1,EL1,C); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      C:=INV(C);
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPSUB;
+
+
+<strong><font color="#4169E1">PROCEDURE IPSUM</font></strong>(RL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial sum.  A and B are integral polynomials in r
+variables, r ge 0.  C=A+B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, BL, BP, C, CL, CP, EL, FL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> C:=B; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = 0 <font color="#4169E1">THEN</font> C:=A; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> C:=ISUM(A,B); RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*match coefficients.*)</font> AP:=A; BP:=B; CP:=BETA; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> EL:=FIRST(AP); FL:=FIRST(BP);
+             <font color="#4169E1">IF</font> EL &gt; FL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); CP:=COMP2(AL,EL,CP);
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> EL &lt; FL <font color="#4169E1">THEN</font> ADV2(BP, FL,BL,BP);
+                   CP:=COMP2(BL,FL,CP); <font color="#4169E1">ELSE</font> ADV2(AP, EL,AL,AP);
+                   ADV2(BP, FL,BL,BP);
+                   <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=ISUM(AL,BL); <font color="#4169E1">ELSE</font>
+                      CL:=IPSUM(RLP,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                   <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> CP:=COMP2(CL,EL,CP); <strong><font color="#4169E1">END</font></strong>;
+                   <strong><font color="#4169E1">END</font></strong>;
+                <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> (AP = SIL) <font color="#4169E1">OR</font> (BP = SIL);
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*finish.*)</font>
+      <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> AP:=BP; <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> CP = SIL <font color="#4169E1">THEN</font> C:=AP; <font color="#4169E1">ELSE</font> C:=INV(CP); SRED(CP,AP); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> C = SIL <font color="#4169E1">THEN</font> C:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IPSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE IPSUMN</font></strong>(RL,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial sum norm.  A is an integral polynomial in r
+variables, r non-negative.  b is the sum norm of A.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL1, AP, BL, BL1, EL1, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0.*)</font>
+      <font color="#4169E1">IF</font> RL = 0 <font color="#4169E1">THEN</font> BL:=IABSF(A); RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*rl gt 0.*)</font> BL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+      AP:=A; RLP:=RL-1;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL1,AL1,AP);
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL1:=IABSF(AL1); <font color="#4169E1">ELSE</font>
+                BL1:=IPSUMN(RLP,AL1); <strong><font color="#4169E1">END</font></strong>;
+             BL:=ISUM(BL,BL1);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      RETURN(BL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPSUMN;
+
+
+<strong><font color="#4169E1">PROCEDURE IPTPR</font></strong>(RL,D,A,B: LIST): LIST;
+<font color="#B22222">(*Integral polynomial truncated product.  D is a list (d sub 1, ...,d sub r)
+of non-negative beta-integers, r ge 1.  A and B belong to
+Z(x sub 1, ...,x sub r)/(x sub 1 **d sub 1, ...,x sub r ** d sub r).
+C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BS, C, CL, CP, DP, EL, FL, J1Y, NL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*prepare general case.*)</font> DP:=CINV(D); ADV(DP, NL,DP);
+      DP:=INV(DP); C:=0;
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      AS:=CINV(A); BS:=CINV(B); RLP:=RL-1;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*multiply.*)</font>
+      <font color="#4169E1">WHILE</font> (BS &lt;&gt; SIL) <font color="#4169E1">AND</font> (SECOND(BS) &lt; NL) <font color="#4169E1">DO</font> ADV2(BS, BL,FL,BS);
+            AP:=AS; CP:=BETA;
+            <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SECOND(AP) &lt; NL-FL) <font color="#4169E1">DO</font> ADV2(AP,
+                  AL,EL,AP);
+                  <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> CL:=IPROD(AL,BL); <font color="#4169E1">ELSE</font>
+                     CL:=IPTPR(RLP,DP,AL,BL); <strong><font color="#4169E1">END</font></strong>;
+                  <font color="#4169E1">IF</font> CL &lt;&gt; 0 <font color="#4169E1">THEN</font> J1Y:=EL+FL; CP:=COMP2(J1Y,CL,CP);
+                     <strong><font color="#4169E1">END</font></strong>;
+                  <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> CP &lt;&gt; SIL <font color="#4169E1">THEN</font> C:=IPSUM(RL,C,CP); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPTPR;
+
+
+<strong><font color="#4169E1">PROCEDURE IPTRAN</font></strong>(RL,A,T: LIST): LIST;
+<font color="#B22222">(*Integral polynomial translation.  A is an integral polynomial in r
+variables, r ge 1.  T is a list (tr, ...,t1) of integers.
+B(x1, ...,xr)=A(x1+t1, ...,xr+tr).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  B, BL, BLP, BP, EL, RLP, TL, TP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*translate main variable.*)</font> ADV(T, TL,TP); B:=IPTRMV(RL,A,TL);
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*translate coefficients.*)</font> RLP:=RL-1;
+      <font color="#4169E1">IF</font> (RLP = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      BP:=B; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(BP, EL,BLP,BP); BL:=IPTRAN(RLP,BLP,TP);
+             B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> BP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPTRAN;
+
+
+<strong><font color="#4169E1">PROCEDURE IPTRMV</font></strong>(RL,A,HL: LIST): LIST;
+<font color="#B22222">(*Integral polynomial translation, main variable.  A is an integral
+polynomial in r variables, r ge 1.  h is an integer.
+B(x1, ...,xr)=A(x1, ...,x(r-1),xr+h).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALB, AP, B, B1, B2, EL, ELP, IL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0 or hl=0.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (HL = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> ADV2(A, EL,AL,AP); B:=LIST2(0,AL);
+      LOOP <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> ELP:=0; <font color="#4169E1">ELSE</font> ELP:=FIRST(AP); <strong><font color="#4169E1">END</font></strong>;
+           <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> EL-ELP <font color="#4169E1">DO</font> B1:=PMPMV(B,1); B2:=IPIP(RL,HL,B);
+               B:=IPSUM(RL,B1,B2); <strong><font color="#4169E1">END</font></strong>;
+           <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+           ADV2(AP, EL,AL,AP); ALB:=LIST2(0,AL); B:=IPSUM(RL,B,ALB);
+           <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPTRMV;
+
+
+<strong><font color="#4169E1">PROCEDURE IPTRUN</font></strong>(RL,D,A: LIST): LIST;
+<font color="#B22222">(*Integral polynomial truncation.  D is a list (d sub 1, ...,d sub r)
+of non-negative beta-integers, r ge 0.  A is an r-variate integral
+polynomial.  B=A mod (x sub 1 ** d sub 1, ..., x sub r ** d sub r).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, B, BL, DL, DP, EL, RLP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> (RL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*initialize.*)</font> RLP:=RL-1; AS:=CINV(A); B:=BETA; DP:=CINV(D);
+      ADV(DP, DL,DP); DP:=INV(DP);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*generate terms.*)</font>
+      <font color="#4169E1">WHILE</font> (AS &lt;&gt; SIL) <font color="#4169E1">AND</font> (SECOND(AS) &lt; DL) <font color="#4169E1">DO</font> ADV2(AS, AL,EL,AS);
+            <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> BL:=AL; <font color="#4169E1">ELSE</font> BL:=IPTRUN(RLP,DP,AL); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> BL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(EL,BL,B); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> B = SIL <font color="#4169E1">THEN</font> B:=0; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> IPTRUN;
+
+
+<strong><font color="#4169E1">PROCEDURE IPWRIT</font></strong>(RL,A,V: LIST);
+<font color="#B22222">(*Integral polynomial write.  A is an integral polynomial in r
+variables, r ge 0.  V is a variable list for A.  A is written
+in the output stream in external canonical form.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, EL, IL, RLP, V1, VB, VP: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*rl=0 or a=0.*)</font>
+      <font color="#4169E1">IF</font> (RL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">THEN</font> IWRITE(A); RETURN; <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a non-zero.*)</font> SWRITE("("); AP:=A; RLP:=RL-1; VB:=CINV(V);
+      ADV(VB, V1,VP); VP:=INV(VP); IL:=0;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> (IL &lt;&gt; 0) <font color="#4169E1">AND</font> ((RL &gt; 1) <font color="#4169E1">OR</font> (ISIGNF(AL) &gt; 0)) <font color="#4169E1">THEN</font>
+                SWRITE("+"); <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">IF</font> RLP = 0 <font color="#4169E1">THEN</font> IWRITE(AL); <font color="#4169E1">ELSE</font> IPWRIT(RLP,AL,VP); <strong><font color="#4169E1">END</font></strong>;
+             SWRITE("*"); CLOUT(V1); SWRITE("*"); SWRITE("*");
+             IWRITE(EL); IL:=1;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      SWRITE(")"); RETURN;
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IPWRIT;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPBEI</font></strong>(A,CL,ML: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial binary rational evaluation, integer output.  
+A is a univariate integral polynomial.  c is an integer.  m is a 
+non-negative beta-integer.  b=2**(n*m)*A(c/2**m) where n=deg(A).
+b is an integer.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, ALP, AP, BL, EL, J1Y, KL, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font>
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> BL:=0; RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*apply horner method.*)</font> ADV2(A, NL,BL,AP); KL:=1;
+      <font color="#4169E1">WHILE</font> KL &lt;= NL <font color="#4169E1">DO</font> BL:=IPROD(BL,CL);
+            <font color="#4169E1">IF</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (FIRST(AP) = NL-KL) <font color="#4169E1">THEN</font> ADV2(AP,
+               EL,AL,AP); J1Y:=ML*KL; J1Y:=-J1Y; ALP:=ITRUNC(AL,J1Y);
+               BL:=ISUM(BL,ALP); <strong><font color="#4169E1">END</font></strong>;
+            KL:=KL+1; <strong><font color="#4169E1">END</font></strong>;
+      RETURN(BL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IUPBEI;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPBES</font></strong>(A,AL: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial binary rational evaluation of sign.
+A is a univariate polynomial.  a is a binary rational number.  
+s=sign(A(a)).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, CL, DL, ML, SL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> SL:=0; <font color="#4169E1">ELSE</font>
+         <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> CL:=0; ML:=0; <font color="#4169E1">ELSE</font> FIRST2(AL, CL,DL);
+            ML:=IORD2(DL); <strong><font color="#4169E1">END</font></strong>;
+         BL:=IUPBEI(A,CL,ML); SL:=ISIGNF(BL); <strong><font color="#4169E1">END</font></strong>;
+      RETURN(SL);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IUPBES;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPBHT</font></strong>(A,KL: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial binary homothetic transformation.  A
+is a non-zero univariate integral polynomial.  k is a gamma-integer.
+B(x)=2**(-h)*A(2**k*x) where h is uniquely determined so that B is
+an integral polynomial not divisible by 2.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, BL, EL, HL, J1Y, ML, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*compute hl.*)</font> AP:=A; HL:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); ML:=IORD2(AL); J1Y:=KL*EL; NL:=J1Y+ML;
+             <font color="#4169E1">IF</font> NL &lt; HL <font color="#4169E1">THEN</font> HL:=NL; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute b.*)</font> AP:=A; B:=BETA;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP); J1Y:=KL*EL; J1Y:=HL-J1Y;
+             BL:=ITRUNC(AL,J1Y); B:=COMP2(BL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IUPBHT;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPBRE</font></strong>(A,AL: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial binary rational evaluation.  A is a
+univariate integral polynomial.  a is a binary rational number.  
+B=A(a), a binary rational number.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  BL, BL1, BL2, CL, DL, HL, KL, ML, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*a=0.*)</font> BL:=0;
+      <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*a ne 0.*)</font>
+      <font color="#4169E1">IF</font> AL = 0 <font color="#4169E1">THEN</font> CL:=0; ML:=0; <font color="#4169E1">ELSE</font> FIRST2(AL, CL,DL);
+         ML:=IORD2(DL); <strong><font color="#4169E1">END</font></strong>;
+      BL1:=IUPBEI(A,CL,ML);
+      <font color="#4169E1">IF</font> BL1 = 0 <font color="#4169E1">THEN</font> RETURN(BL); <strong><font color="#4169E1">END</font></strong>;
+      KL:=IORD2(BL1); NL:=FIRST(A); HL:=ML*NL;
+      <font color="#4169E1">IF</font> KL &gt;= HL <font color="#4169E1">THEN</font> BL1:=ITRUNC(BL1,HL); BL2:=1; <font color="#4169E1">ELSE</font>
+         BL1:=ITRUNC(BL1,KL); HL:=HL-KL; BL2:=IMP2(1,HL); <strong><font color="#4169E1">END</font></strong>;
+      BL:=LIST2(BL1,BL2); RETURN(BL);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IUPBRE;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPCHT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial circle to half-plane transformation.
+A is a non-zero univariate integral polynomial.  Let n=deg(A).  Then
+B(x)=(x+1)**n*A(1/(x+1)), a univariate integral polynomial.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AP, B: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> AP:=PRT(A); B:=IUPTR1(AP); RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IUPCHT;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPNT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial negative transformation.  A is a 
+univariate integral polynomial.  B(x)=A(-x).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, B, EL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> B:=0; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+      B:=BETA; AP:=A;
+      <font color="#4169E1">REPEAT</font> ADV2(AP, EL,AL,AP);
+             <font color="#4169E1">IF</font> MASODD(EL) <font color="#4169E1">THEN</font> AL:=INEG(AL); <strong><font color="#4169E1">END</font></strong>;
+             B:=COMP2(AL,EL,B);
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+      B:=INV(B); RETURN(B);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> IUPNT;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPTPR</font></strong>(NL,A,B: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial truncated product.  n is a non-
+negative integer.  A and B are integral univariate polynomials.  
+C(x)=A(x)*B(x) (modulo x**n) and C=0 or deg(C) lt n.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AP, AS, BL, BS, C, CL, CP, EL, FL, J1Y: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*nl=0 or a=0 or b=0.*)</font> C:=0;
+      <font color="#4169E1">IF</font> (NL = 0) <font color="#4169E1">OR</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=CINV(B);
+      <font color="#4169E1">WHILE</font> (BS &lt;&gt; SIL) <font color="#4169E1">AND</font> (SECOND(BS) &lt; NL) <font color="#4169E1">DO</font> ADV2(BS, BL,FL,BS);
+            AP:=AS; CP:=BETA;
+            <font color="#4169E1">WHILE</font> (AP &lt;&gt; SIL) <font color="#4169E1">AND</font> (SECOND(AP) &lt; NL-FL) <font color="#4169E1">DO</font> ADV2(AP,
+                  AL,EL,AP); CL:=IPROD(AL,BL); J1Y:=EL+FL;
+                  CP:=COMP2(J1Y,CL,CP); <strong><font color="#4169E1">END</font></strong>;
+            <font color="#4169E1">IF</font> CP &lt;&gt; SIL <font color="#4169E1">THEN</font> C:=IPSUM(1,C,CP); <strong><font color="#4169E1">END</font></strong>;
+            <strong><font color="#4169E1">END</font></strong>;
+      RETURN(C);
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> IUPTPR;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPTR</font></strong>(A,HL: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial translation.  A is a univariate
+integral polynomial.  h is an integer.  B(x)=A(x+h).*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, B, BL, IL, JL, L, LP, NL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> NL:=PDEG(A);
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute coefficient list.*)</font> L:=PCL(A);
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*apply synthetic division.*)</font>
+      <font color="#4169E1">FOR</font> IL:=NL <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> ADV(L, AL,LP);
+          <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> IL <font color="#4169E1">DO</font> BL:=FIRST(LP); AL:=IPROD(AL,HL);
+              AL:=ISUM(AL,BL); SFIRST(LP,AL); LP:=RED(LP); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*convert coefficient list to polynomial.*)</font> B:=BETA; L:=INV(L);
+      <font color="#4169E1">FOR</font> IL:=0 <font color="#4169E1">TO</font> NL <font color="#4169E1">DO</font> ADV(L, AL,L);
+          <font color="#4169E1">IF</font> AL &lt;&gt; 0 <font color="#4169E1">THEN</font> B:=COMP2(IL,AL,B); <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+      RETURN(B);
+<font color="#B22222">(*7*)</font> <strong><font color="#4169E1">END</font></strong> IUPTR;
+
+
+<strong><font color="#4169E1">PROCEDURE IUPTR1</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Integral univariate polynomial translation by 1.  A is a univariate
+integral polynomial.  B(x)=A(x+1).*)</font>
+<strong><font color="#228B22">VAR</font></strong>   PAD: ARRAY[1..500] <font color="#4169E1">OF</font> LIST;
+<strong><font color="#228B22">VAR</font></strong>   AL, AL1, ALP, AP, B, CL, EL, FL, FLB, J1Y, J2Y, 
+      NL, SL: LIST;
+      ML, JL, HL, IL, KL, TL: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*degree zero.*)</font> NL:=PDEG(A);
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*compute maximum coefficient length.*)</font> FLB:=0; AP:=A;
+      <font color="#4169E1">REPEAT</font> AP:=RED(AP); ADV(AP, AL,AP); FL:=ILOG2(AL);
+             <font color="#4169E1">IF</font> FL &gt; FLB <font color="#4169E1">THEN</font> FLB:=FL; <strong><font color="#4169E1">END</font></strong>;
+             <font color="#4169E1">UNTIL</font> AP = SIL;
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*store coefficients in array.*)</font> 
+      KL:=INTEGER((FLB+NL+ZETA-1) DIV ZETA); ML:=KL*(INTEGER(NL)+1);
+      <font color="#4169E1">IF</font> ML &gt; 500 <font color="#4169E1">THEN</font> SWRITE("array PAD too small <font color="#4169E1">for</font> IUPTR1");
+         RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      AP:=A; IL:=1;
+      <font color="#4169E1">FOR</font> HL:=INTEGER(NL) <font color="#4169E1">TO</font> 0 BY -1 <font color="#4169E1">DO</font>
+          <font color="#4169E1">IF</font> AP = SIL <font color="#4169E1">THEN</font> EL:=-1; <font color="#4169E1">ELSE</font> EL:=FIRST(AP); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">IF</font> INTEGER(EL) = HL <font color="#4169E1">THEN</font> ADV2(AP, EL,AL,AP); <font color="#4169E1">ELSE</font> AL:=0; <strong><font color="#4169E1">END</font></strong>;
+          ALP:=AL;
+          <font color="#4169E1">IF</font> ALP &lt; BETA <font color="#4169E1">THEN</font> ALP:=LIST1(ALP); <strong><font color="#4169E1">END</font></strong>;
+          <font color="#4169E1">FOR</font> JL:=1 <font color="#4169E1">TO</font> KL <font color="#4169E1">DO</font>
+              <font color="#4169E1">IF</font> ALP &lt;&gt; SIL <font color="#4169E1">THEN</font> ADV(ALP, AL1,ALP); <font color="#4169E1">ELSE</font> AL1:=0; <strong><font color="#4169E1">END</font></strong>;
+              PAD[IL]:=AL1; IL:=IL+1; <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*apply synthetic division.*)</font>
+      <font color="#4169E1">FOR</font> HL:=INTEGER(NL) <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> CL:=0; ML:=ML-KL;
+          <font color="#4169E1">FOR</font> IL:=1 <font color="#4169E1">TO</font> ML <font color="#4169E1">DO</font> 
+              SL:=PAD[IL]+PAD[IL+KL]+CL; CL:=0;
+              <font color="#4169E1">IF</font> SL &gt;= BETA <font color="#4169E1">THEN</font> SL:=SL-BETA; CL:=1; <font color="#4169E1">ELSE</font>
+                 <font color="#4169E1">IF</font> SL &lt;= -BETA <font color="#4169E1">THEN</font> SL:=SL+BETA; CL:=-1; <strong><font color="#4169E1">END</font></strong>;
+                 <strong><font color="#4169E1">END</font></strong>;
+              PAD[IL+KL]:=SL; <strong><font color="#4169E1">END</font></strong>;
+          <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*convert b to normal form.*)</font> B:=SIL; EL:=0; IL:=KL*INTEGER(NL);
+      <font color="#4169E1">REPEAT</font> AL:=BETA; JL:=KL;
+             <font color="#4169E1">REPEAT</font> SL:=PAD[IL+JL]; JL:=JL-1;
+                    <font color="#4169E1">UNTIL</font> (SL &lt;&gt; 0) <font color="#4169E1">OR</font> (JL = 0);
+             <font color="#4169E1">IF</font> SL &lt;&gt; 0 <font color="#4169E1">THEN</font> CL:=0; HL:=IL+1; JL:=JL+1;
+                <font color="#4169E1">FOR</font> TL:=1 <font color="#4169E1">TO</font> JL <font color="#4169E1">DO</font> AL1:=PAD[HL]+CL; CL:=0;
+                    <font color="#4169E1">IF</font> (SL &gt; 0) <font color="#4169E1">AND</font> (AL1 &lt; 0) <font color="#4169E1">THEN</font> AL1:=AL1+BETA;
+                       CL:=-1; <strong><font color="#4169E1">END</font></strong>;
+                    <font color="#4169E1">IF</font> (SL &lt; 0) <font color="#4169E1">AND</font> (AL1 &gt; 0) <font color="#4169E1">THEN</font> AL1:=AL1-BETA;
+                       CL:=1; <strong><font color="#4169E1">END</font></strong>;
+                    AL:=COMP(AL1,AL); HL:=HL+1; <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">WHILE</font> FIRST(AL) = 0 <font color="#4169E1">DO</font> AL:=RED(AL); <strong><font color="#4169E1">END</font></strong>;
+                <font color="#4169E1">IF</font> RED(AL) = SIL <font color="#4169E1">THEN</font> AL:=FIRST(AL); 
+                   <font color="#4169E1">ELSE</font> AL:=INV(AL); <strong><font color="#4169E1">END</font></strong>;
+                B:=COMP2(EL,AL,B); <strong><font color="#4169E1">END</font></strong>;
+             EL:=EL+1; IL:=IL-KL;
+             <font color="#4169E1">UNTIL</font> EL &gt; NL;
+      RETURN(B);
+<font color="#B22222">(*8*)</font> <strong><font color="#4169E1">END</font></strong> IUPTR1;
+
+
+<strong><font color="#4169E1">END</font></strong> SACIPOL.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

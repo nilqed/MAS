@@ -1,0 +1,93 @@
+
+<html>
+<head>
+<title>./masring/DIPDIM.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:34:16+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPDIM.md,v 1.2 1992/02/12 17:34:16 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPDIM.md,v $
+ * Revision 1.2  1992/02/12  17:34:16  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:14:32  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE DIPDIM;
+
+<font color="#B22222">(* DIP Dimension Definition Module. *)</font>
+
+
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: DIPDIM.md,v 1.2 1992/02/12 17:34:16 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE DIGBZT</font></strong>(S: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial groebner base common zero test.
+S is a groebner basis. t = -1 or 0 if DIMENSION(S) eq -1 or 0, t = 1
+if DIMENSION(S) ge 1. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DILDIM</font></strong>(G: LIST;  <strong><font color="#228B22">VAR</font></strong> DL,S,M: LIST); 
+<font color="#B22222">(*Distributive polynomial list dimension.
+G is a list of distributive polynomials, a groebner base.
+d is the dimension of ideal(G). M is a maximal independend
+set of variables. S is a set of maximal independent sets of
+variables. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIDIMS</font></strong>(G,S,U,M: LIST): LIST; 
+<font color="#B22222">(*Distributive polynomial dimension maximal independent set.
+G is a list of distributive rational polynomials, and a g-base.
+S is a maximal independent set of variables.
+U is a set of variables of unknown status.
+M and MP are lists of maximal independent sets of variables.  *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EVGBIT</font></strong>(S,G: LIST): LIST; 
+<font color="#B22222">(*Exponent vector groebner base intersection test.
+S is a set of variable indices. G is a groebner basis.
+t = 0 if intersection = () else t = 1. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE USETCT</font></strong>(U,V: LIST): LIST; 
+<font color="#B22222">(*Unordered set containment test. U and V are unordered sets.
+t = 1 if U is contained in V else t = 0. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE IXSUBS</font></strong>(V,I: LIST): LIST; 
+<font color="#B22222">(*Indexed subset. V is a list.
+I is an index list. The elements of V with index from I
+are put to VP. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DIDIMWR</font></strong>(DL,S,M,V: LIST); 
+<font color="#B22222">(*Distributive polynomial dimension write.
+d is the dimension of an ideal. M is a maximal independend
+set of variables. S is a set of maximal independent sets of
+variables. V is the variable list. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> DIPDIM.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

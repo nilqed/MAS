@@ -1,0 +1,1512 @@
+
+<html>
+<head>
+<title>./maskern/MASBIOS.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1996-06-08T18:26:51+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASBIOS.mi,v 1.13 1996/06/08 18:26:51 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASBIOS.mi,v $
+ * Revision 1.13  1996/06/08 18:26:51  pesch
+ * Removed unused code, minor corrections.
+ *
+ * Revision 1.12  1996/06/08 14:18:54  kredel
+ * Changed Stream x closed successfully.
+ *
+ * Revision 1.11  1995/11/04  20:39:58  pesch
+ * Renamed massignal.m? to massig.m? because of conflict with MASSIGNAL.m?
+ * on certain OS.
+ *
+ * Revision 1.10  1995/10/13 16:02:04  pesch
+ * Fixed error: sigsetmask() at wrong places caused SIGUSR1 to be blocked
+ *              permanently.
+ *
+ * Revision 1.9  1995/09/12  17:22:48  pesch
+ * Signal handling function are now declared in massignal.
+ * Action has been changed according to ANSI C.
+ * signal.* and massignal.* have been removed, the former because of
+ * name clash with signal.h.
+ *
+ * Revision 1.8  1995/03/23  15:52:56  pesch
+ * Improved error handling for ReadOpen and WriteOpen.
+ * Reformatted import lists.
+ *
+ * Revision 1.7  1995/03/06  16:00:50  pesch
+ * Added kpathsea and GNU readline support.
+ * Added new procedures IStreamKind, OStreamKind, EStreamKind.
+ *
+ * Revision 1.6  1994/07/20  18:15:17  pesch
+ * Made most functions atomic wrt. SIGUSR1, since they are not reentrant.
+ *
+ * Revision 1.5  1993/05/11  10:45:35  kredel
+ * Uninitialized variable in input
+ *
+ * Revision 1.4  1992/10/16  13:47:49  kredel
+ * Errors found by Mocka
+ *
+ * Revision 1.3  1992/10/15  16:24:53  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:31:49  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:28  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+  
+IMPLEMENTATION MODULE MASBIOS; 
+
+<font color="#B22222">(* MAS Basic I/O System Implementation Module. *)</font>
+
+ 
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+ 
+FROM MASELEM	IMPORT	GAMMAINT, MASMIN, MASSIGN; 
+ 
+FROM MASSTOR	IMPORT	ADV, CELLS, CLOCK, COMP, DEQUE, EMPTYQUE, ENQUE,
+			FIRST, GCC, GCCC, INV, LIST, LISTVAR, NEWQUE, NU,
+			RED, SIL, TAU, TAU0, TIME;
+
+FROM MASERR	IMPORT	ERROR, fatal, harmless, severe, spotless;
+
+FROM IO		IMPORT	CloseIO, EndOfFile, EndOfLine, ReadC, ReadClose, ReadI,
+			ReadNl, ReadS, StdError, StdInput, StdOutput, WriteC,
+			WriteClose, WriteFlush, WriteI, WriteN, WriteNl,
+			WriteOpen, WriteS, tFile;
+
+FROM Strings	IMPORT	ArrayToString, AssignEmpty, Char, IsEqual, Length,
+			ReadL, SubString, WriteL, tString;
+
+FROM Portab	IMPORT	bs, cr, del, esc, ff, lf, nul; 
+
+FROM massig	IMPORT	SIGUSR1, SigMask, sigblock, signal, sigsetmask;
+
+FROM maskpathsea	IMPORT	masReadOpen;
+
+FROM masreadline	IMPORT	masReadL;
+
+
+<strong><font color="#228B22">CONST</font></strong>   CCHI = 150;      <font color="#B22222">(* &gt; 102 *)</font> 
+        ILEN = 79; 
+        OLEN = 79; 
+        itlen = 255; 
+        islen = 81;     <font color="#B22222">(* &gt; ILEN *)</font> 
+        MAXFILE = 29; 
+        undefstat = <font color="#666666">'U'</font>; 
+        instat = <font color="#666666">'I'</font>;
+        outstat = <font color="#666666">'O'</font>; 
+        clostat = <font color="#666666">'C'</font>; 
+        anystat = <font color="#666666">'A'</font>; 
+<strong><font color="#228B22">TYPE</font></strong> 
+        FileDescriptor = 
+          RECORD 
+                stat : CHAR;       <font color="#B22222">(* Unused, Input, Output, Closed. *)</font> 
+                name : tString;  
+                sysf : tFile;      <font color="#B22222">(* system dependent file handle etc. *)</font> 
+                sysq : GAMMAINT;   <font color="#B22222">(* ram queue handle *)</font> 
+                kind : INTEGER; 
+                lmarg : INTEGER; 
+                rmarg : INTEGER; 
+                lpos : INTEGER; 
+                llen : INTEGER; 
+                ByteIO : GAMMAINT; 
+                LineIO : GAMMAINT; 
+          <strong><font color="#4169E1">END</font></strong>; 
+ 
+<strong><font color="#228B22">VAR</font></strong>     stream : ARRAY [1..MAXFILE] <font color="#4169E1">OF</font> FileDescriptor; 
+        Istream, Ostream, Estream : INTEGER; 
+        Istack, Ostack : LIST; 
+        ACODE, LCODE, SCODE : ARRAY [1..CCHI] <font color="#4169E1">OF</font> INTEGER; 
+        Sin : tString; <font color="#B22222">(*ARRAY [1..islen] OF CHAR;*)</font> 
+        again, itrace : INTEGER; 
+        Tbuff : ARRAY [1..itlen] <font color="#4169E1">OF</font> GAMMAINT; 
+        blank : GAMMAINT; 
+        ISIZE, ILMARG, IRMARG, IPOS, OSIZE, OLMARG, ORMARG, OPOS : INTEGER; 
+        IBYTEIO, ILINEIO, OBYTEIO, OLINEIO : GAMMAINT; 
+        INEWLINE, ONEWLINE, ECHO : BOOLEAN; 
+ 
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASBIOS.mi,v 1.13 1996/06/08 18:26:51 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+ 
+
+<strong><font color="#4169E1">PROCEDURE BKSP</font></strong>(); 
+<font color="#B22222">(*Backspace.  Reread the last character from the input stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1 *)</font>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> again &lt; itlen <font color="#4169E1">THEN</font> again := again+1; 
+         itrace := itrace-1; 
+         <font color="#4169E1">IF</font> itrace &lt; 1 <font color="#4169E1">THEN</font> itrace := itrace+itlen; <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> BKSP; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE BLINES</font></strong>(N : GAMMAINT); 
+<font color="#B22222">(* Blank lines.  N is a positive integer.  N records of blanks each 
+are output. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : GAMMAINT; 
+      j : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1 *)</font>
+<font color="#B22222">(*1*)</font> OPOS := ORMARG; i := 1; 
+      <font color="#4169E1">WHILE</font> i &lt;= N <font color="#4169E1">DO</font> CWRITE(blank); 
+            OPOS := ORMARG; i := i+1; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> BLINES; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE CREAD</font></strong>(): GAMMAINT; 
+<font color="#B22222">(*Character read.  Returns next character from the input stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   C, D : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> IPOS := IPOS+1; C := input(); 
+      <font color="#4169E1">IF</font> IPOS&gt;=IRMARG <font color="#4169E1">THEN</font> IPOS := 0; 
+         INEWLINE := TRUE; 
+         ILINEIO := ILINEIO+1; 
+         <font color="#4169E1">WHILE</font> IPOS&lt;ILMARG <font color="#4169E1">DO</font> 
+               IPOS := IPOS+1; D := input(); 
+               <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN (C); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> CREAD; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE CREADB</font></strong>(): GAMMAINT; 
+<font color="#B22222">(*Character read, skipping blanks. Returns next character from the 
+input stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   C : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">REPEAT</font> 
+             C := CREAD(); 
+             <font color="#4169E1">UNTIL</font> C&lt;&gt;blank; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN (C); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> CREADB; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE CWRITE</font></strong>(C : GAMMAINT); 
+<font color="#B22222">(*Character write. The character c is transmitted to the output 
+stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> OPOS := OPOS+1; 
+      <font color="#4169E1">IF</font> OPOS &gt;= ORMARG <font color="#4169E1">THEN</font> 
+         OPOS := 0; 
+         ONEWLINE := TRUE; 
+         OLINEIO := OLINEIO+1; 
+         <font color="#4169E1">WHILE</font> OPOS &lt; OLMARG <font color="#4169E1">DO</font> 
+               OPOS := OPOS+1; 
+               output(blank); 
+               <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      output(C); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> CWRITE; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE DIBUFF</font></strong>(); 
+<font color="#B22222">(*Display input buffer.  The input buffer status is displayed.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, j : INTEGER; 
+      L : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> BLINES(0); 
+      SWRITE("Input buffer follows, last character read underscored."); 
+      BLINES(0); 
+      j := itrace+itlen-50; 
+      <font color="#4169E1">IF</font> j&gt;itlen <font color="#4169E1">THEN</font> j := j-itlen;  <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> 50 <font color="#4169E1">DO</font> 
+          j := j+1; 
+          <font color="#4169E1">IF</font> j&gt;itlen <font color="#4169E1">THEN</font> j := j-itlen; <strong><font color="#4169E1">END</font></strong>; 
+          L := Tbuff[j]; 
+          CWRITE(L); 
+          <strong><font color="#4169E1">END</font></strong>; 
+      BLINES(0); 
+      <font color="#4169E1">FOR</font> i := 2 <font color="#4169E1">TO</font> 50-1 <font color="#4169E1">DO</font>  CWRITE(blank); <strong><font color="#4169E1">END</font></strong>; 
+      SWRITE("-"); BLINES(1); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIBUFF; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE DIGIT</font></strong>(C : GAMMAINT): BOOLEAN; 
+<font color="#B22222">(* Digit.  c is a character.  If c is a digit then TRUE is returned 
+otherwise FALSE is returned. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   t : BOOLEAN; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> C &lt;= 9 <font color="#4169E1">THEN</font> t := TRUE; <font color="#4169E1">ELSE</font> t := FALSE; <strong><font color="#4169E1">END</font></strong>; 
+      RETURN (t); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> DIGIT; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE GREAD</font></strong>(): GAMMAINT; 
+<font color="#B22222">(* Gamma-integer read.  A gamma-integer is read from the input 
+stream.  Any preceding blanks are skipped. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   a, C, S : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Skip blanks and read sign, if any.*)</font> 
+      S := 1; 
+      C := CREADB(); 
+      <font color="#4169E1">IF</font> C = MASORD(<font color="#666666">'+'</font>) <font color="#4169E1">THEN</font> C := CREADB(); 
+         <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> C = MASORD(<font color="#666666">'-'</font>) <font color="#4169E1">THEN</font> 
+                 C := CREADB(); S := -1; 
+                 <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> DIGIT(C) <font color="#4169E1">THEN</font> 
+         ERROR(harmless, "GREAD: digit expected."); 
+         DIBUFF(); 
+         m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+         RETURN 0; 
+         <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*read digits and convert.*)</font> 
+        a := 0; 
+        <font color="#4169E1">REPEAT</font> 
+               a := 10*a+C; 
+               C := CREAD(); 
+                         <font color="#B22222">(*teste ob a&gt;10**delta*)</font> 
+               <font color="#4169E1">UNTIL</font> <font color="#4169E1">NOT</font> DIGIT(C); 
+        BKSP(); a := S*a; 
+	m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+        RETURN (a); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> GREAD; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE GWRITE</font></strong>(a : GAMMAINT); 
+<font color="#B22222">(* Gamma-integer write.  The gamma-integer a is written in the output 
+stream.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   D : ARRAY [1..20] <font color="#4169E1">OF</font> GAMMAINT; 
+      ap, q : GAMMAINT; 
+      N : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*5*)</font> <font color="#B22222">(*Write minus sign.*)</font> 
+      <font color="#4169E1">IF</font> a &lt; 0 <font color="#4169E1">THEN</font> ap := -a; SWRITE("-"); 
+               <font color="#4169E1">ELSE</font> ap := a; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Convert to decimal.*)</font> 
+      N := 0; 
+      <font color="#4169E1">REPEAT</font> 
+             q := ap DIV 10; 
+             N := N+1; 
+             <font color="#4169E1">IF</font> N&gt;20 <font color="#4169E1">THEN</font> 
+                     ERROR(harmless, "GWRITE: <font color="#4169E1">not</font> a gamma-integer."); 
+                     m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+                     RETURN; 
+                     <strong><font color="#4169E1">END</font></strong>; 
+             D[N] := ap-10*q; 
+             ap := q; 
+             <font color="#4169E1">UNTIL</font> ap = 0; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Write digits.*)</font> 
+      <font color="#4169E1">REPEAT</font> 
+             CWRITE(D[N]); 
+             N := N-1; 
+             <font color="#4169E1">UNTIL</font> N = 0; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*6*)</font> <strong><font color="#4169E1">END</font></strong> GWRITE; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE Hold</font></strong>(); 
+<font color="#B22222">(* Hold. Pause programm if some key is pressed.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   C : CHAR; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong>   
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> C := CHAR(0); <font color="#B22222">(*ReadC(StdInput);*)</font> 
+      <font color="#4169E1">IF</font> ORD(C) &gt; 0 <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> C=esc <font color="#4169E1">THEN</font>
+            ERROR(severe, "ESC key pressed."); 
+            <strong><font color="#4169E1">END</font></strong>; 
+         Pause(); 
+         <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> Hold; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE InitBIOS</font></strong>(); 
+<font color="#B22222">(*Initialize BIOS.  Initialize the basic input/output system.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   C, D, I, J : INTEGER; 
+      S, T, R : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Initialize file descriptors. *)</font> 
+      <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> MAXFILE <font color="#4169E1">DO</font> 
+          stream[I].stat := undefstat; 
+          AssignEmpty(stream[I].name); 
+          stream[I].ByteIO := 0; 
+          stream[I].LineIO := 0; 
+          stream[I].lmarg := 0; 
+          stream[I].rmarg := ILEN; 
+          stream[I].llen := ILEN; 
+          stream[I].lpos := 0; 
+          LISTVAR(stream[I].sysq); 
+          <strong><font color="#4169E1">END</font></strong>; 
+      Istream := 0; Ostream := 0; 
+      again := 0; itrace := 1; 
+      LISTVAR(Istack); LISTVAR(Ostack); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Set input globals.*)</font> 
+      ECHO := FALSE; Istack := SIL; 
+      R := SIUNIT("CON:"); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*Set output globals.*)</font> 
+      Ostack := SIL; 
+      R := SOUNIT("CON:"); 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(*Initialize code arrays.*)</font> 
+      INITCC(); 
+      <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> INTEGER(CHI) <font color="#4169E1">DO</font> 
+          SCODE[I] := LCODE[I]; 
+          ACODE[I] := I-1; 
+          <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">FOR</font> J := INTEGER(CHI)-1 <font color="#4169E1">TO</font> 1 BY -1 <font color="#4169E1">DO</font> 
+          <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> J <font color="#4169E1">DO</font> 
+              C := SCODE[I]; 
+              D := SCODE[I+1]; 
+              S := MASSIGN(GAMMAINT(C)); 
+              T := MASSIGN(GAMMAINT(D)); 
+              <font color="#4169E1">IF</font> (S&gt;T) <font color="#4169E1">OR</font> (S=T) <font color="#4169E1">AND</font> (C&gt;D) <font color="#4169E1">THEN</font> 
+                 SCODE[I] := D; SCODE[I+1] := C; C := ACODE[I]; 
+                 ACODE[I] := ACODE[I+1]; 
+                 ACODE[I+1] := C; 
+                 <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+          <strong><font color="#4169E1">END</font></strong>; 
+      blank := MASORD(<font color="#666666">' '</font>);     
+      ringclear(); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> InitBIOS; 
+ 
+  
+<strong><font color="#4169E1">PROCEDURE CloseBIOS</font></strong>(); 
+<font color="#B22222">(*Close BIOS.  Close all streams and write summary. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   I, k, j: INTEGER; 
+      c : CHAR; 
+      K : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*Close streams on stacks. *)</font> 
+        <font color="#4169E1">WHILE</font> RED(Istack)&lt;&gt;SIL <font color="#4169E1">DO</font> 
+              I := INTEGER(FIRST(Istack)); 
+              Istack := RED(Istack); 
+              c := stream[I].stat; j:=-1; 
+              <font color="#4169E1">IF</font> c=instat <font color="#4169E1">THEN</font> j:=CioUNIT(I,0) <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">IF</font> c=outstat <font color="#4169E1">THEN</font> j:=CioUNIT(0,I) <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">IF</font> j = 0 <font color="#4169E1">THEN</font> 
+                 SWRITE("Stream "); StWRITE(stream[I].name); 
+                 SWRITE(" closed successfully."); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">WHILE</font> RED(Ostack)&lt;&gt;SIL <font color="#4169E1">DO</font> 
+              I := INTEGER(FIRST(Ostack)); 
+              Ostack := RED(Ostack); 
+              c := stream[I].stat; j:=-1;
+              <font color="#4169E1">IF</font> c=instat <font color="#4169E1">THEN</font> j:=CioUNIT(I,0) <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">IF</font> c=outstat <font color="#4169E1">THEN</font> j:=CioUNIT(0,I) <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">IF</font> j = 0 <font color="#4169E1">THEN</font> 
+                 SWRITE("Stream "); StWRITE(stream[I].name); 
+                 SWRITE(" closed successfully."); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*Close remaining streams, exept terminal/stdIO. *)</font> 
+        <font color="#4169E1">FOR</font> I := 1 <font color="#4169E1">TO</font> MAXFILE <font color="#4169E1">DO</font> 
+            <font color="#4169E1">IF</font> (I&lt;&gt;Istream) <font color="#4169E1">AND</font> (I&lt;&gt;Ostream) <font color="#4169E1">THEN</font>
+               c := stream[I].stat; j:=-1; 
+               <font color="#4169E1">IF</font> c=instat <font color="#4169E1">THEN</font> j:=CioUNIT(I,0) <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> c=outstat <font color="#4169E1">THEN</font> j:=CioUNIT(0,I) <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">IF</font> j = 0 <font color="#4169E1">THEN</font> 
+                  SWRITE("Stream "); StWRITE(stream[I].name); 
+                  SWRITE(" closed successfully."); BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+               <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(* Summary(); *)</font> 
+      CloseIO;  
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CloseBIOS; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE INITCC</font></strong>(); 
+<font color="#B22222">(*Initialize the ALDES character codes in LCODE.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> CHI := 0;       <font color="#B22222">(*DIGITS*)</font> 
+      AddCode("0123456789");    <font color="#B22222">(*LETTERS*)</font> 
+      AddCode("aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ");
+             <font color="#B22222">(*SPECIAL*)</font> 
+      AddCode(".,=+-*/$() !"); 
+      AddCode(<font color="#666666">'"'</font>); <font color="#B22222">(*"*)</font>
+      AddCode("#%&amp;<font color="#666666">':;&lt;&gt;?@[\]^_`{}|~"); (*'</font> fool cpp*)
+      CHI := CHI+1; 
+      LCODE[INTEGER(CHI)] := 254;       <font color="#B22222">(* copyright ??*)</font> 
+      CHI := CHI+1; 
+      LCODE[INTEGER(CHI)] := INTEGER(ORD(esc)); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> INITCC; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE AddCode</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR); 
+<font color="#B22222">(* Add Code. The characters of S are added to the LCODE array, 
+CHI is advanced. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   K : INTEGER; 
+      I : CARDINAL; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> K := CHI; 
+      <font color="#4169E1">FOR</font> I := 0 <font color="#4169E1">TO</font> HIGH(S) <font color="#4169E1">DO</font> K := K+1; 
+          LCODE[K] := INTEGER(ORD(S[I])); <strong><font color="#4169E1">END</font></strong>; 
+      CHI := GAMMAINT(K); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> AddCode; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE LETTER</font></strong>(C : GAMMAINT): BOOLEAN; 
+<font color="#B22222">(* Letter.  c is a character.  If c is a letter then TRUE is returned 
+otherwise FALSE is returned. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   t : BOOLEAN; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (C&gt;=MASORD(<font color="#666666">'a'</font>)) <font color="#4169E1">AND</font> (C&lt;=MASORD(<font color="#666666">'Z'</font>)) 
+         <font color="#4169E1">THEN</font> t := TRUE; 
+         <font color="#4169E1">ELSE</font> t := FALSE <strong><font color="#4169E1">END</font></strong>; 
+      RETURN (t); 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> LETTER; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE input</font></strong>(): GAMMAINT; 
+<font color="#B22222">(* Input. The charcter C is recieved from the input stream and converted 
+to aldes code. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, retry : INTEGER; 
+      c : CHAR; 
+      C, j : GAMMAINT; 
+      ok : BOOLEAN; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*read from internal buffer, if not empty. *)</font> 
+        <font color="#4169E1">IF</font> again &gt; 0 <font color="#4169E1">THEN</font> again := again-1; 
+                IPOS := IPOS-1; C := ringget(); 
+                RETURN (C); <strong><font color="#4169E1">END</font></strong>; 
+        retry := MAXFILE; 
+        <font color="#B22222">(* avoid endless retrys *)</font> 
+        <font color="#4169E1">REPEAT</font>  c:=" ";
+                i := stream[Istream].kind; 
+        <font color="#4169E1">CASE</font> i <font color="#4169E1">OF</font> 
+             | ramkind : ok := <font color="#4169E1">NOT</font> EMPTYQUE(stream[Istream].sysq); 
+                         <font color="#4169E1">IF</font> ok <font color="#4169E1">THEN</font> 
+                            C := DEQUE(stream[Istream].sysq); 
+                            ringput(C); <strong><font color="#4169E1">END</font></strong>; 
+            | termkind : ok := TRUE; 
+                         masReadL(Sin);  
+                         ringstring(Sin); 
+                         C := ringget(); 
+                         <font color="#4169E1">IF</font> stream[Ostream].kind=termkind <font color="#4169E1">THEN</font> 
+                            WriteNl(StdOutput); WriteFlush(StdOutput) <strong><font color="#4169E1">END</font></strong>; 
+            | diskkind : <font color="#4169E1">REPEAT</font> 
+                               ok := <font color="#4169E1">NOT</font> EndOfFile(stream[Istream].sysf);
+                               <font color="#4169E1">IF</font> ok <font color="#4169E1">THEN</font> c:=ReadC(stream[Istream].sysf);  
+                                          <strong><font color="#4169E1">END</font></strong>;
+                          <font color="#4169E1">UNTIL</font> ( c &gt;= " " ) <font color="#4169E1">OR</font> <font color="#4169E1">NOT</font> ok; 
+                          <font color="#4169E1">IF</font> ok <font color="#4169E1">THEN</font> 
+                                C := MASORD(c); 
+                                <font color="#4169E1">ELSE</font> 
+                                C := blank; 
+                                <strong><font color="#4169E1">END</font></strong>; 
+                          ringput(C); 
+             | winkind : ok := FALSE; 
+             | nulkind : ok := FALSE; 
+                  <font color="#4169E1">ELSE</font>   ok := FALSE; 
+                         <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+           <font color="#B22222">(*DEBUG 
+           ERROR(spotless,"End of stream: "); 
+           ERROR(spotless,stream[Istream].name); 
+             GUBED*)</font> 
+           j := CioUNIT(Istream,0); 
+           retry := retry-1; 
+           <font color="#4169E1">IF</font> retry&lt;0 <font color="#4169E1">THEN</font> c := esc; ok := TRUE <strong><font color="#4169E1">END</font></strong>; 
+           ringclear(); 
+           <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">UNTIL</font> ok; 
+      <font color="#4169E1">IF</font> c=esc <font color="#4169E1">THEN</font> <font color="#B22222">(* emergency exit *)</font> 
+         ERROR(severe, "INPUT: ESC key pressed.") <strong><font color="#4169E1">END</font></strong>; 
+      IBYTEIO := IBYTEIO+1; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN (C); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> input; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE LISTS</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR): LIST;   
+<font color="#B22222">(*List from string. S is a character string with respect to local 
+character code. A list if the corresponding ALDES character codes 
+is returned.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   I, J : INTEGER; 
+      II : GAMMAINT; 
+      L : LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> J := INTEGER(HIGH(S)); I := 0; L := SIL; 
+      <font color="#4169E1">WHILE</font> ( I &lt;= J ) <font color="#4169E1">AND</font> (S[I] &lt;&gt; nul) <font color="#4169E1">DO</font>        
+            II := MASORD( S[I] ); L := COMP(II,L); 
+            I := I+1; <strong><font color="#4169E1">END</font></strong>; 
+      L := INV(L); RETURN (L); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> LISTS; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE SLIST</font></strong>(A : LIST; <strong><font color="#228B22">VAR</font></strong> S : ARRAY <font color="#4169E1">OF</font> CHAR); 
+<font color="#B22222">(*String from list. A is a list of ALDES character codes. 
+S is a the corresponding character string with respect to local 
+character codes. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   I : GAMMAINT; 
+      AP : LIST; 
+      i : INTEGER;     
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> AP := A; S[0] := nul; i := -1; 
+      <font color="#4169E1">WHILE</font> AP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(AP, I, AP); 
+            <font color="#4169E1">IF</font> I &lt; SIL <font color="#4169E1">THEN</font> i:=i+1; S[i] := MASCHR(I) <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      S[i+1]:=nul;
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> SLIST; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE MASCHR</font></strong>(C : GAMMAINT): CHAR; 
+<font color="#B22222">(*MAS char.  Returns the local character for the aldes character c. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      c : CHAR; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (0&lt;=C) <font color="#4169E1">AND</font> (C&lt;=CHI) 
+         <font color="#4169E1">THEN</font> i := INTEGER(C); 
+         <font color="#4169E1">ELSE</font> ERROR(spotless, "Non-standard character <font color="#4169E1">to</font> convert. "); 
+              GWRITE(C); SWRITE(" "); 
+              i := INTEGER(blank); <strong><font color="#4169E1">END</font></strong>; 
+      c := CHR(LCODE[i+1]); RETURN (c); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> MASCHR; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE MASORD</font></strong>(C : CHAR): GAMMAINT; 
+<font color="#B22222">(*MAS order.  Returns the aldes code for the character c. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   D : GAMMAINT; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> D := GAMMAINT(ORD(C)); D := MASORDI(D); 
+      RETURN (D); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> MASORD; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE MASORDI</font></strong>(C : GAMMAINT): GAMMAINT; 
+<font color="#B22222">(*MAS order integer.  Returns the aldes code for the integer c.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   CC, D, J, L, M, U, KK : INTEGER; 
+      K : GAMMAINT; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> CC := INTEGER(C); L := 1; U := INTEGER(CHI); 
+      <font color="#4169E1">REPEAT</font> 
+             J := L+U; 
+             M := J DIV 2; 
+             D := SCODE[M]; 
+             <font color="#4169E1">IF</font> (CC&lt;0) <font color="#4169E1">AND</font> ((D&gt;=0) <font color="#4169E1">OR</font> (CC&lt;=D)) <font color="#4169E1">OR</font> (D&gt;0) <font color="#4169E1">AND</font> (CC&lt;=D) 
+                <font color="#4169E1">THEN</font> U := M; 
+                <font color="#4169E1">ELSE</font> L := M+1; <strong><font color="#4169E1">END</font></strong>; 
+             <font color="#4169E1">UNTIL</font> L=U; 
+       <font color="#4169E1">IF</font> CC = SCODE[L] 
+          <font color="#4169E1">THEN</font> KK := ACODE[L]; 
+          <font color="#4169E1">ELSE</font> ERROR(spotless, "Non-standard character <font color="#4169E1">to</font> convert. "); 
+               GWRITE(C); SWRITE(" "); 
+               KK := INTEGER(blank); <strong><font color="#4169E1">END</font></strong>; 
+      K := GAMMAINT(KK); RETURN (K); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> MASORDI; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE output</font></strong>(C : GAMMAINT); 
+<font color="#B22222">(* Output. The charcter C is converted to local code and transmitted 
+to the output stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, retry : INTEGER; 
+      c : CHAR; 
+      ok : BOOLEAN; 
+      j : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> retry := MAXFILE;      <font color="#B22222">(* avoid endless retrys *)</font> 
+        <font color="#4169E1">REPEAT</font> 
+                i := stream[Ostream].kind; 
+                <font color="#4169E1">CASE</font> i <font color="#4169E1">OF</font> 
+                        | ramkind : 
+                                ENQUE(C, stream[Ostream].sysq); 
+                                ok := (<font color="#4169E1">NOT</font> EMPTYQUE(stream[Ostream].sysq)); 
+                        | termkind : 
+                                <font color="#4169E1">IF</font> ONEWLINE <font color="#4169E1">THEN</font> 
+                                   ONEWLINE := FALSE; 
+                                   WriteNl(StdOutput); 
+                                   WriteFlush(StdOutput);
+                                   <font color="#B22222">(* Hold(); *)</font> 
+                                <strong><font color="#4169E1">END</font></strong>; 
+                                c := MASCHR(C); 
+                                WriteC(StdOutput,c); 
+                                WriteFlush(StdOutput);
+                                ok := TRUE; 
+                        | diskkind : 
+                                <font color="#4169E1">IF</font> ONEWLINE <font color="#4169E1">THEN</font> 
+                                        ONEWLINE := FALSE; 
+                                        WriteNl(stream[Ostream].sysf); 
+                                <strong><font color="#4169E1">END</font></strong>; 
+                                c := MASCHR(C); 
+                                WriteC(stream[Ostream].sysf, c);   
+                                ok := TRUE;
+                        | winkind : 
+                                ok := TRUE; 
+                        | nulkind : 
+                                ok := TRUE; 
+                        <font color="#4169E1">ELSE</font> 
+                                ok := FALSE; 
+                <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> <font color="#B22222">(*one cannot debug this case*)</font> 
+                        j := CioUNIT(0,Ostream); 
+                        retry := retry-1; 
+                        <font color="#4169E1">IF</font> retry &lt; 0 <font color="#4169E1">THEN</font> 
+                           ERROR(fatal, "No output possible."); 
+                           <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(* no more output possible *)</font> 
+                <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">UNTIL</font> ok; 
+      OBYTEIO := OBYTEIO+1; 
+      <font color="#B22222">(*DEBUG   Hold;   GUBED*)</font> 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> output; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE Pause</font></strong>(); 
+<font color="#B22222">(*Pause. Delay programm until some key is pressed.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   C : CHAR; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> C:=ReadC(StdInput); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> Pause; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE ringclear</font></strong>(); 
+<font color="#B22222">(*clear ring buffer. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> itlen <font color="#4169E1">DO</font> Tbuff[i] := blank; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> ringclear; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE ringget</font></strong>(): GAMMAINT; 
+<font color="#B22222">(*get gamma integer from ring buffer. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   I : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> I := Tbuff[itrace]; itrace := itrace+1; 
+      <font color="#4169E1">IF</font> itrace&gt;itlen <font color="#4169E1">THEN</font> itrace := itrace-itlen; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN (I); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> ringget; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE ringput</font></strong>(I : GAMMAINT); 
+<font color="#B22222">(*put gamma integer in ring buffer. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> Tbuff[itrace] := I; itrace := itrace+1; 
+      <font color="#4169E1">IF</font> itrace&gt;itlen <font color="#4169E1">THEN</font> itrace := itrace-itlen; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> ringput; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE ringstring</font></strong>(S : tString <font color="#B22222">(*ARRAY OF CHAR*)</font>); 
+<font color="#B22222">(*put string in ring buffer. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, k, l : INTEGER; 
+      j : GAMMAINT;
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*prepare*)</font> l := Length(S); 
+      <font color="#4169E1">IF</font> l &gt; ISIZE <font color="#4169E1">THEN</font> l := ISIZE; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(* ASSERT again = 0 *)</font>
+      again := again+ISIZE;  k := itrace; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*insert string*)</font> i := 1;            
+      <font color="#4169E1">WHILE</font> i &lt;= l <font color="#4169E1">DO</font> 
+            <font color="#4169E1">IF</font> Char(S,i) = bs <font color="#4169E1">THEN</font> k := k-1; 
+               <font color="#4169E1">IF</font> k &lt; 1 <font color="#4169E1">THEN</font> k := k+itlen; <strong><font color="#4169E1">END</font></strong>; 
+         ELSIF Char(S,i) = del <font color="#4169E1">THEN</font> i := i+1; 
+          <font color="#4169E1">ELSE</font> Tbuff[k] := MASORD(Char(S,i)); 
+               k := k+1; <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> k &gt; itlen <font color="#4169E1">THEN</font> k := k-itlen; <strong><font color="#4169E1">END</font></strong>; 
+            i := i+1; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*insert blanks*)</font> 
+      <font color="#4169E1">WHILE</font> i &lt; ISIZE <font color="#4169E1">DO</font> Tbuff[k] := blank; 
+            k := k+1; 
+            <font color="#4169E1">IF</font> k&gt;itlen <font color="#4169E1">THEN</font> k := k-itlen; <strong><font color="#4169E1">END</font></strong>; 
+            i := i+1; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> ringstring; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE findslot</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR; stat : CHAR; <strong><font color="#228B22">VAR</font></strong> old, slot : INTEGER); 
+<font color="#B22222">(* Find slot.  The old or new slot for stream S for status 'stat' is 
+searched in the file descriptor table. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      da, gl : BOOLEAN; 
+      sp: tString;
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* See if allready defined. *)</font> 
+        slot := 0; old := 0; 
+        ArrayToString(S,sp);
+        <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> MAXFILE <font color="#4169E1">DO</font> 
+            <font color="#4169E1">IF</font> stream[i].stat = undefstat <font color="#4169E1">THEN</font> slot := i; <strong><font color="#4169E1">END</font></strong>; 
+            da := IsEqual(sp,stream[i].name); 
+            <font color="#4169E1">IF</font> stat=anystat <font color="#4169E1">THEN</font> gl := TRUE; 
+               <font color="#4169E1">ELSE</font> gl := (stream[i].stat=stat) <font color="#4169E1">OR</font> (stream[i].stat=clostat); 
+                    <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">IF</font> da <font color="#4169E1">AND</font> gl <font color="#4169E1">THEN</font> old := i; <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> old&gt;0 <font color="#4169E1">THEN</font> slot := old; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> findslot; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE saveold</font></strong>(s : INTEGER); 
+<font color="#B22222">(* The characteristics of the old stream are saved in the descriptor 
+table. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (s&lt;1) <font color="#4169E1">OR</font> (s&gt;MAXFILE) <font color="#4169E1">THEN</font>       
+         ERROR(severe, "saveold: stream out <font color="#4169E1">of</font> range."); 
+         RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* input stream. *)</font> 
+        <font color="#4169E1">IF</font> stream[s].stat=instat <font color="#4169E1">THEN</font> 
+           stream[s].lmarg := ILMARG; 
+           stream[s].rmarg := IRMARG; 
+           stream[s].llen := ISIZE; 
+           stream[s].lpos := IPOS; 
+           stream[s].ByteIO := IBYTEIO; 
+           stream[s].LineIO := ILINEIO; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* output stream. *)</font> 
+        <font color="#4169E1">IF</font> stream[s].stat=outstat <font color="#4169E1">THEN</font> 
+           stream[s].lmarg := OLMARG; 
+           stream[s].rmarg := ORMARG; 
+           stream[s].llen := OSIZE; 
+           stream[s].lpos := OPOS; 
+           stream[s].ByteIO := OBYTEIO; 
+           stream[s].LineIO := OLINEIO; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> saveold; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE storeold</font></strong>(s : INTEGER); 
+<font color="#B22222">(* The characteristics of the old stream are restored from the descriptor 
+table. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (s&lt;1) <font color="#4169E1">OR</font> (s&gt;MAXFILE) <font color="#4169E1">THEN</font> 
+         ERROR(severe, "storeold: stream out <font color="#4169E1">of</font> range."); 
+	 m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+         RETURN; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* input stream. *)</font> 
+        <font color="#4169E1">IF</font> stream[s].stat=instat <font color="#4169E1">THEN</font> 
+           ILMARG := stream[s].lmarg; 
+           IRMARG := stream[s].rmarg; 
+           ISIZE := stream[s].llen; 
+           IPOS := stream[s].lpos; 
+           IBYTEIO := stream[s].ByteIO; 
+           ILINEIO := stream[s].LineIO; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* output stream. *)</font> 
+        <font color="#4169E1">IF</font> stream[s].stat=outstat <font color="#4169E1">THEN</font> 
+           OLMARG := stream[s].lmarg; 
+           ORMARG := stream[s].rmarg; 
+           OSIZE := stream[s].llen; 
+           OPOS := stream[s].lpos; 
+           OBYTEIO := stream[s].ByteIO; 
+           OLINEIO := stream[s].LineIO; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> storeold; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE detkind</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR): INTEGER; 
+<font color="#B22222">(*Determine the kind of the stream S. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   k : INTEGER; 
+      w : CARDINAL;
+      sp, sp1, pre : tString;  
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* identify prefix in character string. *)</font> 
+        k := diskkind; 
+        ArrayToString(S,sp1); SubString(sp1,1,4,sp);  
+        ArrayToString("CON:",pre); 
+        <font color="#4169E1">IF</font> IsEqual(sp,pre) <font color="#4169E1">THEN</font> k := termkind; <strong><font color="#4169E1">END</font></strong>; 
+        ArrayToString("WIN:",pre); 
+        <font color="#4169E1">IF</font> IsEqual(sp,pre) <font color="#4169E1">THEN</font> k := winkind; <strong><font color="#4169E1">END</font></strong>; 
+        ArrayToString("RAM:",pre); 
+        <font color="#4169E1">IF</font> IsEqual(sp,pre) <font color="#4169E1">THEN</font> k := ramkind; <strong><font color="#4169E1">END</font></strong>; 
+        ArrayToString("NUL:",pre); 
+        <font color="#4169E1">IF</font> IsEqual(sp,pre) <font color="#4169E1">THEN</font> k := nulkind; <strong><font color="#4169E1">END</font></strong>; 
+        ArrayToString("GRA:",pre); 
+        <font color="#4169E1">IF</font> IsEqual(sp,pre) <font color="#4169E1">THEN</font> k := termkind; <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+        RETURN (k); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> detkind; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE popIstream</font></strong>(); 
+<font color="#B22222">(* Pop input stream.  The most recently open input stream is popped from 
+the open stream stack.  Popping continues until a non closed stream is 
+found.  *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   s, slot : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* Check if it is last on stack. *)</font> 
+        slot := INTEGER(FIRST(Istack)); 
+        <font color="#4169E1">IF</font> (RED(Istack)&lt;&gt;SIL) <font color="#4169E1">AND</font> (slot=Istream) <font color="#4169E1">THEN</font> 
+           Istack := RED(Istack); 
+           slot := INTEGER(FIRST(Istack)); 
+           <strong><font color="#4169E1">END</font></strong>; 
+        s := Istream; 
+        Istream := slot; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*save and store. *)</font> 
+        saveold(s); 
+        storeold(slot); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion*)</font> 
+        <font color="#4169E1">IF</font> stream[slot].stat=clostat <font color="#4169E1">THEN</font> popIstream(); <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> popIstream; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE popOstream</font></strong>(); 
+<font color="#B22222">(* Pop output stream.  The most recently open output stream is popped from 
+the open stream stack.  Popping continues until a non closed stream is 
+found.  *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   s, slot : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* Check if it is last on stack. *)</font> 
+        slot := INTEGER(FIRST(Ostack)); 
+        <font color="#4169E1">IF</font> (RED(Ostack)&lt;&gt;SIL) <font color="#4169E1">AND</font> (slot=Ostream) <font color="#4169E1">THEN</font> 
+           Ostack := RED(Ostack); 
+           slot := INTEGER(FIRST(Ostack)); 
+           <strong><font color="#4169E1">END</font></strong>; 
+        s := Ostream; 
+        Ostream := slot; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*save and store. *)</font> 
+        saveold(s); 
+        storeold(slot); 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(*recursion*)</font> 
+        <font color="#4169E1">IF</font> stream[slot].stat=clostat <font color="#4169E1">THEN</font> popOstream(); <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> popOstream; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE pushstream</font></strong>(s : INTEGER); 
+<font color="#B22222">(*Push stream.  The stream 'slot' is pushed to the open stream stack. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*save old values. *)</font> 
+        <font color="#4169E1">CASE</font> stream[s].stat <font color="#4169E1">OF</font> 
+                | outstat : 
+                        <font color="#4169E1">IF</font> Ostream&gt;0 <font color="#4169E1">THEN</font> 
+                           saveold(Ostream); <strong><font color="#4169E1">END</font></strong>; 
+                        Ostack := COMP(GAMMAINT(s),Ostack); 
+                        Ostream := s; 
+                | instat : 
+                        <font color="#4169E1">IF</font> Istream&gt;0 <font color="#4169E1">THEN</font> saveold(Istream); <strong><font color="#4169E1">END</font></strong>; 
+                        Istack := COMP(GAMMAINT(s),Istack); 
+                        Istream := s; 
+                <font color="#4169E1">ELSE</font> 
+                <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*store old values. *)</font> 
+        storeold(s); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> pushstream; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE CUNIT</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR): GAMMAINT; 
+<font color="#B22222">(* Close unit.  The unit S is closed, with S as the external name. 
+CUNIT returns 0 on successful completion, ne 0 else.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>     iold, oold, slot, k : INTEGER; 
+        ok : BOOLEAN; 
+        m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* See if open. *)</font> 
+        findslot(S, instat, iold, slot); 
+        findslot(S, outstat, oold, slot); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* Pop from open stream stacks. *)</font> 
+        <font color="#4169E1">IF</font> Istream=iold <font color="#4169E1">THEN</font> popIstream(); <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> Ostream=oold <font color="#4169E1">THEN</font> popOstream(); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* determine stream kind and close streams. *)</font> 
+        <font color="#4169E1">IF</font> iold&gt;0 <font color="#4169E1">THEN</font> 
+           k := stream[iold].kind; 
+                <font color="#4169E1">CASE</font> k <font color="#4169E1">OF</font> 
+                        | termkind : ok := TRUE; 
+                        | ramkind :  ok := TRUE; 
+                        | winkind :  ok := TRUE; 
+                        | nulkind :  ok := TRUE; 
+                        | diskkind : ReadClose(stream[iold].sysf); 
+                                     ok := TRUE; 
+                     <font color="#4169E1">ELSE</font> ok := FALSE; 
+                          <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+              ERROR(harmless, "Cannot close requested stream. "); 
+              m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+              RETURN (GAMMAINT(iold)); <strong><font color="#4169E1">END</font></strong>; 
+           stream[iold].stat := clostat; 
+           <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> oold&gt;0 <font color="#4169E1">THEN</font> 
+           k := stream[oold].kind; 
+                <font color="#4169E1">CASE</font> k <font color="#4169E1">OF</font> 
+                        | termkind : ok := TRUE; 
+                        | ramkind :  ok := TRUE; 
+                        | winkind :  ok := TRUE; 
+                        | nulkind :  ok := TRUE; 
+                        | diskkind : WriteClose(stream[oold].sysf); 
+                                     ok := TRUE; 
+                     <font color="#4169E1">ELSE</font> ok := FALSE; 
+                          <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+              ERROR(harmless, "Cannot close requested stream. "); 
+              m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+              RETURN (GAMMAINT(oold)); 
+              <strong><font color="#4169E1">END</font></strong>; 
+           stream[oold].stat := clostat; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN 0; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CUNIT; 
+
+ 
+<strong><font color="#4169E1">PROCEDURE CioUNIT</font></strong>(iold, oold : INTEGER): GAMMAINT; 
+<font color="#B22222">(* Close unit.  The unit in slot iold or oold is closed. 
+CioUNIT returns 0 on successful completion, ne 0 else.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   slot, k : INTEGER; 
+      ok : BOOLEAN; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* Pop from open stream stacks. *)</font> 
+      <font color="#4169E1">IF</font> Istream=iold <font color="#4169E1">THEN</font> popIstream(); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> Ostream=oold <font color="#4169E1">THEN</font> popOstream(); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* determine stream kind and close streams. *)</font> 
+        <font color="#4169E1">IF</font> iold&gt;0 <font color="#4169E1">THEN</font> 
+           k := stream[iold].kind; 
+                <font color="#4169E1">CASE</font> k <font color="#4169E1">OF</font> 
+                        | termkind : ok := TRUE; 
+                        | ramkind :  ok := TRUE; 
+                        | winkind :  ok := TRUE; 
+                        | nulkind :  ok := TRUE; 
+                        | diskkind : ReadClose(stream[iold].sysf); 
+                                     ok := TRUE; 
+                     <font color="#4169E1">ELSE</font> ok := FALSE; 
+                          <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+              ERROR(harmless, "Cannot close requested stream. "); 
+              m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+              RETURN (GAMMAINT(iold)); <strong><font color="#4169E1">END</font></strong>; 
+           stream[iold].stat := clostat; 
+           <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> oold&gt;0 <font color="#4169E1">THEN</font> 
+           k := stream[oold].kind; 
+                <font color="#4169E1">CASE</font> k <font color="#4169E1">OF</font> 
+                        | termkind : ok := TRUE; 
+                        | ramkind :  ok := TRUE; 
+                        | winkind :  ok := TRUE; 
+                        | nulkind :  ok := TRUE; 
+                        | diskkind : WriteClose(stream[oold].sysf); 
+                                     ok := TRUE; 
+                     <font color="#4169E1">ELSE</font> ok := FALSE; 
+                          <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+              ERROR(harmless, "Cannot close requested stream. "); 
+              m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+              RETURN (GAMMAINT(oold)); 
+              <strong><font color="#4169E1">END</font></strong>; 
+           stream[oold].stat := clostat; 
+           <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN 0; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CioUNIT; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE SIUNIT</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR): GAMMAINT; 
+<font color="#B22222">(* Set input unit.  Input unit is set to S, with S as the external name. 
+SIUNIT returns 0 on successful completion, ne 0 else.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, slot, old, sp, k : INTEGER; 
+      INI : GAMMAINT; 
+      ok : BOOLEAN; 
+      m: INTEGER;
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* See if allready defined. *)</font> 
+        findslot(S, instat, old, slot); 
+        <font color="#4169E1">IF</font> slot=0 <font color="#4169E1">THEN</font> 
+           ERROR(severe, "Maximal number <font color="#4169E1">of</font> Files is allready in use. "); 
+           m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+           RETURN 1; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* Save and set characteristics of old stream. *)</font> 
+        <font color="#4169E1">IF</font> (old&gt;0) <font color="#4169E1">THEN</font> 
+           saveold(Istream); 
+           storeold(old); 
+           Istream := old;
+           <font color="#4169E1">IF</font> stream[old].stat=instat <font color="#4169E1">THEN</font> 
+              m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+              RETURN 0; <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* determine stream kind if new and open stream 'slot'. *)</font> 
+        <font color="#4169E1">IF</font> (old=0) <font color="#4169E1">THEN</font> 
+           k := detkind(S); 
+           stream[slot].kind := k; 
+        <font color="#4169E1">ELSE</font>  k := stream[slot].kind; 
+        <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">CASE</font> k <font color="#4169E1">OF</font> 
+                | termkind : ok := TRUE; ECHO := FALSE; 
+                | ramkind : INI := NEWQUE(); 
+                            findslot(S, anystat, old, sp); 
+                            <font color="#4169E1">IF</font> old&gt;0 <font color="#4169E1">THEN</font> 
+                               INI := stream[old].sysq; <strong><font color="#4169E1">END</font></strong>; 
+                            stream[slot].sysq := INI; 
+                            ok := TRUE; ECHO := FALSE; 
+                | winkind : ok := TRUE; ECHO := FALSE; 
+                | nulkind : ok := TRUE; ECHO := FALSE; 
+                | diskkind : stream[slot].sysf := masReadOpen(S);
+                             <font color="#4169E1">IF</font> stream[slot].sysf &lt; 0 <font color="#4169E1">THEN</font>  
+                                ERROR(harmless, S); 
+                                ERROR(harmless, "Cannot open file. "); 
+                                m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+                                RETURN (GAMMAINT(slot)); <strong><font color="#4169E1">END</font></strong>; 
+                             ok := TRUE; ECHO := TRUE; 
+            <font color="#4169E1">ELSE</font> ok := FALSE; <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+           ERROR(harmless, "Cannot open requested stream. "); 
+           m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+           RETURN (GAMMAINT(slot)); 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(* initialize file descriptor and line characteristics. *)</font> 
+        <font color="#4169E1">IF</font> (old=0) <font color="#4169E1">THEN</font> 
+           ArrayToString(S,stream[slot].name); <strong><font color="#4169E1">END</font></strong>; 
+        stream[slot].stat := instat; 
+        INEWLINE := FALSE; 
+        pushstream(slot); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN 0; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> SIUNIT; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE SOUNIT</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR): GAMMAINT; 
+<font color="#B22222">(* Set output unit.  Output unit is set to stream S, with s as the 
+external name.  SOUNIT returns 0 on successful completion, ne 0 else. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, slot, old, k, sp : INTEGER; 
+      ok : BOOLEAN; 
+      INI : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(* See if allready defined. *)</font> 
+        findslot(S, outstat, old, slot); 
+        <font color="#4169E1">IF</font> slot=0 <font color="#4169E1">THEN</font> 
+           ERROR(severe, "Maximal number <font color="#4169E1">of</font> Files is allready in use. "); 
+           m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+           RETURN 1; <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(* Save and set characteristics of old stream. *)</font> 
+        <font color="#4169E1">IF</font> old&gt;0 <font color="#4169E1">THEN</font> 
+           saveold(Ostream); 
+           storeold(old); 
+           Ostream := old; 
+           <font color="#4169E1">IF</font> stream[old].stat=outstat <font color="#4169E1">THEN</font> 
+              m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+              RETURN 0; <strong><font color="#4169E1">END</font></strong>; 
+           <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*3*)</font> <font color="#B22222">(* determine stream kind if new and open stream 'slot'. *)</font> 
+        <font color="#4169E1">IF</font> (old=0) <font color="#4169E1">THEN</font> 
+           k := detkind(S); 
+           stream[slot].kind := k; 
+        <font color="#4169E1">ELSE</font>  k := stream[slot].kind; <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">CASE</font> k <font color="#4169E1">OF</font> 
+                | termkind : ok := TRUE; 
+                | ramkind : INI := NEWQUE(); 
+                            findslot(S, anystat, old, sp); 
+                            <font color="#4169E1">IF</font> old&gt;0 <font color="#4169E1">THEN</font> 
+                               INI := stream[old].sysq; 
+                               <strong><font color="#4169E1">END</font></strong>; 
+                            stream[slot].sysq := INI; 
+                            ok := TRUE; 
+                | winkind : ok := TRUE; 
+                | nulkind : ok := TRUE; 
+                | diskkind : stream[slot].sysf := WriteOpen(S); 
+                             <font color="#4169E1">IF</font> stream[slot].sysf &lt; 0 <font color="#4169E1">THEN</font> 
+                                <font color="#B22222">(* stream[slot].sysf := Create(S); *)</font> 
+     	       	    	       ok:=FALSE;
+                                <strong><font color="#4169E1">END</font></strong>; 
+                             ok := TRUE; 
+             <font color="#4169E1">ELSE</font> ok := FALSE; <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#4169E1">IF</font> <font color="#4169E1">NOT</font> ok <font color="#4169E1">THEN</font> 
+           ERROR(harmless, S); 
+           ERROR(harmless, "Cannot open requested stream. "); 
+           m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+           RETURN (GAMMAINT(slot)); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*4*)</font> <font color="#B22222">(* initialize file descriptor and line characteristics. *)</font> 
+        <font color="#4169E1">IF</font> (old=0) <font color="#4169E1">THEN</font> 
+           ArrayToString(S,stream[slot].name); <strong><font color="#4169E1">END</font></strong>; 
+        stream[slot].stat := outstat; 
+        ONEWLINE := FALSE; 
+        pushstream(slot); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+      RETURN 0; 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> SOUNIT; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE SILINE</font></strong>(<strong><font color="#228B22">VAR</font></strong> S, L, R : GAMMAINT); 
+<font color="#B22222">(* Set input line.  The input line length is set to S, the left margin is 
+set to L and the right margin is set to R. If any of the values of 
+S, L or R is negative, then the corresponding value is left unchanged. 
+The values in effect are returned. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   S1, L1, R1 : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> S1 := GAMMAINT(ISIZE); L1 := GAMMAINT(ILMARG); 
+      R1 := GAMMAINT(IRMARG); 
+      <font color="#4169E1">IF</font> S&gt;0 <font color="#4169E1">THEN</font> ISIZE := INTEGER(S); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> R&gt;0 <font color="#4169E1">THEN</font> IRMARG := INTEGER(R); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> L&gt;=0 <font color="#4169E1">THEN</font> ILMARG := INTEGER(L); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> IRMARG&gt;ISIZE <font color="#4169E1">THEN</font> IRMARG := ISIZE; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> ILMARG&gt;=IRMARG <font color="#4169E1">THEN</font> ILMARG := IRMARG-1; <strong><font color="#4169E1">END</font></strong>; 
+      S := S1; L := L1; R := R1; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> SILINE; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE SOLINE</font></strong>(<strong><font color="#228B22">VAR</font></strong> S, L, R : GAMMAINT); 
+<font color="#B22222">(* Set output line.  The output line length is set to S, the left margin is 
+set to L and the right margin is set to R. If any of the values of 
+S, L or R is negative, then the corresponding value is left unchanged. 
+The values in effect are returned. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   S1, L1, R1 : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> S1 := GAMMAINT(OSIZE); L1 := GAMMAINT(OLMARG); 
+      R1 := GAMMAINT(ORMARG); 
+      <font color="#4169E1">IF</font> S&gt;0 <font color="#4169E1">THEN</font> OSIZE := INTEGER(S); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> R&gt;0 <font color="#4169E1">THEN</font> ORMARG := INTEGER(R); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> L&gt;=0 <font color="#4169E1">THEN</font> OLMARG := INTEGER(L); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> ORMARG&gt;OSIZE <font color="#4169E1">THEN</font> ORMARG := OSIZE; <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> OLMARG&gt;=ORMARG <font color="#4169E1">THEN</font> OLMARG := ORMARG-1; <strong><font color="#4169E1">END</font></strong>; 
+      S := S1; L := L1; R := R1; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> SOLINE; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE Summary</font></strong>(); 
+<font color="#B22222">(*Summary of stream IO. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i : INTEGER; 
+      j : GAMMAINT; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> BLINES(1); SWRITE("Summary <font color="#4169E1">of</font> stream IO "); BLINES(1); 
+      j := 0; 
+        <font color="#4169E1">FOR</font> i := 1 <font color="#4169E1">TO</font> MAXFILE <font color="#4169E1">DO</font> 
+                <font color="#4169E1">IF</font> stream[i].stat&lt;&gt;undefstat <font color="#4169E1">THEN</font> 
+                        j := j+1; 
+                        <font color="#4169E1">IF</font> i=Istream <font color="#4169E1">THEN</font> 
+                                saveold(i); 
+                        <strong><font color="#4169E1">END</font></strong>; 
+                        <font color="#4169E1">IF</font> i=Ostream <font color="#4169E1">THEN</font> 
+                                saveold(i); 
+                        <strong><font color="#4169E1">END</font></strong>; 
+                        SWRITE("Name     "); 
+                        StWRITE(stream[i].name); 
+                        SWRITE(", "); 
+                        BLINES(0); 
+                        <font color="#4169E1">CASE</font> stream[i].stat <font color="#4169E1">OF</font> 
+                                | instat : 
+                                        SWRITE("Input,   "); 
+                                | outstat : 
+                                        SWRITE("Output,  "); 
+                                | clostat : 
+                                        SWRITE("Closed,  "); 
+                                <font color="#4169E1">ELSE</font> 
+                                        SWRITE("Unknown, "); 
+                                <strong><font color="#4169E1">END</font></strong>; 
+                        SWRITE("Byte-IO "); 
+                        GWRITE(stream[i].ByteIO); 
+                        SWRITE(", Line-IO "); 
+                        GWRITE(stream[i].LineIO); 
+                        SWRITE(", Lmarg "); 
+                        GWRITE(GAMMAINT(stream[i].lmarg)); 
+                        SWRITE(", Rmarg "); 
+                        GWRITE(GAMMAINT(stream[i].rmarg)); 
+                        SWRITE(", Size "); 
+                        GWRITE(GAMMAINT(stream[i].llen)); 
+                        SWRITE(". "); 
+                        BLINES(0); 
+                <strong><font color="#4169E1">END</font></strong>; 
+        <strong><font color="#4169E1">END</font></strong>; 
+      BLINES(1); GWRITE(j); SWRITE(" Files used. "); 
+      <font color="#B22222">(*Hold();*)</font> BLINES(1); 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> Summary; 
+ 
+ 
+<strong><font color="#4169E1">PROCEDURE StorSummary</font></strong>(); 
+<font color="#B22222">(*MASSTOR Summary. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   ML, NL, TL : LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> BLINES(1); 
+      ML := GCC; NL := GCCC; TL := TAU; 
+      GWRITE(ML); SWRITE(" garbage collections, "); 
+      GWRITE(NL); SWRITE(" cells reclaimed, in "); 
+      GWRITE(TL); SWRITE(" milliseconds."); BLINES(0); 
+      NL := CELLS(); TL := TIME()-TAU0; 
+      GWRITE(NL); SWRITE(" cells used, in "); 
+      GWRITE(TL); SWRITE(" milliseconds."); BLINES(0); 
+      TL := CLOCK()-TAU0; 
+      GWRITE(NU); SWRITE(" cells allocated. "); 
+      SWRITE("Total time "); GWRITE(TL); SWRITE(" milliseconds."); 
+      BLINES(0); 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> StorSummary; 
+ 
+
+<strong><font color="#4169E1">PROCEDURE SWRITE</font></strong>(S : ARRAY <font color="#4169E1">OF</font> CHAR); 
+<font color="#B22222">(* String write. S is a character string with respect to local 
+character codes. The single characters are converted to ALDES codes 
+and written to the output stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, l: CARDINAL; 
+      C : GAMMAINT; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> i:=0; l:=HIGH(S); 
+      <font color="#4169E1">REPEAT</font>  
+             <font color="#4169E1">IF</font> S[i] &lt;&gt; nul <font color="#4169E1">THEN</font> C := MASORD(S[i]); CWRITE(C);
+                            <font color="#4169E1">ELSE</font> RETURN <strong><font color="#4169E1">END</font></strong>; 
+             i:=i+1;
+             <font color="#4169E1">UNTIL</font> i &gt; l; 
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> SWRITE; 
+
+
+<strong><font color="#4169E1">PROCEDURE StWRITE</font></strong>(S : tString); 
+<font color="#B22222">(* String write. S is a character string with respect to local 
+character codes. The single characters are converted to ALDES codes 
+and written to the output stream. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>     i, l : CARDINAL; 
+        C : GAMMAINT; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> l:=Length(S); i:=0;
+      <font color="#4169E1">WHILE</font> i &lt; l <font color="#4169E1">DO</font> i:=i+1; C := MASORD( Char(S,i) );
+            CWRITE(C); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> StWRITE; 
+ 
+ 
+<font color="#B22222">(* 
+PROCEDURE testBIOS(); 
+(* Test BASBIOS. Some tests are performed to check correct 
+implementation. *)</font> 
+<strong><font color="#228B22">VAR</font></strong>   i, j, k : GAMMAINT; 
+      L, M : LIST; 
+      ii : INTEGER; 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*see if initialization was ok. *)</font> 
+      Summary(); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*write character code card to terminal. *)</font> 
+        <font color="#4169E1">FOR</font> ii := 0 <font color="#4169E1">TO</font> CHI <font color="#4169E1">DO</font> 
+            CWRITE(ii); CWRITE(blank); <strong><font color="#4169E1">END</font></strong>; 
+        BLINES(1); 
+        i := 1; 
+        <font color="#4169E1">IF</font> i=1 <font color="#4169E1">THEN</font> 
+           <font color="#B22222">(*test terminal input. *)</font> 
+           <font color="#4169E1">REPEAT</font> 
+                  BLINES(0); 
+                  SWRITE("Bitte Zahlen eingeben (0 = ende) "); 
+                  i := GREAD(); BLINES(0); 
+                  SWRITE("Eingegeben "); GWRITE(i); BLINES(1); 
+                  <font color="#4169E1">UNTIL</font> i = 0; 
+           BLINES(1); 
+           SWRITE("MASBIOS 1. test finished. "); BLINES(1); 
+           Summary(); 
+           <font color="#B22222">(*test write to ram stream. *)</font> 
+           k := SOUNIT("RAM:1"); 
+           <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+              SWRITE("Open RAM:1 <font color="#4169E1">for</font> output <font color="#4169E1">not</font> successful. "); 
+              BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">FOR</font> ii := 1 <font color="#4169E1">TO</font> 1000 <font color="#4169E1">DO</font> 
+               GWRITE(GAMMAINT(ii)); CWRITE(blank); <strong><font color="#4169E1">END</font></strong>; 
+           k := CUNIT("RAM:1"); 
+           <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+              SWRITE("Close RAM:1: <font color="#4169E1">not</font> successful. "); 
+              BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#B22222">(*test read from ram stream. *)</font> 
+           k := SIUNIT("RAM:1"); 
+           <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+              SWRITE("Open RAM:1 <font color="#4169E1">for</font> input <font color="#4169E1">not</font> successful. "); 
+              BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+           i := 0; 
+           <font color="#4169E1">REPEAT</font> 
+                  i := i+1; 
+                  j := GREAD(); 
+                  <font color="#4169E1">IF</font> i&lt;&gt;j <font color="#4169E1">THEN</font> SWRITE("wrong ");
+                     GWRITE(i); CWRITE(blank); 
+                     GWRITE(j); BLINES(0); 
+                     <strong><font color="#4169E1">END</font></strong>; 
+                  <font color="#4169E1">UNTIL</font> i&gt;=10; 
+            k := CUNIT("RAM:1"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Close RAM:1: <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            BLINES(1); 
+            SWRITE("MASBIOS 2. test finished. "); BLINES(1); 
+            Summary(); 
+            <font color="#B22222">(*test write to disk stream. *)</font> 
+            k := SOUNIT("TEST.TXT"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Open TEST.TXT <font color="#4169E1">for</font> output <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">FOR</font> ii := 1 <font color="#4169E1">TO</font> 1000 <font color="#4169E1">DO</font> GWRITE(GAMMAINT(ii)); 
+                CWRITE(blank); <strong><font color="#4169E1">END</font></strong>; 
+            k := CUNIT("TEST.TXT"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Close TEST.TXT <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            BLINES(1); 
+            SWRITE("MASBIOS 3. test finished. "); BLINES(1); 
+            <font color="#B22222">(*test read from disk stream. *)</font> 
+            k := SIUNIT("TEST.TXT"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Open TEST.TXT <font color="#4169E1">for</font> input <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            i := 1; 
+            <font color="#4169E1">REPEAT</font> 
+                   j := GREAD(); 
+                   <font color="#4169E1">IF</font> i&lt;&gt;j <font color="#4169E1">THEN</font> SWRITE("wrong ");
+                                GWRITE(i); 
+                                SWRITE(" - "); 
+                                GWRITE(j); 
+                                BLINES(0); 
+                      <strong><font color="#4169E1">END</font></strong>; 
+                   i := i+1; 
+                   <font color="#4169E1">UNTIL</font> i&gt;=100; 
+            k := CUNIT("TEST.TXT"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Close TEST.TXT <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            BLINES(1); 
+            SWRITE("MASBIOS 4. test finished. "); BLINES(1); 
+            Summary(); 
+            <font color="#B22222">(*open several files at a time. *)</font> 
+            k := SIUNIT("RAM:1"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Open RAM:1 <font color="#4169E1">for</font> input <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            k := SIUNIT("TEST.TXT"); 
+            <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+               SWRITE("Open TEST.TXT <font color="#4169E1">for</font> input <font color="#4169E1">not</font> successful. "); 
+               BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">REPEAT</font> 
+                   j := GREAD(); 
+                   <font color="#4169E1">UNTIL</font> j&gt;999;   
+            BLINES(1); 
+            SWRITE("MASBIOS 5. test finished. "); BLINES(1); 
+            Summary(); 
+        <strong><font color="#4169E1">END</font></strong>; 
+        <font color="#B22222">(*read from file and write to screen. *)</font> 
+        k := SIUNIT("LISP.INI"); 
+        <font color="#4169E1">IF</font> k&lt;&gt;0 <font color="#4169E1">THEN</font> 
+           SWRITE("Open LISP.INI <font color="#4169E1">for</font> input <font color="#4169E1">not</font> successful. ");
+           BLINES(1); <strong><font color="#4169E1">END</font></strong>; 
+        k := MASORD("a"); 
+        i := 0; 
+        <font color="#4169E1">REPEAT</font> 
+               j := CREAD(); 
+               CWRITE(j); 
+               i := i+1; 
+               <font color="#4169E1">IF</font> i&gt;=40 <font color="#4169E1">THEN</font> 
+                  BLINES(1); 
+                  i := 0; 
+                  <strong><font color="#4169E1">END</font></strong>; 
+               <font color="#4169E1">UNTIL</font> j&gt;=k; 
+        BLINES(1); 
+        SWRITE("MASBIOS 6. test finished. "); BLINES(1); 
+        Summary(); 
+<font color="#B22222">(*9*)</font> <strong><font color="#4169E1">END</font></strong> testBIOS; 
+*) 
+ 
+<strong><font color="#4169E1">PROCEDURE TAB</font></strong>(N : GAMMAINT); 
+<font color="#B22222">(* Tabulate.  n is a positive integer.  If lmarg lt n le rmarg then 
+blanks are transmitted to the output stream until opos eq n.*)</font> 
+<strong><font color="#228B22">VAR</font></strong>   n : INTEGER; 
+      m: INTEGER;
+<strong><font color="#4169E1">BEGIN</font></strong> 
+      m:=sigblock(SigMask(SIGUSR1)); <font color="#B22222">(* block SIGUSR1*)</font>
+<font color="#B22222">(*1*)</font> n := INTEGER(N); 
+      <font color="#4169E1">IF</font> (OLMARG&lt;n) <font color="#4169E1">AND</font> (n&lt;=ORMARG) <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">WHILE</font> OPOS&lt;n <font color="#4169E1">DO</font> CWRITE(blank); <strong><font color="#4169E1">END</font></strong>; 
+         <strong><font color="#4169E1">END</font></strong>; 
+      m:=sigsetmask(m); <font color="#B22222">(* restore old signal mask *)</font>
+<font color="#B22222">(*2*)</font> <strong><font color="#4169E1">END</font></strong> TAB; 
+ 
+<strong><font color="#4169E1">PROCEDURE IStreamKind</font></strong>(): INTEGER;
+<font color="#B22222">(* Input stream kind. The kind of the current input stream is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN stream[Istream].kind; 
+<strong><font color="#4169E1">END</font></strong> IStreamKind;
+
+<strong><font color="#4169E1">PROCEDURE OStreamKind</font></strong>(): INTEGER;
+<font color="#B22222">(* Output stream kind. The kind of the current output stream is returned. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN stream[Ostream].kind; 
+<strong><font color="#4169E1">END</font></strong> OStreamKind;
+
+<strong><font color="#4169E1">PROCEDURE EStreamKind</font></strong>(): INTEGER;
+<font color="#B22222">(* Error stream kind. The kind of the current error stream is returned. *)</font> 
+<strong><font color="#4169E1">BEGIN</font></strong>
+     RETURN stream[Estream].kind; 
+<strong><font color="#4169E1">END</font></strong> EStreamKind;
+
+
+ 
+<font color="#B22222">(* MASBIOS initialization *)</font> 
+<strong><font color="#4169E1">BEGIN</font></strong> 
+<font color="#B22222">(*1*)</font> InitBIOS(); 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*DEBUG   
+        SWRITE("Module MASBIOS initialized."); 
+        BLINES(1); 
+        testBIOS(); 
+        CloseBIOS(); 
+        StorSummary(); 
+        SWRITE("Test MASBIOS ready.");  BLINES(1);
+        CloseIO;
+          GUBED*)</font> 
+<font color="#B22222">(*3*)</font> <strong><font color="#4169E1">END</font></strong> MASBIOS. 
+ 
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

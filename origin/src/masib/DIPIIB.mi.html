@@ -1,0 +1,356 @@
+
+<html>
+<head>
+<title>./masib/DIPIIB.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1995-10-12T14:44:57+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: DIPIIB.mi,v 1.1 1995/10/12 14:44:57 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1995 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: DIPIIB.mi,v $
+ * Revision 1.1  1995/10/12 14:44:57  pesch
+ * Diplomarbeit Rainer Grosse-Gehling.
+ * Involutive Bases.
+ * Slightly edited.
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE DIPIIB;
+<font color="#B22222">(* DIP Integral Involutive Base Implementation Module. *)</font>
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM DIPC 	IMPORT 	DIPEVL, DIPFMO, DIPMAD, EVDIF, EVSIGN, EVSUM, EVTDEG;
+
+FROM DIPI 	IMPORT 	DIIPCP, DIIPDF, DIIPIP, DIIPPR; 
+
+FROM DIPCJ 	IMPORT 	ADDTDG, ADVTDG, DIILPP, DILATDG, DILBBS, DILEP2P, 
+			DILTDG, DIPNML, DIRPMV, DIPPGL, DIPPGL2, DIPPGL3,
+			DIPSSM, DIPVL, EVMTJ2, EVDIF2, EVMTJ;
+  
+FROM MASBIOS 	IMPORT 	BLINES, SWRITE;
+
+FROM MASERR 	IMPORT 	harmless, ERROR;
+
+FROM MASLISPU 	IMPORT 	PROCP2V2;
+
+FROM MASSTOR 	IMPORT 	ADV, COMP, FIRST, INV, LENGTH, LIST, LIST1, RED, SIL,
+			SRED, TIME;
+
+FROM SACI 	IMPORT 	IGCDCF, IPROD;
+
+FROM SACLIST 	IMPORT 	AWRITE, CCONC, CINV, COMP2, CONC, EQUAL, LAST, LWRITE,
+			OWRITE;
+
+<strong><font color="#228B22">VAR</font></strong> DIPIIBOpt: RECORD
+                   Select: PROCP2V2;
+                           <font color="#B22222">(* Strategy for selection of polynoms from
+                              polynomlist. *)</font>
+               <strong><font color="#4169E1">END</font></strong>;
+   Select: PROCP2V2;
+
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: DIPIIB.mi,v 1.1 1995/10/12 14:44:57 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1995 Universitaet Passau";      
+
+<font color="#B22222">(** Version from: Zharkov, Blinkov: 
+                  Involutive Bases of zero-dimensional Ideals ****************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIIPNFJ</font></strong>(P,RPP,S: LIST): LIST; 
+<font color="#B22222">(*Distributive integral polynomial normal form in the sense of Janet. 
+  P is a list of non zero polynomials in distributive integral
+  representation in r variables. RPP and S are distributive integral
+  polynomials. The result is a polynomial such that S is reducible to R
+  modulo P and R is in normalform with respect to P. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, APP, BL, CL, FL, PP, Q, QA, QE, QP, R, RP, RS, SL, SP, TA,
+      TE, r: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> R:=RPP; RETURN(R); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> P = SIL <font color="#4169E1">THEN</font>
+         <font color="#4169E1">IF</font> RPP = 0 <font color="#4169E1">THEN</font> R:=S; <font color="#4169E1">ELSE</font> R:=CCONC(RPP,S); <strong><font color="#4169E1">END</font></strong>; 
+         RETURN(R); 
+      <strong><font color="#4169E1">END</font></strong>; 
+      SP:=S; R:=RPP; 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE,SP); 
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); DIPMAD(Q, QA,QE,QP); SL:=EVMTJ(TE,QE); 
+             <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RP:=DIPFMO(TA,TE); 
+                <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> R:=RP; <font color="#4169E1">ELSE</font> RS:=LAST(R); SRED(RS,RP); 
+                   <strong><font color="#4169E1">END</font></strong>; 
+                <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF(TE,QE); IGCDCF(TA,QA,
+                   CL,AL,BL); AP:=DIPFMO(AL,FL); APP:=DIIPPR(QP,AP); 
+                   SP:=DIIPIP(SP,BL); R:=DIIPIP(R,BL);
+                   SP:=DIIPDF(SP,APP); <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0; 
+      RETURN(R); 
+<strong><font color="#4169E1">END</font></strong> DIIPNFJ; 
+
+       
+<strong><font color="#4169E1">PROCEDURE DIILISJ</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(*Distributive integral polynomial list irreducible set.
+  P is a list of distributive integral polynomials,
+  PP is the result of reducing each p element of P modulo P-(p)
+  in the sense of Janet until no further reductions are possible. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   CL, EL, FL, IRR, LL, PL, PP, PS, RP, SL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      PP:=P; PS:=SIL; 
+      <font color="#4169E1">WHILE</font> PP &lt;&gt; SIL <font color="#4169E1">DO</font> ADV(PP, PL,PP); DIIPCP(PL, CL,PL); 
+            <font color="#4169E1">IF</font> PL &lt;&gt; 0 <font color="#4169E1">THEN</font> PS:=COMP(PL,PS); <strong><font color="#4169E1">END</font></strong>; 
+            <strong><font color="#4169E1">END</font></strong>; 
+      RP:=PS; PP:=INV(PS); LL:=LENGTH(PP); IRR:=0; 
+      <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> RETURN(PP); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#B22222">(*reduce until all polynomials are irreducible. *)</font> 
+      LOOP ADV(PP, PL,PP); EL:=DIPEVL(PL); PL:=DIIPNFJ(PP,0,PL); 
+           <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> LL:=LL-1; 
+              <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+              <font color="#4169E1">ELSE</font> FL:=DIPEVL(PL); SL:=EVSIGN(FL); 
+              <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> PP:=LIST1(PL); EXIT; <strong><font color="#4169E1">END</font></strong>; 
+              SL:=EQUAL(EL,FL); 
+              <font color="#4169E1">IF</font> SL = 1 <font color="#4169E1">THEN</font> IRR:=IRR+1; <font color="#4169E1">ELSE</font> IRR:=0; DIIPCP(PL,CL,PL); <strong><font color="#4169E1">END</font></strong>; 
+              PS:=LIST1(PL); SRED(RP,PS); RP:=PS; <strong><font color="#4169E1">END</font></strong>; 
+           <font color="#4169E1">IF</font> IRR = LL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font>
+      BLINES(1); AWRITE(LL); 
+      SWRITE("  irreducible polynomials."); BLINES(1); 
+      RETURN(PP); 
+<strong><font color="#4169E1">END</font></strong> DIILISJ; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPCOM</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynom complete system.
+   Subalgorithm for computing Invbase.
+   Input: Distributive polynomial list F.
+   Output: G: complete system, such that Ideal(G) = Ideal(F). *)</font>
+<strong><font color="#228B22">VAR</font></strong> f,h,p,G,H,TDG,NM,nm,FLAG,EL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(SIL); <strong><font color="#4169E1">END</font></strong>;
+  EL:=SIL; G:=DIILISJ(F); 
+  <font color="#4169E1">REPEAT</font>
+        H:=G;
+        TDG:=DILTDG(H); FLAG:=TRUE;
+        <font color="#4169E1">WHILE</font> (H&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font> 
+              ADV(H,h,H); NM:=DIPNML(h);
+              <font color="#4169E1">WHILE</font> (NM&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font>
+                    ADV(NM,nm,NM);
+                    p:=DIRPMV(h,nm);
+                    <font color="#4169E1">IF</font> DILTDG(COMP(p,EL)) &lt;= TDG <font color="#4169E1">THEN</font>
+                       f:=DIIPNFJ(G,0,p);
+                       <font color="#4169E1">IF</font> f&lt;&gt;0 <font color="#4169E1">THEN</font> G:=DIILISJ(COMP(f,G));
+                                    FLAG:=FALSE;
+                       <strong><font color="#4169E1">END</font></strong>; 
+                    <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+        <strong><font color="#4169E1">END</font></strong>; 
+   <font color="#4169E1">UNTIL</font> (H = SIL) <font color="#4169E1">AND</font> FLAG; 
+   RETURN(G);        
+<strong><font color="#4169E1">END</font></strong> DIIPCOM; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPIB2</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynom involutive basis.
+   Mainalgorithm for computing Invbase.
+   Input: Distributive polynomial list F.
+   Output: G: involutive system, such that Ideal(G) = Ideal(F). *)</font>
+<strong><font color="#228B22">VAR</font></strong> f,h,p,G,H,TDG,NM,nm,EL: LIST;
+    FLAG                  : BOOLEAN;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(SIL) <strong><font color="#4169E1">END</font></strong>;
+  EL:=SIL; G:=DIIPCOM(F); 
+  <font color="#4169E1">REPEAT</font>
+        H:=G;
+        TDG:=DILTDG(H); FLAG:=TRUE;
+        <font color="#4169E1">WHILE</font> (H&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font> 
+              ADV(H,h,H); NM:=DIPNML(h);
+              <font color="#4169E1">WHILE</font> (NM&lt;&gt;SIL) <font color="#4169E1">AND</font> FLAG <font color="#4169E1">DO</font>
+                    ADV(NM,nm,NM);
+                    p:=DIRPMV(h,nm);
+                    <font color="#4169E1">IF</font> DILTDG(COMP(p,EL)) &gt; TDG <font color="#4169E1">THEN</font>
+                       f:=DIIPNFJ(G,0,p);
+                       <font color="#4169E1">IF</font> f&lt;&gt;0 <font color="#4169E1">THEN</font> G:=DIIPCOM(COMP(f,G));
+                                    FLAG:=FALSE;
+                       <strong><font color="#4169E1">END</font></strong>; 
+                    <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>; 
+        <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> (H = SIL) <font color="#4169E1">AND</font> FLAG; 
+   RETURN(G);        
+<strong><font color="#4169E1">END</font></strong> DIIPIB2; 
+
+<font color="#B22222">(** Version from: Zharkov, Blinkov:
+               Involution Approach to Solving Systems of Algebraic Equations **)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIIPIB3</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynom involutive basis.
+   Algorithm for computing the involutive Base for a given F.
+   Input: Distributiv Integral Polynomial List F.
+   Output: Equivalent involutive system G.*)</font>
+<strong><font color="#228B22">VAR</font></strong> G, H, h, NM, nm, f, VL, le: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  G:=SIL;
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(G) <strong><font color="#4169E1">END</font></strong>;
+  VL:=DIPVL(FIRST(F)); le:=LENGTH(VL)+1;
+  <font color="#4169E1">WHILE</font> F&lt;&gt;SIL <font color="#4169E1">DO</font>  
+        G:=DIILISJ(CONC(F,G)); 
+        F:=SIL; H:=G;
+        <font color="#4169E1">WHILE</font> H&lt;&gt;SIL <font color="#4169E1">DO</font> 
+              ADV(H,h,H);
+              NM:=DIPPGL3(h,VL,le); 
+              <font color="#4169E1">WHILE</font> NM&lt;&gt;SIL <font color="#4169E1">DO</font>
+                       ADV(NM,nm,NM);
+                       f:=DIIPNFJ(G,0,nm);
+                       <font color="#4169E1">IF</font> f&lt;&gt;0 <font color="#4169E1">THEN</font> F:=COMP(f,F); <strong><font color="#4169E1">END</font></strong>; 
+              <strong><font color="#4169E1">END</font></strong>;
+        <strong><font color="#4169E1">END</font></strong>;
+  <strong><font color="#4169E1">END</font></strong>;     
+  RETURN(G);
+<strong><font color="#4169E1">END</font></strong> DIIPIB3;
+
+<font color="#B22222">(** Optimized Version and some subalgorithms **********************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE DIIPPR2</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Distributive integral polynomial product. 
+  A and B are distributive integral polynomials.
+  Unlike procedure DIIPPR (in modul DIPI) B consists of one monomial. 
+  C=A*B.*)</font>
+<strong><font color="#228B22">VAR</font></strong>  AL, AS, BL, BS, C, CL, EL, FL, GL: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong> <font color="#B22222">(*a or b zero.*)</font>
+      <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">OR</font> (B = 0) <font color="#4169E1">THEN</font> C:=0; RETURN(C); <strong><font color="#4169E1">END</font></strong>;
+      <font color="#B22222">(*general case.*)</font> AS:=CINV(A); BS:=B; C:=SIL; 
+      DIPMAD(BS, BL,FL,BS); 
+      <font color="#4169E1">REPEAT</font> DIPMAD(AS, EL,AL,AS); 
+             CL:=IPROD(AL,BL); GL:=EVSUM(EL,FL);
+             C:=COMP2(GL,CL,C); 
+      <font color="#4169E1">UNTIL</font> AS = SIL;
+      RETURN(C); 
+<strong><font color="#4169E1">END</font></strong> DIIPPR2;
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPNFJ2</font></strong>(P,S: LIST; <strong><font color="#228B22">VAR</font></strong> R, c: LIST); 
+<font color="#B22222">(*Distributive integral polynomial normal form in the sense of Janet. 
+  P is a list of non zero polynomials in distributive integral  
+  representation in r variables. S is a distributive integral
+  polynomial. R is a polynomial such that S is reducible to R
+  modulo P and R is in normalform with respect to p.
+  c returns 1 if a reduction took place and zero else.
+  This procedure is should be used only from procedure DIIPISJ2 *)</font>
+<strong><font color="#228B22">VAR</font></strong>   AL, AP, APP, BL, CL, FL, PP, Q, QA, QE, QP, RP, RS, SL, SP, TA,
+      TE, r, deg, tdg: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+      R:=0; c:=0;
+      <font color="#4169E1">IF</font> (S&lt;&gt;0) <font color="#4169E1">AND</font> (P&lt;&gt;SIL) <font color="#4169E1">THEN</font>  
+      <font color="#B22222">(*reduction step.*)</font> ADVTDG(S, deg, SP); 
+      <font color="#4169E1">REPEAT</font> DIPMAD(SP, TA,TE,SP); 
+             <font color="#4169E1">IF</font> SP = SIL <font color="#4169E1">THEN</font> SP:=0; <strong><font color="#4169E1">END</font></strong>; 
+             PP:=P; 
+             <font color="#4169E1">REPEAT</font> ADV(PP, Q,PP); ADVTDG(Q, tdg, Q); 
+                    DIPMAD(Q, QA,QE,QP); SL:=EVMTJ(TE,QE); 
+             <font color="#4169E1">UNTIL</font> (PP = SIL) <font color="#4169E1">OR</font> (SL = 1); 
+             <font color="#4169E1">IF</font> SL = 0 <font color="#4169E1">THEN</font> RP:=DIPFMO(TA,TE); 
+                <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> R:=RP; <font color="#4169E1">ELSE</font> RS:=LAST(R); SRED(RS,RP); <strong><font color="#4169E1">END</font></strong>;                     <font color="#4169E1">ELSE</font>
+                <font color="#4169E1">IF</font> QP &lt;&gt; SIL <font color="#4169E1">THEN</font> FL:=EVDIF2(TE,QE); IGCDCF(TA,QA,CL,AL,BL); 
+                <font color="#4169E1">IF</font> FL&lt;&gt;0 <font color="#4169E1">THEN</font>  AP:=DIPFMO(AL,FL); APP:=DIIPPR2(QP,AP); 
+                         <font color="#4169E1">ELSE</font> APP:=DIIPIP(QP,AL) <strong><font color="#4169E1">END</font></strong>;
+                   SP:=DIIPIP(SP,BL); R:=DIIPIP(R,BL); 
+                   SP:=DIIPDF(SP,APP); c:=1; 
+                <strong><font color="#4169E1">END</font></strong>; 
+             <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">UNTIL</font> SP = 0 <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> (R&lt;&gt;0) <font color="#4169E1">THEN</font> 
+         <font color="#4169E1">IF</font> c = 1 <font color="#4169E1">THEN</font> R:=ADDTDG(EVTDEG(FIRST(R)),R); 
+                  <font color="#4169E1">ELSE</font> R:=ADDTDG(deg,R); <strong><font color="#4169E1">END</font></strong>;
+      <strong><font color="#4169E1">END</font></strong>;       
+<strong><font color="#4169E1">END</font></strong> DIIPNFJ2; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIILISJ2</font></strong>(P: LIST): LIST; 
+<font color="#B22222">(* Distributive integral polynomial list irreducible set.
+   P is a list of distributive integral polynomials,
+   PP is the result of reducing each p element of P modulo P-(p)
+   in the sense of Janet until no further reductions are possible
+   This should only be used from procedure DIIPIB. 
+   For computation of the irreducible set use DIILISJ*)</font>
+<strong><font color="#228B22">VAR</font></strong>   CL, IRR, LL, PL, pl,  PP, PS, RP, SL, H: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+       PS:=CINV(P); RP:=PS; PP:=INV(PS); LL:=LENGTH(PP); IRR:=0;     
+       <font color="#B22222">(*reduce until all polynomials are irreducible. *)</font> 
+       LOOP ADV(PP, PL,PP); DIIPNFJ2(PP,PL,PL,SL);
+            <font color="#4169E1">IF</font> PL = 0 <font color="#4169E1">THEN</font> LL:=LL-1; 
+              <font color="#4169E1">IF</font> LL &lt;= 1 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+            <font color="#4169E1">ELSE</font> <font color="#4169E1">IF</font> SL=0 <font color="#4169E1">THEN</font> IRR:=IRR+1; <font color="#4169E1">ELSE</font> IRR:=0; 
+                   ADVTDG(PL,pl,PL); DIIPCP(PL,CL,PL); PL:=ADDTDG(pl,PL); <strong><font color="#4169E1">END</font></strong>; 
+              PS:=LIST1(PL); SRED(RP,PS); RP:=PS;  
+           <strong><font color="#4169E1">END</font></strong>;
+           <font color="#4169E1">IF</font> IRR = LL <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>; 
+      <strong><font color="#4169E1">END</font></strong>; <font color="#B22222">(*loop*)</font> RETURN(PP);
+<strong><font color="#4169E1">END</font></strong> DIILISJ2; 
+
+
+<strong><font color="#4169E1">PROCEDURE DIIPIB</font></strong>(F: LIST): LIST;
+<font color="#B22222">(* Distributive integral polynomial involutive basis.
+   Algorithm for computing the involutive Base for a given F.
+   Input: Distributiv Integral Polynomial List F.
+   Output: Equivalent involutive system G.*)</font>
+<strong><font color="#228B22">VAR</font></strong> G, g, NM, nm, f, T, LL, VL, le, PL, CL, PS, r, tdg: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+  G:=SIL;
+  VL:=DIPVL(FIRST(F)); le:=LENGTH(VL)+1;
+  PS:=DIILPP(F); PS:=DILATDG(PS); 
+  F:=PS;
+  <font color="#4169E1">IF</font> F=SIL <font color="#4169E1">THEN</font> RETURN(G) <strong><font color="#4169E1">END</font></strong>;
+  G:=DIILISJ2(F); 
+  LOOP 
+       Select(G,TRUE,g,G); 
+       <font color="#4169E1">IF</font> FIRST(g)=0 <font color="#4169E1">THEN</font> EXIT <strong><font color="#4169E1">END</font></strong>;
+       NM:=DIPPGL2(g,VL,le); 
+       ADVTDG(g,tdg,g); g:=COMP(0,g); 
+       G:=COMP(g,G); 
+       <font color="#4169E1">IF</font> NM&lt;&gt;SIL <font color="#4169E1">THEN</font> G:=CONC(NM,G); G:=DIILISJ2(G); <strong><font color="#4169E1">END</font></strong>; 
+  <strong><font color="#4169E1">END</font></strong>;
+  G:=COMP(g,G); 
+  PS:=DILEP2P(G);
+  RETURN(PS);
+<strong><font color="#4169E1">END</font></strong> DIIPIB;
+
+
+<font color="#B22222">(*** Initialization and setting of options ************************************)</font>
+
+<strong><font color="#4169E1">PROCEDURE InitDIPIIB</font></strong>;
+<font color="#B22222">(* Init distributive integral involutive base.
+   Initialization of the DIPIIB options *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  SetDIPIIBSelect(1);
+  Select:=DIPSSM;
+<strong><font color="#4169E1">END</font></strong> InitDIPIIB;
+
+<strong><font color="#4169E1">PROCEDURE SetDIPIIBSelect</font></strong>(SEL: INTEGER);
+<font color="#B22222">(* Set distributive integral polynomial Select.
+   Set polynom selection strategy *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+  <font color="#4169E1">CASE</font> SEL <font color="#4169E1">OF</font>
+       1: DIPIIBOpt.Select:=DIPSSM;
+       <font color="#4169E1">ELSE</font> ERROR(harmless,"DIPIIB.SetSelect: Unknown option number");
+  <strong><font color="#4169E1">END</font></strong>;
+<strong><font color="#4169E1">END</font></strong> SetSelect;
+
+<strong><font color="#4169E1">BEGIN</font></strong>
+  InitDIPIIB;
+<strong><font color="#4169E1">END</font></strong> DIPIIB.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

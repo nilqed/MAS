@@ -1,0 +1,55 @@
+
+<html>
+<head>
+<title>./maskern/Portab.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1993-05-11T13:39:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: Portab.mi,v 1.3 1992/10/15 16:25:02 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: Portab.mi,v $
+ * Revision 1.3  1992/10/15  16:25:02  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/02/12  17:32:00  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:44  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE Portab;
+
+<font color="#B22222">(* Portability Implementation Module. *)</font>
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<strong><font color="#4169E1">BEGIN</font></strong> 
+
+      esc:=CHAR(27);
+      cr :=CHAR(13);
+      ff :=CHAR(12);
+      ef :=CHAR(4);
+      lf :=CHAR(11);
+      del:=CHAR(127);
+      bs :=CHAR(8);
+      nul:=CHAR(0);
+      sp :=CHAR(32);
+
+<strong><font color="#4169E1">END</font></strong> Portab.
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

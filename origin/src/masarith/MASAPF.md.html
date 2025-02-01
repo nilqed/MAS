@@ -1,0 +1,186 @@
+
+<html>
+<head>
+<title>./masarith/MASAPF.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T13:18:59+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASAPF.md,v 1.2 1992/02/12 13:18:58 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASAPF.md,v $
+ * Revision 1.2  1992/02/12  13:18:58  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:07:59  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASAPF;
+
+<font color="#B22222">(* MAS Arbitrary Precision Floating Point Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASSTOR IMPORT LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASAPF.md,v 1.2 1992/02/12 13:18:58 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE APCOMP</font></strong>(ML,EL: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point composition. e is the
+exponent, m is the mantissa of the arbitrary precision
+floating point number A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APMANT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point mantissa. m is the mantissa 
+of the arbitrary precision floating point number A.*)</font>
+      
+
+<strong><font color="#4169E1">PROCEDURE APEXPT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point exponent. e is the
+exponent of the arbitrary precision floating point number A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE ILOG10</font></strong>(N: LIST): LIST;
+<font color="#B22222">(*Integer logarithm base 10.
+N is an integer, l is a beta integer. l=LOG10(ABS(N)).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APSPRE</font></strong>(N: LIST);
+<font color="#B22222">(*Arbitrary precision floating point set precision.
+N is the desired precision of the floating point numbers.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APFINT</font></strong>(N: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point from integer.
+The integer N is converted to the arbitrary precision
+floating point number A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APSHFT</font></strong>(B,EL: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point shift.
+The arbitrary precision floating point number B is multiplied by 2**e.
+A is an arbitrary precision floating point number.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APSIGN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point sign. A is an arbitrary precision 
+floating point number, s is the sign of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APWRIT</font></strong>(A: LIST);
+<font color="#B22222">(*Arbitrary precision floating point write.
+The arbitrary precision floating point number A is written to
+the output stream.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APNEG</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point negative.
+The arbitrary precision floating point number A is negated.
+B= -A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APABS</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point absolute value.
+A is a arbitrary precision floating point number.
+B is the absolute value of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APCMPR</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point compare.
+A and B are arbitrary precision floating point numbers.
+s is the sign of the difference of A and B. s=SIGN(A-B).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APNELD</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point number of equal leading digits.
+A and B are arbitrary precision floating point numbers.
+l is the number of equal leading digits of A and B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APPROD</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point product.
+A, B and C are arbitrary precision floating point numbers.
+C is the product of A and B. C=A*B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APQ</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point quotient.
+A, B and C are arbitrary precision floating point numbers.
+C is the quotient of A and B. C=A/B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APSUM</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point sum.
+A, B and C are arbitrary precision floating point numbers.
+C is the sum of A and B. C=A+B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APDIFF</font></strong>(A,B: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point difference.
+A, B and C are arbitrary precision floating point numbers.
+C is the difference of A and B. C=A-B.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APLG10</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point logarithm base 10.
+A is an arbitrary precision floating point number,
+l is a beta integer, l=LOG10(ABS(A)). *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APEXP</font></strong>(A,NL: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point exponentiation.
+A and B are arbitrary precision floating point numbers.
+n is a beta-integer.  B=A**n.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APFRN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point from rational number.
+B is an arbitrary precision floating point number.
+A is a rational number.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNFAP</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Rational number from arbitrary precision floating point.
+A is an arbitrary precision floating point number.
+B is a rational number.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE RNDRD</font></strong>(): LIST;
+<font color="#B22222">(*Rational number decimal read.  The rational number R is read
+from the input stream.  Any preceding blanks are skipped.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APROOT</font></strong>(A,NL: LIST): LIST;
+<font color="#B22222">(*Arbitrary precision floating point n-th root.
+A and B are arbitrary precision floating point numbers.
+B is the n-th root of A.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE APPI</font></strong>(): LIST;
+<font color="#B22222">(*Arbitrary precision floating point pi.
+pi is an arbitrary precision floating point number. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASAPF.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

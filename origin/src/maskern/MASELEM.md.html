@@ -1,0 +1,93 @@
+
+<html>
+<head>
+<title>./maskern/MASELEM.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:31:54+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASELEM.md,v 1.2 1992/02/12 17:31:54 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASELEM.md,v $
+ * Revision 1.2  1992/02/12  17:31:54  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:10  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASELEM;
+
+<font color="#B22222">(* MAS Elementary Functions Definition Module. *)</font>
+
+
+
+<strong><font color="#228B22">TYPE</font></strong> GAMMAINT = LONGINT;
+
+     LIST = GAMMAINT;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASELEM.md,v 1.2 1992/02/12 17:31:54 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+
+<strong><font color="#4169E1">PROCEDURE MASABS</font></strong>(a: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*Absolute value.  a is a gamma-integer.  Returns the absolute value
+of a. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASEVEN</font></strong>(a: GAMMAINT): BOOLEAN;
+<font color="#B22222">(*Even.  a is a gamma-integer.  Returns TRUE if a is even and 
+FALSE otherwise. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASEXP</font></strong>(a,b: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*Exponential function.  a and b are gamma-integers, b non-negative.
+Returns $a^b$, with $0^0=1$. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASMAX</font></strong>(a,b: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*Maximum.  a and b are gamma-integers.  Returns the maximum of
+a and b. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASMIN</font></strong>(a,b: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*Minimum.  a and b are gamma-integers.  Returns the minimum
+of a and b. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASODD</font></strong>(a: GAMMAINT): BOOLEAN;
+<font color="#B22222">(*Odd.  a is a gamma-integer.  Returns TRUE if a is odd and 
+FALSE otherwise. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASQREM</font></strong>(a,b: GAMMAINT; <strong><font color="#228B22">VAR</font></strong> q,r: GAMMAINT);
+<font color="#B22222">(*Quotient and remainder.  a and b are gamma-integers, b non-zero.
+$q=integer(a/b)$ and $r=a-b*q$. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASREM</font></strong>(a,b: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*Remainder.  a and b are gamma-integers, b non-zero.
+Returns $a-b*integer(a/b)$. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE MASSIGN</font></strong>(a: GAMMAINT): GAMMAINT;
+<font color="#B22222">(*Sign.  a is a gamma-integer.  Returns the sign of a. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASELEM.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

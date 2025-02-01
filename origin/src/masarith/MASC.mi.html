@@ -1,0 +1,329 @@
+
+<html>
+<head>
+<title>./masarith/MASC.mi</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-10-15T16:28:10+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASC.mi,v 1.3 1992/10/15 16:28:10 kredel Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASC.mi,v $
+ * Revision 1.3  1992/10/15  16:28:10  kredel
+ * Changed rcsid variable
+ *
+ * Revision 1.2  1992/09/28  18:34:51  kredel
+ * Updated revision string.
+ *
+ * Revision 1.1  1992/09/28  17:29:12  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+IMPLEMENTATION MODULE MASC;
+
+<font color="#B22222">(* MAS Complex Number Implementation Module. *)</font>
+
+
+<font color="#B22222">(* Import lists and declarations. *)</font>
+
+FROM MASBIOS IMPORT SWRITE, CWRITE, CREADB, MASORD, BKSP, BLINES;
+
+FROM MASSTOR IMPORT LIST, ADV, COMP, FIRST, SIL; 
+
+FROM MASERR IMPORT severe, ERROR;
+
+FROM SACLIST IMPORT OWRITE, SECOND, FIRST2, LIST2, COMP2,  
+                    AWRITE, EQUAL;
+
+FROM SACRN IMPORT RNSUM, RNPROD, RNCOMP, RNNEG, RNDIF, 
+                  RNQ, RNINT, RNREAD, RNWRIT, RNRAND;
+
+FROM MASRN IMPORT RNDWR, RNDRD, RNONE;
+
+<strong><font color="#228B22">CONST</font></strong> rcsidi = "$Id: MASC.mi,v 1.3 1992/10/15 16:28:10 kredel Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyrighti = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+<font color="#B22222">(* Representation of a + i b, with a, b rational numbers, is 
+
+                         0   if a=0 and b=0 
+                     (a,b)   else   *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE CABS</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Complex number absolute value.  R is a complex number.  S is the
+absolute value of R, a rational number. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> S:=R; RETURN(S) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      S:=RNSUM(RNPROD(r,r),RNPROD(i,i));
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CABS;
+
+
+<strong><font color="#4169E1">PROCEDURE CCON</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Complex number conjugate.  R is a complex number. S is the
+complex conjugate of R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      S:=COMP2(r,RNNEG(i),SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CCON;
+
+
+<strong><font color="#4169E1">PROCEDURE CCOMP</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Complex number comparison.  R and S are complex numbers.
+t=0 if R=S, t=1 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> t:=EQUAL(R,S); 
+      <font color="#4169E1">IF</font> t = 1 <font color="#4169E1">THEN</font> t:=0 <font color="#4169E1">ELSE</font> t:=1 <strong><font color="#4169E1">END</font></strong>;  
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CCOMP;
+
+
+<strong><font color="#4169E1">PROCEDURE CDIF</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Complex number difference.  R and S are complex numbers.  T=R-S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, r2, i2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=CNEG(S); RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r1,i1); FIRST2(S,r2,i2); 
+      r1:=RNDIF(r1,r2); i1:=RNDIF(i1,i2); 
+      <font color="#4169E1">IF</font> (r1 = 0) <font color="#4169E1">AND</font> (i1 = 0) <font color="#4169E1">THEN</font> T:=0; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r1,i1,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CDIF;
+
+
+<strong><font color="#4169E1">PROCEDURE CDREAD</font></strong>(): LIST; 
+<font color="#B22222">(*Complex number decimal read.  The complex number R is read
+from the input stream.  Any preceding blanks are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R, r, i, c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=RNDRD(); i:=0; 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("i") <font color="#4169E1">THEN</font> i:=RNDRD(); <font color="#4169E1">ELSE</font> BKSP; <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      R:=COMP2(r,i,SIL);
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CDREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE CDWRITE</font></strong>(R,NL: LIST); 
+<font color="#B22222">(*Complex number decimal write.  R is a complex number.  n is a
+non-negative integer.  R is approximated by a decimal fraction D with
+n decimal digits following the decimal point and D is written in the
+output stream.  The inaccuracy of the approximation is at most
+(1/2)*10**-n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      RNDWR(r,NL); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" i "); RNDWR(i,NL) <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CDWRITE;
+
+
+<strong><font color="#4169E1">PROCEDURE CEXP</font></strong>(A,NL: LIST): LIST; 
+<font color="#B22222">(*Complex number exponentiation.  A is a complex number,
+n is a non-negative beta-integer.  B=A**n. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   B, KL: LIST; 
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#B22222">(*n less than or equal to 1.*)</font> 
+      <font color="#4169E1">IF</font> NL = 0 <font color="#4169E1">THEN</font> B:=CINT(1); RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+      <font color="#4169E1">IF</font> NL = 1 <font color="#4169E1">THEN</font> B:=A; RETURN(B); <strong><font color="#4169E1">END</font></strong>; 
+<font color="#B22222">(*2*)</font> <font color="#B22222">(*recursion.*)</font> KL:=NL DIV 2; B:=CEXP(A,KL); B:=CPROD(B,B); 
+      <font color="#4169E1">IF</font> NL &gt; 2*KL <font color="#4169E1">THEN</font> B:=CPROD(B,A); <strong><font color="#4169E1">END</font></strong>; 
+      RETURN(B); 
+<font color="#B22222">(*5*)</font> <strong><font color="#4169E1">END</font></strong> CEXP; 
+
+
+<strong><font color="#4169E1">PROCEDURE CIM</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Complex number imaginary part.  R is a complex number.  b is the
+imaginary part of R, a rational number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(SECOND(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CIM;
+
+
+<strong><font color="#4169E1">PROCEDURE CINT</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Complex number from integer.  A is an integer.  R is the complex
+number with real part A/1 and imaginary part 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> R:=A; RETURN(R) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP2(RNINT(A),0,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CINT;
+
+
+<strong><font color="#4169E1">PROCEDURE CRE</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Complex number real part.  R is a complex number.  b is the
+real part of R, a rational number. *)</font>
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> RETURN(FIRST(R));
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CRE;
+
+
+<strong><font color="#4169E1">PROCEDURE CRN</font></strong>(A: LIST): LIST;
+<font color="#B22222">(*Complex number from rational number.  A is a rational number.  
+R is the complex number with real part A and imaginary part 0. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> A = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP2(A,0,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CRN;
+
+
+<strong><font color="#4169E1">PROCEDURE CRNP</font></strong>(A, B: LIST): LIST;
+<font color="#B22222">(*Complex number from pair of rational numbers.  A and B are 
+rational numbers.  R is the complex number with real part A 
+and imaginary part B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (A = 0) <font color="#4169E1">AND</font> (B = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> R:=COMP2(A,B,SIL); 
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CRNP;
+
+
+<strong><font color="#4169E1">PROCEDURE CNINV</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Complex number inverse.  R is a non-zero complex number.  S R=1. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i, a: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> ERROR(severe,"CINV: division by zero."); <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      a:=RNSUM(RNPROD(r,r),RNPROD(i,i));
+      r:=RNQ(r,a); i:=RNQ(RNNEG(i),a); 
+      S:=COMP2(r,i,SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CNINV;
+
+
+<strong><font color="#4169E1">PROCEDURE CNEG</font></strong>(R: LIST): LIST;
+<font color="#B22222">(*Complex number negative.  R is a complex number.  S=-R. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   S, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      S:=COMP2(RNNEG(r),RNNEG(i),SIL);
+      RETURN(S);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CNEG;
+
+
+<strong><font color="#4169E1">PROCEDURE CONE</font></strong>(R: LIST): LIST; 
+<font color="#B22222">(*Complex number one.  R is a complex number.  s=1 if R=1,
+s=0 else. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i, t: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      t:=RNONE(r); 
+      RETURN(t);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CONE;
+
+
+<strong><font color="#4169E1">PROCEDURE CPROD</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Complex number product.  R and S are complex numbers.  T=R*S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, r2, i2, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> (R = 0) <font color="#4169E1">OR</font> (S = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r1,i1); FIRST2(S,r2,i2); 
+      r:=RNDIF(RNPROD(r1,r2),RNPROD(i1,i2)); 
+      i:=RNSUM(RNPROD(r1,i2),RNPROD(i1,r2)); 
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r,i,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CPROD;
+
+
+<strong><font color="#4169E1">PROCEDURE CQ</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Complex number quotient.  R and S are complex numbers, S non-zero.
+T=R/S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> T:=CPROD(R,CNINV(S)); 
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CQ;
+
+
+<strong><font color="#4169E1">PROCEDURE CRAND</font></strong>(NL: LIST): LIST;
+<font color="#B22222">(*Complex number, random.  n is a positive beta-integer.  Random 
+rational numbers A and B are generated using RNRAND(n). Then 
+R is the complex number with real part A and imaginary part B. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=RNRAND(NL); i:=RNRAND(NL); 
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r,i,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CRAND;
+
+
+<strong><font color="#4169E1">PROCEDURE CNREAD</font></strong>(): LIST;
+<font color="#B22222">(*Complex number read.  The complex number R is read from the input
+stream.  Any preceding blanks are skipped. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   R, r, i, c: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> r:=RNREAD(); i:=0; 
+      c:=CREADB(); 
+      <font color="#4169E1">IF</font> c = MASORD("i") <font color="#4169E1">THEN</font> i:=RNREAD(); <font color="#4169E1">ELSE</font> BKSP; <strong><font color="#4169E1">END</font></strong>;  
+      <font color="#4169E1">IF</font> (r = 0) <font color="#4169E1">AND</font> (i = 0) <font color="#4169E1">THEN</font> RETURN(0) <strong><font color="#4169E1">END</font></strong>;
+      R:=COMP2(r,i,SIL);
+      RETURN(R);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CNREAD;
+
+
+<strong><font color="#4169E1">PROCEDURE CSUM</font></strong>(R,S: LIST): LIST;
+<font color="#B22222">(*Complex number sum.  R and S are complex numbers.  T=R+S. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   T, r1, i1, r2, i2: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> T:=S; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      <font color="#4169E1">IF</font> S = 0 <font color="#4169E1">THEN</font> T:=R; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r1,i1); FIRST2(S,r2,i2); 
+      r1:=RNSUM(r1,r2); i1:=RNSUM(i1,i2); 
+      <font color="#4169E1">IF</font> (r1 = 0) <font color="#4169E1">AND</font> (i1 = 0) <font color="#4169E1">THEN</font> T:=0; RETURN(T) <strong><font color="#4169E1">END</font></strong>;
+      T:=COMP2(r1,i1,SIL);
+      RETURN(T);
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CSUM;
+
+
+<strong><font color="#4169E1">PROCEDURE CNWRITE</font></strong>(R: LIST);
+<font color="#B22222">(*Complex number write. R is a complex number.  R is converted 
+to decimal and written in the output stream. *)</font>
+<strong><font color="#228B22">VAR</font></strong>   r, i: LIST;
+<strong><font color="#4169E1">BEGIN</font></strong>
+<font color="#B22222">(*1*)</font> <font color="#4169E1">IF</font> R = 0 <font color="#4169E1">THEN</font> AWRITE(R); RETURN <strong><font color="#4169E1">END</font></strong>;
+<font color="#B22222">(*2*)</font> FIRST2(R,r,i); 
+      RNWRIT(r); 
+      <font color="#4169E1">IF</font> i &lt;&gt; 0 <font color="#4169E1">THEN</font> SWRITE(" i "); RNWRIT(i) <strong><font color="#4169E1">END</font></strong>;  
+<font color="#B22222">(*4*)</font> <strong><font color="#4169E1">END</font></strong> CNWRITE;
+
+
+
+<strong><font color="#4169E1">END</font></strong> MASC.
+
+
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

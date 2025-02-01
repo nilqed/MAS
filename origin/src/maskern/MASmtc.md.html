@@ -1,0 +1,72 @@
+
+<html>
+<head>
+<title>./maskern/MASmtc.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T17:31:58+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: MASmtc.md,v 1.2 1992/02/12 17:31:58 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: MASmtc.md,v $
+ * Revision 1.2  1992/02/12  17:31:58  pesch
+ * Moved CONST definition to the right place
+ *
+ * Revision 1.1  1992/01/22  15:10:16  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE MASmtc;
+
+<font color="#B22222">(* MAS mtc [Modula-2 to C] Definition Module. *)</font>
+
+
+
+FROM SYSTEM IMPORT ADDRESS;
+
+<strong><font color="#228B22">VAR</font></strong> EditPrg, EditPrm: ARRAY [0..80] <font color="#4169E1">OF</font> CHAR;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: MASmtc.md,v 1.2 1992/02/12 17:31:58 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+ 
+<strong><font color="#4169E1">PROCEDURE getstck</font></strong>(): ADDRESS;
+<font color="#B22222">(*Get contents of stack register. *)</font>
+ 
+
+<strong><font color="#4169E1">PROCEDURE gettoc</font></strong>(): ADDRESS;
+<font color="#B22222">(*Get contents of toc register. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE NextParm</font></strong>(<strong><font color="#228B22">VAR</font></strong> s: ARRAY <font color="#4169E1">OF</font> CHAR): BOOLEAN;
+<font color="#B22222">(*Next Parameter. The next parameter from the GEM environement is
+placed in string s. If no parameter was found, FALSE is returned
+and s is undefined, else TRUE is returned. The separator for the 
+parameters is the blank character. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DOS</font></strong>(s: ARRAY <font color="#4169E1">OF</font> CHAR): INTEGER;
+<font color="#B22222">(*Call DOS program. *)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE EDIT</font></strong>(s: ARRAY <font color="#4169E1">OF</font> CHAR): INTEGER;
+<font color="#B22222">(*Edit file with name s. *)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> MASmtc.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>

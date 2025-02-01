@@ -1,0 +1,109 @@
+
+<html>
+<head>
+<title>./masarith/SACD.md</title>
+<meta name="generator" content="pas2html 0.9.2">
+<meta name="date" content="1992-02-12T13:19:10+00:00">
+</head>
+
+<body bgcolor="#FFFFFF">
+<pre width="80"><font color="#B22222">(* ----------------------------------------------------------------------------
+ * $Id: SACD.md,v 1.2 1992/02/12 13:19:10 pesch Exp $
+ * ----------------------------------------------------------------------------
+ * This file is part of MAS.
+ * ----------------------------------------------------------------------------
+ * Copyright (c) 1989 - 1992 Universitaet Passau
+ * ----------------------------------------------------------------------------
+ * $Log: SACD.md,v $
+ * Revision 1.2  1992/02/12  13:19:10  pesch
+ * Moved CONST Definition to the right place.
+ *
+ * Revision 1.1  1992/01/22  15:08:12  kredel
+ * Initial revision
+ *
+ * ----------------------------------------------------------------------------
+ *)</font>
+
+DEFINITION MODULE SACD;
+
+<font color="#B22222">(* SAC Digit Definition Module. *)</font>
+
+
+
+<font color="#B22222">(* Import lists and Definitions *)</font> 
+
+FROM MASSTOR IMPORT LIST;
+
+
+<strong><font color="#228B22">VAR</font></strong> THETA, ZETA, DELTA, ETA, EPSIL: LIST;
+
+    
+    TABP2: ARRAY[1..64] <font color="#4169E1">OF</font> LIST;
+
+<strong><font color="#228B22">CONST</font></strong> rcsid = "$Id: SACD.md,v 1.2 1992/02/12 13:19:10 pesch Exp $";
+<strong><font color="#228B22">CONST</font></strong> copyright = "Copyright (c) 1989 - 1992 Universitaet Passau";
+
+
+    
+<strong><font color="#4169E1">PROCEDURE BITRAN</font></strong>(): LIST;
+<font color="#B22222">(*Bit, random.  b is a random bit, 0 or 1.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DEGCD</font></strong>(AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> CL,UL,VL: LIST);
+<font color="#B22222">(*Digit extended greatest common divisor.  a and b are beta-integers,
+a ge b ge 0.  c=GCD(a,b), a beta-integer.  a*u+b*v=c, with
+ABS(u) le b/2c, ABS(v) le a/2c.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DGCD</font></strong>(AL,BL: LIST): LIST;
+<font color="#B22222">(*Digit greatest common divisor.  a and b are beta-integers,
+a ge b ge 0.  c=GCD(a,b).*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DLOG2</font></strong>(AL: LIST): LIST;
+<font color="#B22222">(*Digit logarithm, base 2.  a is a beta-digit.  If a=0 then n=0.
+otherwise n=FLOOR(LOG2(ABS(a)))+1.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DPCC</font></strong>(AL1,AL2: LIST; <strong><font color="#228B22">VAR</font></strong> UL,ULP,VL,VLP: LIST);
+<font color="#B22222">(*Digit partial cosequence calculation.  a1 and a2 are beta-integers,
+a1 ge a2 gt 0.  u, up, v and vp are the last cosequence elements
+of a1 and a2 which can be guaranteed to correspond to correct
+quotient digits.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DPR</font></strong>(AL,BL: LIST; <strong><font color="#228B22">VAR</font></strong> CL,DL: LIST);
+<font color="#B22222">(*Digit product.  a and b are beta-digits.  c and d are the unique
+beta-digits such that a*b=c*beta+d and c*d ge 0.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DQR</font></strong>(AL1,AL0,BL: LIST; <strong><font color="#228B22">VAR</font></strong> QL,RL: LIST);
+<font color="#B22222">(*Digit quotient and remainder.  a1, a0 and b are beta-integers with
+a1*a0 ge 0 and ABS(b) gt ABS(a1).  q is the integral part of
+(a1*beta+a0)/b and r is (a1*beta+a0)-b*q.  q and r are
+beta-integers.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DRAN</font></strong>(): LIST;
+<font color="#B22222">(*Digit, random.  a is a random beta-digit.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DRANN</font></strong>(): LIST;
+<font color="#B22222">(*Digit, random non-negative.  a is a random non-negative beta-digit.
+Caution, the low-order bits of a are not very random.*)</font>
+
+
+<strong><font color="#4169E1">PROCEDURE DSQRTF</font></strong>(AL: LIST; <strong><font color="#228B22">VAR</font></strong> BL,TL: LIST);
+<font color="#B22222">(*Digit square root function.  a is a non-negative beta-integer.
+b is the floor function of the square root of a and t is the sign
+of a-b*b.*)</font>
+
+
+<strong><font color="#4169E1">END</font></strong> SACD.
+
+
+<font color="#B22222">(* -EOF- *)</font>
+</pre>
+</body>
+
+</html>
