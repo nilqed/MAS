@@ -45,7 +45,7 @@ const static char compiler[] = "???";
 
 #include <stdlib.h>
 
-#include <kpathsea/default.h>
+#include <kpathsea/kpathsea.h>
 #include "init-path.h"
 
 

@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  *)
 
-FOREIGN MODULE maskpathsea;
+DEFINITION MODULE FOR "C" maskpathsea;
 
 (* kpathsearch Foreign Module. *)
 

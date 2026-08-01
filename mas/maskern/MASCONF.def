@@ -27,7 +27,7 @@
  * ----------------------------------------------------------------------------
  *)
 
-FOREIGN MODULE MASCONF;
+DEFINITION MODULE FOR "C" masconf;
 
 (* MAS Configuration Definition Module. *)
 

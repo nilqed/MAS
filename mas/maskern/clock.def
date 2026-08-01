@@ -16,7 +16,7 @@
  * ----------------------------------------------------------------------------
  *)
 
-FOREIGN MODULE clock;
+DEFINITION MODULE FOR "C" clock;
 (* clock Foreign Module. *)
 
 PROCEDURE ClocK(): LONGINT;

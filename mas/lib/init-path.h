@@ -34,7 +34,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #ifndef KPATHSEA_INIT_PATH_H
 #define KPATHSEA_INIT_PATH_H
 
-#include <kpathsea/c-vararg.h>
+#include <kpathsea/config.h>
 #include <kpathsea/types.h>
 
 /* The first arguments are fixed.  Any number of additional arguments,

@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  *)
 
-FOREIGN MODULE masreadline;
+DEFINITION MODULE FOR "C" masreadline;
 (* readline Foreign Module. *)
 
 FROM Strings IMPORT tString;
